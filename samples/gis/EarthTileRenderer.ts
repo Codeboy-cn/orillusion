@@ -5,6 +5,32 @@ import { EarthTileGeometry } from "./EarthTileGeometry";
 import { GISMath } from "./GISMath";
 import { TransformClassNormal } from "./transform";
 import { GISCameraController } from "./GISCameraController";
+import Lerc from "./decoder/Lerc"
+import decode from "./decoder/QuantizedMesh";
+
+{
+    const tileX = 0, tileY = 0, tileZoom = 0;
+    // decode cesium .terrain (quantized-mesh)
+    // example https://github.com/heremaps/quantized-mesh-viewer/blob/master/src/tile/create-quantized-mesh.js
+    fetch("https://cdn.orillusion.com/terrain/test.terrain").then((res) => res.arrayBuffer())
+    .then(buffer=>{
+        console.time('decode cesium')
+        let data = decode(buffer, {})
+        console.timeEnd('decode cesium')
+        console.log(data)
+    })
+
+    // decode arcgjs tile (LERC)
+    Lerc.load()
+    .then(()=>fetch(`https://elevation3d.arcgis.com/arcgis/rest/services/WorldElevation3D/Terrain3D/ImageServer/tile/${tileZoom}/${tileY}/${tileX}`))
+    .then(response => response.arrayBuffer())
+    .then(arraybuffer=>{
+        console.time('decode arcgis')
+        const pixelBlock = Lerc.decode(arraybuffer)
+        console.timeEnd('decode arcgis')
+        console.log(pixelBlock)
+    })
+}
 
 export class TileData extends Struct {
     public offsetX: number = 0;
@@ -32,6 +58,7 @@ export class EarthInfo extends Struct {
 
 export class EarthTileRenderer extends MeshRenderer {
     protected tileBuffer: StructStorageGPUBuffer<TileData>;
+    protected terrainBuffer: StorageGPUBuffer;
     protected earthInfo: StructStorageGPUBuffer<EarthInfo>;
     protected earthInfoData: EarthInfo;
     protected drawBuffer: StorageGPUBuffer;
@@ -39,6 +66,7 @@ export class EarthTileRenderer extends MeshRenderer {
     protected RTEDataBuffer: UniformGPUBuffer;
 
     private _tileData: TileData[];
+    private _terrainData: Float32Array;
     private _computeGeoShader: ComputeShader;
     private _needUpdate: boolean = false;
 
@@ -94,6 +122,8 @@ export class EarthTileRenderer extends MeshRenderer {
             this._tileData.push(t);
         }
 
+        this._terrainData = new Float32Array(128 * 257 * 257);
+
         this.buildData();
     }
 
@@ -103,6 +133,7 @@ export class EarthTileRenderer extends MeshRenderer {
         this._computeGeoShader.setStorageBuffer("tiles", this.tileBuffer);
         this._computeGeoShader.setStorageBuffer("earthInfo", this.earthInfo);
         this._computeGeoShader.setStorageBuffer("drawBuffer", this.drawBuffer);
+        this._computeGeoShader.setStorageBuffer("terrain", this.terrainBuffer);
     }
 
     public buildData() {
@@ -134,6 +165,7 @@ export class EarthTileRenderer extends MeshRenderer {
             let tileX = 0;
             let tileY = 0;
             let tileZoom = 2;
+            //
             Engine3D.res.loadTexture(`https://gac-geo.googlecnapps.cn/maps/vt?lyrs=s&gl=CN&x=${tileX}&y=${tileY}&z=${tileZoom}`).then((texture) => {
                 for (let i = 0; i < this.texs.length; i++) {
                     this.texs[i] = texture as BitmapTexture2D;
@@ -147,6 +179,11 @@ export class EarthTileRenderer extends MeshRenderer {
         }
 
         this.geometry = new EarthTileGeometry(this._tileData.length);
+
+
+        // terrain
+        this.terrainBuffer = new StorageGPUBuffer(this._terrainData.length)
+        this.terrainBuffer.apply();
 
         this._needUpdate = true;
     }
@@ -178,7 +215,7 @@ export class EarthTileRenderer extends MeshRenderer {
 
         let v = GISMath.SurfacePosToLngLat(controller.getCameraPosition());
         let LngLat = new Vector3(v[0], v[1]);
-        LngLat.set(112.9603384873657, 28.167600241852714, 0);
+        // LngLat.set(112.9603384873657, 28.167600241852714, 0);
         controller.moveTestBall(LngLat.x, LngLat.y);
 
         if (true) {
@@ -216,6 +253,22 @@ export class EarthTileRenderer extends MeshRenderer {
                         this.texture.setTexture(texIndex, this.texs[texIndex]);
                     }
                 });
+                
+                Lerc.load()
+                .then(()=>fetch(`https://elevation3d.arcgis.com/arcgis/rest/services/WorldElevation3D/Terrain3D/ImageServer/tile/${tile.tileZoom}/${tile.tileY}/${tile.tileX}`))
+                .then(response => response.arrayBuffer())
+                .then(arraybuffer=>{
+                    let texIndex = this.findTextureIndex(tile);
+                    if (texIndex != -1) {
+                        const pixelBlock = Lerc.decode(arraybuffer)
+                        // this._terrainData[texIndex].min = pixelBlock.statistics[0].minValue;
+                        // this._terrainData[texIndex].max = pixelBlock.statistics[0].maxValue;
+                        this._terrainData.set(pixelBlock.pixels[0] as Float32Array, 257 * 257 * texIndex)
+                    }
+                    // TODO: should not update all data
+                    this.terrainBuffer.setFloat32Array('', this._terrainData);
+                    this.terrainBuffer.apply();
+                })
             }
 
             // update TileData to GPUBuffer

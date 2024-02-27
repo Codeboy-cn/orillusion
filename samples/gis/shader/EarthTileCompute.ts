@@ -36,9 +36,10 @@ export let EarthTileCompute = () => {
     }
 
     @group(0) @binding(1) var<storage, read_write> vertexBuffer : array<VertexInfo>;
-    @group(0) @binding(2) var<storage, read> tiles : array<TileData>;
+    @group(0) @binding(2) var<storage, read_write> tiles : array<TileData>;
     @group(0) @binding(3) var<storage, read> earthInfo : EarthInfo;
     @group(0) @binding(4) var<storage, read_write> drawBuffer : DrawInfo;
+    @group(0) @binding(5) var<storage, read> terrain : array<f32>;
 
     @compute @workgroup_size(256, 1, 1)
     fn CsMain(@builtin(global_invocation_id) globalInvocation_id: vec3<u32>) {
@@ -75,8 +76,8 @@ export let EarthTileCompute = () => {
     fn drawEarthTile(tileIndex:u32, t:TileData) {
         let width:f32 = t.tileSize;
         let height:f32 = t.tileSize;
-        let segmentW:f32 = 10;
-        let segmentH:f32 = 10;
+        let segmentW:f32 = 64;
+        let segmentH:f32 = 64;
         let vertexCount:u32 = u32(segmentW + 1) * u32(segmentH + 1);
         let firstIndex:u32 = atomicAdd(&drawBuffer.skipFace, 1u);
         let count:u32 = firstIndex * vertexCount + vertexCount;
@@ -97,7 +98,11 @@ export let EarthTileCompute = () => {
             z = mapNumberToInterval(z);
 
             let o:vec3f = inverseWebMercator(x, z);
-            let s:vec3f = spherify(o.x, o.z);
+            // todo
+            let t:f32 = terrain[tileIndex * 257 * 257 + yi * 4 * 257 + xi * 4];
+            // tiles[tileIndex]._retain1 = t;
+            let s:vec3f = spherify(o.x, o.z, t);
+            
             vertexBuffer[i].position.x = -s.x;
             vertexBuffer[i].position.y = -s.y;
             vertexBuffer[i].position.z = s.z;
@@ -138,7 +143,7 @@ export let EarthTileCompute = () => {
         );
     }
 
-    fn spherify(e:f32, t:f32) -> vec3f {
+    fn spherify(e:f32, t:f32, h: f32) -> vec3f {
         let n:f32 = (90.0 - t) / 180.0 * PI;
         let r:f32 = e / 180.0 * PI;
         let p = vec3f(
@@ -146,20 +151,20 @@ export let EarthTileCompute = () => {
             cos(n),
             sin(n) * sin(r)
         );
-        return CalcPolarSurface(p);
+        return CalcPolarSurface(p, h);
     }
 
 
-   fn CalcPolarSurface(position: vec3f) ->vec3f {
+   fn CalcPolarSurface(position: vec3f, h:f32) ->vec3f {
         let sphereY = position.y;
         var ret:vec3f = position;
         if (abs(sphereY) >= 0.999999999) {
-            ret *= PolarRadius;
+            ret *= (PolarRadius + h);
             return ret;
         }
         if (abs(sphereY) < 0.0000000001) {
             ret.y = sphereY * Min_Div_Max;
-            ret *= EarthRadius;
+            ret *= (EarthRadius + h);
             return ret;
         }
 
@@ -170,7 +175,7 @@ export let EarthTileCompute = () => {
         var scale = 1.0 / (tanAngle * tanAngle) + Max_Div_Min * Max_Div_Min;
         scale = 1.0 / sqrt(scale);
         scale = scale / abs(sphereY);
-        scale = EarthRadius * scale;
+        scale = (EarthRadius + h * 20) * scale;
         ret *= scale;
         return ret;
     }

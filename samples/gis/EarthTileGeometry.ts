@@ -12,7 +12,7 @@ export class EarthTileGeometry extends GeometryBase {
      *
      * @constructor
      */
-    constructor(count: number, width: number = 10, height: number = 10, segmentW: number = 10, segmentH: number = 10) {
+    constructor(count: number, width: number = 10, height: number = 10, segmentW: number = 64, segmentH: number = 64) {
         super();
         this.count = count;
         this.width = width;
