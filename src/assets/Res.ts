@@ -28,6 +28,7 @@ import { Ctor, Parser } from '../util/Global';
 import { ParserBase } from '../loader/parser/ParserBase';
 import { GeometryBase } from '../core/geometry/GeometryBase';
 import { LitMaterial } from '../materials/LitMaterial';
+import { STLParser } from '../loader/parser/STLParser';
 
 /**
  * Resource management classes for textures, materials, models, and preset bodies.
@@ -248,6 +249,23 @@ export class Res {
         }
         let loader = new FileLoader();
         let parser = await loader.load(url, I3DMParser, loaderFunctions, userData);
+        let obj = parser.data;
+        this._prefabPool.set(url, obj);
+        return obj;
+    }
+
+    /**
+     * load stl file by url
+     * @param url path of stl file
+     * @param loaderFunctions callback
+     * @returns
+     */
+    public async loadSTL(url: string, loaderFunctions?: LoaderFunctions, userData?: any): Promise<Object3D> {
+        if (this._prefabPool.has(url)) {
+            return this._prefabPool.get(url) as Object3D;
+        }
+        let loader = new FileLoader();
+        let parser = await loader.load(url, STLParser, loaderFunctions, userData);
         let obj = parser.data;
         this._prefabPool.set(url, obj);
         return obj;
