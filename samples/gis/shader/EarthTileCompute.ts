@@ -56,13 +56,13 @@ export let EarthTileCompute = () => {
                 drawEarthTile(index, tile);
             }
         } else {
-            hideTile();
+            // hideTile();
         }
     }
 
     fn hideTile() {
-        let segmentW:f32 = 10;
-        let segmentH:f32 = 10;
+        let segmentW:f32 = 8;
+        let segmentH:f32 = 8;
         let vertexCount:u32 = u32(segmentW + 1) * u32(segmentH + 1);
         let firstIndex:u32 = atomicAdd(&drawBuffer.skipFace, 1u);
         let count:u32 = firstIndex * vertexCount + vertexCount;
@@ -76,8 +76,8 @@ export let EarthTileCompute = () => {
     fn drawEarthTile(tileIndex:u32, t:TileData) {
         let width:f32 = t.tileSize;
         let height:f32 = t.tileSize;
-        let segmentW:f32 = 64;
-        let segmentH:f32 = 64;
+        let segmentW:f32 = 8;
+        let segmentH:f32 = 8;
         let vertexCount:u32 = u32(segmentW + 1) * u32(segmentH + 1);
         let firstIndex:u32 = atomicAdd(&drawBuffer.skipFace, 1u);
         let count:u32 = firstIndex * vertexCount + vertexCount;
@@ -99,7 +99,8 @@ export let EarthTileCompute = () => {
 
             let o:vec3f = inverseWebMercator(x, z);
             // todo
-            let t:f32 = terrain[tileIndex * 257 * 257 + yi * 4 * 257 + xi * 4];
+            var t:f32 = terrain[tileIndex * 257 * 257 + yi * 4 * 257 + xi * 4];
+            t = 0;
             // tiles[tileIndex]._retain1 = t;
             let s:vec3f = spherify(o.x, o.z, t);
             
@@ -205,6 +206,9 @@ export let EarthTileCompute = () => {
     }
     
     fn isVisible(t:TileData) -> bool {
+        if (i32(t.tileZoom) == -1) {
+            return false;
+        }
         return true;
     }
 

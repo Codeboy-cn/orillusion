@@ -118,12 +118,22 @@ export let EarthTileShader: string = /*wgsl*/ `
       
         var outColor = vec4f(color.rgb, 1.0);// * materialUniform.baseColor;
 
-        // if (u32(tileData.texIndex) == 0) {
-        //     outColor *= vec4f(1.0, 0.0, 0.0, 1.0);
-        // } else if (u32(tileData.texIndex) == 1) {
-        //     outColor *= vec4f(0.0, 1.0, 0.0, 1.0);
-        // } else if (u32(tileData.texIndex) == 2) {
-        //     outColor *= vec4f(0.0, 0.0, 1.0, 1.0);
+        if (uv.x <= 0.001 || uv.y <= 0.001 || uv.x >= 0.99 || uv.y >= 0.99) {
+            outColor *= vec4f(1.0, 0.0, 0.0, 1.0);
+        }// else {
+        //     if (u32(tileData.texIndex) % 6 == 0) {
+        //         outColor *= vec4f(1.0, 0.0, 0.0, 1.0);
+        //     } else if (u32(tileData.texIndex) % 6 == 1) {
+        //         outColor *= vec4f(0.0, 1.0, 0.0, 1.0);
+        //     } else if (u32(tileData.texIndex) % 6 == 2) {
+        //         outColor *= vec4f(0.0, 0.0, 1.0, 1.0);
+        //     } else if (u32(tileData.texIndex) % 6 == 3) {
+        //         outColor *= vec4f(1.0, 1.0, 0.0, 1.0);
+        //     } else if (u32(tileData.texIndex) % 6 == 4) {
+        //         outColor *= vec4f(1.0, 0.0, 1.0, 1.0);
+        //     } else if (u32(tileData.texIndex) % 6 == 5) {
+        //         outColor *= vec4f(0.0, 1.0, 1.0, 1.0);
+        //     }
         // }
         
         ORI_ShadingInput.BaseColor = vec4f(outColor.xyz, 1.0);

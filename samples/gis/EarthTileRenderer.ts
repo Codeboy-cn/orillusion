@@ -1,4 +1,4 @@
-import { BitmapTexture2D, BitmapTexture2DArray, Camera3D, Color, ComputeShader, Engine3D, GPUContext, HoverCameraController, Matrix4, MeshRenderer, Object3D, SphereGeometry, StorageGPUBuffer, Struct, StructStorageGPUBuffer, Texture, UnLitMaterial, UniformGPUBuffer, Vector2, Vector3, View3D } from "@orillusion/core";
+import { BitmapTexture2D, BitmapTexture2DArray, Camera3D, Color, ComputeShader, Engine3D, GPUAddressMode, GPUContext, HoverCameraController, Matrix4, MeshRenderer, Object3D, SphereGeometry, StorageGPUBuffer, Struct, StructStorageGPUBuffer, Texture, Time, UnLitMaterial, UniformGPUBuffer, Vector2, Vector3, View3D } from "@orillusion/core";
 import { EarthTileCompute } from "./shader/EarthTileCompute";
 import { EarthTileMaterial } from "./EarthTileMaterial";
 import { EarthTileGeometry } from "./EarthTileGeometry";
@@ -38,7 +38,7 @@ export class TileData extends Struct {
     public tileSize: number = 0;
     public tileX: number = 0;
     public tileY: number = 0;
-    public tileZoom: number = 0;
+    public tileZoom: number = -1;
     public texIndex: number = 0;
     public _retain1: number = 0;
     constructor(offsetX: number = 0, offsetY: number = 0, tileSize: number = 0) {
@@ -46,6 +46,24 @@ export class TileData extends Struct {
         this.offsetX = offsetX;
         this.offsetY = offsetY;
         this.tileSize = tileSize;
+    }
+
+    public clear() {
+        this.offsetX = 0;
+        this.offsetY = 0;
+        this.tileSize = 0;
+        this.tileX = 0;
+        this.tileY = 0;
+        this.tileZoom = -1;
+        this.texIndex = -1;
+    }
+
+    public isEqual(other: TileData): boolean {
+        return this.tileX == other.tileX && this.tileY == other.tileY && this.tileZoom == other.tileZoom;
+    }
+
+    public isInvalid(): boolean {
+        return this.tileZoom == -1;
     }
 }
 
@@ -65,6 +83,7 @@ export class EarthTileRenderer extends MeshRenderer {
     protected texture: BitmapTexture2DArray;
     protected RTEDataBuffer: UniformGPUBuffer;
 
+    private _tileCount: number = 0;
     private _tileData: TileData[];
     private _terrainData: Float32Array;
     private _computeGeoShader: ComputeShader;
@@ -116,13 +135,13 @@ export class EarthTileRenderer extends MeshRenderer {
         super.init();
 
         this._tileData = [];
-        for (let i = 0; i < 128; i++) {
+        for (let i = 0; i < 256; i++) {
             let t = new TileData(0, 0, 0);
             t.tileZoom = -1;
             this._tileData.push(t);
         }
 
-        this._terrainData = new Float32Array(128 * 257 * 257);
+        this._terrainData = new Float32Array(this._tileData.length * 257 * 257);
 
         this.buildData();
     }
@@ -185,18 +204,21 @@ export class EarthTileRenderer extends MeshRenderer {
         this.terrainBuffer = new StorageGPUBuffer(this._terrainData.length)
         this.terrainBuffer.apply();
 
-        this._needUpdate = true;
+        this._needUpdate = false;
     }
 
+    protected mTest: number = 0;
+
     public onCompute(view: View3D, command: GPUCommandEncoder): void {
-        if (this._needUpdate) {
-            this._needUpdate = false;
+        if (this._needUpdate /* && Time.frame - this.mTest > 60 */) {
             this.drawBuffer.setUint32Array("", new Uint32Array([0, 0, 0, 0]));
             this.drawBuffer.apply();
+            console.warn(`onCompute:${Time.frame}`);
             this._computeGeoShader.workerSizeX = Math.floor(this._tileData.length / 256 + 1);
             this._computeGeoShader.workerSizeY = 1;
             this._computeGeoShader.workerSizeZ = 1;
             GPUContext.computeCommand(command, [this._computeGeoShader]);
+            this._needUpdate = false;
         }
     }
 
@@ -204,92 +226,215 @@ export class EarthTileRenderer extends MeshRenderer {
     protected lastTileXY: Vector2 = new Vector2();
     protected levelZ: number = -1;
     protected sphereObj: Object3D;
+    protected fixedVisibility: TileData[];
+    protected lastVisibleCount: number = 0;
     public onUpdate(view?: View3D) {
-        if (this._needUpdate) {
-            return;
-        }
+        // if (this._needUpdate) {
+        //     return;
+        // }
 
         let controller = view.camera.object3D.getComponent(GISCameraController);
-        let z = 20 - GISMath.getLevel(GISMath.GetLevels(), controller.cameraDistanceToEarthSurface, 5.0);
+        let z = 20 - GISMath.getLevel2(GISMath.GetLevels(), controller.cameraDistanceToEarthSurface, 5.26);
         // z = Math.max(z, 4);
 
         let v = GISMath.SurfacePosToLngLat(controller.getCameraPosition());
         let LngLat = new Vector3(v[0], v[1]);
         // LngLat.set(112.9603384873657, 28.167600241852714, 0);
+        // LngLat.set(-180.0, 10.355174959569881, 0);
+
+        if (LngLat.x > 180.0) {
+            LngLat.x -= 360.0;
+        }
+
         controller.moveTestBall(LngLat.x, LngLat.y);
 
         if (true) {
-            const rangeAera = 8;
+            const rangeAera = 6;
+
+            // if (!this.fixedVisibility) {
+            //     let z = 3;
+            //     let mercatorPos = GISMath.LngLatToMercator(0, 10);
+            //     let tileXY = GISMath.MercatorToTileXY(mercatorPos.x, mercatorPos.y, z);
+            //     this.fixedVisibility = [];//GISMath.ComputeVisibleTiles(view.camera, tileXY.x, tileXY.y, z, 4, false);
+            // }
 
             let mercatorPos = GISMath.LngLatToMercator(LngLat.x, LngLat.y);
 
             let tileXY = GISMath.MercatorToTileXY(mercatorPos.x, mercatorPos.y, z);
 
-            if (this.lastTileXY.equals(tileXY))
+            if (this.lastTileXY.equals(tileXY) && this.levelZ == z)
                 return;
 
-            if (this.levelZ == z)
-                return;
+            Engine3D.views[0].graphic3D.ClearAll();
 
-            console.warn(`${LngLat.x}, ${LngLat.y}, ${z}`);
+            // console.warn(`LngLatToMercator(${LngLat.x}, ${LngLat.y}) => (${mercatorPos.x}, ${mercatorPos.y})`);
+
+            // console.warn(`MercatorToTileXY(${mercatorPos.x}, ${mercatorPos.y}) => (${tileXY.x}, ${tileXY.y})`);
+
+            // console.warn(`${LngLat.x}, ${LngLat.y}, ${z}`);
+
+            // console.warn(`CameraDistanceToEarthSurface: ${controller.cameraDistanceToEarthSurface}`);
 
             this.levelZ = z;
             this.lastTileXY.copyFrom(tileXY);
 
             this.updateRTEMat(view.camera);
 
-            const tileInfo = GISMath.ComputeVisibleTiles(tileXY.x, tileXY.y, z, rangeAera, true);
+            // const full = this.fixedVisibility.slice();
 
-            let unassociatedTile = this.associationTileTextureIndex(tileInfo);
+            // 计算可见的Tile
+            const visibles = GISMath.ComputeVisibleTiles(view.camera, tileXY.x, tileXY.y, z, 2, true);
+            console.warn(`可见的Tile:${visibles.length}`);
 
-            for (let i = 0; i < unassociatedTile.length; i++) {
-                let tile = unassociatedTile[i];
-                // let url = `https://webrd01.is.autonavi.com/appmaptile?x=${tile.tileX}&y=${tile.tileY}&z=${tile.tileZoom}&lang=zh_cn&size=1&scale=1&style=8`
-                let url = `https://gac-geo.googlecnapps.cn/maps/vt?lyrs=s&gl=CN&x=${tile.tileX}&y=${tile.tileY}&z=${tile.tileZoom}`
-                Engine3D.res.loadTexture(url).then((texture) => {
-                    let texIndex = this.findTextureIndex(tile);
-                    if (texIndex != -1) {
-                        this.texs[texIndex] = texture as BitmapTexture2D;
-                        this.texture.setTexture(texIndex, this.texs[texIndex]);
-                    }
-                });
-                
-                Lerc.load()
-                .then(()=>fetch(`https://elevation3d.arcgis.com/arcgis/rest/services/WorldElevation3D/Terrain3D/ImageServer/tile/${tile.tileZoom}/${tile.tileY}/${tile.tileX}`))
-                .then(response => response.arrayBuffer())
-                .then(arraybuffer=>{
-                    let texIndex = this.findTextureIndex(tile);
-                    if (texIndex != -1) {
-                        const pixelBlock = Lerc.decode(arraybuffer)
-                        // this._terrainData[texIndex].min = pixelBlock.statistics[0].minValue;
-                        // this._terrainData[texIndex].max = pixelBlock.statistics[0].maxValue;
-                        this._terrainData.set(pixelBlock.pixels[0] as Float32Array, 257 * 257 * texIndex)
-                    }
-                    // TODO: should not update all data
-                    this.terrainBuffer.setFloat32Array('', this._terrainData);
-                    this.terrainBuffer.apply();
-                })
+            // full.push(...visibles);
+
+            const tileInfo = visibles; //full;
+
+            // test
+            if (tileInfo.length > this._tileData.length) {
+                console.error(`Over limit: ${tileInfo.length}/${this._tileData.length}`);
             }
+
+            const totalCount = tileInfo.length;
+
+            // 清除所有
+            for (let i = 0; i < this._tileData.length; i++) {
+                this._tileData[i].clear();
+                this.tileBuffer.setStruct(TileData, i, this._tileData[i]);
+            }
+
+            // 筛选出 新增的Tile 和 需要移除的Tile
+            let newTile: TileData[];
+            let delTile: TileData[] = [];
+            // for (let i = 0; i < this.lastVisibleCount && i < this._tileData.length; i++) {
+            //     const tile = this._tileData[i];
+
+            //     // if (tile.isInvalid())
+            //     //     continue;
+
+            //     let isExist = false;
+            //     for (let j = 0; j < tileInfo.length; j++) {
+            //         if (tile.isEqual(tileInfo[j])) {
+            //             isExist = true;
+            //             tileInfo.splice(j, 1);
+            //             break;
+            //         }
+            //     }
+
+            //     if (!isExist) {
+            //         tile.clear();
+            //         delTile.push(tile);
+            //     }
+
+            // }
+            newTile = tileInfo;
+
+            this.lastVisibleCount = totalCount;
+
+            // No need to update
+            if (newTile.length == 0 && delTile.length == 0) {
+                console.warn(`No need to update`);
+                return;
+            }
+
+            console.warn(`可见Tile：${totalCount}，差量更新(新增Tile：${newTile.length} 剔除Tile:${delTile.length})`);
+
+            // let unassociatedTile = this.associationTileTextureIndex(tileInfo);
+
+            // for (let i = 0; i < unassociatedTile.length; i++) {
+            //     let tile = unassociatedTile[i];
+            //     // let url = `https://webrd01.is.autonavi.com/appmaptile?x=${tile.tileX}&y=${tile.tileY}&z=${tile.tileZoom}&lang=zh_cn&size=1&scale=1&style=8`
+            //     let url = `https://gac-geo.googlecnapps.cn/maps/vt?lyrs=s&gl=CN&x=${tile.tileX}&y=${tile.tileY}&z=${tile.tileZoom}`
+            //     Engine3D.res.loadTexture(url).then((texture) => {
+            //         let texIndex = this.findTextureIndex(tile);
+            //         if (texIndex != -1) {
+            //             this.texs[texIndex] = texture as BitmapTexture2D;
+            //             // this.texs[texIndex].addressModeU = this.texs[texIndex].addressModeV = GPUAddressMode.clamp_to_edge;
+            //             this.texture.setTexture(texIndex, this.texs[texIndex]);
+            //         }
+            //     });
+                
+            //     // Lerc.load()
+            //     // .then(()=>fetch(`https://elevation3d.arcgis.com/arcgis/rest/services/WorldElevation3D/Terrain3D/ImageServer/tile/${tile.tileZoom}/${tile.tileY}/${tile.tileX}`))
+            //     // .then(response => response.arrayBuffer())
+            //     // .then(arraybuffer=>{
+            //     //     let texIndex = this.findTextureIndex(tile);
+            //     //     if (texIndex != -1) {
+            //     //         const pixelBlock = Lerc.decode(arraybuffer)
+            //     //         // this._terrainData[texIndex].min = pixelBlock.statistics[0].minValue;
+            //     //         // this._terrainData[texIndex].max = pixelBlock.statistics[0].maxValue;
+            //     //         this._terrainData.set(pixelBlock.pixels[0] as Float32Array, 257 * 257 * texIndex)
+            //     //     }
+            //     //     // TODO: should not update all data
+            //     //     this.terrainBuffer.setFloat32Array('', this._terrainData);
+            //     //     this.terrainBuffer.apply();
+            //     // })
+            // }
+
+            // this.drawBuffer.setUint32Array("", new Uint32Array([0, 0, 0, 0]));
+            // this.drawBuffer.apply();
 
             // update TileData to GPUBuffer
-            for (let i = 0; i < this._tileData.length && i < tileInfo.length; i++) {
-                this._tileData[i] = tileInfo[i];
-                this.tileBuffer.setStruct(TileData, i, tileInfo[i]);
+            for (let i = 0, j = 0; i < this._tileData.length; i++) {
+                if (j < totalCount) {
+                    // if (!this._tileData[i].isInvalid())
+                    //     continue;
+
+                    const tile = this._tileData[i] = tileInfo[j];
+
+                    tile.texIndex = i;
+
+                    let url = `https://gac-geo.googlecnapps.cn/maps/vt?lyrs=s&gl=CN&x=${tile.tileX}&y=${tile.tileY}&z=${tile.tileZoom}`
+                    Engine3D.res.loadTexture(url).then((texture) => {
+                        if (this._tileData[i].isEqual(tile)) {
+                            let texIndex = i;
+                            this.texs[texIndex] = texture as BitmapTexture2D;
+                            this.texture.setTexture(texIndex, this.texs[texIndex]);
+                        }
+                    });
+                    
+                    j++;
+                } else {
+                    this._tileData[i].clear();
+                    this._tileData[i].tileZoom = -1;
+                }
+
+                this.tileBuffer.setStruct(TileData, i, this._tileData[i]);
             }
+
+
             this.tileBuffer.apply();
 
-            this.earthInfoData.count = tileInfo.length;
+            // for (let i = 0; i < this._tileData.length; i++) {
+            //     const tile = this._tileData[i];
+            //     if (tile.tileSize == 0)
+            //         continue;
+            //     let url = `https://gac-geo.googlecnapps.cn/maps/vt?lyrs=s&gl=CN&x=${tile.tileX}&y=${tile.tileY}&z=${tile.tileZoom}`
+            //     Engine3D.res.loadTexture(url).then((texture) => {
+            //         if (this._tileData[i].isEqual(tile)) {
+            //             let texIndex = i;
+            //             this.texs[texIndex] = texture as BitmapTexture2D;
+            //             this.texture.setTexture(texIndex, this.texs[texIndex]);
+            //         }
+            //     });
+            // }
+
+            this.earthInfoData.count = totalCount;
             this.earthInfo.setStruct(EarthInfo, 0, this.earthInfoData);
             this.earthInfo.apply();
 
             this._needUpdate = true;
+
+            this.mTest = Time.frame;
+
+            console.warn(`onUpdate:${Time.frame}`);
         }
     }
 
     private findTextureIndex(t: TileData): number {
         for (let i = 0; i < this._tileData.length; i++) {
             let d = this._tileData[i];
-            if (d.tileZoom == -1)
+            if (d.tileZoom == -1 || d.tileSize == 0)
                 continue;
             if (d.tileX == t.tileX && d.tileY == t.tileY && d.tileZoom == t.tileZoom) {
                 return d.texIndex;

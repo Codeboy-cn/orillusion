@@ -1,4 +1,4 @@
-import { Color, Engine3D, Material, Matrix4, RenderShaderPass, Shader, ShaderLib, Struct, StructStorageGPUBuffer, Texture, UniformGPUBuffer } from "@orillusion/core";
+import { Color, Engine3D, GPUPrimitiveTopology, Material, Matrix4, RenderShaderPass, Shader, ShaderLib, Struct, StructStorageGPUBuffer, Texture, UniformGPUBuffer } from "@orillusion/core";
 import { EarthTileShader } from "./shader/EarthTileShader";
 
 export class EarthTileMaterial extends Material {
@@ -15,6 +15,7 @@ export class EarthTileMaterial extends Material {
         let colorShader = new RenderShaderPass('EarthTileShader', 'EarthTileShader');
         colorShader.setShaderEntry(`VertMain`, `FragMain`);
         // colorShader.doubleSide = true;
+        colorShader.shaderState.topology = GPUPrimitiveTopology.line_list;
         shader.addRenderPass(colorShader);
 
         this.shader = shader;

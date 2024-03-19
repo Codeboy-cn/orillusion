@@ -1,4 +1,4 @@
-import { DEGREES_TO_RADIANS, Matrix4, RADIANS_TO_DEGREES, Ray, Vector2, Vector3, rad2Deg, sin } from "@orillusion/core";
+import { Camera3D, Color, DEGREES_TO_RADIANS, Engine3D, Graphic3D, Matrix4, RADIANS_TO_DEGREES, Ray, Vector2, Vector3, rad2Deg, sin } from "@orillusion/core";
 import { TileData } from "./EarthTileRenderer";
 
 export class GISPostion {
@@ -137,6 +137,21 @@ export class GISMath {
                 return level > 0 ? level - 1 : 0;
         }
         return 0;
+    }
+
+    public static getLevel2(list: number[], distanceToSurface: number, scale: number = 0.1): number {
+        const FOV = 60;
+        const distance = distanceToSurface * scale;
+        let resolution = distance * Math.tan(FOV / 2 * DEGREES_TO_RADIANS);
+        let level = 0;
+        for (; level < list.length; level++) {
+            if (resolution <= list[level]) {
+                level = level > 0 ? level - 1 : 0;
+                break;
+            }
+        }
+        // console.warn(`resolution:${resolution}, level:${level}`);
+        return level;
     }
 
 
@@ -344,7 +359,259 @@ export class GISMath {
         return new Vector3(-s.x, -s.y, s.z);
     }
 
-    public static ComputeVisibleTiles(tileX: number, tileY: number, level: number, rangeAera: number, center: boolean): TileData[] {
+    public static GetTileIndexVertexPosition(t: TileData, index: number, result?: Vector3): Vector3 {
+        result = result || new Vector3();
+
+        const segmentW = 8;
+        const segmentH = 8;
+        const width = t.tileSize;
+        const height = t.tileSize;
+
+        let xi = index % (segmentW + 1);
+        let yi = Math.floor(index / (segmentW + 1));
+        // console.warn(xi, yi);
+
+        let x = (xi / segmentW - 0.5) * width;
+        let y = 0;
+        let z = (yi / segmentH - 0.5) * height;
+
+        x = x + t.offsetX;
+        y = 0;
+        z = z - t.offsetY;
+
+        const PI = Math.PI;
+        const PolarRadius = 6356752.314245;
+        const EarthRadius = 6378137.0;
+        const EarthPerimeter = 2.0 * PI * EarthRadius;
+        const EPSG3857_MAX_BOUND = EarthPerimeter; // 20037508.34;
+        const INV_POLE_BY_180 = 180.0 / EPSG3857_MAX_BOUND;
+        const PI_BY_POLE = PI / EPSG3857_MAX_BOUND;
+        const PID2 = PI * 0.5;
+        const RAD = 180.0 / PI;
+        const RADB2 = RAD * 2;
+        const INV_PI_BY_180_HALF_PI = RAD * PID2;
+        const MinLongitude = -180;
+        const MaxLongitude = 180;
+        const Min_Div_Max = 6356752.314245 / 6378137.0;
+        const Max_Div_Min = 6378137.0 / 6356752.314245;
+
+        function mapNumberToInterval(value: number): number {
+            let minBound: number = -EPSG3857_MAX_BOUND;
+            let maxBound: number = EPSG3857_MAX_BOUND;
+            return (value - MinLongitude) * (maxBound - minBound) / (MaxLongitude - MinLongitude) + minBound;
+        }
+
+        function inverseWebMercator(x: number, z: number, result?: Vector3): Vector3 {
+            result = result || new Vector3();
+            return result.set(
+                x * INV_POLE_BY_180,
+                0,
+                RADB2 * Math.atan(Math.exp(z * PI_BY_POLE)) - INV_PI_BY_180_HALF_PI
+            );
+        }
+
+        function spherify(e: number, t: number, h: number, result?: Vector3): Vector3 {
+            let n: number = (90.0 - t) / 180.0 * PI;
+            let r: number = e / 180.0 * PI;
+            let p = new Vector3(
+                Math.sin(n) * Math.cos(r),
+                Math.cos(n),
+                Math.sin(n) * Math.sin(r)
+            );
+            return CalcPolarSurface(p, h, result);
+        }
+
+        function CalcPolarSurface(position: Vector3, h: number, result?: Vector3): Vector3 {
+            result = result || new Vector3();
+            result.copyFrom(position);
+            let sphereY = position.y;
+            if (Math.abs(sphereY) >= 0.999999999) {
+                result.multiplyScalar(PolarRadius + h);
+                return result;
+            }
+            if (Math.abs(sphereY) < 0.0000000001) {
+                result.y = sphereY * Min_Div_Max;
+                result.multiplyScalar(EarthRadius + h);
+                return result;
+            }
+
+            //sphere to polar surface
+            Vector3.HELP_0.set(result.x, result.z, 0);
+            let xzLength = Vector3.HELP_0.length; // length(vec2f(result.x, result.z));
+            let tanAngle = sphereY / xzLength;
+
+            var scale = 1.0 / (tanAngle * tanAngle) + Max_Div_Min * Max_Div_Min;
+            scale = 1.0 / Math.sqrt(scale);
+            scale = scale / Math.abs(sphereY);
+            scale = (EarthRadius + h * 20) * scale;
+            result.multiplyScalar(scale);
+            return result;
+        }
+
+        // console.warn(`Pos(${x},${y},${z})`);
+
+        x = mapNumberToInterval(x);
+        z = mapNumberToInterval(z);
+
+        // console.warn(`Pos(${x},${y},${z})`);
+
+        let o: Vector3 = inverseWebMercator(x, z);
+
+        // console.warn(`Pos(${o.x},${o.y},${o.z})`);
+
+        let s: Vector3 = spherify(o.x, o.z, 0);
+
+        // console.warn(`Pos(${s.x},${s.y},${s.z})`);
+
+        result.set(-s.x, -s.y, s.z);
+
+        // console.warn(`Pos(${result.x},${result.y},${result.z})`);
+
+        return result;
+    }
+
+    public static IsInCameraVisible(camera: Camera3D, t: TileData): boolean {
+        let segmentW = 8;
+        let segmentH = 8;
+
+        let posLT = this.GetTileIndexVertexPosition(t, 0 * (segmentW + 1) + 0);
+        let posRT = this.GetTileIndexVertexPosition(t, 0 * (segmentW + 1) + 8);
+        let posLB = this.GetTileIndexVertexPosition(t, 8 * (segmentW + 1) + 0);
+        let posRB = this.GetTileIndexVertexPosition(t, 8 * (segmentW + 1) + 8);
+
+        let isVisibleLT = camera.frustum.containsPoint(posLT);
+        let isVisibleRT = camera.frustum.containsPoint(posRT);
+        let isVisibleLB = camera.frustum.containsPoint(posLB);
+        let isVisibleRB = camera.frustum.containsPoint(posRB);
+
+        // enable debug draw
+        if (true) {
+            let uuid = `${t.tileX}-${t.tileY}-${t.tileZoom}`;
+            if (!isVisibleLT) {
+                Engine3D.views[0].graphic3D.drawFillCircle("posLT" + uuid, posLT, 500, 16, Vector3.Z_AXIS, new Color(1, 0, 0));
+            }
+            if (!isVisibleRT) {
+                Engine3D.views[0].graphic3D.drawFillCircle("posRT" + uuid, posRT, 500, 16, Vector3.Z_AXIS, new Color(0, 1, 0));
+            }
+            if (!isVisibleLB) {
+                Engine3D.views[0].graphic3D.drawFillCircle("posLB" + uuid, posLB, 500, 16, Vector3.Z_AXIS, new Color(0, 0, 1));
+            }
+            if (!isVisibleRB) {
+                Engine3D.views[0].graphic3D.drawFillCircle("posRB" + uuid, posRB, 500, 16, Vector3.Z_AXIS, new Color(1, 1, 0));
+            }
+            // Engine3D.views[0].graphic3D.drawBox("posLT" + uuid, posLT, posRB);
+        }
+
+        return isVisibleLT || isVisibleRT || isVisibleLB || isVisibleRB;
+    }
+
+    public static ComputeVisibleTiles(camera: Camera3D, tileX: number, tileY: number, level: number, rangeAera: number, enableFrustumCulling: boolean): TileData[] {
+        let tileArr: TileData[] = [];
+        const tileTotal = Math.pow(2, level);
+        const tileSize = this.Size / tileTotal;
+
+        let l = 0;
+        let u = 0;
+        let h = 180;
+        let d = 360;
+        for (let i = 0; i < level; i++) {
+            h /= 2;
+            d /= 2;
+            l += h;
+            u += d;
+        }
+        const f = -l, p = l;
+
+        // rangeAera -= 1;
+        // rangeAera = Math.min(Math.floor(rangeAera/2), tileTotal/2);
+        // if (rangeAera % 2 != 0) {
+        //     rangeAera += 1;
+        // }
+        rangeAera += 1;
+        rangeAera = Math.min(rangeAera, tileTotal);
+        // rangeAera = Math.floor(rangeAera / 2);
+
+        // console.warn(`${tileX}, ${tileY}, ${rangeAera}`);
+
+        // const offsetX = -(u + f - tileX * tileSize);
+        // const offsetY = p - tileY * tileSize;
+        // let tile = new TileData(offsetX, offsetY, tileSize);
+        // tile.tileX = tileX;
+        // tile.tileY = tileY;
+        // tile.tileZoom = level;
+        // tileArr.push(tile);
+        // console.log(`tile(${tileX}, ${tileY})`);
+
+        for (let aera = 0; aera < rangeAera; aera++) {
+            let minY = tileY - aera;
+            let maxY = tileY + aera;
+            for (let y = minY; y <= maxY; y++) {
+                let yi = y;
+                if (yi < 0) {
+                    yi = tileTotal + yi;
+                } else if (yi >= tileTotal) {
+                    yi %= tileTotal;
+                }
+
+                let minX = tileX - aera;
+                let maxX = tileX + aera;
+                for (let x = minX; x <= maxX; x++) {
+                    let xi = x;
+                    if (xi < 0) {
+                        xi = tileTotal + xi;
+                    } else if (xi >= tileTotal) {
+                        xi %= tileTotal;
+                    }
+
+                    if (aera > 0 && y <= maxY - 1 && y >= minY + 1 && x <= maxX - 1 && x >= minX + 1) {
+                        continue;
+                    }
+
+                    const offsetX = -(u + f - xi * tileSize);
+                    const offsetY = p - yi * tileSize;
+                    let tile = new TileData(offsetX, offsetY, tileSize);
+                    tile.tileX = xi;
+                    tile.tileY = yi;
+                    tile.tileZoom = level;
+
+                    if (!enableFrustumCulling || this.IsInCameraVisible(camera, tile)) {
+                        tileArr.push(tile);
+                        // console.warn(`视锥可见的Tile(${xi}, ${yi})`);
+                    } else {
+                        // console.error(`视锥剔除的Tile(${xi}, ${yi})`);
+                    }
+                }
+            }
+        }
+
+        // for (let yr = tileY - rangeAera; yr < tileY + rangeAera; yr++) {
+        //     let yi = yr;
+        //     if (yi < 0) {
+        //         yi = tileTotal + yi;
+        //     } else if (yi >= tileTotal) {
+        //         yi %= tileTotal;
+        //     }
+        //     for (let xr = tileX - rangeAera; xr < tileX + rangeAera; xr++) {
+        //         let xi = xr;
+        //         if (xi < 0) {
+        //             xi = tileTotal + xi;
+        //         } else if (xi >= tileTotal) {
+        //             xi %= tileTotal;
+        //         }
+        //         const offsetX = -(u + f - xi * tileSize);
+        //         const offsetY = p - yi * tileSize;
+        //         let tile = new TileData(offsetX, offsetY, tileSize);
+        //         tile.tileX = xi;
+        //         tile.tileY = yi;
+        //         tile.tileZoom = level;
+        //         tileArr.push(tile);
+        //         // console.log(`tile(${xi}, ${yi})`);
+        //     }
+        // }
+        return tileArr;
+    }
+
+    public static ComputeVisibleTiles_old(tileX: number, tileY: number, level: number, rangeAera: number, center: boolean): TileData[] {
         if (center) {
             let v = Math.floor(rangeAera / 2);
             tileX -= v;
@@ -367,19 +634,42 @@ export class GISMath {
         }
         const f = -l, p = l;
 
+        console.warn(`${tileX}, ${tileY}, ${rangeAera}`);
+
+        if (tileY < 0) {
+            tileY = 0;
+        } else if (tileY >= tileTotal) {
+            tileY = tileTotal - 1;
+        }
+
         for (let y = tileY; y < tileY + rangeAera; y++) {
-            if (y < 0 || y >= tileTotal)
-                continue;
+            // if (y < 0 || y >= tileTotal)
+            //     continue;
+            let yi = y;
+            if (yi < 0) {
+                yi = 0;//tileTotal + yi;
+            }
+            if (yi >= tileTotal) {
+                yi = tileTotal - 1; // yi - tileTotal;
+            }
             for (let x = tileX; x < tileX + rangeAera; x++) {
-                if (x < 0 || x >= tileTotal)
-                    continue;
-                const offsetX = -(u + f - x * tileSize);
-                const offsetY = p - y * tileSize;
+                let xi = x;
+                // if (x < 0 || x >= tileTotal)
+                //     continue;
+                if (xi < 0) {
+                    xi = tileTotal + xi;
+                }
+                if (xi >= tileTotal) {
+                    xi = xi - tileTotal;
+                }
+                const offsetX = -(u + f - xi * tileSize);
+                const offsetY = p - yi * tileSize;
                 let tile = new TileData(offsetX, offsetY, tileSize);
-                tile.tileX = x;
-                tile.tileY = y;
+                tile.tileX = xi;
+                tile.tileY = yi;
                 tile.tileZoom = level;
                 tileArr.push(tile);
+                console.log(`tile(${xi}, ${yi})`);
             }
         }
         // console.log(tileArr, "tiles", tileSize);

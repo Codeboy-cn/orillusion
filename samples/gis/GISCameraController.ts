@@ -30,7 +30,8 @@ class CameraCtrlData {
         data.mat4World.copyFrom(camera.transform.worldMatrix);
         data.mat4View.copyFrom(camera.viewMatrix);
         data.position.copyFrom(camera.transform.worldPosition);
-        data.up.copyFrom(camera.transform.up);
+        // lock up
+        data.up.copyFrom(Vector3.UP); // data.up.copyFrom(camera.transform.up);
 
         this.pickStart.mouse.set(mouseX, mouseY);
         this.pickCurrent.mouse.copyFrom(this.pickStart.mouse);
@@ -168,11 +169,11 @@ export class GISCameraController extends ComponentBase {
     }
 
     private zoom(delta: number) {
-        let min = this._earthRadius + this.camera.near + 10;
+        let min = this._earthRadius + this.camera.near;
         let max = this._earthRadius * 5.0;
         let t = (this._destDistance - min) / (max - min);
         t *= 1 + delta;
-        t = clamp(t, 0.00001, 1);
+        t = clamp(t, 0.000001, 1);
 
         this._destDistance = max * t + min * (1 - t);
         this._destDistance = clamp(this._destDistance, min, max);
@@ -241,7 +242,8 @@ export class GISCameraController extends ComponentBase {
                 this.help3Vec3.normalize();
 
                 Matrix4.fromToRotation(this.help3Vec3, this.help2Vec3, dt.deltaRotation);
-                dt.deltaRotation.transformVector(dt.snapShot.up, dt.activeUp);
+                // lock up
+                // dt.deltaRotation.transformVector(dt.snapShot.up, dt.activeUp);
             }
         }
     }
@@ -299,11 +301,21 @@ export class GISCameraController extends ComponentBase {
 
 
     public get cameraDistanceToEarthSurface(): number {
-        return this._destDistance - this._earthRadius;
+        let v = GISMath.SurfacePosToLngLat(this.getCameraPosition());
+        let pos = GISMath.LngLatToPolarEarthSurface(v[0], v[1])
+        let height = Vector3.distance(pos, Vector3.ZERO);
+        return this._destDistance - height;
+
+        // return this._destDistance - this._earthRadius;
     }
 
     public set cameraDistanceToEarthSurface(value: number) {
-        this._destDistance = value + this._earthRadius;
+        let v = GISMath.SurfacePosToLngLat(this.getCameraPosition());
+        let pos = GISMath.LngLatToPolarEarthSurface(v[0], v[1])
+        let height = Vector3.distance(pos, Vector3.ZERO);
+        this._destDistance = value + height;
+
+        // this._destDistance = value + this._earthRadius;
     }
 
     public getCameraPosition(ret?: Vector3): Vector3 {
