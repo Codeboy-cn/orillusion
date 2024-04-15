@@ -127,6 +127,24 @@ export class BoundingBox implements IBound {
         return this.min.x <= box.max.x && this.max.x >= box.min.x && this.min.y <= box.max.y && this.max.y >= box.min.y && this.min.z <= box.max.z && this.max.z >= box.min.z;
     }
 
+    public intersectsSegment(p1: Vector3, p2: Vector3): boolean {
+        const segmentMin = { x: Math.min(p1.x, p2.x), y: Math.min(p1.y, p2.y), z: Math.min(p1.z, p2.z) };
+        const segmentMax = { x: Math.max(p1.x, p2.x), y: Math.max(p1.y, p2.y), z: Math.max(p1.z, p2.z) };
+        if (segmentMin.x > this.max.x || segmentMax.x < this.min.x ||
+            segmentMin.y > this.max.y || segmentMax.y < this.min.y ||
+            segmentMin.z > this.max.z || segmentMax.z < this.min.z) {
+            return false;
+        }
+        return true;
+    }
+
+    public intersectsTriangle(p1: Vector3, p2: Vector3, p3: Vector3): boolean {
+        if (this.intersectsSegment(p1, p2) || this.intersectsSegment(p1, p3) || this.intersectsSegment(p2, p3)) {
+            return true;
+        }
+        return false;
+    }
+
     public equals(bounds: IBound): boolean {
         return this.center.equals(bounds.center) && this.extents.equals(bounds.extents);
     }

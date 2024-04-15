@@ -49,6 +49,12 @@ export class Ray {
         this._dir.normalize();
     }
 
+    public set(origin: Vector3, dir: Vector3) {
+        this.origin.copyFrom(origin);
+        this._dir.copyFrom(dir);
+        this._dir.normalize();
+    }
+
     /**
      * Clone a new Ray object
      * @returns 

@@ -200,7 +200,8 @@ export class GeometryBase {
             if (indexAttribute && positionAttribute && indexAttribute.data.length > 0) {
                 let vertexData = positionAttribute.data;
                 let lines = [];
-                for (let i = 0; i < indexAttribute.data.length / 3; i++) {
+                let info = this.subGeometries[0].lodLevels[0];
+                for (let i = info.indexStart; i < info.indexCount / 3; i++) {
                     const i1 = indexAttribute.data[i * 3 + 0];
                     const i2 = indexAttribute.data[i * 3 + 1];
                     const i3 = indexAttribute.data[i * 3 + 2];

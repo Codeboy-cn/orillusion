@@ -47,6 +47,11 @@ export let PBRLItShader: string = /*wgsl*/ `
     }
 
     fn frag(){
+
+        // if (ORI_VertexVarying.vWorldPos.y > 0) {
+        //     discard;
+        // }
+
         var transformUV1 = materialUniform.transformUV1;
         var transformUV2 = materialUniform.transformUV2;
 

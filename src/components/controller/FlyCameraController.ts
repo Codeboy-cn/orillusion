@@ -48,6 +48,7 @@ export class FlyCameraController extends ComponentBase {
         right: boolean;
         q: boolean;
         e: boolean;
+        space: boolean;
     };
 
 
@@ -61,6 +62,7 @@ export class FlyCameraController extends ComponentBase {
             right: false,
             q: false,
             e: false,
+            space: false,
         };
         this.setCamera(new Vector3(0, 0, 100), new Vector3(0, 0, 0));
     }
@@ -93,7 +95,9 @@ export class FlyCameraController extends ComponentBase {
 
     }
 
-    private mouseWheel(e: PointerEvent3D) { }
+    private mouseWheel(e: PointerEvent3D) {
+        this._moveScale = Math.max(this._moveScale + Engine3D.inputSystem.wheelDelta / 1200, 1.0);
+    }
 
     private keyUp(e: KeyEvent) {
         switch (e.keyCode) {
@@ -117,6 +121,9 @@ export class FlyCameraController extends ComponentBase {
                 break;
             case KeyCode.Key_E:
                 this._keyState.e = false;
+                break;
+            case KeyCode.Key_Space:
+                this._keyState.space = false;
                 break;
 
             case KeyCode.Key_F:
@@ -146,6 +153,9 @@ export class FlyCameraController extends ComponentBase {
                 break;
             case KeyCode.Key_E:
                 this._keyState.e = true;
+                break;
+            case KeyCode.Key_Space:
+                this._keyState.space = true;
                 break;
             case KeyCode.Key_Shift_L:
                 this._moveScale = this.config.shiftMoveScale;
@@ -257,7 +267,7 @@ export class FlyCameraController extends ComponentBase {
             transform.y = lerp(transform.y, transform.y - this.moveSpeed * this._moveScale, dt * this._factory);
         }
 
-        if (this._keyState.e) {
+        if (this._keyState.e || this._keyState.space) {
             transform.y = lerp(transform.y, transform.y + this.moveSpeed * this._moveScale, dt * this._factory);
             // transform.y -= this.moveSpeed * this._moveScale * Time.detail ;
         }

@@ -22,7 +22,7 @@ export class Graphic3DBatchRenderer extends RenderNode {
         super();
         this.alwaysRender = true;
         this.mMinIndexCount = minIndexCount;
-        this.mBatchSize = Math.trunc(65536 / this.mMinIndexCount);
+        this.mBatchSize = Math.trunc(65536 / this.mMinIndexCount); // 2684354
         this.mGPUPrimitiveTopology = topology;
         this.shapes = new Map<string, Graphics3DShape>();
     }
@@ -33,7 +33,7 @@ export class Graphic3DBatchRenderer extends RenderNode {
         this.castShadow = false;
         this.geometry = new GeometryBase();
 
-        let indexData = new Uint16Array((Math.trunc(this.mMinIndexCount * this.mBatchSize / 4) + 1) * 4);
+        let indexData = new Uint32Array((Math.trunc(this.mMinIndexCount * this.mBatchSize / 4) + 1) * 4);
         for (let i = 0; i < indexData.length; i++) {
             indexData[i] = i;
         }

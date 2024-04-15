@@ -50,7 +50,8 @@ export class STLParser extends ParserBase {
         let vertexArray = new Float32Array(3 * 3 * numTriangle);
         let colorArray = new Float32Array(4 * 3 * numTriangle);
 
-        let indicesArray = numTriangle > 65535 ? new Uint32Array(3 * numTriangle) : new Uint16Array(3 * numTriangle);
+        let indicesCount = numTriangle * 3;
+        let indicesArray = indicesCount > 65535 ? new Uint32Array(indicesCount) : new Uint16Array(indicesCount);
 
         for (let i = 0; i < numTriangle; i++) {
             let normal = reader.readVector3(Vector3.HELP_0);
