@@ -70,7 +70,7 @@ export class Sample_Test {
                 let mesh = new Mesh(mr);
 
                 obj.x = 50;
-                obj.y = mesh.geometry.bounds.max.y;
+                obj.y = 20; // mesh.geometry.bounds.max.y;
 
                 let meshObj = new Object3D();
                 meshObj.localPosition = mesh.matrixWorld.position;
@@ -93,14 +93,17 @@ export class Sample_Test {
                 };
 
                 let support = GUIHelp.addFolder('Support');
-                support.add(params, 'angle', 0, 180);
                 support.add(params, 'layerHeight', 0.01, 10);
-                support.add(params, 'radius', 0.01, 10);
                 support.add(params, 'resolution', 0.1, 10);
-                support.add(params, 'subdivs', 2, 64);
                 support.add(params, 'taperFactor', 0.1, 1);
+                support.add(params, 'angle', 30, 90);
+                support.add(params, 'subdivs', 2, 64);
+                support.add(params, 'radius', 0.01, 10);
                 GUIHelp.addButton('Generate', () => {
                     this.generateSupports(mesh, params);
+                });
+                GUIHelp.addButton('Remove', () => {
+                    this.removeSupports();
                 });
                 support.open();
             }
@@ -166,8 +169,15 @@ export class Sample_Test {
     private octree: Octree;
     private baseMesh: Mesh;
     private supportObj: Object3D;
+    private removeSupports() {
+        if (this.supportObj) {
+            this.supportObj.removeFromParent();
+            this.supportObj = null;
+        }
+    }
+
     private generateSupports(mesh: Mesh, params) {
-        // removeSupports();
+        this.removeSupports();
         this.baseMesh = mesh;
 
         if (!this.supportGenerator) {
@@ -182,10 +192,6 @@ export class Sample_Test {
         // object space so that they can be transformed with the same matrix
         let inverseMatrix = Matrix4.help_matrix_0.copyFrom(mesh.matrixWorld); inverseMatrix.invert();
         // supportGeometry.applyMatrix(inverseMatrix);
-
-        if (this.supportObj) {
-            this.supportObj.removeFromParent();
-        }
 
         this.supportObj = new Object3D();
         let supportMesh = this.supportObj.addComponent(MeshRenderer);
