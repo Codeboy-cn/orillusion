@@ -53,36 +53,36 @@ export class Sample_Test {
     }
 
     private async test() {
-
-        let o = new Object3D();
-        o.x = -40;
-        o.rotationX = -90;
-        this.view.scene.addChild(o);
-
-        GUIHelp.add(o, "y", -80, 80, 0.01);
-
         let rawGeometry: GeometryBase;
-        let anchorObj: Object3D;
+
+        this.view.graphic3D.drawAxis('axis');
 
         {
-            let obj = await Engine3D.res.loadSTL('stls/No_bottom.stl') as Object3D;
-            // obj.x = -807.02;
-            // obj.y = -403.54;
-            // obj.z = -2.72;
-            // obj.rotationX = 90;
-            // obj.y = 20;
+            let obj = await Engine3D.res.loadSTL('stls/No_bottom_thick2.5.stl') as Object3D;
             let mr = obj.getComponentsInChild(MeshRenderer)[0];
             rawGeometry = mr.geometry;
             // mr.material.doubleSide = true;
             // mr.material.cullMode = GPUCullMode.back;
             mr.material.baseColor = new Color(1.0, 1.0, 1.0);
-            o.addChild(obj);
+            // this.view.scene.addChild(obj);
 
-            {
+            if (true) {
                 let mesh = new Mesh(mr);
+
+                obj.x = 50;
+                obj.y = mesh.geometry.bounds.max.y;
+
+                let meshObj = new Object3D();
+                meshObj.localPosition = mesh.matrixWorld.position;
+                let mr2 = meshObj.addComponent(MeshRenderer);
+                mr2.geometry = mesh.geometry.toGeometryBase();
+                mr2.material = new LitMaterial();
+                mr2.material.baseColor = new Color(0.0, 0.9, 1.0);
+                this.view.scene.addChild(meshObj);
+
                 let params = {
                     angle: 45,
-                    axis: 'z',
+                    axis: 'y',
                     layerHeight: 0.1,
                     radius: 0.4,
                     radiusFn: SupportGenerator.RadiusFunctions_sqrt,
@@ -91,69 +91,81 @@ export class Sample_Test {
                     subdivs: 16,
                     taperFactor: 0.25,
                 };
-                this.generateSupports(mesh, params);
+
+                let support = GUIHelp.addFolder('Support');
+                support.add(params, 'angle', 0, 180);
+                support.add(params, 'layerHeight', 0.01, 10);
+                support.add(params, 'radius', 0.01, 10);
+                support.add(params, 'resolution', 0.1, 10);
+                support.add(params, 'subdivs', 2, 64);
+                support.add(params, 'taperFactor', 0.1, 1);
+                GUIHelp.addButton('Generate', () => {
+                    this.generateSupports(mesh, params);
+                });
+                support.open();
             }
 
-            obj = obj.clone();
-            mr = obj.getComponentsInChild(MeshRenderer)[0];
-            mr.material = new LitMaterial();
-            mr.material.cullMode = GPUCullMode.front;
-            mr.material.baseColor = new Color(0.3, 0.0, 0.0);
-            o.addChild(obj);
+            // obj = obj.clone();
+            // mr = obj.getComponentsInChild(MeshRenderer)[0];
+            // mr.material = new LitMaterial();
+            // mr.material.cullMode = GPUCullMode.front;
+            // mr.material.baseColor = new Color(0.3, 0.0, 0.0);
+            // this.view.scene.addChild(obj);
         }
 
-        if (false) {
-            let obj2 = new Object3D();
+        // if (false) {
+        //     let obj2 = new Object3D();
 
-            // obj2.x = anchorObj.x - 330 - 85;
-            // obj2.y = anchorObj.y;
-            // obj2.z = anchorObj.z;
+        //     // obj2.x = anchorObj.x - 330 - 85;
+        //     // obj2.y = anchorObj.y;
+        //     // obj2.z = anchorObj.z;
 
-            let mr = obj2.addComponent(MeshRenderer);
-            mr.geometry = this.rebuildGeometry_voxel(rawGeometry, -1.5, 1);
-            let litMat = new LitMaterial();
-            litMat.baseColor = new Color(0.3, 0.3, 0.3);
-            // litMat.doubleSide = true;
-            mr.material = litMat;
-            o.addChild(obj2);
-
-
-            obj2 = obj2.clone();
-            mr = obj2.getComponent(MeshRenderer);
-            mr.material = new UnLitMaterial();
-            mr.material.cullMode = GPUCullMode.front;
-            mr.material.baseColor = new Color(0.3, 0.0, 0.0);
-            // o.addChild(obj2);
-
-            const graphic3D = Engine3D.views[0].graphic3D;
-            // graphic3D.drawMeshWireframe("test", obj2MR.geometry, obj2.transform);
-        } else if (false) {
-            let obj2 = new Object3D();
-
-            let mr = obj2.addComponent(MeshRenderer);
-            mr.geometry = this.rebuildGeometry(rawGeometry, 1.5, 1);
-            let litMat = new LitMaterial();
-            litMat.baseColor = new Color(0.3, 0.5, 0.6);
-            // litMat.doubleSide = true;
-            // mr.material.cullMode = GPUCullMode.back;
-            mr.material = litMat;
-            o.addChild(obj2);
+        //     let mr = obj2.addComponent(MeshRenderer);
+        //     mr.geometry = this.rebuildGeometry_voxel(rawGeometry, -1.5, 1);
+        //     let litMat = new LitMaterial();
+        //     litMat.baseColor = new Color(0.3, 0.3, 0.3);
+        //     // litMat.doubleSide = true;
+        //     mr.material = litMat;
+        //     o.addChild(obj2);
 
 
-            obj2 = obj2.clone();
-            mr = obj2.getComponent(MeshRenderer);
-            mr.material = new UnLitMaterial();
-            mr.material.cullMode = GPUCullMode.front;
-            mr.material.baseColor = new Color(0.3, 0.0, 0.0);
-            // o.addChild(obj2);
+        //     obj2 = obj2.clone();
+        //     mr = obj2.getComponent(MeshRenderer);
+        //     mr.material = new UnLitMaterial();
+        //     mr.material.cullMode = GPUCullMode.front;
+        //     mr.material.baseColor = new Color(0.3, 0.0, 0.0);
+        //     // o.addChild(obj2);
 
-            const graphic3D = Engine3D.views[0].graphic3D;
-            // graphic3D.drawMeshWireframe("test", obj2MR.geometry, obj2.transform);
-        }
+        //     const graphic3D = Engine3D.views[0].graphic3D;
+        //     // graphic3D.drawMeshWireframe("test", obj2MR.geometry, obj2.transform);
+        // } else if (false) {
+        //     let obj2 = new Object3D();
+
+        //     let mr = obj2.addComponent(MeshRenderer);
+        //     mr.geometry = this.rebuildGeometry(rawGeometry, 1.5, 1);
+        //     let litMat = new LitMaterial();
+        //     litMat.baseColor = new Color(0.3, 0.5, 0.6);
+        //     // litMat.doubleSide = true;
+        //     // mr.material.cullMode = GPUCullMode.back;
+        //     mr.material = litMat;
+        //     o.addChild(obj2);
+
+
+        //     obj2 = obj2.clone();
+        //     mr = obj2.getComponent(MeshRenderer);
+        //     mr.material = new UnLitMaterial();
+        //     mr.material.cullMode = GPUCullMode.front;
+        //     mr.material.baseColor = new Color(0.3, 0.0, 0.0);
+        //     // o.addChild(obj2);
+
+        //     const graphic3D = Engine3D.views[0].graphic3D;
+        //     // graphic3D.drawMeshWireframe("test", obj2MR.geometry, obj2.transform);
+        // }
     }
 
     private octree: Octree;
     private baseMesh: Mesh;
+    private supportObj: Object3D;
     private generateSupports(mesh: Mesh, params) {
         // removeSupports();
         this.baseMesh = mesh;
@@ -171,11 +183,15 @@ export class Sample_Test {
         let inverseMatrix = Matrix4.help_matrix_0.copyFrom(mesh.matrixWorld); inverseMatrix.invert();
         // supportGeometry.applyMatrix(inverseMatrix);
 
-        let supportObj = new Object3D();
-        let supportMesh = supportObj.addComponent(MeshRenderer);
-        supportMesh.geometry = supportGeometry;
+        if (this.supportObj) {
+            this.supportObj.removeFromParent();
+        }
+
+        this.supportObj = new Object3D();
+        let supportMesh = this.supportObj.addComponent(MeshRenderer);
+        supportMesh.geometry = supportGeometry.toGeometryBase();
         supportMesh.material = new LitMaterial();
-        this.view.scene.addChild(supportObj);
+        this.view.scene.addChild(this.supportObj);
 
         // supportMesh.geometry = supportGeometry;
         // this.scene.add(supportMesh);

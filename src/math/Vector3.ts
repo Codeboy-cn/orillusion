@@ -1102,9 +1102,9 @@ export class Vector3 {
     }
 
     public addScaledVector(v: Vector3, scale: number): Vector3 {
-        this.x = v.x * scale;
-        this.y = v.y * scale;
-        this.z = v.z * scale;
+        this.x += v.x * scale;
+        this.y += v.y * scale;
+        this.z += v.z * scale;
         return this;
     }
 

@@ -1,10 +1,10 @@
-import { GeometryBase, Matrix4, MeshRenderer, Object3D, Ray, Struct, Vector3, VertexAttributeName } from "@orillusion/core";
+import { BoundingBox, GeometryBase, Matrix4, MeshRenderer, Object3D, Ray, Struct, Vector3, VertexAttributeName } from "@orillusion/core";
 import { SupportGeneratorParams } from "./SupportGeneratorParams";
 import { Calculate } from "./Calculate";
 import { SupportTreeNode } from "./SupportTreeNode";
 import { coneConeIntersection, cycleAxis, pointInsideTriangle, projectToPlaneOnAxis } from "./Utils";
 import { Face, Geometry, Mesh } from "./Geometry";
-import * as PriorityQueue from './priority-queue.min.js';
+import PriorityQueue from './priority-queue.min.js';
 
 export class SupportGenerator {
     public mesh: Mesh;
@@ -52,7 +52,12 @@ export class SupportGenerator {
         let nv = vs.length;
         let nf = fs.length;
 
-        let boundingBox = this.mesh.geometry.bounds.clone(); // new THREE.Box3().setFromObject(this.mesh);
+        // let boundingBox = this.mesh.boundingBox.clone(); // new THREE.Box3().setFromObject(this.mesh);
+        let boundingBox = new BoundingBox();
+        boundingBox.setFromMinMax(
+            new Vector3(32.345550537109375, 41.29034996032715, 0),
+            new Vector3(112.65444946289062, 103.70965003967285, 28.322500228881836),
+        );
 
         // axes in the horizontal plane
         let ah = cycleAxis(axis);
@@ -80,7 +85,7 @@ export class SupportGenerator {
         // create the underlying structure for the support trees
         let supportTrees = buildSupportTrees(points);
 
-        let supportTreeGeometry = new GeometryBase();
+        let supportTreeGeometry = new Geometry();
 
         let treeWriteParams = {
             geo: supportTreeGeometry,
@@ -103,14 +108,14 @@ export class SupportGenerator {
 
         return supportTreeGeometry;
 
-        function getSupportFaces() {
+        function getSupportFaces(): Face[] {
             let normal = new Vector3();
             let a = new Vector3();
             let b = new Vector3();
             let c = new Vector3();
 
             let minFaceMax = minHeight + layerHeight / 2;
-            let supportFaces = [];
+            let supportFaces: Face[] = [];
 
 
             for (let f = 0, l = fs.length; f < l; f++) {
@@ -130,7 +135,7 @@ export class SupportGenerator {
             return supportFaces;
         }
 
-        function samplePoints(supportFaces) {
+        function samplePoints(supportFaces: Face[]) {
             // rasterization lower bounds on h and v axes
             let rhmin = boundingBox.min[ah];
             let rvmin = boundingBox.min[av];
@@ -152,7 +157,7 @@ export class SupportGenerator {
                 let facebb = Calculate.faceBoundingBox(face, vs, matrixWorld);
 
                 // normal in world space
-                let normal = face.normal.clone().transformDirection(matrixWorld);
+                let normal = matrixWorld.transformVector(face.normal); //face.normal.clone().transformDirection(matrixWorld);
 
                 // this face's lower bounds in rasterization space
                 let hmin = rhmin + Math.floor((facebb.min[ah] - rhmin) / resolution) * resolution;
@@ -182,21 +187,21 @@ export class SupportGenerator {
             return points;
         }
 
-        function buildSupportTrees(points) {
+        function buildSupportTrees(points): SupportTreeNode[] {
             // iterate through sampled points, build support trees
 
             // list of support tree roots
-            let result = [];
+            let result: SupportTreeNode[] = [];
 
             // support tree nodes for this island
-            let nodes = [];
+            let nodes: SupportTreeNode[] = [];
 
             let ray = new Ray();
             let faceNormal = new Vector3();
 
             // orders a priority queue from highest to lowest coordinate on axis
             let pqComparator = function (a, b) { return nodes[b].v[axis] - nodes[a].v[axis]; }
-            let pq = new PriorityQueue.PriorityQueue({
+            let pq = new PriorityQueue({
                 comparator: pqComparator
             });
             let activeIndices = new Set<number>();
@@ -208,7 +213,7 @@ export class SupportGenerator {
             // but that's a hack that breaks encapsulation
             for (let pi = 0; pi < points.length; pi++) {
                 let point = points[pi];
-                let v = point.v;
+                let v: Vector3 = point.v;
                 let normal = point.normal;
 
                 // one of the leaves of the support tree ends here
@@ -219,7 +224,8 @@ export class SupportGenerator {
 
                 // attempt to extend a short support strut from the starting point
                 // along the normal
-                let raycastNormal = octree.raycast(ray.set(v, normal));
+                ray.set(v, normal);
+                let raycastNormal = octree.raycast(ray);
                 let nv = v.clone().addScaledVector(normal, minSupportLength);
 
                 // if a ray cast along the normal hits too close, goes below mesh
@@ -252,7 +258,7 @@ export class SupportGenerator {
                 let p = nodes[pi];
 
                 // find the closest intersection between p's cone and another cone
-                let intersection = null;
+                let intersection: Vector3 = null;
                 let intersectionDist = Infinity;
                 let qiFinal = -1;
 
@@ -262,8 +268,8 @@ export class SupportGenerator {
 
                     // if valid intersection and it's inside the mesh boundary
                     if (ixn && (ixn[axis] - minHeight > radius)) {
-                        let pidist = p.v.distanceTo(ixn);
-                        let qidist = q.v.distanceTo(ixn);
+                        let pidist = Vector3.distance(p.v, ixn); // p.v.distanceTo(ixn);
+                        let qidist = Vector3.distance(q.v, ixn); // q.v.distanceTo(ixn);
                         if (pidist < intersectionDist && pidist > radius && qidist > radius) {
                             intersectionDist = pidist;
                             intersection = ixn;
@@ -302,7 +308,7 @@ export class SupportGenerator {
                 // if p-q intersection exists, either p and q connect or p's ray to
                 // intersection hits the mesh first
                 if (intersection) {
-                    let d = intersection.clone().sub(p.v).normalize();
+                    let d = intersection.clone().subVectors(intersection, p.v).normalize();
                     // cast a ray from p to the intersection
                     let raycastP = octree.raycast(ray.set(p.v, d));
 
@@ -346,7 +352,7 @@ export class SupportGenerator {
                         else {
                             q = nodes[qiFinal];
                             target = intersection;
-                            dist = p.v.distanceTo(intersection);
+                            dist = Vector3.distance(p.v, intersection); // p.v.distanceTo(intersection);
                         }
                     }
                 }

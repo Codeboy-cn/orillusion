@@ -21,7 +21,12 @@ export class Geometry {
 
     protected mesh: Mesh;
 
-    constructor(mesh: Mesh) {
+    constructor(mesh?: Mesh) {
+        if (!mesh) {
+            this.faces = [];
+            this.vertices = [];
+            return;
+        }
         this.mesh = mesh;
         const geometryBase = mesh.rawMesh.geometry;
 
@@ -109,12 +114,88 @@ export class Geometry {
             const v = this.vertices[i];
             v.applyMatrix4(m);
         }
+        for (let i = 0; i < this.faces.length; i++) {
+            const f = this.faces[i];
+            // f.normal.applyMatrix4(m).normalize();
+
+            const v1 = this.vertices[f.a];
+            const v2 = this.vertices[f.b];
+            const v3 = this.vertices[f.c];
+
+            const vA = Vector3.HELP_0.subVectors(v2, v1);
+            const vB = Vector3.HELP_1.subVectors(v3, v1);
+
+            vA.crossProduct(vB, f.normal);
+            f.normal.normalize();
+        }
+    }
+
+    public toGeometryBase(): GeometryBase {
+        let result = new GeometryBase();
+
+        let indices = new Uint32Array(this.faces.length * 3);
+        let vertexs = new Float32Array(this.faces.length * 3 * 3);
+        let normals = new Float32Array(this.faces.length * 3 * 3);
+
+        for (let i = 0; i < this.faces.length; i++) {
+            const f = this.faces[i];
+            const v1 = this.vertices[f.a];
+            const v2 = this.vertices[f.b];
+            const v3 = this.vertices[f.c];
+
+            indices[i * 3 + 0] = i * 3 + 0;
+            indices[i * 3 + 1] = i * 3 + 1;
+            indices[i * 3 + 2] = i * 3 + 2;
+
+            vertexs[i * 9 + 0] = v1.x;
+            vertexs[i * 9 + 1] = v1.y;
+            vertexs[i * 9 + 2] = v1.z;
+
+            vertexs[i * 9 + 3] = v2.x;
+            vertexs[i * 9 + 4] = v2.y;
+            vertexs[i * 9 + 5] = v2.z;
+
+            vertexs[i * 9 + 6] = v3.x;
+            vertexs[i * 9 + 7] = v3.y;
+            vertexs[i * 9 + 8] = v3.z;
+
+            const vA = Vector3.HELP_0.subVectors(v2, v1);
+            const vB = Vector3.HELP_1.subVectors(v3, v1);
+            const normal = vA.crossProduct(vB, Vector3.HELP_2).normalize();
+
+            normals[i * 9 + 0] = normal.x;
+            normals[i * 9 + 1] = normal.y;
+            normals[i * 9 + 2] = normal.z;
+
+            normals[i * 9 + 3] = normal.x;
+            normals[i * 9 + 4] = normal.y;
+            normals[i * 9 + 5] = normal.z;
+
+            normals[i * 9 + 6] = normal.x;
+            normals[i * 9 + 7] = normal.y;
+            normals[i * 9 + 8] = normal.z;
+        }
+
+        result.setIndices(indices);
+        result.setAttribute(VertexAttributeName.position, vertexs);
+        result.setAttribute(VertexAttributeName.normal, normals);
+
+        result.addSubGeometry({
+            indexStart: 0,
+            indexCount: indices.length,
+            vertexStart: 0,
+            vertexCount: 0,
+            firstStart: 0,
+            index: 0,
+            topology: 0,
+        });
+        return result;
     }
 }
 
 export class Mesh {
     public geometry: Geometry;
-    public boundingBox: BoundingBox;
+    // public boundingBox: BoundingBox;
 
     public rawMesh: MeshRenderer;
 
@@ -122,25 +203,25 @@ export class Mesh {
         this.rawMesh = mesh;
         this.geometry = new Geometry(this);
         this.geometry.mergeVertices();
-        this.boundingBox = new BoundingBox();
+        // this.boundingBox = new BoundingBox();
         this.shiftBaseGeometryToOrigin();
     }
 
     public get matrixWorld(): Matrix4 {
-        let m = new Matrix4();
-        m.rawData[12] = 72.5;
-        m.rawData[13] = 72.5;
-        m.rawData[14] = 14.161250114440918;
-        return m;
+        // let m = new Matrix4();
+        // m.rawData[12] = 72.5;
+        // m.rawData[13] = 72.5;
+        // m.rawData[14] = 14.161250114440918;
+        // return m;
 
-        // return this.rawMesh.transform.worldMatrix;
+        return this.rawMesh.transform.worldMatrix;
     }
 
     protected shiftBaseGeometryToOrigin() {
         var mesh = this.rawMesh;
         var center = this.getCenter();
         var shift = mesh.transform.localPosition.clone().subVectors(mesh.transform.localPosition, center);
-      
+
         // shift geometry center to origin
         // mesh.position.copy(center.negate());
         // mesh.updateMatrixWorld();
@@ -148,18 +229,18 @@ export class Mesh {
 
         mesh.transform.localPosition = center.negate();
         this.geometry.applyMatrix(mesh.transform.worldMatrix);
-      
+
         // reset mesh position to 0
         // mesh.position.set(0, 0, 0);
         // mesh.updateMatrixWorld();
         mesh.transform.localPosition = Vector3.ZERO;
-      
+
         // shift bounds appropriately
         // this.boundingBox.translate(shift);
 
         let min = mesh.geometry.bounds.min.add(shift);
         let max = mesh.geometry.bounds.max.add(shift);
-        this.boundingBox.setFromMinMax(min, max);
+        // this.boundingBox.setFromMinMax(min, max);
     }
 
     protected getCenter(): Vector3 {

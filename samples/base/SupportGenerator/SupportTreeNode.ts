@@ -25,7 +25,7 @@ export class SupportTreeNode {
     public p1: number[];
     public ps: number[];
 
-    constructor(v, b0?, b1?, params?) {
+    constructor(v: Vector3, b0?, b1?, params?) {
         this.v = v;
 
         // every node is a root when created; when connected as a branch node to
@@ -44,8 +44,8 @@ export class SupportTreeNode {
         this.noTaper = (params && params.noTaper) || false;
 
         this.weight = 0;
-        if (b0) this.weight += b0.weight + v.distanceTo(b0.v);
-        if (b1) this.weight += b1.weight + v.distanceTo(b1.v);
+        if (b0) this.weight += b0.weight + Vector3.distance(v, b0.v); // v.distanceTo(b0.v);
+        if (b1) this.weight += b1.weight + Vector3.distance(v, b1.v); // v.distanceTo(b1.v);
     }
 
     // true if at the bottom of a tree
@@ -411,7 +411,7 @@ export class SupportTreeNode {
         if (this.b1) this.b1.connectProfiles(params);
     }
 
-    public connectToBranch(n, params) {
+    public connectToBranch(n: SupportTreeNode, params) {
         if (!n) return;
 
         var geo = params.geo;
@@ -425,7 +425,7 @@ export class SupportTreeNode {
         var tp = n.ps;
 
         // unit vector pointing up to other node
-        var vn = n.v.clone().sub(this.v).normalize();
+        var vn = n.v.clone().subVectors(n.v, this.v).normalize();
 
         // start index on target profile
         var tidx = 0;
@@ -441,7 +441,7 @@ export class SupportTreeNode {
             var vst, dot;
 
             // unit vector from source point to target point
-            vst = vertices[tp[ii]].clone().sub(spt).normalize();
+            vst = vertices[tp[ii]].clone().subVectors(vertices[tp[ii]], spt).normalize();
 
             dot = vst.dotProduct(vn);
             if (dot > maxdot) {
@@ -501,7 +501,7 @@ export class SupportTreeNode {
         if (!(isRoot || isLeaf)) return Infinity;
 
         // other node connected to this node, and the two nodes connected to that
-        var n, a, b;
+        var n: SupportTreeNode, a: SupportTreeNode, b: SupportTreeNode;
 
         // branch node 0 if root; source if leaf
         n = isRoot ? this.b0 : this.source;
@@ -528,14 +528,14 @@ export class SupportTreeNode {
         }
 
         // unit vectors along n strut
-        var vn = this.v.clone().subVectors(this.v, n.v).normalize();
+        var vn: Vector3 = this.v.clone().subVectors(this.v, n.v).normalize();
 
         // extents of struts a and b (due to their thickness) along n
         var ea = 0, eb = 0;
 
         if (a) {
             // unit vector along a strut
-            var va = a.v.clone().sub(n.v).normalize();
+            var va = a.v.clone().subVectors(a.v, n.v).normalize();
 
             // bisector between n and a
             var bna = vn.clone().add(va).normalize();
@@ -554,7 +554,7 @@ export class SupportTreeNode {
 
         if (b) {
             // unit vector along b strut
-            var vb = b.v.clone().sub(n.v).normalize();
+            var vb = b.v.clone().subVectors(b.v, n.v).normalize();
 
             // bisector between n and b
             var bnb = vn.clone().add(vb).normalize();
@@ -562,10 +562,10 @@ export class SupportTreeNode {
             // dot product between vn and b-n bisector
             var dnb = vn.dotProduct(bnb);
 
-            // how far strut a's intersection point with n extends along n strut;
-            // equal to radius / tan (acos (vn dot bna)) with
-            // tan (acos x) = sqrt (1 - x*x) / x
-            b = radius * dnb / Math.sqrt(1 - dnb * dnb);
+            // // how far strut a's intersection point with n extends along n strut;
+            // // equal to radius / tan (acos (vn dot bna)) with
+            // // tan (acos x) = sqrt (1 - x*x) / x
+            // b = radius * dnb / Math.sqrt(1 - dnb * dnb);
         }
 
         // limit is strut length minus the largest of these two extents

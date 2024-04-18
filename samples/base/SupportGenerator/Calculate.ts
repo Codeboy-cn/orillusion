@@ -33,6 +33,13 @@ export class Calculate {
 
     protected static _triangleBoundingBox(va: Vector3, vb: Vector3, vc: Vector3) {
         var box = new BoundingBox();
+        box.min.x = Infinity;
+        box.min.y = Infinity;
+        box.min.z = Infinity;
+
+        box.max.x = -Infinity;
+        box.max.y = -Infinity;
+        box.max.z = -Infinity;
 
         box.expandByPoint(va);
         box.expandByPoint(vb);

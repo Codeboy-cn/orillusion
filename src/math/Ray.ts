@@ -49,10 +49,11 @@ export class Ray {
         this._dir.normalize();
     }
 
-    public set(origin: Vector3, dir: Vector3) {
+    public set(origin: Vector3, dir: Vector3): Ray {
         this.origin.copyFrom(origin);
         this._dir.copyFrom(dir);
         this._dir.normalize();
+        return this;
     }
 
     /**

@@ -158,7 +158,7 @@ export function asin(a) {
 // as the plane is the set of points r s.t. (r-d) dot n = 0, r dot n = d dot n;
 // if axis is z, rz = (d dot n - rx*nx - ry*ny) / nz
 // if nz == 0, then we can't project, so just return p
-export function projectToPlaneOnAxis(p, d, n, axis) {
+export function projectToPlaneOnAxis(p: Vector3, d: Vector3, n, axis) {
   if (axis === undefined) axis = axisDefault;
 
   var ah = cycleAxis(axis);
@@ -168,7 +168,7 @@ export function projectToPlaneOnAxis(p, d, n, axis) {
   if (n[axis] === 0) return p;
 
   // get the .axis component
-  var rz = (d.dot(n) - p[ah] * n[ah] - p[av] * n[av]) / n[axis];
+  var rz = (d.dotProduct(n) - p[ah] * n[ah] - p[av] * n[av]) / n[axis];
 
   // set the component
   var pp = p.clone();
@@ -178,9 +178,9 @@ export function projectToPlaneOnAxis(p, d, n, axis) {
 }
 
 // takes v and projects out the n component; n is assumed normalized
-export function projectOut(v, n) {
-  var projection = n.clone().multiplyScalar(v.dot(n));
-  return v.clone().sub(projection);
+export function projectOut(v: Vector3, n: Vector3) {
+  var projection = n.clone().multiplyScalar(v.dotProduct(n));
+  return v.clone().subVectors(v, projection);
 }
 
 // find the highest point of intersection between two cones; the cones have
@@ -192,16 +192,16 @@ export function projectOut(v, n) {
 // intersection I; first move Q along the I-Q line such that it's level with P
 // on axis, find the midpoint of the P-Q line, then move that point down by
 // (1/2)|P-Q|/tan(angle)
-export function coneConeIntersection(p, q, angle, axis) {
+export function coneConeIntersection(p: Vector3, q: Vector3, angle, axis) {
   if (p === q) return null;
 
   var up = new Vector3();
   up[axis] = 1;
 
   var cos = Math.cos(angle);
-  var d = q.clone().sub(p).normalize();
+  var d = q.clone().subVectors(q, p).normalize();
 
-  var dot = -d.dot(up);
+  var dot = -d.dotProduct(up);
   // if p's cone contains q or vice versa, no intersection
   if (dot > cos || dot < cos - 1) return null;
 
@@ -219,7 +219,7 @@ export function coneConeIntersection(p, q, angle, axis) {
 
   // get the midpoint, lower it as described above, that's the intersection
   var midpoint = p.clone().add(qnew).divideScalar(2);
-  var len = midpoint.distanceTo(p);
+  var len = Vector3.distance(midpoint, p);// midpoint.distanceTo(p);
   midpoint[axis] -= len / tan;
 
   return midpoint;

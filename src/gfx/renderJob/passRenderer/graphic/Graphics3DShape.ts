@@ -141,7 +141,7 @@ export class Graphics3DShape {
             }
         }
 
-        this.dirtyData = true;
+        // this.dirtyData = true;
     }
 
     public reset() {
