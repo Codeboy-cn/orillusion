@@ -180,13 +180,15 @@ export class Res {
         if (this._prefabPool.has(url)) {
             return this._prefabPool.get(url) as Object3D;
         }
+        if (loaderFunctions?.onUrl) {
+            url = await loaderFunctions.onUrl(url);
+        }
 
         let parser;
         let ext = url.substring(url.lastIndexOf('.')).toLowerCase();
         let loader = new FileLoader();
         if (ext == '.gltf') {
             parser = await loader.load(url, GLTFParser, loaderFunctions);
-
         } else {
             parser = await loader.load(url, GLBParser, loaderFunctions);
         }
@@ -206,6 +208,9 @@ export class Res {
     public async loadObj(url: string, loaderFunctions?: LoaderFunctions): Promise<Object3D> {
         if (this._prefabPool.has(url)) {
             return this._prefabPool.get(url) as Object3D;
+        }
+        if (loaderFunctions?.onUrl) {
+            url = await loaderFunctions.onUrl(url);
         }
 
         let parser;
@@ -230,6 +235,9 @@ export class Res {
         if (this._prefabPool.has(url)) {
             return this._prefabPool.get(url) as Object3D;
         }
+        if (loaderFunctions?.onUrl) {
+            url = await loaderFunctions.onUrl(url);
+        }
         let loader = new FileLoader();
         let parser = await loader.load(url, B3DMParser, loaderFunctions, userData);
         let obj = parser.data;
@@ -246,6 +254,9 @@ export class Res {
     public async loadI3DM(url: string, loaderFunctions?: LoaderFunctions, userData?: any): Promise<Object3D> {
         if (this._prefabPool.has(url)) {
             return this._prefabPool.get(url) as Object3D;
+        }
+        if (loaderFunctions?.onUrl) {
+            url = await loaderFunctions.onUrl(url);
         }
         let loader = new FileLoader();
         let parser = await loader.load(url, I3DMParser, loaderFunctions, userData);
@@ -281,6 +292,9 @@ export class Res {
     public async loadTexture(url: string, loaderFunctions?: LoaderFunctions, flipY?: boolean) {
         if (this._texturePool.has(url)) {
             return this._texturePool.get(url);
+        }
+        if (loaderFunctions?.onUrl) {
+            url = await loaderFunctions.onUrl(url);
         }
         let texture = new BitmapTexture2D();
         texture.flipY = flipY;
@@ -332,7 +346,9 @@ export class Res {
         if (this._texturePool.has(url)) {
             return this._texturePool.get(url);
         }
-
+        if (loaderFunctions?.onUrl) {
+            url = await loaderFunctions.onUrl(url);
+        }
         let hdrTexture = new HDRTexture();
         hdrTexture = await hdrTexture.load(url, loaderFunctions);
         this._texturePool.set(url, hdrTexture);
@@ -350,6 +366,9 @@ export class Res {
         if (this._texturePool.has(url)) {
             return this._texturePool.get(url);
         }
+        if (loaderFunctions?.onUrl) {
+            url = await loaderFunctions.onUrl(url);
+        }
         let hdrTexture = new HDRTextureCube();
         hdrTexture = await hdrTexture.load(url, loaderFunctions);
         this._texturePool.set(url, hdrTexture);
@@ -365,6 +384,9 @@ export class Res {
     public async loadLDRTextureCube(url: string, loaderFunctions?: LoaderFunctions) {
         if (this._texturePool.has(url)) {
             return this._texturePool.get(url);
+        }
+        if (loaderFunctions?.onUrl) {
+            url = await loaderFunctions.onUrl(url);
         }
         let ldrTextureCube = new LDRTextureCube();
         ldrTextureCube = await ldrTextureCube.load(url, loaderFunctions);
@@ -399,6 +421,9 @@ export class Res {
         if (this._texturePool.has(url)) {
             return this._texturePool.get(url);
         }
+        if (loaderFunctions?.onUrl) {
+            url = await loaderFunctions.onUrl(url);
+        }
 
         let cubeMap = new BitmapTextureCube();
         await cubeMap.loadStd(url);
@@ -410,6 +435,9 @@ export class Res {
      * @param url the path of image
      */
     public async loadJSON(url: string, loaderFunctions?: LoaderFunctions) {
+        if (loaderFunctions?.onUrl) {
+            url = await loaderFunctions.onUrl(url);
+        }
         return await new FileLoader()
             .loadJson(url, loaderFunctions)
             .then(async (ret) => {
