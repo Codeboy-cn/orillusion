@@ -1,15 +1,16 @@
-import { BoundingBox, GeometryBase, Matrix4, MeshRenderer, Object3D, Ray, Struct, Vector3, VertexAttributeName } from "@orillusion/core";
+import { BoundingBox, Color, GeometryBase, Matrix4, MeshRenderer, Object3D, Ray, Struct, Vector3, VertexAttributeName } from "@orillusion/core";
 import { SupportGeneratorParams } from "./SupportGeneratorParams";
 import { Calculate } from "./Calculate";
 import { SupportTreeNode } from "./SupportTreeNode";
 import { coneConeIntersection, cycleAxis, pointInsideTriangle, projectToPlaneOnAxis } from "./Utils";
 import { Face, Geometry, Mesh } from "./Geometry";
 import PriorityQueue from './priority-queue.min.js';
+import { Octree } from "./Octree";
 
 export class SupportGenerator {
     public mesh: Mesh;
     public faces: Array<Face>;
-    public octree: any;
+    public octree: Octree;
     public vertices: Array<Vector3>;
     public matrixWorld: Matrix4;
     
@@ -53,11 +54,12 @@ export class SupportGenerator {
         let nf = fs.length;
 
         // let boundingBox = this.mesh.boundingBox.clone(); // new THREE.Box3().setFromObject(this.mesh);
-        let boundingBox = new BoundingBox();
-        boundingBox.setFromMinMax(
-            new Vector3(32.345550537109375, 41.29034996032715, 0),
-            new Vector3(112.65444946289062, 103.70965003967285, 28.322500228881836),
-        );
+        // let boundingBox = new BoundingBox();
+        // boundingBox.setFromMinMax(
+        //     new Vector3(32.345550537109375, 41.29034996032715, 0),
+        //     new Vector3(112.65444946289062, 103.70965003967285, 28.322500228881836),
+        // );
+        let boundingBox = this.mesh.geometry.bounds.clone();
 
         // axes in the horizontal plane
         let ah = cycleAxis(axis);
@@ -77,15 +79,77 @@ export class SupportGenerator {
         let up = down.clone().negate();
 
         // generate an array of faces that require support
-        let supportFaces = getSupportFaces();
+        // let supportFaces = getSupportFaces();
+
+        const resolutionBackup = resolution;
+
+        let supportFaces = getBottomEdgesSupportFaces();
 
         // rasterize each overhang face set to find sampling points over every set
+
+        resolution /= 4;
         let points = samplePoints(supportFaces);
+        resolution = resolutionBackup;
+
+        
+        {
+            const supportFaces = getSupportFacesNotBottomEdges();
+
+            let points_NotBottomEdges = samplePoints(supportFaces);
+
+            points.push(...points_NotBottomEdges);
+        }
 
         // create the underlying structure for the support trees
         let supportTrees = buildSupportTrees(points);
 
-        let supportTreeGeometry = new Geometry();
+        // let supportTreeGeometry = new Geometry();
+
+        let result = {
+            supportPoint: new Geometry(),
+            supportTree: new Geometry(),
+            supportFaces: new Geometry(),
+        };
+
+        const supportTreeGeometry = result.supportTree;
+
+        // Debug: show support faces
+        if (true) {
+            let i = 0;
+            const supportFaces = getBottomEdgesSupportFaces();
+            for (let face of supportFaces) {
+                let a = this.mesh.geometry.vertices[face.a];
+                let b = this.mesh.geometry.vertices[face.b];
+                let c = this.mesh.geometry.vertices[face.c];
+
+                a = matrixWorld.transformVector(a);
+                b = matrixWorld.transformVector(b);
+                c = matrixWorld.transformVector(c);
+
+                // let a = new Vector3();
+                // let b = new Vector3();
+                // let c = new Vector3();
+                // Calculate.faceVertices(face, vs, matrixWorld, a, b, c);
+
+                const index = result.supportFaces.vertices.length;
+                result.supportFaces.vertices.push(a);
+                result.supportFaces.vertices.push(b);
+                result.supportFaces.vertices.push(c);
+                const f = new Face(index + 0, index + 1, index + 2);
+
+                i++;
+                result.supportFaces.faces.push(f);
+            }
+        }
+
+        // Debug: show sample Points
+        if (true) {
+            for (let p of points) {
+                const v = p.v;
+                result.supportPoint.pushSphere(v);
+                // console.warn(v.x, v.y, v.z);
+            }
+        }
 
         let treeWriteParams = {
             geo: supportTreeGeometry,
@@ -97,7 +161,7 @@ export class SupportGenerator {
             radiusFnK: radiusFnK
         };
 
-        for (let s = 0; s < supportTrees.length; s++) {
+        if (true) for (let s = 0; s < supportTrees.length; s++) {
             let tree = supportTrees[s];
             //tree.debug();
             tree.writeToGeometry(treeWriteParams);
@@ -106,7 +170,7 @@ export class SupportGenerator {
         // TODO: impl computeFaceNormals
         // supportTreeGeometry.computeFaceNormals();
 
-        return supportTreeGeometry;
+        return result;
 
         function getSupportFaces(): Face[] {
             let normal = new Vector3();
@@ -117,12 +181,11 @@ export class SupportGenerator {
             let minFaceMax = minHeight + layerHeight / 2;
             let supportFaces: Face[] = [];
 
-
             for (let f = 0, l = fs.length; f < l; f++) {
                 let face = fs[f];
 
                 Calculate.faceVertices(face, vs, matrixWorld, a, b, c);
-                let faceMax = Math.max(a[axis], b[axis], c[axis]);
+                let faceMax = Math.max(a[axis], b[axis], c[axis]); // axis == 'y'
 
                 // normal.copy(face.normal).transformDirection(matrixWorld);
                 matrixWorld.transformVector(normal.copy(face.normal), normal);
@@ -389,5 +452,75 @@ export class SupportGenerator {
             return result;
         }
 
+        function getBottomEdgesSupportFaces(): Face[] {
+            let minHeight = 0;
+            let angleDegrees = 45;
+            let angle = (90 - angleDegrees) * Math.PI / 180;
+            let dotProductCutoff = Math.cos(Math.PI / 2 - angle);
+
+            let normal = new Vector3();
+            let a = new Vector3();
+            let b = new Vector3();
+            let c = new Vector3();
+
+            // let min = matrixWorld.transformPoint(boundingBox.min);
+
+            let minFaceHeight = 8;
+            let supportFaces: Face[] = [];
+
+            for (let f = 0, l = fs.length; f < l; f++) {
+                let face = fs[f];
+
+                Calculate.faceVertices(face, vs, matrixWorld, a, b, c);
+                let faceMin = Math.min(a[axis], b[axis], c[axis]);
+
+                matrixWorld.transformVector(normal.copy(face.normal), normal);
+
+                if (down.dotProduct(normal) > dotProductCutoff && faceMin <= minFaceHeight) {
+                    supportFaces.push(face);
+                }
+            }
+
+            return supportFaces;
+        }
+
+        function getSupportFacesNotBottomEdges(): Face[] {
+            let bottomEdges_angleDegrees = 45;
+            let bottomEdges_angle = (90 - bottomEdges_angleDegrees) * Math.PI / 180;
+            let bottomEdges_dotProductCutoff = Math.cos(Math.PI / 2 - bottomEdges_angle);
+
+            let normal = new Vector3();
+            let a = new Vector3();
+            let b = new Vector3();
+            let c = new Vector3();
+
+            let minFaceHeight = 8;
+            let supportFaces: Face[] = [];
+
+            let minHeight = 0;
+            let minFaceMax = minHeight + layerHeight / 2;
+
+            for (let f = 0, l = fs.length; f < l; f++) {
+                let face = fs[f];
+
+                Calculate.faceVertices(face, vs, matrixWorld, a, b, c);
+                let faceMin = Math.min(a[axis], b[axis], c[axis]);
+
+                matrixWorld.transformVector(normal.copy(face.normal), normal);
+
+                let value = down.dotProduct(normal);
+
+                if (value > bottomEdges_dotProductCutoff && faceMin <= minFaceHeight) {
+                    continue;
+                }
+                
+                let faceMax = Math.max(a[axis], b[axis], c[axis]);
+                if (value > dotProductCutoff && faceMax > minFaceMax) {
+                    supportFaces.push(face);
+                }
+            }
+
+            return supportFaces;
+        }
     }
 }

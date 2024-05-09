@@ -17,6 +17,7 @@ import { PostBase } from '../post/PostBase';
 import { RendererBase } from '../passRenderer/RendererBase';
 import { Ctor } from '../../../util/Global';
 import { DDGIProbeRenderer } from '../passRenderer/ddgi/DDGIProbeRenderer';
+import { PassType } from '../passRenderer/state/RendererType';
 
 /**
  * render jobs 
@@ -226,6 +227,12 @@ export class RendererJob {
             const renderer = passList[i];
             renderer.compute(view, this.occlusionSystem);
             renderer.render(view, this.occlusionSystem, this.clusterLightingRender.clusterLightingBuffer);
+        }
+
+        let custom = this.rendererMap.getRenderer(PassType.CUSTOM);
+        if (custom) {
+            custom.compute(view, this.occlusionSystem);
+            custom.render(view, this.occlusionSystem, this.clusterLightingRender.clusterLightingBuffer);
         }
 
         if (this.postRenderer && this.postRenderer.postList.length > 0) {

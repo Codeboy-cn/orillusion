@@ -11,8 +11,6 @@ export class STLParser extends ParserBase {
     static format: ParserFormat = ParserFormat.BIN;
 
     public parseBuffer(buffer: ArrayBuffer) {
-        console.warn(buffer.byteLength);
-
         let reader = new BinaryReader(buffer);
 
         if (this.isBinaryFile(reader)) {

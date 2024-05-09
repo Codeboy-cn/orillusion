@@ -1,5 +1,9 @@
+import { Sample_Test } from "./base/Sample_Test"
+
 /******** Load all samples in /src/sample/ ********/
-{
+new Sample_Test().run();
+
+if (false) {
     // find all demos in /sample
     const modules = import.meta.glob(['./*/*.ts', '!./*/_*.ts'])
     // create menu

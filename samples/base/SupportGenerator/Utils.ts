@@ -158,7 +158,7 @@ export function asin(a) {
 // as the plane is the set of points r s.t. (r-d) dot n = 0, r dot n = d dot n;
 // if axis is z, rz = (d dot n - rx*nx - ry*ny) / nz
 // if nz == 0, then we can't project, so just return p
-export function projectToPlaneOnAxis(p: Vector3, d: Vector3, n, axis) {
+export function projectToPlaneOnAxis(p: Vector3, d: Vector3, n: Vector3, axis: string) {
   if (axis === undefined) axis = axisDefault;
 
   var ah = cycleAxis(axis);

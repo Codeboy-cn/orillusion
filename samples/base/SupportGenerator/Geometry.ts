@@ -1,10 +1,11 @@
-import { BoundingBox, GeometryBase, Matrix4, MeshRenderer, Vector3, VertexAttributeName } from "@orillusion/core";
+import { BoundingBox, Color, GeometryBase, Matrix4, MeshRenderer, Vector3, VertexAttributeName } from "@orillusion/core";
 
 export class Face {
     public a: number;
     public b: number;
     public c: number;
     public normal: Vector3;
+    public color: Color;
     constructor(a: number, b: number, c: number, normal?: Vector3) {
         this.a = a;
         this.b = b;
@@ -137,6 +138,9 @@ export class Geometry {
         let vertexs = new Float32Array(this.faces.length * 3 * 3);
         let normals = new Float32Array(this.faces.length * 3 * 3);
 
+        // let colors = new Float32Array(this.faces.length * 4 * 3);
+        // let defaultColor = new Color(1, 1, 1, 1);
+
         for (let i = 0; i < this.faces.length; i++) {
             const f = this.faces[i];
             const v1 = this.vertices[f.a];
@@ -174,11 +178,32 @@ export class Geometry {
             normals[i * 9 + 6] = normal.x;
             normals[i * 9 + 7] = normal.y;
             normals[i * 9 + 8] = normal.z;
+
+            // if (colors) {
+            //     const c = f.color || defaultColor;
+            //     colors[i * 12 + 0] = c.r;
+            //     colors[i * 12 + 1] = c.g;
+            //     colors[i * 12 + 2] = c.b;
+            //     colors[i * 12 + 3] = c.a;
+
+            //     colors[i * 12 + 4] = c.r;
+            //     colors[i * 12 + 5] = c.g;
+            //     colors[i * 12 + 6] = c.b;
+            //     colors[i * 12 + 7] = c.a;
+
+            //     colors[i * 12 + 8] =  c.r;
+            //     colors[i * 12 + 9] =  c.g;
+            //     colors[i * 12 + 10] = c.b;
+            //     colors[i * 12 + 11] = c.a;
+            // }
         }
 
         result.setIndices(indices);
         result.setAttribute(VertexAttributeName.position, vertexs);
         result.setAttribute(VertexAttributeName.normal, normals);
+        // if (colors) {
+        //     result.setAttribute(VertexAttributeName.color, colors);
+        // }
 
         result.addSubGeometry({
             indexStart: 0,
@@ -190,6 +215,87 @@ export class Geometry {
             topology: 0,
         });
         return result;
+    }
+
+    public buildCube(pos: Vector3, size: number = 0.2) {
+        const index = this.vertices.length;
+
+        this.vertices.push(new Vector3(-size + pos.x, size + pos.y, -size + pos.z));
+        this.vertices.push(new Vector3(size + pos.x, size + pos.y, -size + pos.z));
+        this.vertices.push(new Vector3(size + pos.x, size + pos.y, size + pos.z));
+        this.vertices.push(new Vector3(-size + pos.x, size + pos.y, size + pos.z));
+
+        this.vertices.push(new Vector3(-size + pos.x, -size + pos.y, -size + pos.z));
+        this.vertices.push(new Vector3(size + pos.x, -size + pos.y, -size + pos.z));
+        this.vertices.push(new Vector3(size + pos.x, -size + pos.y, size + pos.z));
+        this.vertices.push(new Vector3(-size + pos.x, -size + pos.y, size + pos.z));
+
+        // up
+        this.faces.push(new Face(index + 0, index + 1, index + 2));
+        this.faces.push(new Face(index + 2, index + 3, index + 0));
+
+        // down
+        this.faces.push(new Face(index + 4, index + 5, index + 6));
+        this.faces.push(new Face(index + 6, index + 7, index + 4));
+
+        // l
+        this.faces.push(new Face(index + 0, index + 3, index + 7));
+        this.faces.push(new Face(index + 7, index + 4, index + 0));
+
+        // r
+        this.faces.push(new Face(index + 2, index + 1, index + 5));
+        this.faces.push(new Face(index + 5, index + 6, index + 2));
+
+        // f
+        this.faces.push(new Face(index + 1, index + 0, index + 4));
+        this.faces.push(new Face(index + 4, index + 5, index + 1));
+
+        // b
+        this.faces.push(new Face(index + 3, index + 2, index + 7));
+        this.faces.push(new Face(index + 7, index + 6, index + 2));
+    }
+
+    public pushSphere(pos: Vector3, r: number = 0.2, subdivide: number = 8) {
+        const index = this.vertices.length;
+        
+        for (let j = 0; j <= subdivide; ++j) {
+            var horAngle: number = (Math.PI * j) / subdivide;
+            var z: number = -r * Math.cos(horAngle);
+            var ringRadius: number = r * Math.sin(horAngle);
+
+            for (let i = 0; i <= subdivide; ++i) {
+                var verAngle: number = (2 * Math.PI * i) / subdivide;
+                var x: number = ringRadius * Math.cos(verAngle);
+                var y: number = ringRadius * Math.sin(verAngle);
+
+                this.vertices.push(new Vector3(
+                    x + pos.x,
+                    y + pos.y,
+                    z + pos.z
+                ));
+
+                // var normLen: number = 1 / Math.sqrt(x * x + y * y + z * z);
+                // normal_arr[ni++] = x * normLen;
+                // normal_arr[ni++] = y * normLen;
+                // normal_arr[ni++] = z * normLen;
+
+                if (i > 0 && j > 0) {
+                    var a: number = index + (subdivide + 1) * j + i;
+                    var b: number = index + (subdivide + 1) * j + i - 1;
+                    var c: number = index + (subdivide + 1) * (j - 1) + i - 1;
+                    var d: number = index + (subdivide + 1) * (j - 1) + i;
+
+                    if (j == subdivide) {
+                        this.faces.push(new Face(a, c, d));
+                    } else if (j == 1) {
+                        this.faces.push(new Face(a, b, c));
+                    } else {
+                        this.faces.push(new Face(a, b, c));
+                        this.faces.push(new Face(a, c, d));
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -240,7 +346,7 @@ export class Mesh {
 
         let min = mesh.geometry.bounds.min.add(shift);
         let max = mesh.geometry.bounds.max.add(shift);
-        // this.boundingBox.setFromMinMax(min, max);
+        mesh.geometry.bounds.setFromMinMax(min, max);
     }
 
     protected getCenter(): Vector3 {

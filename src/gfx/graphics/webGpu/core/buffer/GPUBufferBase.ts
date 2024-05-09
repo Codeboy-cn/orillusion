@@ -457,7 +457,7 @@ export class GPUBufferBase {
     }
 
     private _readFlag: boolean = false;
-    public readBuffer() {
+    public readBuffer(callback?:Function) {
         this.outFloat32Array ||= new Float32Array(this.memory.shareDataBuffer.byteLength / 4);
 
         if (!this._readBuffer) {
@@ -469,12 +469,12 @@ export class GPUBufferBase {
         }
 
         if (!this._readFlag) {
-            this.read();
+            this.read(callback);
         }
         return this.outFloat32Array;
     }
 
-    private async read() {
+    private async read(callback?:Function) {
         this._readFlag = true;
 
         let command = webGPUContext.device.createCommandEncoder();;
@@ -487,5 +487,9 @@ export class GPUBufferBase {
         // this.memory.shareDataBuffer.set(new Float32Array(copyArrayBuffer), 0);
         this._readBuffer.unmap();
         this._readFlag = false;
+
+        if (callback) {
+            callback();
+        }
     }
 }
