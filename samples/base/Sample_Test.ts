@@ -224,9 +224,9 @@ export class Sample_Test {
         // this.view.graphic3D.drawAxis('axis');
 
         {
-            // const res = 'stls/No_bottom_thick2.5.stl';
+            const res = 'stls/No_bottom_thick2.5.stl';
             // const res = 'stls/testA.stl';
-            const res = 'stls/0325/0325/抽壳/底部孤岛自适应.stl';
+            // const res = 'stls/0325/0325/抽壳/底部孤岛自适应.stl';
 
             let obj = await Engine3D.res.loadSTL(res) as Object3D;
             // let obj = new Object3D();
