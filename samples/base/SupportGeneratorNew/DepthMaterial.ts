@@ -25,14 +25,24 @@ export class DepthMaterial extends Material {
         this.setDefine('USE_METALLIC_B', true);
         this.setDefine('USE_ALPHA_A', true);
         this.setDefine('USE_CUSTOMUNIFORM', true);
+        this.setDefine('USE_ONLY_BOTTOM_EDGE', true);
         
         this.setUniformVector4(`boundMin`, new Vector4(0, 0, 0, 0));
         this.setUniformVector4(`boundMax`, new Vector4(0, 0, 1, 1));
         this.setUniformColor(`baseColor`, new Color());
         this.setUniformFloat(`alphaCutoff`, 0.0);
+        this.setUniformFloat(`onlyBottomEdge`, 0);
 
         // default value
         this.baseMap = Engine3D.res.whiteTexture;
+    }
+
+    public set onlyBottomEdge(enable: boolean ){
+        this.setUniformFloat(`onlyBottomEdge`, enable ? 1: 0);
+    }
+
+    public get onlyBottomEdge(): boolean {
+        return this.getUniformFloat(`onlyBottomEdge`) != 0;
     }
 
     public set boundBox(v: IBound) {
@@ -74,6 +84,7 @@ export class DepthMaterial extends Material {
                 boundMax:vec4<f32>,
                 baseColor: vec4<f32>,
                 alphaCutoff: f32,
+                onlyBottomEdge: f32,
             };
         #endif
 
@@ -108,10 +119,14 @@ export class DepthMaterial extends Material {
             let maxY = materialUniform.boundMax.y;
             var depth = 1.0 - (ORI_VertexVarying.vWorldPos.y - minY) / (maxY - minY);
 
-            if (ORI_VertexVarying.vWorldPos.y - minY <= 1.0) {
-                // discard;
-                depth = 0;
-            }
+            #if USE_ONLY_BOTTOM_EDGE
+                if (materialUniform.onlyBottomEdge != 0 ){
+                    if (ORI_VertexVarying.vWorldPos.y - minY > 1.0) {
+                        discard;
+                        // depth = 0;
+                    }
+                }
+            #endif
 
             ORI_ShadingInput.BaseColor = vec4<f32>(vec3<f32>(depth), 1.0);// materialUniform.baseColor;
             

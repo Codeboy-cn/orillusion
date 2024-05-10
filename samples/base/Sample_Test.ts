@@ -154,19 +154,27 @@ export class Sample_Test {
     protected mainCamera: Camera3D;
     protected orthoCamera: Camera3D;
 
-    protected peer: Window = window.opener || window.parent;
+    protected peer: Window;// = window.opener || window.parent;
     protected supportCalculator: SupportCalculator;
 
+    protected mainCanvas: HTMLCanvasElement;
+
     async run() {
+
+        let canvas = document.createElement('canvas');
+        document.body.appendChild(canvas);
+        this.mainCanvas = canvas;
+
         // init engine
         await Engine3D.init({
-            // canvasConfig: {
-            //     alpha: true,
-            //     backgroundImage: 'logo/bg.webp',
-            // },
+            canvasConfig: {
+                canvas: canvas,
+                // alpha: true,
+                // backgroundImage: 'logo/bg.webp',
+            },
         });
 
-        // GUIHelp.init();
+        GUIHelp.init();
 
         // create new Scene
         let scene = new Scene3D();
@@ -182,8 +190,8 @@ export class Sample_Test {
         this.mainCamera = mainCamera;
         let hoverCameraController = mainCamera.object3D.addComponent(FlyCameraController);
         // hoverCameraController.setCamera(15, -30, 100);
-        GUIHelp.add(mainCamera, "near", 0.001, 200, 0.01);
-        GUIHelp.add(mainCamera, "far", 0.001, 1000, 0.01);
+        // GUIHelp.add(mainCamera, "near", 0.001, 200, 0.01);
+        // GUIHelp.add(mainCamera, "far", 0.001, 1000, 0.01);
 
         // add a basic direct light
         let lightObj = new Object3D();
@@ -216,8 +224,9 @@ export class Sample_Test {
         // this.view.graphic3D.drawAxis('axis');
 
         {
-            const res = 'stls/No_bottom_thick2.5.stl';
-            // const res = 'stls/0325/0325/抽壳/底部孤岛自适应.stl';
+            // const res = 'stls/No_bottom_thick2.5.stl';
+            // const res = 'stls/testA.stl';
+            const res = 'stls/0325/0325/抽壳/底部孤岛自适应.stl';
 
             let obj = await Engine3D.res.loadSTL(res) as Object3D;
             // let obj = new Object3D();
@@ -259,6 +268,11 @@ export class Sample_Test {
                 let depthMaterial = new DepthMaterial();
                 depthMaterial.doubleSide = true;
                 depthMaterial.boundBox = meshObj.bound;
+
+                let bottomEdgeMaterial = new DepthMaterial();
+                bottomEdgeMaterial.doubleSide = true;
+                bottomEdgeMaterial.boundBox = meshObj.bound;
+                bottomEdgeMaterial.onlyBottomEdge = true;
 
                 // this.myRenderer.target = mr2;
                 // mr2.material = depthMaterial;
@@ -316,39 +330,172 @@ export class Sample_Test {
                     if (!this.orthoCamera) {
                         this.orthoCamera = CameraUtil.createCamera3D(null, this.view.scene);
                         let orthoCamera = this.orthoCamera;
-                        orthoCamera.ortho(rectWidth, rectHeight, 0.01, 1000.0);
+                        orthoCamera.ortho(-rectWidth, rectHeight, 0.01, 1000.0);
                         let pos = obj.transform.worldPosition.clone().addScaledVector(Vector3.DOWN, 50);
                         orthoCamera.lookAt(pos, obj.transform.worldPosition, Vector3.Z_AXIS);
                     }
-                    this.view.camera = this.orthoCamera;
 
-                    mr2.material = depthMaterial;
+                    let supportPoint: Object3D = new Object3D();
+                    this.view.scene.addChild(supportPoint);
 
-                    this.peer.postMessage({
-                        rectWidth: rectWidth,
-                        rectHeight: rectHeight,
-                        scaleFactor: 10,
-                    });
+                    let params = {
+                        BorderStep: 10,
+                        BorderOffSize: 5,
+                        KernelStep: 5,
+                        ContourStep: 50,
+                    }
 
-                    window.addEventListener('message', (event) => {
-                        console.warn(event.data);
-                        const lines = event.data;
-                        this.supportCalculator.calculateSupport(lines, (points)=> {
+                    let support = GUIHelp.addFolder('Support');
+                    support.add(params, 'BorderStep', 1, 100);
+                    support.add(params, 'BorderOffSize', 1, 5);
+                    // support.add(params, 'KernelStep', 1, 100);
+                    support.add(params, 'ContourStep', 1, 200);
+                    GUIHelp.addButton('Generate', async () => {
+                        supportPoint.removeAllChild();
+
+                        params.KernelStep = Math.floor(params.ContourStep / 10);
+
+                        this.mainCanvas.removeAttribute('style');
+
+                        this.view.camera = this.orthoCamera;
+
+                        mr2.material = depthMaterial;
+
+                        let lines = await new Promise<{ p0: { x: number; y: number; }; p1: { x: number; y: number; }; }[]>(res => {
+                            let iframe = document.createElement('iframe');
+                            iframe.src = '/support.html';
+                            iframe.setAttribute('style', 'position:fixed; top:0; left:100%; width: 1000px; height: 100%;');
+                            document.body.appendChild(iframe);
+                            this.peer = iframe.contentWindow;
+                            iframe.contentWindow.addEventListener('message', async (event) => {
+                                if (event.data.id === 'ready') {
+                                    console.warn('3D:recv ready.');
+        
+                                    const scaleFactor = 10;
+                                    let width = Math.floor(rectWidth * scaleFactor);
+                                    let height = Math.floor(rectHeight * scaleFactor);
+                                    this.mainCanvas.width = width;
+                                    this.mainCanvas.height = height;
+                                    console.warn('Canvas:', width, height);
+        
+                                    await new Promise(res=>{
+                                        setTimeout(() => {
+                                           res(true);
+                                        }, 100);
+                                    })
+        
+                                    var imageDataURL = this.mainCanvas.toDataURL('image/png');
+    
+                                    mr2.material = bottomEdgeMaterial;
+    
+                                    event.source.postMessage({
+                                        id: 'reqLines',
+                                        imageData: imageDataURL,
+                                        // data: {
+                                        //     rectWidth: rectWidth,
+                                        //     rectHeight: rectHeight,
+                                        //     scaleFactor: scaleFactor,
+                                        // },
+                                        params: params,
+                                    });
+        
+                                    return;
+                                }
+        
+                                if (event.data.id === 'resLines') {
+                                    console.warn('recv: lines');
+                                    // iframe.remove();
+                                    res(event.data.lines);
+                                    return;
+                                }
+                            });
+                        })
+    
+                        let borderPoints = await new Promise<number[][]>(res => {
+                            let iframe = document.createElement('iframe');
+                            iframe.src = '/supportBorder.html';
+                            iframe.setAttribute('style', 'position:fixed; top:0; left:100%; width: 1000px; height: 100%;');
+                            document.body.appendChild(iframe);
+                            this.peer = iframe.contentWindow;
+                            iframe.contentWindow.addEventListener('message', async (event) => {
+                                if (event.data.id === 'ready') {
+                                    console.warn('3D:recv ready.');
+    
+                                    var imageDataURL = this.mainCanvas.toDataURL('image/png');
+    
+                                    mr2.material = depthMaterial;
+    
+                                    event.source.postMessage({
+                                        id: 'reqBorder',
+                                        imageData: imageDataURL,
+                                        params: params,
+                                    });
+        
+                                    return;
+                                }
+        
+                                if (event.data.id === 'resBorder') {
+                                    console.warn('recv: Border');
+                                    // iframe.remove();
+                                    res(event.data.borderPoints);
+                                    return;
+                                }
+                            });
+                        })
+    
+                        function dis(x1, y1, x2, y2){
+                            return Math.sqrt((x1-x2)*(x1-x2) + (y1-y2)*(y1-y2))
+                        }
+    
+                        const maxDis = params.ContourStep;
+    
+                        let newLines = [];
+                        for (let line of lines) {
+                            let remove = false;
+                            for (let p of borderPoints) {
+                                const x = p[0]; const y = p[1];
+                                let d = dis(line.p0.x, line.p0.y, x, y);
+                                if (d <= maxDis) {
+                                    remove = true;
+                                    break;
+                                }
+                            }
+    
+                            if (!remove){
+                                newLines.push(line);
+                            }
+                        }
+    
+                        // console.warn('lines:', lines);
+                        // console.warn('newLines:', newLines);
+    
+                        for (let p of borderPoints) {
+                            let pos = {
+                                x: p[0],
+                                y: p[1],
+                            };
+                            newLines.push({
+                                p0: pos,
+                                p1: pos,
+                            })
+                        }
+    
+                        this.supportCalculator.calculateSupport(newLines, (points)=> {
                             let geo = new SphereGeometry(0.2, 8, 8);
                             let mat = new UnLitMaterial();
                             let removeMat = new UnLitMaterial();
                             removeMat.baseColor = new Color(1, 1, 0);
-
+    
                             let centerMat = new UnLitMaterial();
                             centerMat.baseColor = new Color(0, 1, 1);
-
+    
                             mat.baseColor = new Color(1, 0, 0);
                             for (let pos of points) {
                                 let obj = new Object3D();
                                 let mr = obj.addComponent(MeshRenderer);
                                 mr.geometry = geo;
                                 // mr.material = pos.reserve ? mat : removeMat;
-
+    
                                 if (pos.reserve == 10000) {
                                     mr.material = centerMat;
                                 } else if (pos.reserve >= 0) {
@@ -356,19 +503,32 @@ export class Sample_Test {
                                 } else {
                                     mr.material = removeMat;
                                 }
-
-
+    
                                 obj.x = pos.x;
                                 obj.y = pos.y;
                                 obj.z = pos.z;
-                                this.view.scene.addChild(obj);
-
-                                console.warn(pos.x, pos.y, pos.z);
+                                supportPoint.addChild(obj);
+    
+                                // console.warn(pos.x, pos.y, pos.z);
                             }
-
+    
+                            let pos = obj.transform.worldPosition.clone().addScaledVector(Vector3.DOWN, 100);
+                            this.mainCamera.lookAt(pos, obj.transform.worldPosition, Vector3.Z_AXIS);
+    
                             this.view.camera = this.mainCamera;
+                            // this.mainCanvas.style.width = '100%';
+                            // this.mainCanvas.style.height = '100%';
                         });
                     });
+                    GUIHelp.addButton('Remove', () => {
+                        supportPoint.removeAllChild();
+                    });
+                    GUIHelp.addButton('MainCamera', () => {
+                        this.view.camera = this.mainCamera;
+                    });
+                    support.open();
+
+
                 }
 
                 // let params = {

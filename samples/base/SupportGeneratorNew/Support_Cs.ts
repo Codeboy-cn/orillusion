@@ -22,39 +22,36 @@ export let Support_Cs: string = /*wgsl*/ `
       let aa = textureDimensions(visibleMap).xy;
       let bb = textureDimensions(normalTexture).xy;
 
-      // let PI = 3.1415926535;
       let index: u32 = globalInvocation_id.x;
       let data: SupportData = supportBuffer[index];
       let p0: vec3<f32> = screenPosToSpacePosition(data.p0);
       let p1: vec3<f32> = screenPosToSpacePosition(data.p1);
-      let angle = computeAngleWithHorizontalPlane(p0, p1);
-      let threshold = 10 * (PI / 180.0);
+      let angle: f32 = computeAngleWithHorizontalPlane(p0, p1) * (180.0 / PI);
+      let threshold: f32 = 45.0;
 
       // supportBuffer[index].position = p0;
       // supportBuffer[index].reserve = 1;
 
+      // central point
       if (data.p0.x == data.p1.x && data.p0.y == data.p1.y) {
         supportBuffer[index].position = p0;
         supportBuffer[index].reserve = 10000;
-      } else if (i32(p0.x) == 0 && i32(p0.y) == 0 && i32(p0.z) == 0) {
+      } 
+      // Invalid point
+      else if (i32(p0.x) == 0 && i32(p0.y) == 0 && i32(p0.z) == 0) {
         supportBuffer[index].reserve = -1;
         // supportBuffer[index].position = vec3<f32>(data.p0.x, data.p0.y, 0);
-      } else if (angle <= threshold) {
+      } 
+      // Angle filtration
+      else if (angle <= threshold) {
         supportBuffer[index].position = p0;
-        supportBuffer[index].reserve = f32(angle * (180.0 / PI)); // 1;
-      } else {
+        supportBuffer[index].reserve = angle;
+      } 
+      // removed point
+      else {
         supportBuffer[index].position = p0;
-        supportBuffer[index].reserve = -f32(angle * (180.0 / PI));
+        supportBuffer[index].reserve = -angle;
       }
-
-      // if (angle <= threshold) {
-      //   supportBuffer[index].position = p0;
-      //   // supportBuffer[index].reserve = 1;
-      // } else {
-      //   // supportBuffer[index].reserve = 0;
-      // }
-
-      // supportBuffer[index].reserve = f32(angle * (180.0 / PI));
     }
 
     fn screenPosToSpacePosition(screenPos: vec2<f32>) -> vec3<f32> {
@@ -63,7 +60,7 @@ export let Support_Cs: string = /*wgsl*/ `
         screenPos.x / globalUniform.windowWidth,
         screenPos.y / globalUniform.windowHeight
       );
-      screenPoint.x = 1.0 - screenPoint.x;
+      // screenPoint.x = 1.0 - screenPoint.x;
       let coord: vec2<i32> = vec2<i32>(screenPoint * vec2<f32>(texSize.xy));
       let info = textureLoad(visibleMap, coord, 0);
       let position: vec3<f32> = info.xyz;
