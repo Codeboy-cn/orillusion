@@ -1,4 +1,4 @@
-import { Engine3D, Scene3D, CameraUtil, View3D, AtmosphericComponent, ComponentBase, Time, AxisObject, Object3DUtil, KelvinUtil, DirectLight, Object3D, HoverCameraController, MeshRenderer, LitMaterial, BoxGeometry, UnLit, UnLitMaterial, Interpolator, VertexAttributeName, GeometryBase, Color, Vector3, GPUPrimitiveTopology, FlyCameraController, GPUCullMode, BoundingBox, RenderNode, Matrix4, PlaneGeometry, SphereGeometry, Camera3D, RendererBase, OcclusionSystem, ClusterLightingBuffer, PassType, VirtualTexture, webGPUContext, GPUTextureFormat, PostBase, ComputeShader, RendererPassState, WebGPUDescriptorCreator, ComputeGPUBuffer, GBufferFrame, RTFrame, GPUContext, RTDescriptor, EntityCollect, PostProcessingComponent, GlobalBindGroup } from "@orillusion/core";
+import { Engine3D, Scene3D, CameraUtil, View3D, AtmosphericComponent, ComponentBase, Time, AxisObject, Object3DUtil, KelvinUtil, DirectLight, Object3D, HoverCameraController, MeshRenderer, LitMaterial, BoxGeometry, UnLit, UnLitMaterial, Interpolator, VertexAttributeName, GeometryBase, Color, Vector3, GPUPrimitiveTopology, FlyCameraController, GPUCullMode, BoundingBox, RenderNode, Matrix4, PlaneGeometry, SphereGeometry, Camera3D, RendererBase, OcclusionSystem, ClusterLightingBuffer, PassType, VirtualTexture, webGPUContext, GPUTextureFormat, PostBase, ComputeShader, RendererPassState, WebGPUDescriptorCreator, ComputeGPUBuffer, GBufferFrame, RTFrame, GPUContext, RTDescriptor, EntityCollect, PostProcessingComponent, GlobalBindGroup, UniformGPUBuffer, Material } from "@orillusion/core";
 import { GUIHelp } from "@orillusion/debug/GUIHelp";
 import { SupportGenerator } from "./SupportGenerator/SupportGenerator";
 import { Octree } from "./SupportGenerator/Octree";
@@ -10,19 +10,27 @@ class SupportCalculator extends PostBase {
     public state: string = 'init';
     public lineCount: number = 0;
     public supportCompute: ComputeShader;
+    public paramsSetting: UniformGPUBuffer;
     public supportBuffer: ComputeGPUBuffer;
     public rendererPassState: RendererPassState;
     public callback: Function;
 
+    public maxAngle: number = 45;
+
     private createResource() {
-        // let [w, h] = webGPUContext.presentationSize;
-        // this.supportBuffer && this.supportBuffer.destroy();
-        // this.supportBuffer = new ComputeGPUBuffer(this.heightTexture.width * this.heightTexture.height);
+        if (!this.paramsSetting) {
+            this.paramsSetting = new UniformGPUBuffer(4 * 2);
+        }
+        this.paramsSetting.setFloat('maxAngle', this.maxAngle);
+        this.paramsSetting.setVector3('reserve', Vector3.ZERO);
+        this.paramsSetting.apply();
     }
 
     private createCompute() {
         this.supportCompute && this.supportCompute.destroy();
         this.supportCompute = new ComputeShader(Support_Cs);
+
+        this.supportCompute.setUniformBuffer('params', this.paramsSetting);
 
         let rtFrame = GBufferFrame.getGBufferFrame("ColorPassGBuffer");
         this.supportCompute.setSamplerTexture('visibleMap', rtFrame.getPositionMap());
@@ -164,6 +172,8 @@ export class Sample_Test {
         let canvas = document.createElement('canvas');
         document.body.appendChild(canvas);
         this.mainCanvas = canvas;
+        this.mainCanvas.style.width = '100%';
+        this.mainCanvas.style.height = '100%';
 
         // init engine
         await Engine3D.init({
@@ -340,9 +350,10 @@ export class Sample_Test {
 
                     let params = {
                         BorderStep: 10,
-                        BorderOffSize: 5,
+                        BorderOffSize: 3,
                         KernelStep: 5,
                         ContourStep: 50,
+                        SupportAngle: 45,
                     }
 
                     let support = GUIHelp.addFolder('Support');
@@ -350,8 +361,11 @@ export class Sample_Test {
                     support.add(params, 'BorderOffSize', 1, 5);
                     // support.add(params, 'KernelStep', 1, 100);
                     support.add(params, 'ContourStep', 1, 200);
+                    support.add(params, 'SupportAngle', 1, 90);
                     GUIHelp.addButton('Generate', async () => {
                         supportPoint.removeAllChild();
+
+                        this.supportCalculator.maxAngle = params.SupportAngle;
 
                         params.KernelStep = Math.floor(params.ContourStep / 10);
 
@@ -390,13 +404,8 @@ export class Sample_Test {
     
                                     event.source.postMessage({
                                         id: 'reqLines',
-                                        imageData: imageDataURL,
-                                        // data: {
-                                        //     rectWidth: rectWidth,
-                                        //     rectHeight: rectHeight,
-                                        //     scaleFactor: scaleFactor,
-                                        // },
                                         params: params,
+                                        imageData: imageDataURL,
                                     });
         
                                     return;
@@ -404,7 +413,7 @@ export class Sample_Test {
         
                                 if (event.data.id === 'resLines') {
                                     console.warn('recv: lines');
-                                    // iframe.remove();
+                                    iframe.remove();
                                     res(event.data.lines);
                                     return;
                                 }
@@ -436,7 +445,7 @@ export class Sample_Test {
         
                                 if (event.data.id === 'resBorder') {
                                     console.warn('recv: Border');
-                                    // iframe.remove();
+                                    iframe.remove();
                                     res(event.data.borderPoints);
                                     return;
                                 }
@@ -461,52 +470,71 @@ export class Sample_Test {
                                 }
                             }
     
-                            if (!remove){
+                            if (!remove) {
                                 newLines.push(line);
                             }
                         }
-    
-                        // console.warn('lines:', lines);
-                        // console.warn('newLines:', newLines);
-    
+
+                        // let newBorderPoints = [];
+
                         for (let p of borderPoints) {
-                            let pos = {
-                                x: p[0],
-                                y: p[1],
-                            };
-                            newLines.push({
-                                p0: pos,
-                                p1: pos,
-                            })
+
+                            // let remove = false;
+                            // for (let p2 of newBorderPoints) {
+                            //     let d = dis(p[0], p[1], p2[0], p2[1]);
+                            //     if (d < Math.floor(params.BorderStep * 0.5)) {
+                            //         remove = true;
+                            //         break;
+                            //     }
+                            // }
+
+                            // if (!remove) 
+                            {
+                                // newBorderPoints.push(p);
+                                let pos = {
+                                    x: p[0],
+                                    y: p[1],
+                                };
+                                newLines.push({
+                                    p0: pos,
+                                    p1: pos,
+                                })
+                            }
                         }
     
                         this.supportCalculator.calculateSupport(newLines, (points)=> {
                             let geo = new SphereGeometry(0.2, 8, 8);
-                            let mat = new UnLitMaterial();
-                            let removeMat = new UnLitMaterial();
-                            removeMat.baseColor = new Color(1, 1, 0);
+
+                            let supportPointMat = new UnLitMaterial();
+                            supportPointMat.baseColor = new Color(0.2, 0.3, 1);
+
+                            let removePointMat = new UnLitMaterial();
+                            removePointMat.baseColor = new Color(1, 1, 0);
     
-                            let centerMat = new UnLitMaterial();
-                            centerMat.baseColor = new Color(0, 1, 1);
-    
-                            mat.baseColor = new Color(1, 0, 0);
+                            let centerPointMat = new UnLitMaterial();
+                            centerPointMat.baseColor = new Color(0, 1, 1);
+                            
                             for (let pos of points) {
-                                let obj = new Object3D();
-                                let mr = obj.addComponent(MeshRenderer);
-                                mr.geometry = geo;
-                                // mr.material = pos.reserve ? mat : removeMat;
-    
+
+                                let useMaterial: Material;
+
                                 if (pos.reserve == 10000) {
-                                    mr.material = centerMat;
+                                    useMaterial = supportPointMat; // centerPointMat;
                                 } else if (pos.reserve >= 0) {
-                                    mr.material = mat;
+                                    useMaterial = supportPointMat;
                                 } else {
-                                    mr.material = removeMat;
+                                    useMaterial = removePointMat;
+                                    continue;
                                 }
-    
+
+                                let obj = new Object3D();
                                 obj.x = pos.x;
                                 obj.y = pos.y;
                                 obj.z = pos.z;
+
+                                let mr = obj.addComponent(MeshRenderer);
+                                mr.geometry = geo;
+                                mr.material = useMaterial;
                                 supportPoint.addChild(obj);
     
                                 // console.warn(pos.x, pos.y, pos.z);
@@ -516,19 +544,21 @@ export class Sample_Test {
                             this.mainCamera.lookAt(pos, obj.transform.worldPosition, Vector3.Z_AXIS);
     
                             this.view.camera = this.mainCamera;
-                            // this.mainCanvas.style.width = '100%';
-                            // this.mainCanvas.style.height = '100%';
+                            this.mainCanvas.style.width = '100%';
+                            this.mainCanvas.style.height = '100%';
                         });
                     });
                     GUIHelp.addButton('Remove', () => {
                         supportPoint.removeAllChild();
                     });
-                    GUIHelp.addButton('MainCamera', () => {
-                        this.view.camera = this.mainCamera;
+                    GUIHelp.addButton('SwitchCamera', () => {
+                        if (this.view.camera === this.mainCamera) {
+                            this.view.camera = this.orthoCamera;
+                        } else {
+                            this.view.camera = this.mainCamera;
+                        }
                     });
                     support.open();
-
-
                 }
 
                 // let params = {

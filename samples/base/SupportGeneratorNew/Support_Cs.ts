@@ -2,6 +2,11 @@ export let Support_Cs: string = /*wgsl*/ `
 
     #include "GlobalUniform"
 
+    struct GlobalParams {
+      maxAngle: f32,
+      reserve: vec3<f32>,
+    }
+
     struct SupportData {
       p0: vec2<f32>,
       p1: vec2<f32>,
@@ -10,9 +15,10 @@ export let Support_Cs: string = /*wgsl*/ `
     };
 
     //@group(0) @binding(0) var<uniform> globalUniform: GlobalUniform;
-    @group(0) @binding(1) var visibleMap : texture_2d<f32>;
-    @group(0) @binding(2) var normalTexture : texture_2d<f32>;
-    @group(0) @binding(3) var<storage, read_write> supportBuffer : array<SupportData>;
+    @group(0) @binding(1) var<uniform> params: GlobalParams;
+    @group(0) @binding(2) var visibleMap : texture_2d<f32>;
+    @group(0) @binding(3) var normalTexture : texture_2d<f32>;
+    @group(0) @binding(4) var<storage, read_write> supportBuffer : array<SupportData>;
 
     var<private> PI:f32 = 3.1415926535;
 
@@ -27,7 +33,7 @@ export let Support_Cs: string = /*wgsl*/ `
       let p0: vec3<f32> = screenPosToSpacePosition(data.p0);
       let p1: vec3<f32> = screenPosToSpacePosition(data.p1);
       let angle: f32 = computeAngleWithHorizontalPlane(p0, p1) * (180.0 / PI);
-      let threshold: f32 = 45.0;
+      let threshold: f32 = params.maxAngle;
 
       // supportBuffer[index].position = p0;
       // supportBuffer[index].reserve = 1;
@@ -60,7 +66,6 @@ export let Support_Cs: string = /*wgsl*/ `
         screenPos.x / globalUniform.windowWidth,
         screenPos.y / globalUniform.windowHeight
       );
-      // screenPoint.x = 1.0 - screenPoint.x;
       let coord: vec2<i32> = vec2<i32>(screenPoint * vec2<f32>(texSize.xy));
       let info = textureLoad(visibleMap, coord, 0);
       let position: vec3<f32> = info.xyz;
@@ -80,27 +85,5 @@ export let Support_Cs: string = /*wgsl*/ `
       }
 
       return angleRadians - PI / 2;
-
-      // angleRadians = PI / 2 - angleRadians;
-      // return angleRadians;
-
-      // if (angleRadians > PI / 2){
-      //   angleRadians = PI - angleRadians;
-      // }
-      // return angleRadians;
     }
-
-    // fn computeAngleWithHorizontalPlane_Old(p0: vec3<f32>, p1: vec3<f32>) -> f32 {
-    //   let horizontalNormal = vec3<f32>(0.0, 0.0, 1.0);
-    //   let v: vec3<f32> = p1 - p0;
-    //   let dotProduct: f32 = dot(v, horizontalNormal);
-    //   let lengthV: f32 = length(v);
-    //   let cosTheta: f32 = dotProduct / lengthV;
-    //   var angleRadians: f32 = acos(cosTheta);
-    //   if (angleRadians > PI / 2){
-    //     angleRadians -= PI / 2;
-    //   }
-    //   return angleRadians;
-    // }
-
 `;
