@@ -120,7 +120,7 @@ export class DepthMaterial extends Material {
             var depth = 1.0 - (ORI_VertexVarying.vWorldPos.y - minY) / (maxY - minY);
 
             #if USE_ONLY_BOTTOM_EDGE
-                if (materialUniform.onlyBottomEdge != 0 ){
+                if (materialUniform.onlyBottomEdge != 0 ) {
                     if (ORI_VertexVarying.vWorldPos.y - minY > 1.0) {
                         discard;
                         // depth = 0;
@@ -128,8 +128,11 @@ export class DepthMaterial extends Material {
                 }
             #endif
 
-            ORI_ShadingInput.BaseColor = vec4<f32>(vec3<f32>(depth), 1.0);// materialUniform.baseColor;
-            
+            var normal = ORI_VertexVarying.vWorldNormal;
+            normal = (normal + 1.0) * 0.5;
+
+            ORI_ShadingInput.BaseColor = vec4<f32>(vec3<f32>(normal), 1.0);// materialUniform.baseColor;
+
             UnLit();
         }
     `;

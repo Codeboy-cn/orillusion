@@ -13,7 +13,7 @@ export class SupportGenerator {
     public octree: Octree;
     public vertices: Array<Vector3>;
     public matrixWorld: Matrix4;
-    
+
     constructor(mesh: Mesh, octree: any) {
         this.mesh = mesh;
 
@@ -32,7 +32,7 @@ export class SupportGenerator {
         return r + k * Math.sqrt(w);
     }
 
-    public Generate(params: SupportGeneratorParams) {
+    public Generate(params: SupportGeneratorParams, points) {
         let angleDegrees = params.angle || 45;
         let resolution = params.resolution || 0.3;
         let layerHeight = params.layerHeight || 0.1;
@@ -83,22 +83,13 @@ export class SupportGenerator {
 
         const resolutionBackup = resolution;
 
-        let supportFaces = getBottomEdgesSupportFaces();
+        // let supportFaces = getBottomEdgesSupportFaces();
 
         // rasterize each overhang face set to find sampling points over every set
 
         resolution /= 4;
-        let points = samplePoints(supportFaces);
+        // let points = samplePoints(supportFaces);
         resolution = resolutionBackup;
-
-        
-        {
-            const supportFaces = getSupportFacesNotBottomEdges();
-
-            let points_NotBottomEdges = samplePoints(supportFaces);
-
-            points.push(...points_NotBottomEdges);
-        }
 
         // create the underlying structure for the support trees
         let supportTrees = buildSupportTrees(points);
@@ -109,12 +100,13 @@ export class SupportGenerator {
             supportPoint: new Geometry(),
             supportTree: new Geometry(),
             supportFaces: new Geometry(),
+            testPoints: [],
         };
 
         const supportTreeGeometry = result.supportTree;
 
         // Debug: show support faces
-        if (true) {
+        if (false) {
             let i = 0;
             const supportFaces = getBottomEdgesSupportFaces();
             for (let face of supportFaces) {
@@ -165,6 +157,8 @@ export class SupportGenerator {
             let tree = supportTrees[s];
             //tree.debug();
             tree.writeToGeometry(treeWriteParams);
+
+            result.testPoints.push(tree.p);
         }
 
         // TODO: impl computeFaceNormals
@@ -513,7 +507,7 @@ export class SupportGenerator {
                 if (value > bottomEdges_dotProductCutoff && faceMin <= minFaceHeight) {
                     continue;
                 }
-                
+
                 let faceMax = Math.max(a[axis], b[axis], c[axis]);
                 if (value > dotProductCutoff && faceMax > minFaceMax) {
                     supportFaces.push(face);

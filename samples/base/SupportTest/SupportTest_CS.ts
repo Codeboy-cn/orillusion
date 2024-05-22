@@ -1,6 +1,4 @@
-export let Support_Cs: string = /*wgsl*/ `
-
-    #include "GlobalUniform"
+export let SupportTest_CS: string = /*wgsl*/ `
 
     struct GlobalParams {
       maxAngle: f32,
@@ -14,11 +12,16 @@ export let Support_Cs: string = /*wgsl*/ `
       reserve: f32,
     };
 
-    //@group(0) @binding(0) var<uniform> globalUniform: GlobalUniform;
-    @group(0) @binding(1) var<uniform> params: GlobalParams;
-    @group(0) @binding(2) var visibleMap : texture_2d<f32>;
-    @group(0) @binding(3) var normalTexture : texture_2d<f32>;
-    @group(0) @binding(4) var<storage, read_write> supportBuffer : array<SupportData>;
+    struct Vertex {
+      position: vec3<f32>,
+    };
+
+    @group(0) @binding(0) var<uniform> params: GlobalParams;
+    @group(0) @binding(1) var<storage, read> indexesBuffer : array<u32>;
+    @group(0) @binding(2) var<storage, read> vertexBuffer : array<Vertex>;
+    @group(0) @binding(1) var visibleMap : texture_2d<f32>;
+    @group(0) @binding(2) var normalTexture : texture_2d<f32>;
+    @group(0) @binding(3) var<storage, read_write> supportBuffer : array<SupportData>;
 
     var<private> PI:f32 = 3.1415926535;
 

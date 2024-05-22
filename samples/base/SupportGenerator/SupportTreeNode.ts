@@ -25,6 +25,8 @@ export class SupportTreeNode {
     public p1: number[];
     public ps: number[];
 
+    public p: Vector3;
+
     constructor(v: Vector3, b0?, b1?, params?) {
         this.v = v;
 
@@ -116,6 +118,7 @@ export class SupportTreeNode {
             // point where the profile center will go
             var endOffset = this.noTaper ? 0 : -endOffsetFactor * r;
             var p = this.v.clone().addScaledVector(vn, endOffset);
+            this.p = n.v;
 
             // two axes orthogonal to strut axis
             var b = orthogonalVector(vn).normalize();

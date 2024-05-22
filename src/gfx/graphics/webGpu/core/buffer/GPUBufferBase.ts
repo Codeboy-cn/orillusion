@@ -456,8 +456,10 @@ export class GPUBufferBase {
         }
     }
 
-    private _readFlag: boolean = false;
-    public readBuffer(callback?:Function) {
+    public readBuffer(): Float32Array
+    public readBuffer(promise: false) : Float32Array
+    public readBuffer(promise: true) : Promise<Float32Array>
+    public readBuffer(promise = false) {
         this.outFloat32Array ||= new Float32Array(this.memory.shareDataBuffer.byteLength / 4);
 
         if (!this._readBuffer) {
@@ -468,28 +470,26 @@ export class GPUBufferBase {
             });
         }
 
-        if (!this._readFlag) {
-            this.read(callback);
-        }
-        return this.outFloat32Array;
+        let p = this.read();
+        return promise ? p : this.outFloat32Array;
     }
 
-    private async read(callback?:Function) {
-        this._readFlag = true;
+    private _readFlag: boolean = false;
+    private async read() {
+        if (!this._readFlag) {
+            this._readFlag = true;
 
-        let command = webGPUContext.device.createCommandEncoder();;
-        command.copyBufferToBuffer(this.buffer, 0, this._readBuffer, 0, this.memory.shareDataBuffer.byteLength);
-        webGPUContext.device.queue.submit([command.finish()]);
+            let command = webGPUContext.device.createCommandEncoder();;
+            command.copyBufferToBuffer(this.buffer, 0, this._readBuffer, 0, this.memory.shareDataBuffer.byteLength);
+            webGPUContext.device.queue.submit([command.finish()]);
 
-        await this._readBuffer.mapAsync(GPUMapMode.READ);
-        const copyArrayBuffer = this._readBuffer.getMappedRange();
-        this.outFloat32Array.set(new Float32Array(copyArrayBuffer), 0);
-        // this.memory.shareDataBuffer.set(new Float32Array(copyArrayBuffer), 0);
-        this._readBuffer.unmap();
-        this._readFlag = false;
-
-        if (callback) {
-            callback();
+            await this._readBuffer.mapAsync(GPUMapMode.READ);
+            const copyArrayBuffer = this._readBuffer.getMappedRange();
+            this.outFloat32Array.set(new Float32Array(copyArrayBuffer), 0);
+            // this.memory.shareDataBuffer.set(new Float32Array(copyArrayBuffer), 0);
+            this._readBuffer.unmap();
+            this._readFlag = false;
         }
+        return this.outFloat32Array;
     }
 }

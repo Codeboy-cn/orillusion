@@ -1,4 +1,5 @@
 import { BoundingBox, Color, GeometryBase, Matrix4, MeshRenderer, Vector3, VertexAttributeName } from "@orillusion/core";
+import { orthogonalVector } from "./Utils";
 
 export class Face {
     public a: number;
@@ -296,6 +297,170 @@ export class Geometry {
                 }
             }
         }
+    }
+
+    public buildSupportPillarNew(startPoint: Vector3, endPoint: Vector3, subdivs: number = 4) {
+        // var vn = endPoint.clone().subVectors(endPoint, startPoint).normalize();
+
+        // var endOffset = 0;// this.noTaper ? 0 : -endOffsetFactor * r;
+        // var p = startPoint.clone().addScaledVector(vn, endOffset);
+        // var b = orthogonalVector(vn).normalize();
+        // var c = vn.crossProduct(b);
+
+        // var sidx = this.vertices.length;
+
+        // var ps = [];
+
+        // const isRoot = true;
+        // var pi2 = Math.PI * 2;
+        // var aincr = (isRoot ? 1 : -1) * pi2 / subdivs;
+        // var r = r; // this.noTaper ? r : params.taperFactor * r;
+
+        // for (var ia = 0; ia < subdivs; ia++) {
+        //     var a = ia * aincr;
+        //     this.vertices.push(
+        //         p.clone()
+        //             .addScaledVector(b, r * Math.cos(a))
+        //             .addScaledVector(c, r * Math.sin(a))
+        //     );
+        //     ps.push(sidx + ia);
+        // }
+
+        // this.vertices.push(p);
+        // ps.push(sidx + subdivs);
+
+        var vn = endPoint.clone().subVectors(endPoint, startPoint).normalize();
+        var p = startPoint.clone().addScaledVector(vn, 0);
+        var b = orthogonalVector(vn).normalize();
+        var c = vn.crossProduct(b);
+
+        const radius = 0.1;
+        const aincr = Math.PI * 2.0 / subdivs;
+
+        let sp = []
+        let sidx = this.vertices.length;
+        for (var i = 0; i < subdivs; i++) {
+            let a = i * aincr;
+            this.vertices.push(
+                startPoint.clone()
+                    .addScaledVector(b, radius * Math.cos(a))
+                    .addScaledVector(c, radius * Math.sin(a))
+            );
+            sp.push(sidx + i);
+        }
+
+        // this.vertices.push(p);
+
+        let tp = []
+        let tidx = this.vertices.length;
+        for (var i = 0; i < subdivs; i++) {
+            let a = i * aincr;
+            this.vertices.push(
+                endPoint.clone()
+                    .addScaledVector(b, radius * Math.cos(a))
+                    .addScaledVector(c, radius * Math.sin(a))
+            );
+            tp.push(tidx + i);
+        }
+
+        // this.vertices.push(p);
+
+        for (var i = 0; i < subdivs; i++) {
+            let a = tp[(tidx + i) % subdivs];
+            let b = tp[(tidx + i + 1) % subdivs];
+            let c = sp[i];
+            let d = sp[(i + 1) % subdivs];
+
+            this.faces.push(new Face(a, c, d));
+            this.faces.push(new Face(a, d, b));
+        }
+    }
+
+    public buildSupportPillar(p0: Vector3, p1: Vector3, size: number = 0.5, subdivs: number = 4) {
+        const index = this.vertices.length;
+
+        this.vertices.push(new Vector3(-size + p0.x, 0 + p0.y, -size + p0.z));
+        this.vertices.push(new Vector3(size + p0.x, 0 + p0.y, -size + p0.z));
+        this.vertices.push(new Vector3(size + p0.x, 0 + p0.y, size + p0.z));
+        this.vertices.push(new Vector3(-size + p0.x, 0 + p0.y, size + p0.z));
+
+        this.vertices.push(new Vector3(-size + p1.x, -0 + p1.y, -size + p1.z));
+        this.vertices.push(new Vector3(size + p1.x, -0 + p1.y, -size + p1.z));
+        this.vertices.push(new Vector3(size + p1.x, -0 + p1.y, size + p1.z));
+        this.vertices.push(new Vector3(-size + p1.x, -0 + p1.y, size + p1.z));
+
+        // up
+        this.faces.push(new Face(index + 0, index + 1, index + 2));
+        this.faces.push(new Face(index + 2, index + 3, index + 0));
+
+        // down
+        this.faces.push(new Face(index + 4, index + 5, index + 6));
+        this.faces.push(new Face(index + 6, index + 7, index + 4));
+
+        // l
+        this.faces.push(new Face(index + 0, index + 3, index + 7));
+        this.faces.push(new Face(index + 7, index + 4, index + 0));
+
+        // r
+        this.faces.push(new Face(index + 2, index + 1, index + 5));
+        this.faces.push(new Face(index + 5, index + 6, index + 2));
+
+        // f
+        this.faces.push(new Face(index + 1, index + 0, index + 4));
+        this.faces.push(new Face(index + 4, index + 5, index + 1));
+
+        // b
+        this.faces.push(new Face(index + 3, index + 2, index + 7));
+        this.faces.push(new Face(index + 7, index + 6, index + 2));
+    }
+
+    public buildConnectRod(p0: Vector3, p1: Vector3, radius: number = 0.5, subdivs: number = 4) {
+        subdivs = Math.max(subdivs, 3);
+
+        // Direction from p0 to p1
+        let direction = Vector3.sub(p1, p0);
+        direction.normalize();
+
+        // Generate an arbitrary perpendicular vector
+        let up = new Vector3(0, 1, 0);
+        if (Math.abs(direction.y) > 0.999) {
+            up = new Vector3(1, 0, 0);
+        }
+        let right = direction.crossProduct(up);
+        right.normalize();
+        up = right.crossProduct(direction);
+
+        // Generate vertices
+        const sidx = this.vertices.length;
+        for (let i = 0; i <= subdivs; i++) {
+            let theta = (i / subdivs) * 2 * Math.PI;
+            let cosTheta = Math.cos(theta);
+            let sinTheta = Math.sin(theta);
+            let x = cosTheta * radius;
+            let y = sinTheta * radius;
+
+            let offsetRight = right.clone().scaleBy(x);
+            let offsetUp = up.clone().scaleBy(y);
+
+            let vertexBottom = Vector3.add(p0, Vector3.add(offsetRight, offsetUp));
+            let vertexTop = Vector3.add(p1, Vector3.add(offsetRight, offsetUp));
+
+            this.vertices.push(vertexBottom);
+            this.vertices.push(vertexTop);
+        }
+
+        // Generate indices
+        for (let i = 0; i < subdivs; i++) {
+            let i0 = i * 2;
+            let i1 = i0 + 1;
+            let i2 = (i0 + 2) % (subdivs * 2);
+            let i3 = (i1 + 2) % (subdivs * 2);
+
+            this.faces.push(new Face(sidx + i0, sidx + i2, sidx + i1));
+            this.faces.push(new Face(sidx + i1, sidx + i2, sidx + i3));
+        }
+
+        return this;
     }
 }
 
