@@ -32,6 +32,7 @@ export class DepthMaterial extends Material {
         this.setUniformColor(`baseColor`, new Color());
         this.setUniformFloat(`alphaCutoff`, 0.0);
         this.setUniformFloat(`onlyBottomEdge`, 0);
+        this.setUniformFloat(`discardMaxHeight`, 0.1);
 
         // default value
         this.baseMap = Engine3D.res.whiteTexture;
@@ -85,6 +86,7 @@ export class DepthMaterial extends Material {
                 baseColor: vec4<f32>,
                 alphaCutoff: f32,
                 onlyBottomEdge: f32,
+                discardMaxHeight: f32,
             };
         #endif
 
@@ -121,9 +123,8 @@ export class DepthMaterial extends Material {
 
             #if USE_ONLY_BOTTOM_EDGE
                 if (materialUniform.onlyBottomEdge != 0 ) {
-                    if (ORI_VertexVarying.vWorldPos.y - minY > 1.0) {
+                    if (ORI_VertexVarying.vWorldPos.y - minY > materialUniform.discardMaxHeight) {
                         discard;
-                        // depth = 0;
                     }
                 }
             #endif

@@ -134,11 +134,17 @@ export class SupportGenerator {
             }
         }
 
+        // const invertMatrixWorld = this.mesh.matrixWorld.clone();
+        // invertMatrixWorld.invert();
+
         // Debug: show sample Points
         if (true) {
+
+
             for (let p of points) {
-                const v = p.v;
-                result.supportPoint.pushSphere(v);
+                const v = p.v as Vector3;
+
+                result.supportPoint.pushSphere(v.clone()); // .applyMatrix4(invertMatrixWorld)
                 // console.warn(v.x, v.y, v.z);
             }
         }
@@ -158,7 +164,7 @@ export class SupportGenerator {
             //tree.debug();
             tree.writeToGeometry(treeWriteParams);
 
-            result.testPoints.push(tree.p);
+            result.testPoints.push(tree.p.clone());
         }
 
         // TODO: impl computeFaceNormals

@@ -1,4 +1,4 @@
-import { Engine3D, Scene3D, CameraUtil, View3D, AtmosphericComponent, ComponentBase, Time, AxisObject, Object3DUtil, KelvinUtil, DirectLight, Object3D, HoverCameraController, MeshRenderer, LitMaterial, BoxGeometry, UnLit, UnLitMaterial, Interpolator, VertexAttributeName, GeometryBase, Color, Vector3, GPUPrimitiveTopology, FlyCameraController, GPUCullMode, BoundingBox, RenderNode, Matrix4, PlaneGeometry, SphereGeometry, Camera3D, RendererBase, OcclusionSystem, ClusterLightingBuffer, PassType, VirtualTexture, webGPUContext, GPUTextureFormat, PostBase, ComputeShader, RendererPassState, WebGPUDescriptorCreator, ComputeGPUBuffer, GBufferFrame, RTFrame, GPUContext, RTDescriptor, EntityCollect, PostProcessingComponent, GlobalBindGroup, UniformGPUBuffer, Material, BoundUtil, CubeCamera } from "@orillusion/core";
+import { Engine3D, Scene3D, CameraUtil, View3D, AtmosphericComponent, ComponentBase, Time, AxisObject, Object3DUtil, KelvinUtil, DirectLight, Object3D, HoverCameraController, MeshRenderer, LitMaterial, BoxGeometry, UnLit, UnLitMaterial, Interpolator, VertexAttributeName, GeometryBase, Color, Vector3, GPUPrimitiveTopology, FlyCameraController, GPUCullMode, BoundingBox, RenderNode, Matrix4, PlaneGeometry, SphereGeometry, Camera3D, RendererBase, OcclusionSystem, ClusterLightingBuffer, PassType, VirtualTexture, webGPUContext, GPUTextureFormat, PostBase, ComputeShader, RendererPassState, WebGPUDescriptorCreator, ComputeGPUBuffer, GBufferFrame, RTFrame, GPUContext, RTDescriptor, EntityCollect, PostProcessingComponent, GlobalBindGroup, UniformGPUBuffer, Material, BoundUtil, CubeCamera, VertexAttribute } from "@orillusion/core";
 import { GUIHelp } from "@orillusion/debug/GUIHelp";
 import { SupportGenerator } from "./SupportGenerator/SupportGenerator";
 import { Octree } from "./SupportGenerator/Octree";
@@ -184,10 +184,11 @@ export class Sample_Test {
 
     protected mainCanvas: HTMLCanvasElement;
 
-    protected enableDebug: boolean = false;
+    protected enableDebug: boolean = true;
 
     protected scaleFactor: number = 20;
     protected supportPillarTopPoints: Vector3[];
+    protected rootNode: Object3D;
 
     async run() {
 
@@ -270,14 +271,21 @@ export class Sample_Test {
                 let mesh = new Mesh(mr);
                 this.mesh = mesh;
 
-                // obj.rotationX = -90;
+                // obj.rotationX = 45;
+                // obj.rotationY = 30;
 
                 // obj.x = 50;
                 obj.y = 40;
 
                 let meshObj = new Object3D();
                 meshObj.rotationX = mesh.rawMesh.transform.rotationX;
+                meshObj.rotationY = mesh.rawMesh.transform.rotationY;
+                meshObj.rotationZ = mesh.rawMesh.transform.rotationZ;
                 meshObj.localPosition = mesh.matrixWorld.position;
+
+
+                this.rootNode = new Object3D();
+                this.view.scene.addChild(this.rootNode);
 
                 let mainMaterial = new LitMaterial();
                 mainMaterial.doubleSide = true;
@@ -288,13 +296,48 @@ export class Sample_Test {
                 mr2.material = mainMaterial;
                 this.view.scene.addChild(meshObj);
 
+                let minX = Number.MAX_SAFE_INTEGER;
+                let minY = Number.MAX_SAFE_INTEGER;
+                let minZ = Number.MAX_SAFE_INTEGER;
+                let maxX = -Number.MAX_SAFE_INTEGER;
+                let maxY = -Number.MAX_SAFE_INTEGER;
+                let maxZ = -Number.MAX_SAFE_INTEGER;
+                let position = mr2.geometry.getAttribute(VertexAttributeName.position);
+                for (let i = 0; i < position.data.length; i+=3) {
+                    const pos = Vector3.HELP_0.set(
+                        position.data[i + 0],
+                        position.data[i + 1],
+                        position.data[i + 2],
+                    );
+                    meshObj.transform.worldMatrix.transformPoint(pos, pos);
+
+                    if (minX > pos.x)
+                        minX = pos.x;
+                    if (minY > pos.y)
+                        minY = pos.y;
+                    if (minZ > pos.z)
+                        minZ = pos.z;
+
+                    if (maxX < pos.x)
+                        maxX = pos.x;
+                    if (maxY < pos.y)
+                        maxY = pos.y;
+                    if (maxZ < pos.z)
+                        maxZ = pos.z;
+                }
+                let bound = new BoundingBox();
+                bound.setFromMinMax(Vector3.HELP_0.set(minX, minY, minZ), Vector3.HELP_1.set(maxX, maxY, maxZ));
+
+                // this.showDebugPoint(minX, minY, minZ);
+                // this.showDebugPoint(maxX, maxY, maxZ);
+
                 let depthMaterial = new DepthMaterial();
                 depthMaterial.doubleSide = true;
-                depthMaterial.boundBox = meshObj.bound;
+                depthMaterial.boundBox = bound;
 
                 let bottomEdgeMaterial = new DepthMaterial();
                 bottomEdgeMaterial.doubleSide = true;
-                bottomEdgeMaterial.boundBox = meshObj.bound;
+                bottomEdgeMaterial.boundBox = bound;
                 bottomEdgeMaterial.onlyBottomEdge = true;
 
                 // this.myRenderer.target = mr2;
@@ -303,16 +346,18 @@ export class Sample_Test {
                 // mr2.material = mainMaterial;
 
                 if (true) {
-                    const min = meshObj.bound.min;
-                    const max = meshObj.bound.max;
-                    const rectWidth = max.x - min.x + 2;
-                    const rectHeight = max.z - min.z + 2;
+                    const min = bound.min;
+                    const max = bound.max;
+                    const rectWidth = max.x - min.x + 4;
+                    const rectHeight = max.z - min.z + 4;
+                    // console.warn('rectWidth:', rectWidth, rectHeight);
+                    // console.warn('raw:', meshObj.bound.max.x - meshObj.bound.min.x, meshObj.bound.max.z - meshObj.bound.min.z);
                     if (!this.orthoCamera) {
                         this.orthoCamera = CameraUtil.createCamera3D(null, this.view.scene);
                         let orthoCamera = this.orthoCamera;
                         orthoCamera.ortho(-rectWidth, rectHeight, 0.01, 1000.0);
-                        let pos = obj.transform.worldPosition.clone().addScaledVector(Vector3.DOWN, 50);
-                        orthoCamera.lookAt(pos, obj.transform.worldPosition, Vector3.Z_AXIS);
+                        let pos = bound.center.clone().addScaledVector(Vector3.DOWN, 50);
+                        orthoCamera.lookAt(pos, bound.center, Vector3.Z_AXIS);
                     }
 
                     let supportPoint: Object3D = new Object3D();
@@ -329,6 +374,10 @@ export class Sample_Test {
                     let supportPointList = [];
                     let topContourTest = [];
                     let bottomContourTest = [];
+
+                    GUIHelp.add(meshObj, 'x', -100, 100);
+                    GUIHelp.add(meshObj, 'y', -100, 100);
+                    GUIHelp.add(meshObj, 'z', -100, 100);
 
                     let support = GUIHelp.addFolder('Support');
                     support.add(params, 'BorderStep', 1, 100);
@@ -444,7 +493,7 @@ export class Sample_Test {
         
                                 if (event.data.id === 'resBorder') {
                                     console.warn('recv: Border');
-                                    iframe.remove();
+                                    // iframe.remove();
                                     res(event.data.borderPoints);
                                     return;
                                 }
@@ -640,6 +689,9 @@ export class Sample_Test {
                     });
                     GUIHelp.addButton('ShowAxis', () => {
                         this.view.graphic3D.drawAxis('axis');
+                    });
+                    GUIHelp.addButton('SpaceTransformTest', () => {
+                        this.transformToTargetSpace(this.rootNode, meshObj);
                     });
                     support.open();
                 }
@@ -1046,7 +1098,8 @@ export class Sample_Test {
         supportMesh.material = mat;
 
         supportMesh.material.doubleSide = true;
-        this.view.scene.addChild(this.supportBase);
+        // this.view.scene.addChild(this.supportBase);
+        this.rootNode.addChild(this.supportBase);
     }
 
     private supportPillarReinforceParams = {
@@ -1135,7 +1188,10 @@ export class Sample_Test {
                 let s = Vector3.HELP_0.set(startPos.x, p.y + params.height, startPos.z);
                 let e = Vector3.HELP_1.set(endPos.x, endPos.y, endPos.z);
                 p = getExtensionIntersectionPoint(s, e, params.angle);
-                if (p && p.y < minHeight) geometryData.buildConnectRod(s, p, params.radius, params.subdivs);
+
+                if (p && p.y < minHeight) {
+                    geometryData.buildConnectRod(s, p, params.radius, params.subdivs);
+                }
             }
 
             p = new Vector3(0, 0, 0);
@@ -1143,7 +1199,9 @@ export class Sample_Test {
                 let s = Vector3.HELP_0.set(endPos.x, p.y + params.height, endPos.z);
                 let e = Vector3.HELP_1.set(startPos.x, startPos.y, startPos.z);
                 p = getExtensionIntersectionPoint(s, e, params.angle);
-                if (p && p.y < minHeight) geometryData.buildConnectRod(s, p, params.radius, params.subdivs);
+                if (p && p.y < minHeight) {
+                    geometryData.buildConnectRod(s, p, params.radius, params.subdivs);
+                }
             }
         });
 
@@ -1156,7 +1214,8 @@ export class Sample_Test {
         supportMesh.material = mat;
 
         supportMesh.material.doubleSide = true;
-        this.view.scene.addChild(this.supportReinforcePillar);
+        // this.view.scene.addChild(this.supportReinforcePillar);
+        this.rootNode.addChild(this.supportReinforcePillar);
     }
 
     private generateSupports(mesh: Mesh, params, points) {
@@ -1197,7 +1256,8 @@ export class Sample_Test {
             supportMesh.geometry = supportGeometryResult.supportTree.toGeometryBase();
             supportMesh.material = new LitMaterial();
             supportMesh.material.doubleSide = true;
-            this.view.scene.addChild(this.supportObj);
+            // this.view.scene.addChild(this.supportObj);
+            this.rootNode.addChild(this.supportObj);
         }
 
         if (true) {
@@ -1210,7 +1270,8 @@ export class Sample_Test {
             supportMesh.material = mat;
 
             supportMesh.material.doubleSide = true;
-            this.view.scene.addChild(this.supportPoint);
+            // this.view.scene.addChild(this.supportPoint);
+            this.rootNode.addChild(this.supportPoint);
         }
 
         if (false) {
@@ -1236,5 +1297,71 @@ export class Sample_Test {
         if (!this.octree)
             this.octree = new Octree(this.baseMesh);
         return this.octree;
+    }
+
+    private transformToTargetSpace(obj: Object3D, target: Object3D) {
+        let targetInvertWorldMatrix = target.transform.worldMatrix.clone();
+        targetInvertWorldMatrix.invert();
+
+        let mrArray = obj.getComponents(MeshRenderer);
+
+        for (let mr of mrArray) {
+
+            let finalMatrix = targetInvertWorldMatrix.clone();
+
+            if (mr.object3D != obj)  {
+                let mrInvertWorldMatrix = mr.object3D.transform.worldMatrix.clone();
+                mrInvertWorldMatrix.invert();
+                finalMatrix.multiply(mrInvertWorldMatrix);
+            }
+
+            let indices = mr.geometry.getAttribute(VertexAttributeName.indices);
+            let position = mr.geometry.getAttribute(VertexAttributeName.position);
+            let count = position.data.length / 3;
+            for (let i = 0; i < position.data.length; i+=3) {
+                const pos = Vector3.HELP_0.set(
+                    position.data[i + 0],
+                    position.data[i + 1],
+                    position.data[i + 2],
+                );
+                finalMatrix.transformPoint(pos, pos);
+
+                position.data[i + 0] = pos.x;
+                position.data[i + 1] = pos.y;
+                position.data[i + 2] = pos.z;
+            }
+
+            mr.enable = false;
+
+            const geometry = new GeometryBase();
+            geometry.setAttribute(VertexAttributeName.position, position.data);
+            geometry.setIndices(indices.data);
+            geometry.addSubGeometry({
+                indexStart: 0,
+                indexCount: indices.data.length,
+                vertexStart: 0,
+                vertexCount: 0,
+                firstStart: 0,
+                index: 0,
+                topology: 0,
+            });
+
+            const object3D = new Object3D();
+            let newMR = object3D.addComponent(MeshRenderer);
+            newMR.geometry = geometry;
+            newMR.material = mr.material.clone();
+            newMR.material.doubleSide = true;
+
+            target.addChild(object3D);
+        }
+    }
+
+    private showDebugPoint(x: number, y: number, z: number) {
+        let obj = new Object3D();
+        obj.x = x; obj.y = y; obj.z = z;
+        let mr = obj.addComponent(MeshRenderer);
+        mr.geometry = new BoxGeometry();
+        mr.material = new LitMaterial();
+        this.view.scene.addChild(obj);
     }
 }
