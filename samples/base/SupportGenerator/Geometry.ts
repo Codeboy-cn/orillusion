@@ -456,8 +456,8 @@ export class Geometry {
             let i2 = (i0 + 2) % (subdivs * 2);
             let i3 = (i1 + 2) % (subdivs * 2);
 
-            this.faces.push(new Face(sidx + i0, sidx + i2, sidx + i1));
-            this.faces.push(new Face(sidx + i1, sidx + i2, sidx + i3));
+            this.faces.push(new Face(sidx + i1, sidx + i2, sidx + i0));
+            this.faces.push(new Face(sidx + i3, sidx + i2, sidx + i1));
         }
 
         return this;

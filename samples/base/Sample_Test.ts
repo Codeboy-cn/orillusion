@@ -1,4 +1,4 @@
-import { Engine3D, Scene3D, CameraUtil, View3D, AtmosphericComponent, ComponentBase, Time, AxisObject, Object3DUtil, KelvinUtil, DirectLight, Object3D, HoverCameraController, MeshRenderer, LitMaterial, BoxGeometry, UnLit, UnLitMaterial, Interpolator, VertexAttributeName, GeometryBase, Color, Vector3, GPUPrimitiveTopology, FlyCameraController, GPUCullMode, BoundingBox, RenderNode, Matrix4, PlaneGeometry, SphereGeometry, Camera3D, RendererBase, OcclusionSystem, ClusterLightingBuffer, PassType, VirtualTexture, webGPUContext, GPUTextureFormat, PostBase, ComputeShader, RendererPassState, WebGPUDescriptorCreator, ComputeGPUBuffer, GBufferFrame, RTFrame, GPUContext, RTDescriptor, EntityCollect, PostProcessingComponent, GlobalBindGroup, UniformGPUBuffer, Material, BoundUtil, CubeCamera, VertexAttribute } from "@orillusion/core";
+import { Engine3D, Scene3D, CameraUtil, View3D, AtmosphericComponent, ComponentBase, Time, AxisObject, Object3DUtil, KelvinUtil, DirectLight, Object3D, HoverCameraController, MeshRenderer, LitMaterial, BoxGeometry, UnLit, UnLitMaterial, Interpolator, VertexAttributeName, GeometryBase, Color, Vector3, GPUPrimitiveTopology, FlyCameraController, GPUCullMode, BoundingBox, RenderNode, Matrix4, PlaneGeometry, SphereGeometry, Camera3D, RendererBase, OcclusionSystem, ClusterLightingBuffer, PassType, VirtualTexture, webGPUContext, GPUTextureFormat, PostBase, ComputeShader, RendererPassState, WebGPUDescriptorCreator, ComputeGPUBuffer, GBufferFrame, RTFrame, GPUContext, RTDescriptor, EntityCollect, PostProcessingComponent, GlobalBindGroup, UniformGPUBuffer, Material, BoundUtil, CubeCamera, VertexAttribute, Quaternion, Orientation3D } from "@orillusion/core";
 import { GUIHelp } from "@orillusion/debug/GUIHelp";
 import { SupportGenerator } from "./SupportGenerator/SupportGenerator";
 import { Octree } from "./SupportGenerator/Octree";
@@ -184,7 +184,7 @@ export class Sample_Test {
 
     protected mainCanvas: HTMLCanvasElement;
 
-    protected enableDebug: boolean = true;
+    protected enableDebug: boolean = false;
 
     protected scaleFactor: number = 20;
     protected supportPillarTopPoints: Vector3[];
@@ -253,12 +253,15 @@ export class Sample_Test {
         {
             // const res = 'stls/支撑模型/基托.stl';
             // const res = 'stls/支撑模型/铸造蜡-活动义齿支架.stl';
-            const res = 'stls/No_bottom_thick2.5.stl';
+            // const res = 'stls/No_bottom_thick2.5.stl';
             // const res = 'stls/sphere.stl';
             // const res = 'stls/testA.stl';
             // const res = 'stls/0325/0325/抽壳/底部孤岛自适应.stl';
 
-            let obj = await Engine3D.res.loadSTL(res) as Object3D;
+            // let obj = await Engine3D.res.loadSTL(res) as Object3D;
+
+            let obj = await Engine3D.res.loadGltf('gltfs/内壁抽壳去底1.5mm.temp.gltf') as Object3D;
+            while (obj.entityChildren[0]) { obj = obj.entityChildren[0] as Object3D; }
 
             let mr = obj.getComponentsInChild(MeshRenderer)[0];
             rawGeometry = mr.geometry;
@@ -271,8 +274,9 @@ export class Sample_Test {
                 let mesh = new Mesh(mr);
                 this.mesh = mesh;
 
-                // obj.rotationX = 45;
+                obj.rotationX = -80;
                 // obj.rotationY = 30;
+                obj.rotationZ = 10;
 
                 // obj.x = 50;
                 obj.y = 40;
@@ -814,7 +818,7 @@ export class Sample_Test {
         mat.baseColor = new Color(1, 1, 1);
         supportMesh.material = mat;
 
-        supportMesh.material.doubleSide = true;
+        // supportMesh.material.doubleSide = true;
         this.view.scene.addChild(this.supportBase);
     }
 
@@ -1076,17 +1080,17 @@ export class Sample_Test {
             baseGeometry.vertices.push(newPos);
         }
         for (let i = 1; i < points.length - 1; i++) {
-            baseGeometry.faces.push(new Face(topStartIdx, topStartIdx + i, topStartIdx + i + 1));
+            baseGeometry.faces.push(new Face(topStartIdx + i + 1, topStartIdx + i, topStartIdx));
         }
-        baseGeometry.faces.push(new Face(topStartIdx, topStartIdx + points.length - 1, topStartIdx + 1));
+        baseGeometry.faces.push(new Face(topStartIdx + 1, topStartIdx + points.length - 1, topStartIdx));
 
         // periphery
         for (let i = 1; i < points.length - 1; i++) {
-            baseGeometry.faces.push(new Face(topStartIdx + i, bottomStartIdx + i, bottomStartIdx + i + 1));
-            baseGeometry.faces.push(new Face(bottomStartIdx + i + 1, topStartIdx + i + 1, topStartIdx + i));
+            baseGeometry.faces.push(new Face(bottomStartIdx + i + 1, bottomStartIdx + i, topStartIdx + i));
+            baseGeometry.faces.push(new Face(topStartIdx + i, topStartIdx + i + 1, bottomStartIdx + i + 1));
         }
-        baseGeometry.faces.push(new Face(topStartIdx + points.length - 1, bottomStartIdx + points.length - 1, bottomStartIdx + 1));
-        baseGeometry.faces.push(new Face(bottomStartIdx + 1, topStartIdx + 1, topStartIdx + points.length - 1));
+        baseGeometry.faces.push(new Face(bottomStartIdx + 1, bottomStartIdx + points.length - 1, topStartIdx + points.length - 1));
+        baseGeometry.faces.push(new Face(topStartIdx + points.length - 1, topStartIdx + 1, bottomStartIdx + 1));
 
 
         this.supportBase = new Object3D();
@@ -1097,7 +1101,7 @@ export class Sample_Test {
         mat.baseColor = new Color(1, 1, 1);
         supportMesh.material = mat;
 
-        supportMesh.material.doubleSide = true;
+        // supportMesh.material.doubleSide = true;
         // this.view.scene.addChild(this.supportBase);
         this.rootNode.addChild(this.supportBase);
     }
@@ -1213,7 +1217,7 @@ export class Sample_Test {
         mat.baseColor = new Color(1, 1, 1);
         supportMesh.material = mat;
 
-        supportMesh.material.doubleSide = true;
+        // supportMesh.material.doubleSide = true;
         // this.view.scene.addChild(this.supportReinforcePillar);
         this.rootNode.addChild(this.supportReinforcePillar);
     }
@@ -1255,7 +1259,7 @@ export class Sample_Test {
             let supportMesh = this.supportObj.addComponent(MeshRenderer);
             supportMesh.geometry = supportGeometryResult.supportTree.toGeometryBase();
             supportMesh.material = new LitMaterial();
-            supportMesh.material.doubleSide = true;
+            // supportMesh.material.doubleSide = true;
             // this.view.scene.addChild(this.supportObj);
             this.rootNode.addChild(this.supportObj);
         }
@@ -1269,7 +1273,7 @@ export class Sample_Test {
             mat.baseColor = new Color(1, 0, 0);
             supportMesh.material = mat;
 
-            supportMesh.material.doubleSide = true;
+            // supportMesh.material.doubleSide = true;
             // this.view.scene.addChild(this.supportPoint);
             this.rootNode.addChild(this.supportPoint);
         }
@@ -1283,7 +1287,7 @@ export class Sample_Test {
             mat.baseColor = new Color(0, 1, 0);
             supportMesh.material = mat;
 
-            supportMesh.material.doubleSide = true;
+            // supportMesh.material.doubleSide = true;
             this.view.scene.addChild(this.supportFaces);
         }
 
@@ -1307,34 +1311,36 @@ export class Sample_Test {
 
         for (let mr of mrArray) {
 
-            let finalMatrix = targetInvertWorldMatrix.clone();
+            // let finalMatrix = targetInvertWorldMatrix.clone();
 
-            if (mr.object3D != obj)  {
-                let mrInvertWorldMatrix = mr.object3D.transform.worldMatrix.clone();
-                mrInvertWorldMatrix.invert();
-                finalMatrix.multiply(mrInvertWorldMatrix);
-            }
+            // if (mr.object3D != obj)  {
+            //     let mrInvertWorldMatrix = mr.object3D.transform.worldMatrix.clone();
+            //     mrInvertWorldMatrix.invert();
+            //     finalMatrix.multiply(mrInvertWorldMatrix);
+            // }
 
             let indices = mr.geometry.getAttribute(VertexAttributeName.indices);
             let position = mr.geometry.getAttribute(VertexAttributeName.position);
-            let count = position.data.length / 3;
-            for (let i = 0; i < position.data.length; i+=3) {
-                const pos = Vector3.HELP_0.set(
-                    position.data[i + 0],
-                    position.data[i + 1],
-                    position.data[i + 2],
-                );
-                finalMatrix.transformPoint(pos, pos);
+            let normal = mr.geometry.getAttribute(VertexAttributeName.normal);
+            // let count = position.data.length / 3;
+            // for (let i = 0; i < position.data.length; i+=3) {
+            //     const pos = Vector3.HELP_0.set(
+            //         position.data[i + 0],
+            //         position.data[i + 1],
+            //         position.data[i + 2],
+            //     );
+            //     finalMatrix.transformPoint(pos, pos);
 
-                position.data[i + 0] = pos.x;
-                position.data[i + 1] = pos.y;
-                position.data[i + 2] = pos.z;
-            }
+            //     position.data[i + 0] = pos.x;
+            //     position.data[i + 1] = pos.y;
+            //     position.data[i + 2] = pos.z;
+            // }
 
             mr.enable = false;
 
             const geometry = new GeometryBase();
             geometry.setAttribute(VertexAttributeName.position, position.data);
+            geometry.setAttribute(VertexAttributeName.normal, normal.data);
             geometry.setIndices(indices.data);
             geometry.addSubGeometry({
                 indexStart: 0,
@@ -1347,10 +1353,34 @@ export class Sample_Test {
             });
 
             const object3D = new Object3D();
+
+            let parentInvertWorldMatrix = target.parent.worldMatrix.clone();
+            parentInvertWorldMatrix.invert();
+
+            let targetInvertRotation = Quaternion.HELP_0.fromEulerAngles(target.rotationX, target.rotationY, target.rotationZ).inverse();
+
+            let transformMatrix = new Matrix4();
+            transformMatrix.appendTranslation(0, -40, 0);
+            transformMatrix.append(Matrix4.help_matrix_0.makeRotationFromQuaternion(targetInvertRotation));
+
+            let finalMatrix = parentInvertWorldMatrix.clone();
+            finalMatrix.multiply(transformMatrix);
+
+            let trs = finalMatrix.decompose(Orientation3D.QUATERNION);
+
+            object3D.localScale = trs[2];
+
+            Quaternion.HELP_0.set(trs[1].x, trs[1].y, trs[1].z, trs[1].w);
+            object3D.localQuaternion = Quaternion.HELP_0;
+
+            object3D.x = trs[0].x;
+            object3D.y = trs[0].y;
+            object3D.z = trs[0].z;
+
             let newMR = object3D.addComponent(MeshRenderer);
             newMR.geometry = geometry;
             newMR.material = mr.material.clone();
-            newMR.material.doubleSide = true;
+            // newMR.material.doubleSide = true;
 
             target.addChild(object3D);
         }

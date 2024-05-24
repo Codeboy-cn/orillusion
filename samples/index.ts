@@ -1,7 +1,9 @@
+import { Sample_MeshJoint } from "./base/Sample_MeshJoint"
 import { Sample_Test } from "./base/Sample_Test"
 
 /******** Load all samples in /src/sample/ ********/
 new Sample_Test().run();
+// new Sample_MeshJoint().run();
 
 if (false) {
     // find all demos in /sample
