@@ -1,4 +1,4 @@
-import { BoundingBox, Color, GeometryBase, Matrix4, MeshRenderer, Object3D, Ray, Struct, Vector3, VertexAttributeName } from "@orillusion/core";
+import { BoundingBox, Color, Engine3D, GeometryBase, Matrix4, MeshRenderer, Object3D, Ray, Struct, Vector3, VertexAttributeName } from "@orillusion/core";
 import { SupportGeneratorParams } from "./SupportGeneratorParams";
 import { Calculate } from "./Calculate";
 import { SupportTreeNode } from "./SupportTreeNode";
@@ -164,7 +164,7 @@ export class SupportGenerator {
             //tree.debug();
             tree.writeToGeometry(treeWriteParams);
 
-            result.testPoints.push(tree.p.clone());
+            if (tree.p) result.testPoints.push(tree.p.clone());
         }
 
         // TODO: impl computeFaceNormals
@@ -275,6 +275,15 @@ export class SupportGenerator {
             // intersection; we could just iterate over the pq.priv.data to do the same,
             // but that's a hack that breaks encapsulation
             for (let pi = 0; pi < points.length; pi++) {
+
+                // // DEBUG:
+                // if (pi < 82 || pi > 83) continue;
+                // // if (pi != 83) continue;
+
+                // if (pi < 23 || pi > 24) continue;
+                // if (pi != 23) continue;
+
+
                 let point = points[pi];
                 let v: Vector3 = point.v;
                 let normal = point.normal;
@@ -288,15 +297,16 @@ export class SupportGenerator {
                 // attempt to extend a short support strut from the starting point
                 // along the normal
                 ray.set(v, normal);
+                // Engine3D.views[0].graphic3D.drawLines('ray', [ray.origin.clone(), ray.origin.clone().addScaledVector(ray.direction, 10)], Color.COLOR_WHITE);
                 let raycastNormal = octree.raycast(ray);
                 let nv = v.clone().addScaledVector(normal, minSupportLength);
+                // console.warn("pi:", pi, raycastNormal);
+                // Engine3D.views[0].graphic3D.drawAxis(`${'pi_' + pi}`, nv);
 
                 // if a ray cast along the normal hits too close, goes below mesh
                 // min, or can be more directly extended less than a strut length
                 // straight down, just leave the original node
-                if ((raycastNormal && raycastNormal.distance < minSupportLength) ||
-                    (nv[axis] < minHeight) ||
-                    (v[axis] - minHeight < minSupportLength)) {
+                if ((raycastNormal && raycastNormal.distance < minSupportLength) || (nv[axis] < minHeight) || (v[axis] - minHeight < minSupportLength)) {
                     activeIndices.add(idx);
                     pq.queue(idx);
                 }
@@ -345,6 +355,7 @@ export class SupportGenerator {
 
                 // will need to check if connecting down is cheaper than connecting in
                 // the direction of intersection
+                // Engine3D.views[0].graphic3D.drawLines('raycast', [p.v.clone(), p.v.clone().addScaledVector(down, 10)], Color.COLOR_GREEN);
                 let raycastDown = octree.raycast(ray.set(p.v, down));
                 // ray may hit the bottom side of the octree, which may not coincide
                 // with mesh min; calculate the point and distance for a ray pointed
@@ -353,6 +364,11 @@ export class SupportGenerator {
                 let distanceDown = 0;
 
                 if (raycastDown) {
+                    // Engine3D.views[0].graphic3D.drawAxis(`raycastDown.point`, raycastDown.point);
+                    // const a = raycastDown.object.geometry.vertices[raycastDown.face.a];
+                    // const b = raycastDown.object.geometry.vertices[raycastDown.face.b];
+                    // const c = raycastDown.object.geometry.vertices[raycastDown.face.c];
+                    // Engine3D.views[0].graphic3D.drawTriangle(`${a + '_' + b + '_' + c}`, a, b, c, Color.COLOR_RED);
                     pointDown.copy(raycastDown.point);
                     pointDown[axis] = Math.max(pointDown[axis], minHeight);
                     distanceDown = Math.min(raycastDown.distance, p.v[axis] - minHeight);

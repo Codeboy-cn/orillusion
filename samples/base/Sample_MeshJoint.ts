@@ -1,5 +1,6 @@
 import { GUIHelp } from "@orillusion/debug/GUIHelp";
-import { AtmosphericComponent, BoxGeometry, CameraUtil, CylinderGeometry, DirectLight, Engine3D, FlyCameraController, KelvinUtil, LitMaterial, MeshRenderer, Object3D, Scene3D, SphereGeometry, Vector2, View3D } from "../../src";
+import { AtmosphericComponent, BoxGeometry, CameraUtil, CylinderGeometry, DirectLight, Engine3D, FlyCameraController, KelvinUtil, LitMaterial, MeshRenderer, Object3D, Scene3D, SphereGeometry, Vector2, Vector3, View3D } from "../../src";
+import { Geometry } from "./SupportGenerator/Geometry";
 
 export class Sample_MeshJoint {
 
@@ -51,7 +52,7 @@ export class Sample_MeshJoint {
         box.y = 0.5;
         box.x = 5;
         let mr = box.addComponent(MeshRenderer);
-        mr.geometry = new BoxGeometry();
+        mr.geometry = new BoxGeometry(1, 1, 1);
         mr.material = new LitMaterial();
         this.view.scene.addChild(box);
 
@@ -73,17 +74,28 @@ export class Sample_MeshJoint {
         GUIHelp.addButton('jointMesh', async () => {
             let meshObjs = [box, sphere, cylinder];
             let splicingPoint = [
-                new Vector2(0, 0), new Vector2(5-0.5, 0),
-                new Vector2(0, 0), new Vector2(0, 5-0.5),
+                new Vector2(0, 0), new Vector2(5, 0),
+                new Vector2(0, 0), new Vector2(0, 5),
             ];
             this.jointAllMesh(meshObjs, splicingPoint);
         });
     }
 
     private jointAllMesh(meshObj: Object3D[], splicingPoint: Vector2[]) {
+        let linkGeometry = new Geometry();
         for (let i = 0; i < splicingPoint.length; i+=2) {
             const s = splicingPoint[i];
             const e = splicingPoint[i + 1];
+
+            let startPos = Vector3.HELP_0.set(s.x, 0, s.y);
+            let endPos = Vector3.HELP_1.set(e.x, 0, e.y);
+            linkGeometry.buildLinkBase(startPos, endPos, 0.4, 0.1);
         }
+
+        let linkObj = new Object3D();
+        let linkMesh = linkObj.addComponent(MeshRenderer);
+        linkMesh.geometry = linkGeometry.toGeometryBase();
+        linkMesh.material = new LitMaterial();
+        this.view.scene.addChild(linkObj);
     }
 }

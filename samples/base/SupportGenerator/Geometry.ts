@@ -1,4 +1,4 @@
-import { BoundingBox, Color, GeometryBase, Matrix4, MeshRenderer, Vector3, VertexAttributeName } from "@orillusion/core";
+import { BoundingBox, Color, GeometryBase, Matrix4, MeshRenderer, Vector3, VertexAttributeName, deg2Rad } from "@orillusion/core";
 import { orthogonalVector } from "./Utils";
 
 export class Face {
@@ -138,6 +138,8 @@ export class Geometry {
         let indices = new Uint32Array(this.faces.length * 3);
         let vertexs = new Float32Array(this.faces.length * 3 * 3);
         let normals = new Float32Array(this.faces.length * 3 * 3);
+
+        console.warn(indices.length, vertexs.length / 3);
 
         // let colors = new Float32Array(this.faces.length * 4 * 3);
         // let defaultColor = new Color(1, 1, 1, 1);
@@ -415,6 +417,8 @@ export class Geometry {
     }
 
     public buildConnectRod(p0: Vector3, p1: Vector3, radius: number = 0.5, subdivs: number = 4) {
+        p0 = p0.clone();
+        p1 = p1.clone();
         subdivs = Math.max(subdivs, 3);
 
         // Direction from p0 to p1
@@ -460,7 +464,347 @@ export class Geometry {
             this.faces.push(new Face(sidx + i3, sidx + i2, sidx + i1));
         }
 
+        // Generate cap
+        let bottom_cidx = this.vertices.push(p0) - 1;
+        let top_cidx = this.vertices.push(p1) - 1;
+        for (let i = 0; i < subdivs; i++) {
+            let i0 = i * 2;
+            let i1 = i0 + 1;
+            let i2 = (i0 + 2) % (subdivs * 2);
+            let i3 = (i1 + 2) % (subdivs * 2);
+
+            this.faces.push(new Face(bottom_cidx, sidx + i0, sidx + i2));
+            this.faces.push(new Face(top_cidx, sidx + i3, sidx + i1));
+        }
+
         return this;
+    }
+
+    public buildLinkBase(p0: Vector3, p1: Vector3, width: number = 0.2, height: number = 0.1) {
+        // Direction from p0 to p1
+        let direction = Vector3.sub(p1, p0);
+        direction.normalize();
+
+        // Generate an arbitrary perpendicular vector
+        let up = new Vector3(0, 1, 0);
+        if (Math.abs(direction.y) > 0.999) {
+            up = new Vector3(1, 0, 0);
+        }
+        let right = direction.crossProduct(up);
+        right.normalize();
+        up = right.crossProduct(direction);
+
+        // Generate vertices
+        const sidx = this.vertices.length;
+        const subdivs = 4;
+        for (let i = 0; i <= subdivs; i++) {
+            let theta = (i / subdivs) * 2 * Math.PI + deg2Rad(45);
+            let cosTheta = Math.cos(theta);
+            let sinTheta = Math.sin(theta);
+            let x = cosTheta * width;
+            let y = sinTheta * height;
+
+            let offsetRight = right.clone().scaleBy(x);
+            let offsetUp = up.clone().scaleBy(y);
+
+            let vertexBottom = Vector3.add(p0, Vector3.add(offsetRight, offsetUp));
+            let vertexTop = Vector3.add(p1, Vector3.add(offsetRight, offsetUp));
+
+            this.vertices.push(vertexBottom);
+            this.vertices.push(vertexTop);
+        }
+
+        // Generate indices
+        for (let i = 0; i < subdivs; i++) {
+            let i0 = i * 2;
+            let i1 = i0 + 1;
+            let i2 = (i0 + 2) % (subdivs * 2);
+            let i3 = (i1 + 2) % (subdivs * 2);
+
+            this.faces.push(new Face(sidx + i1, sidx + i2, sidx + i0));
+            this.faces.push(new Face(sidx + i3, sidx + i2, sidx + i1));
+        }
+
+        return this;
+    }
+
+    public buildSupportRod(topPoint: Vector3, normal: Vector3, insertionDepth: number, topSize: number, rodSize: number, subdivs: number = 4) {
+        subdivs = Math.max(subdivs, 3);
+
+        // Start building support top
+        let p0 = topPoint.clone().addScaledVector(normal, -insertionDepth);
+        let p1 = topPoint.clone().addScaledVector(normal, 1.5);
+
+        // Direction from p0 to p1
+        let direction = Vector3.sub(p1, p0);
+        direction.normalize();
+
+
+        const vn = direction;
+        const p = p1;
+
+        let idx = this.vertices.length;
+        var b = orthogonalVector(vn).normalize();
+        var c = vn.crossProduct(b);
+        for (let i = 0; i <= subdivs; i++) {
+            let a = (i / subdivs) * 2 * Math.PI;
+            this.vertices.push(
+                p.clone()
+                    .addScaledVector(b, rodSize * Math.cos(a))
+                    .addScaledVector(c, rodSize * Math.sin(a))
+            );
+            // ps.push(sidx + ia);
+        }
+
+        let cIndex = this.vertices.length;
+        this.vertices.push(p0);
+        for (let i = 0; i < subdivs; i++) {
+            let i0 = idx + i;
+            let i1 = idx + ((i + 1) % subdivs);
+            this.faces.push(new Face(i1, i0, cIndex));
+        }
+
+        return;
+
+
+
+        // Generate an arbitrary perpendicular vector
+        let up = new Vector3(0, 1, 0);
+        if (Math.abs(direction.y) > 0.999) {
+            up = new Vector3(1, 0, 0);
+        }
+        let right = direction.crossProduct(up);
+        right.normalize();
+        up = right.crossProduct(direction);
+
+        // Generate vertices
+        let sidx = this.vertices.length;
+        for (let i = 0; i <= subdivs; i++) {
+            let theta = (i / subdivs) * 2 * Math.PI;
+            let cosTheta = Math.cos(theta);
+            let sinTheta = Math.sin(theta);
+            let x = cosTheta * topSize;
+            let y = sinTheta * topSize;
+
+            let offsetRight = right.clone().scaleBy(x);
+            let offsetUp = up.clone().scaleBy(y);
+
+            let vertexTop = Vector3.add(p0, Vector3.add(offsetRight, offsetUp));
+
+            x = cosTheta * rodSize;
+            y = sinTheta * rodSize;
+            offsetRight = right.clone().scaleBy(x);
+            offsetUp = up.clone().scaleBy(y);
+            let vertexBottom = Vector3.add(p1, Vector3.add(offsetRight, offsetUp));
+
+            this.vertices.push(vertexTop);
+            this.vertices.push(vertexBottom);
+        }
+
+        // Generate indices
+        for (let i = 0; i < subdivs; i++) {
+            let i0 = i * 2;
+            let i1 = i0 + 1;
+            let i2 = (i0 + 2) % (subdivs * 2);
+            let i3 = (i1 + 2) % (subdivs * 2);
+
+            this.faces.push(new Face(sidx + i1, sidx + i2, sidx + i0));
+            this.faces.push(new Face(sidx + i3, sidx + i2, sidx + i1));
+        }
+
+        // Add center vertices for the top
+        let centerTopIdx = this.vertices.length;
+        this.vertices.push(p0);
+
+        // Generate indices for the top cap
+        for (let i = 0; i < subdivs; i++) {
+            let i0 = sidx + i * 2;
+            let i1 = sidx + ((i + 1) % subdivs) * 2;
+            this.faces.push(new Face(centerTopIdx, i0, i1));
+        }
+
+        // Start building support columns
+        p0 = p1.clone();
+        p1 = p1.clone();
+        p1.y = 0;
+
+        direction = Vector3.sub(p1, p0);
+        direction.normalize();
+
+        up.set(0, 1, 0);
+        if (Math.abs(direction.y) > 0.999) {
+            up.set(1, 0, 0);
+        }
+        right = direction.crossProduct(up);
+        right.normalize();
+        up = right.crossProduct(direction);
+
+
+        sidx = this.vertices.length;
+        for (let i = 0; i <= subdivs; i++) {
+            let theta = (i / subdivs) * 2 * Math.PI;
+            let cosTheta = Math.cos(theta);
+            let sinTheta = Math.sin(theta);
+            let x = cosTheta * rodSize;
+            let y = sinTheta * rodSize;
+
+            let offsetRight = right.clone().scaleBy(x);
+            let offsetUp = up.clone().scaleBy(y);
+
+            let vertexTop = Vector3.add(p0, Vector3.add(offsetRight, offsetUp));
+            let vertexBottom = Vector3.add(p1, Vector3.add(offsetRight, offsetUp));
+            vertexBottom.y = 0;
+
+            this.vertices.push(vertexTop);
+            this.vertices.push(vertexBottom);
+        }
+
+        // Generate indices
+        for (let i = 0; i < subdivs; i++) {
+            let i0 = i * 2;
+            let i1 = i0 + 1;
+            let i2 = (i0 + 2) % (subdivs * 2);
+            let i3 = (i1 + 2) % (subdivs * 2);
+
+            this.faces.push(new Face(sidx + i1, sidx + i2, sidx + i0));
+            this.faces.push(new Face(sidx + i3, sidx + i2, sidx + i1));
+        }
+
+        // Add center vertices for the bottom
+        let centerBottomIdx = this.vertices.length;
+        this.vertices.push(p1);
+
+        // Generate indices for the bottom cap
+        for (let i = 0; i < subdivs; i++) {
+            let i0 = sidx + i * 2 + 1;
+            let i1 = sidx + ((i + 1) % subdivs) * 2 + 1;
+            this.faces.push(new Face(i1, i0, centerBottomIdx));
+        }
+    }
+
+    public buildSupportRod_Old(topPoint: Vector3, normal: Vector3, insertionDepth: number, topSize: number, rodSize: number, subdivs: number = 4) {
+        subdivs = Math.max(subdivs, 3);
+
+        // Start building support top
+        let p0 = topPoint.clone().addScaledVector(normal, -insertionDepth);
+        let p1 = topPoint.clone().addScaledVector(normal, 1.5);
+
+        // Direction from p0 to p1
+        let direction = Vector3.sub(p1, p0);
+        direction.normalize();
+
+        // Generate an arbitrary perpendicular vector
+        let up = new Vector3(0, 1, 0);
+        if (Math.abs(direction.y) > 0.999) {
+            up = new Vector3(1, 0, 0);
+        }
+        let right = direction.crossProduct(up);
+        right.normalize();
+        up = right.crossProduct(direction);
+
+        // Generate vertices
+        let sidx = this.vertices.length;
+        for (let i = 0; i <= subdivs; i++) {
+            let theta = (i / subdivs) * 2 * Math.PI;
+            let cosTheta = Math.cos(theta);
+            let sinTheta = Math.sin(theta);
+            let x = cosTheta * topSize;
+            let y = sinTheta * topSize;
+
+            let offsetRight = right.clone().scaleBy(x);
+            let offsetUp = up.clone().scaleBy(y);
+
+            let vertexTop = Vector3.add(p0, Vector3.add(offsetRight, offsetUp));
+
+            x = cosTheta * rodSize;
+            y = sinTheta * rodSize;
+            offsetRight = right.clone().scaleBy(x);
+            offsetUp = up.clone().scaleBy(y);
+            let vertexBottom = Vector3.add(p1, Vector3.add(offsetRight, offsetUp));
+
+            this.vertices.push(vertexTop);
+            this.vertices.push(vertexBottom);
+        }
+
+        // Generate indices
+        for (let i = 0; i < subdivs; i++) {
+            let i0 = i * 2;
+            let i1 = i0 + 1;
+            let i2 = (i0 + 2) % (subdivs * 2);
+            let i3 = (i1 + 2) % (subdivs * 2);
+
+            this.faces.push(new Face(sidx + i1, sidx + i2, sidx + i0));
+            this.faces.push(new Face(sidx + i3, sidx + i2, sidx + i1));
+        }
+
+        // Add center vertices for the top
+        let centerTopIdx = this.vertices.length;
+        this.vertices.push(p0);
+
+        // Generate indices for the top cap
+        for (let i = 0; i < subdivs; i++) {
+            let i0 = sidx + i * 2;
+            let i1 = sidx + ((i + 1) % subdivs) * 2;
+            this.faces.push(new Face(centerTopIdx, i0, i1));
+        }
+
+        // Start building support columns
+        p0 = p1.clone();
+        p1 = p1.clone();
+        p1.y = 0;
+
+        direction = Vector3.sub(p1, p0);
+        direction.normalize();
+
+        up.set(0, 1, 0);
+        if (Math.abs(direction.y) > 0.999) {
+            up.set(1, 0, 0);
+        }
+        right = direction.crossProduct(up);
+        right.normalize();
+        up = right.crossProduct(direction);
+
+
+        sidx = this.vertices.length;
+        for (let i = 0; i <= subdivs; i++) {
+            let theta = (i / subdivs) * 2 * Math.PI;
+            let cosTheta = Math.cos(theta);
+            let sinTheta = Math.sin(theta);
+            let x = cosTheta * rodSize;
+            let y = sinTheta * rodSize;
+
+            let offsetRight = right.clone().scaleBy(x);
+            let offsetUp = up.clone().scaleBy(y);
+
+            let vertexTop = Vector3.add(p0, Vector3.add(offsetRight, offsetUp));
+            let vertexBottom = Vector3.add(p1, Vector3.add(offsetRight, offsetUp));
+            vertexBottom.y = 0;
+
+            this.vertices.push(vertexTop);
+            this.vertices.push(vertexBottom);
+        }
+
+        // Generate indices
+        for (let i = 0; i < subdivs; i++) {
+            let i0 = i * 2;
+            let i1 = i0 + 1;
+            let i2 = (i0 + 2) % (subdivs * 2);
+            let i3 = (i1 + 2) % (subdivs * 2);
+
+            this.faces.push(new Face(sidx + i1, sidx + i2, sidx + i0));
+            this.faces.push(new Face(sidx + i3, sidx + i2, sidx + i1));
+        }
+
+        // Add center vertices for the bottom
+        let centerBottomIdx = this.vertices.length;
+        this.vertices.push(p1);
+
+        // Generate indices for the bottom cap
+        for (let i = 0; i < subdivs; i++) {
+            let i0 = sidx + i * 2 + 1;
+            let i1 = sidx + ((i + 1) % subdivs) * 2 + 1;
+            this.faces.push(new Face(i1, i0, centerBottomIdx));
+        }
     }
 }
 
@@ -498,13 +842,13 @@ export class Mesh {
         // mesh.updateMatrixWorld();
         // mesh.geometry.applyMatrix(mesh.matrixWorld);
 
-        mesh.transform.localPosition = center.negate();
+        // mesh.transform.localPosition = center.negate();
         this.geometry.applyMatrix(mesh.transform.worldMatrix);
 
         // reset mesh position to 0
         // mesh.position.set(0, 0, 0);
         // mesh.updateMatrixWorld();
-        mesh.transform.localPosition = Vector3.ZERO;
+        // mesh.transform.localPosition = Vector3.ZERO;
 
         // shift bounds appropriately
         // this.boundingBox.translate(shift);

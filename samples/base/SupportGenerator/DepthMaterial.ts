@@ -129,10 +129,10 @@ export class DepthMaterial extends Material {
                 }
             #endif
 
-            var normal = ORI_VertexVarying.vWorldNormal;
-            normal = (normal + 1.0) * 0.5;
+            // var normal = ORI_VertexVarying.vWorldNormal;
+            // normal = (normal + 1.0) * 0.5;
 
-            ORI_ShadingInput.BaseColor = vec4<f32>(vec3<f32>(normal), 1.0);// materialUniform.baseColor;
+            ORI_ShadingInput.BaseColor = vec4<f32>(vec3<f32>(depth), 1.0);// materialUniform.baseColor;
 
             UnLit();
         }

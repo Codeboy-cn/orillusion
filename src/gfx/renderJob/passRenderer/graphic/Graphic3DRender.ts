@@ -194,6 +194,25 @@ export class Graphic3D extends Object3D {
     }
 
     /**
+     * Draw triangle
+     * @param uuid Graphic identification ID
+     * @param a Point of a
+     * @param b Point of b
+     * @param c Point of c
+     * @param color The color of the triangle
+     */
+    public drawTriangle(uuid: string, a: Vector3, b: Vector3, c: Vector3, color: Color = Color.COLOR_WHITE) {
+        var points: Vector3[] = [];
+        points.push(a);
+        points.push(b);
+        points.push(b);
+        points.push(c);
+        points.push(c);
+        points.push(a);
+        this.mLineRender.fillShapeData(uuid, 'line', color, points);
+    }
+
+    /**
      * Draw the box
      * @param uuid Graphic identification ID
      * @param minPoint Point of minimum

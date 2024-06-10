@@ -1,4 +1,4 @@
-import { Engine3D, Scene3D, CameraUtil, View3D, AtmosphericComponent, ComponentBase, Time, AxisObject, Object3DUtil, KelvinUtil, DirectLight, Object3D, HoverCameraController, MeshRenderer, LitMaterial, BoxGeometry, UnLit, UnLitMaterial, Interpolator, VertexAttributeName, GeometryBase, Color, Vector3, GPUPrimitiveTopology, FlyCameraController, GPUCullMode, BoundingBox, RenderNode, Matrix4, PlaneGeometry, SphereGeometry, Camera3D, RendererBase, OcclusionSystem, ClusterLightingBuffer, PassType, VirtualTexture, webGPUContext, GPUTextureFormat, PostBase, ComputeShader, RendererPassState, WebGPUDescriptorCreator, ComputeGPUBuffer, GBufferFrame, RTFrame, GPUContext, RTDescriptor, EntityCollect, PostProcessingComponent, GlobalBindGroup, UniformGPUBuffer, Material, BoundUtil, CubeCamera, VertexAttribute, Quaternion, Orientation3D } from "@orillusion/core";
+import { Engine3D, Scene3D, CameraUtil, View3D, AtmosphericComponent, ComponentBase, Time, AxisObject, Object3DUtil, KelvinUtil, DirectLight, Object3D, HoverCameraController, MeshRenderer, LitMaterial, BoxGeometry, UnLit, UnLitMaterial, Interpolator, VertexAttributeName, GeometryBase, Color, Vector3, GPUPrimitiveTopology, FlyCameraController, GPUCullMode, BoundingBox, RenderNode, Matrix4, PlaneGeometry, SphereGeometry, Camera3D, RendererBase, OcclusionSystem, ClusterLightingBuffer, PassType, VirtualTexture, webGPUContext, GPUTextureFormat, PostBase, ComputeShader, RendererPassState, WebGPUDescriptorCreator, ComputeGPUBuffer, GBufferFrame, RTFrame, GPUContext, RTDescriptor, EntityCollect, PostProcessingComponent, GlobalBindGroup, UniformGPUBuffer, Material, BoundUtil, CubeCamera, VertexAttribute, Quaternion, Orientation3D, Ray } from "@orillusion/core";
 import { GUIHelp } from "@orillusion/debug/GUIHelp";
 import { SupportGenerator } from "./SupportGenerator/SupportGenerator";
 import { Octree } from "./SupportGenerator/Octree";
@@ -186,7 +186,7 @@ export class Sample_Test {
 
     protected enableDebug: boolean = false;
 
-    protected scaleFactor: number = 20;
+    protected scaleFactor: number = 10;
     protected supportPillarTopPoints: Vector3[];
     protected rootNode: Object3D;
 
@@ -258,12 +258,15 @@ export class Sample_Test {
             // const res = 'stls/testA.stl';
             // const res = 'stls/0325/0325/抽壳/底部孤岛自适应.stl';
 
-            // let obj = await Engine3D.res.loadSTL(res) as Object3D;
+            // let obj = await Engine3D.res.loadSTL('stls/TestBox.stl') as Object3D;
 
             let obj = await Engine3D.res.loadGltf('gltfs/内壁抽壳去底1.5mm.temp.gltf') as Object3D;
             while (obj.entityChildren[0]) { obj = obj.entityChildren[0] as Object3D; }
 
-            let mr = obj.getComponentsInChild(MeshRenderer)[0];
+            // obj.rotationX = -90;
+            // obj.scaleX = obj.scaleY = obj.scaleZ = 10;
+
+            let mr = obj.getComponent(MeshRenderer);// obj.getComponentsInChild(MeshRenderer)[0];
             rawGeometry = mr.geometry;
             // mr.material.doubleSide = true;
             // mr.material.cullMode = GPUCullMode.back;
@@ -271,21 +274,27 @@ export class Sample_Test {
             // this.view.scene.addChild(obj);
 
             if (true) {
-                let mesh = new Mesh(mr);
-                this.mesh = mesh;
-
-                obj.rotationX = -80;
+                obj.rotationX = -89;
                 // obj.rotationY = 30;
-                obj.rotationZ = 10;
+                // obj.rotationZ = 10;
+
+                // obj.rotationX = -90;
+                // obj.scaleX = obj.scaleY = obj.scaleZ = 10;
 
                 // obj.x = 50;
                 obj.y = 40;
 
+                let mesh = new Mesh(mr);
+                this.mesh = mesh;
+
                 let meshObj = new Object3D();
-                meshObj.rotationX = mesh.rawMesh.transform.rotationX;
-                meshObj.rotationY = mesh.rawMesh.transform.rotationY;
-                meshObj.rotationZ = mesh.rawMesh.transform.rotationZ;
-                meshObj.localPosition = mesh.matrixWorld.position;
+                // meshObj.rotationX = mesh.rawMesh.transform.rotationX;
+                // meshObj.rotationY = mesh.rawMesh.transform.rotationY;
+                // meshObj.rotationZ = mesh.rawMesh.transform.rotationZ;
+                // meshObj.scaleX = mesh.rawMesh.transform.scaleX;
+                // meshObj.scaleY = mesh.rawMesh.transform.scaleY;
+                // meshObj.scaleZ = mesh.rawMesh.transform.scaleZ;
+                // meshObj.localPosition = mesh.matrixWorld.position;
 
 
                 this.rootNode = new Object3D();
@@ -684,9 +693,27 @@ export class Sample_Test {
                     // support.add(this.supportPillarReinforceParams, 'subdivs', 3, 64, 1).name('Subdivs');
                     GUIHelp.addButton('BuildReinforcePillar', () => {
                         this.removeSupportPillarReinforce();
-                        // this.supportPillarReinforceParams.radius = this.params.radius - 0.05;
+                        this.supportPillarReinforceParams.radius = this.params.radius - 0.1;
                         this.supportPillarReinforceParams.subdivs = this.params.subdivs;
                         this.buildSupportPillarReinforce(this.supportPillarTopPoints, this.supportPillarReinforceParams);
+
+                        // let g = new Geometry();
+                        // g.buildConnectRod(new Vector3(-1, 1, 0), new Vector3(1, 1, 0), 0.1, 5);
+
+                        // g.buildConnectRod(new Vector3(-1, 2, 0), new Vector3(1, 2, 0), 0.1, 5);
+
+                        // g.buildConnectRod(new Vector3(-1, 3, 0), new Vector3(1, 3, 0), 0.1, 5);
+
+                        // g.buildConnectRod(new Vector3(-1, 3, -1), new Vector3(1, 2, 1), 0.1, 5);
+
+                        // this.supportReinforcePillar = new Object3D();
+                        // let supportMesh = this.supportReinforcePillar.addComponent(MeshRenderer);
+                        // supportMesh.geometry = g.toGeometryBase();
+                        // let mat = new LitMaterial();
+                        // mat.baseColor = new Color(1, 1, 1);
+                        // supportMesh.material = mat;
+                        // this.rootNode.addChild(this.supportReinforcePillar);
+
                     });
                     GUIHelp.addButton('RemoveReinforcePillar', () => {
                         this.removeSupportPillarReinforce();
@@ -749,6 +776,30 @@ export class Sample_Test {
 
     private buildSupports(supportPoints: {v:{x:number,y:number, z:number},normal:{x:number,y:number,z:number}}[]) {
         this.generateSupports(this.mesh, this.params, supportPoints);
+
+        // let supportGeometryResult = new Geometry();
+
+        // let s = new Vector3(0, 10, 0);
+        // let normal = new Vector3(1, 0, 0);
+        // Quaternion.HELP_0.fromEulerAngles(0, 0, -45)
+        // Quaternion.HELP_0.transformVector(normal, normal)
+        // normal.normalize();
+
+        // // for (let p of supportPoints) {
+        // //     s.set(p.v.x, p.v.y, p.v.z);
+        // //     normal.set(p.normal.x, p.normal.y, p.normal.z);
+        //     supportGeometryResult.buildSupportRod_Old(s, normal, 0.2, 0.2, 0.5, 6);
+        // // }
+
+        // if (true) {
+        //     this.supportObj = new Object3D();
+        //     let supportMesh = this.supportObj.addComponent(MeshRenderer);
+        //     supportMesh.geometry = supportGeometryResult.toGeometryBase();
+        //     supportMesh.material = new LitMaterial();
+        //     // supportMesh.material.doubleSide = true;
+        //     // this.view.scene.addChild(this.supportObj);
+        //     this.rootNode.addChild(this.supportObj);
+        // }
     }
 
     private supportBaseBuildParams = {
@@ -1022,7 +1073,6 @@ export class Sample_Test {
         };
 
         let baseGeometry = new Geometry();
-
         function calculateCentroid(points: Vector3[]): Vector3 {
             const n = points.length;
             let sumX = 0, sumZ = 0;
@@ -1034,19 +1084,39 @@ export class Sample_Test {
         }
 
         let centroid = calculateCentroid(contourPoints);
+
+        let newContourPoints = [contourPoints[0]];
+        for (let i = 1; i < contourPoints.length; i++) {
+            const a = contourPoints[i];
+            const b = contourPoints[i - 1];
+            const crossProduct = (a.x - centroid.x) * (b.z - centroid.z) - (a.z - centroid.z) * (b.x - centroid.x);
+            if (crossProduct < 0) {
+                newContourPoints.push(a);
+            }
+        }
+        contourPoints = newContourPoints;
+
         let points = [];
         points.push(centroid);
         points.push(...contourPoints);
 
         console.error("Count:", points.length);
 
+        
+
         // bottom
+        const colors = [new Color(1, 0, 0), new Color(0, 1, 0), new Color(0, 0, 1), new Color(1, 1, 0)];
         const bottomStartIdx = baseGeometry.vertices.length;
         baseGeometry.vertices.push(...points);
         for (let i = 1; i < points.length - 1; i++) {
             baseGeometry.faces.push(new Face(0, i, i+1));
+            const f = baseGeometry.faces[baseGeometry.faces.length-1];
+            Engine3D.views[0].graphic3D.drawBox(`${i}`, baseGeometry.vertices[f.b].clone().subScalar(0.01), baseGeometry.vertices[f.b].clone().addScalar(0.01), colors[i%colors.length]);
         }
         baseGeometry.faces.push(new Face(0, points.length - 1, 1));
+
+        const f = baseGeometry.faces[baseGeometry.faces.length-1];
+        Engine3D.views[0].graphic3D.drawAxis(`end`, baseGeometry.vertices[f.b].clone(), 0.2)
 
 
         let factor = 1.0;
@@ -1176,6 +1246,17 @@ export class Sample_Test {
             );
         }
 
+        const octree = this.getOctree();
+        let ray = new Ray();
+        function hasIntersectionInMesh(s: Vector3, e: Vector3): boolean {
+            const normal = s.clone().subVectors(e, s).normalize();
+            let result = octree.raycast(ray);
+            if (result && result.distance <= Vector3.distance(s, e)) {
+                return true;
+            }
+            return false;
+        }
+
         mstEdges.forEach(edge => {
             // drawEdge(supportPoints[edge.from], supportPoints[edge.to]);
             const startPos = supportPoints[edge.from];
@@ -1193,7 +1274,7 @@ export class Sample_Test {
                 let e = Vector3.HELP_1.set(endPos.x, endPos.y, endPos.z);
                 p = getExtensionIntersectionPoint(s, e, params.angle);
 
-                if (p && p.y < minHeight) {
+                if (p && p.y < minHeight && !hasIntersectionInMesh(s, p)) {
                     geometryData.buildConnectRod(s, p, params.radius, params.subdivs);
                 }
             }
@@ -1203,7 +1284,7 @@ export class Sample_Test {
                 let s = Vector3.HELP_0.set(endPos.x, p.y + params.height, endPos.z);
                 let e = Vector3.HELP_1.set(startPos.x, startPos.y, startPos.z);
                 p = getExtensionIntersectionPoint(s, e, params.angle);
-                if (p && p.y < minHeight) {
+                if (p && p.y < minHeight && !hasIntersectionInMesh(s, p)) {
                     geometryData.buildConnectRod(s, p, params.radius, params.subdivs);
                 }
             }
@@ -1262,6 +1343,8 @@ export class Sample_Test {
             // supportMesh.material.doubleSide = true;
             // this.view.scene.addChild(this.supportObj);
             this.rootNode.addChild(this.supportObj);
+
+            // Engine3D.views[0].graphic3D.drawMeshWireframe('supportObj', supportMesh.geometry, this.supportObj.transform);
         }
 
         if (true) {

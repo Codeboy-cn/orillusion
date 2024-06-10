@@ -1,4 +1,4 @@
-import { GeometryBase, Matrix4, MeshRenderer, Ray, Vector3 } from "../../../src";
+import { Color, Engine3D, GeometryBase, Matrix4, MeshRenderer, Ray, Vector3 } from "../../../src";
 import { Face, Mesh } from "./Geometry";
 import { faceGetVerts, isInfinite, vector3ArgMax, vector3ArgMin, vector3MaxElement, vector3MinElement } from "./Utils";
 
@@ -447,13 +447,13 @@ class Raycaster {
 
         // ray in object space
         var rayLocal = new Ray();
-        var inverseMatrix = new Matrix4();
+        // var inverseMatrix = new Matrix4();
 
-        // inverseMatrix.getInverse(this.mesh.matrixWorld);
-        inverseMatrix.copyFrom(this.mesh.matrixWorld);
-        inverseMatrix.invert();
+        // // inverseMatrix.getInverse(this.mesh.matrixWorld);
+        // inverseMatrix.copyFrom(this.mesh.matrixWorld);
+        // inverseMatrix.invert();
 
-        rayLocal.copy(ray).applyMatrix(inverseMatrix);
+        rayLocal.copy(ray);//.applyMatrix(inverseMatrix);
 
         var p = rayLocal.origin;
         var d = rayLocal.direction;
@@ -468,6 +468,8 @@ class Raycaster {
         // get the enter and exit t parameters for the root node
         var t0 = node.origin.clone().subVectors(node.origin, p).divide(d);
         var t1 = node.origin.clone().subVectors(node.origin.clone().addScalar(node.size), p).divide(d);
+
+        // Engine3D.views[0].graphic3D.drawBox(`${node}`, node.origin.clone().subScalar(node.size), node.origin.clone().addScalar(node.size))
 
         // direction sign vector: 1 if d is increasing along an axis, -1 if
         // decreasing, 0 if constant
@@ -512,12 +514,19 @@ class Raycaster {
         }
 
         // if correct normal, test intersection
-        var a, b, c;
+        var a: Vector3, b: Vector3, c: Vector3;
         if (internal) [a, b, c] = faceGetVerts(face, this.vertices);
         else[b, a, c] = faceGetVerts(face, this.vertices);
 
+        // Engine3D.views[0].graphic3D.drawTriangle(`LastFace`, a, b, c, Color.COLOR_RED);
+        // Engine3D.views[0].graphic3D.drawTriangle(`${a + '_' + b + '_' + c}`, a, b, c, Color.COLOR_BLUE);
+
         // get the intersection point of the face with the ray
         var point = triSegmentIntersection(a, b, c, this.p, this.rayEnd);
+
+        // if (point) {
+        //     Engine3D.views[0].graphic3D.drawAxis('HitPoint', point, 0.1);
+        // }
 
         // if intersection point exists, return it
         return point;
@@ -539,8 +548,8 @@ class Raycaster {
 
                 // if point exists, need to set the intersection object
                 if (point) {
-                    var pointWorld = point.clone().applyMatrix4(this.mesh.matrixWorld);
-                    var originWorld = this.p.clone().applyMatrix4(this.mesh.matrixWorld);
+                    var pointWorld = point.clone();//.applyMatrix4(this.mesh.matrixWorld);
+                    var originWorld = this.p.clone();//.applyMatrix4(this.mesh.matrixWorld);
                     var distanceWorld = Vector3.distance(originWorld, pointWorld);
 
                     // ... but only if no intersection so far or this is a closer intersection
@@ -844,7 +853,7 @@ function triSegmentIntersection(v1: Vector3, v2: Vector3, v3: Vector3, s1: Vecto
     var inv_det = 1.0 / det;
 
     // test u parameter
-    var T = s1.subVectors(s1, v1);
+    var T = s1.clone().subVectors(s1, v1);
     var u = T.dotProduct(P) * inv_det;
     // if intersection, u (see the MT paper) is between 0 and 1
     if (u < 0.0 || u > 1.0) return null;
