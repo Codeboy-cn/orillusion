@@ -539,35 +539,6 @@ export class Geometry {
         let direction = Vector3.sub(p1, p0);
         direction.normalize();
 
-
-        const vn = direction;
-        const p = p1;
-
-        let idx = this.vertices.length;
-        var b = orthogonalVector(vn).normalize();
-        var c = vn.crossProduct(b);
-        for (let i = 0; i <= subdivs; i++) {
-            let a = (i / subdivs) * 2 * Math.PI;
-            this.vertices.push(
-                p.clone()
-                    .addScaledVector(b, rodSize * Math.cos(a))
-                    .addScaledVector(c, rodSize * Math.sin(a))
-            );
-            // ps.push(sidx + ia);
-        }
-
-        let cIndex = this.vertices.length;
-        this.vertices.push(p0);
-        for (let i = 0; i < subdivs; i++) {
-            let i0 = idx + i;
-            let i1 = idx + ((i + 1) % subdivs);
-            this.faces.push(new Face(i1, i0, cIndex));
-        }
-
-        return;
-
-
-
         // Generate an arbitrary perpendicular vector
         let up = new Vector3(0, 1, 0);
         if (Math.abs(direction.y) > 0.999) {
@@ -622,6 +593,8 @@ export class Geometry {
             let i1 = sidx + ((i + 1) % subdivs) * 2;
             this.faces.push(new Face(centerTopIdx, i0, i1));
         }
+
+        // return;
 
         // Start building support columns
         p0 = p1.clone();

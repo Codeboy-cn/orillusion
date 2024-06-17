@@ -1,6 +1,13 @@
 import { BoundingBox, Color, Engine3D, IBound, Material, RenderShaderPass, Shader, ShaderLib, Texture, UnLitShader, Vector4 } from "@orillusion/core";
 
+export enum DepthMaterialOutputType {
+    Depth,
+    DepthHighPrecision,
+    OnlyBottomEdge,
+}
+
 export class DepthMaterial extends Material {
+
     constructor() {
         super();
 
@@ -25,25 +32,42 @@ export class DepthMaterial extends Material {
         this.setDefine('USE_METALLIC_B', true);
         this.setDefine('USE_ALPHA_A', true);
         this.setDefine('USE_CUSTOMUNIFORM', true);
-        this.setDefine('USE_ONLY_BOTTOM_EDGE', true);
         
         this.setUniformVector4(`boundMin`, new Vector4(0, 0, 0, 0));
         this.setUniformVector4(`boundMax`, new Vector4(0, 0, 1, 1));
-        this.setUniformColor(`baseColor`, new Color());
-        this.setUniformFloat(`alphaCutoff`, 0.0);
+        this.setUniformFloat(`outputType`, 0);
         this.setUniformFloat(`onlyBottomEdge`, 0);
-        this.setUniformFloat(`discardMaxHeight`, 0.1);
+        this.setUniformFloat(`beginHeight`, -0.00001);
+        this.setUniformFloat(`endHeight`, 1.0);
 
         // default value
         this.baseMap = Engine3D.res.whiteTexture;
     }
 
-    public set onlyBottomEdge(enable: boolean ){
-        this.setUniformFloat(`onlyBottomEdge`, enable ? 1: 0);
+    public set beginHeight(value: number) {
+        if (value == 0)
+            value = -0.00001;
+        this.setUniformFloat(`beginHeight`, value);
     }
 
-    public get onlyBottomEdge(): boolean {
-        return this.getUniformFloat(`onlyBottomEdge`) != 0;
+    public get beginHeight(): number {
+        return this.getUniformFloat(`beginHeight`);
+    }
+
+    public set endHeight(value: number) {
+        this.setUniformFloat(`endHeight`, value);
+    }
+
+    public get endHeight(): number {
+        return this.getUniformFloat(`endHeight`);
+    }
+
+    public set outputType(type: DepthMaterialOutputType) {
+        this.setUniformFloat(`outputType`, Number(type));
+    }
+
+    public get outputType(): DepthMaterialOutputType {
+        return this.getUniformFloat(`onlyBottomEdge`);
     }
 
     public set boundBox(v: IBound) {
@@ -57,14 +81,6 @@ export class DepthMaterial extends Material {
 
     public get baseMap() {
         return this.shader.getTexture(`baseMap`);
-    }
-
-    public set baseColor(color: Color) {
-        this.shader.setUniformColor(`baseColor`, color);
-    }
-
-    public get baseColor() {
-        return this.shader.getUniformColor("baseColor");
     }
 
     public set envMap(texture: Texture) {
@@ -83,10 +99,10 @@ export class DepthMaterial extends Material {
             struct MaterialUniform {
                 boundMin:vec4<f32>,
                 boundMax:vec4<f32>,
-                baseColor: vec4<f32>,
-                alphaCutoff: f32,
+                outputType: f32,
                 onlyBottomEdge: f32,
-                discardMaxHeight: f32,
+                beginHeight: f32,
+                endHeight: f32,
             };
         #endif
 
@@ -121,18 +137,32 @@ export class DepthMaterial extends Material {
             let maxY = materialUniform.boundMax.y;
             var depth = 1.0 - (ORI_VertexVarying.vWorldPos.y - minY) / (maxY - minY);
 
-            #if USE_ONLY_BOTTOM_EDGE
-                if (materialUniform.onlyBottomEdge != 0 ) {
-                    if (ORI_VertexVarying.vWorldPos.y - minY > materialUniform.discardMaxHeight) {
+            switch (u32(materialUniform.outputType)) {
+                case ${DepthMaterialOutputType.DepthHighPrecision}: {
+                    let depthValue: u32 = u32(depth * f32(0xFFFFFF));
+                    // var r = (depthValue >> 24) & 0xFF;
+                    var g = (depthValue >> 16) & 0xFF;
+                    var b = (depthValue >> 8) & 0xFF;
+                    var a = depthValue & 0xFF;
+                    ORI_ShadingInput.BaseColor = vec4<f32>(vec3<f32>(f32(g)/255.0, f32(b)/255.0, f32(a)/255.0), 1.0);
+                }
+                case ${DepthMaterialOutputType.OnlyBottomEdge}: {
+                    let h = ORI_VertexVarying.vWorldPos.y - minY;
+                    if (h < materialUniform.beginHeight || h > materialUniform.endHeight) {
                         discard;
                     }
+                    ORI_ShadingInput.BaseColor = vec4<f32>(vec3<f32>(depth), 1.0);
                 }
-            #endif
+                default {
+                    ORI_ShadingInput.BaseColor = vec4<f32>(vec3<f32>(depth), 1.0);
+                }
+            }
 
-            // var normal = ORI_VertexVarying.vWorldNormal;
-            // normal = (normal + 1.0) * 0.5;
-
-            ORI_ShadingInput.BaseColor = vec4<f32>(vec3<f32>(depth), 1.0);// materialUniform.baseColor;
+            if (!isFrontFace) {
+                ORI_ShadingInput.BaseColor = vec4<f32>(vec3<f32>(1.0, 0, 0), 1.0);
+            } else {
+                ORI_ShadingInput.BaseColor = vec4<f32>(vec3<f32>(0.1, 0.8, 1.0), 0.0);
+            }
 
             UnLit();
         }

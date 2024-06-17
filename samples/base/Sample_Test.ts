@@ -3,7 +3,7 @@ import { GUIHelp } from "@orillusion/debug/GUIHelp";
 import { SupportGenerator } from "./SupportGenerator/SupportGenerator";
 import { Octree } from "./SupportGenerator/Octree";
 import { Face, Geometry, Mesh } from "./SupportGenerator/Geometry";
-import { DepthMaterial } from "./SupportGenerator/DepthMaterial";
+import { DepthMaterial, DepthMaterialOutputType } from "./SupportGenerator/DepthMaterial";
 import { Support_Cs } from "./SupportGenerator/Support_Cs";
 import { MinHeap } from "./SupportGenerator/MinHeap";
 
@@ -184,7 +184,7 @@ export class Sample_Test {
 
     protected mainCanvas: HTMLCanvasElement;
 
-    protected enableDebug: boolean = false;
+    protected enableDebug: boolean = true;
 
     protected scaleFactor: number = 10;
     protected supportPillarTopPoints: Vector3[];
@@ -274,7 +274,7 @@ export class Sample_Test {
             // this.view.scene.addChild(obj);
 
             if (true) {
-                obj.rotationX = -89;
+                obj.rotationX = 90; // -90;
                 // obj.rotationY = 30;
                 // obj.rotationZ = 10;
 
@@ -347,18 +347,104 @@ export class Sample_Test {
                 let depthMaterial = new DepthMaterial();
                 depthMaterial.doubleSide = true;
                 depthMaterial.boundBox = bound;
+                depthMaterial.outputType = DepthMaterialOutputType.Depth;
 
                 let bottomEdgeMaterial = new DepthMaterial();
+                bottomEdgeMaterial.beginHeight = 0.0;
+                bottomEdgeMaterial.endHeight = bound.max.y - bound.min.y;
                 bottomEdgeMaterial.doubleSide = true;
                 bottomEdgeMaterial.boundBox = bound;
-                bottomEdgeMaterial.onlyBottomEdge = true;
+                bottomEdgeMaterial.outputType = DepthMaterialOutputType.OnlyBottomEdge;
+
+                {
+                    let o = {
+                        precision: 0.1,
+                        beginHeight: 0,
+                        endHeight: bound.max.y - bound.min.y,
+                    }
+                    GUIHelp.add(o, 'beginHeight', 0, bound.max.y - bound.min.y).onChange(v => {
+                        // if (o.endHeight < o.beginHeight) {
+                        //     o.endHeight = o.beginHeight;
+                        //     o.beginHeight = o.endHeight - o.precision;
+                        // }
+                        bottomEdgeMaterial.beginHeight = o.beginHeight;
+                    });
+                    GUIHelp.add(o, 'endHeight', 0, bound.max.y - bound.min.y).onChange(v => {
+                        // if (o.endHeight < o.beginHeight) {
+                        //     o.endHeight = o.beginHeight;
+                        //     o.beginHeight = o.endHeight - o.precision;
+                        // }
+                        bottomEdgeMaterial.endHeight = o.endHeight;
+                    });
+                    GUIHelp.addButton('PrevLayer', ()=>{
+                        o.beginHeight = o.beginHeight - o.precision;
+                        o.endHeight = o.endHeight - o.precision;
+
+                        bottomEdgeMaterial.beginHeight = o.beginHeight;
+                        bottomEdgeMaterial.endHeight = o.endHeight;
+                    });
+                    GUIHelp.addButton('NextLayer', ()=>{
+                        o.beginHeight = o.beginHeight + o.precision;
+                        o.endHeight = o.endHeight + o.precision;
+
+                        bottomEdgeMaterial.beginHeight = o.beginHeight;
+                        bottomEdgeMaterial.endHeight = o.endHeight;
+                    });
+                    GUIHelp.addButton('SaveImage', ()=>{
+                        function downloadCanvasAsPng(canvas: HTMLCanvasElement, fileName: string): void {
+                            // 将 Canvas 内容转换为 base64 编码的 PNG 图片
+                            const dataUrl = canvas.toDataURL('image/png');
+                        
+                            // 创建一个临时的下载链接
+                            const link = document.createElement('a');
+                            link.href = dataUrl;
+                            link.download = fileName;
+
+                            // 触发下载
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                        }
+                        downloadCanvasAsPng(this.mainCanvas, `layer(${o.beginHeight})_${o.precision}.png`);
+                    });
+    
+                    const min = bound.min;
+                    const max = bound.max;
+                    const rectWidth = max.x - min.x + 4;
+                    const rectHeight = max.z - min.z + 4;
+                    if (!this.orthoCamera) {
+                        this.orthoCamera = CameraUtil.createCamera3D(null, this.view.scene);
+                        let orthoCamera = this.orthoCamera;
+                        orthoCamera.ortho(-rectWidth, rectHeight, 0.01, 1000.0);
+                        let pos = bound.center.clone().addScaledVector(Vector3.DOWN, 50);
+                        orthoCamera.lookAt(pos, bound.center, Vector3.Z_AXIS);
+                    }
+                    GUIHelp.addButton('SwitchCamera', () => {
+                        if (this.view.camera === this.mainCamera) {
+                            this.view.camera = this.orthoCamera;
+                        } else {
+                            this.view.camera = this.mainCamera;
+                        }
+                    });
+                    let width = Math.floor(rectWidth / o.precision);
+                    let height = Math.floor(rectHeight / o.precision);
+                    this.mainCanvas.width = width;
+                    this.mainCanvas.height = height;
+                    this.mainCanvas.style.width = width + 'px';
+                    this.mainCanvas.style.height = height + 'px';
+                }
+
+                let depthMaterialHighPrecision = new DepthMaterial();
+                depthMaterialHighPrecision.doubleSide = true;
+                depthMaterialHighPrecision.boundBox = bound;
+                depthMaterialHighPrecision.outputType = DepthMaterialOutputType.DepthHighPrecision;
 
                 // this.myRenderer.target = mr2;
-                mr2.material = depthMaterial;
+                mr2.material = bottomEdgeMaterial;
                 // this.myRenderer.setTarget(meshObj);
                 // mr2.material = mainMaterial;
 
-                if (true) {
+                if (false) {
                     const min = bound.min;
                     const max = bound.max;
                     const rectWidth = max.x - min.x + 4;
@@ -668,7 +754,16 @@ export class Sample_Test {
                     GUIHelp.addButton('BuildSupportPillar', () => {
                         this.removeSupports();
                         // build support structure
-                        this.buildSupports(supportPointList);
+                        // this.buildSupports(supportPointList);
+
+                        let g = new Geometry();
+                        g.buildSupportRod(new Vector3(0, 10, 0), new Vector3(-1, -1, 0), 0, 0.1, 0.5, 6);
+                        
+                        this.supportObj = new Object3D();
+                        let supportMesh = this.supportObj.addComponent(MeshRenderer);
+                        supportMesh.geometry = g.toGeometryBase();
+                        supportMesh.material = new LitMaterial();
+                        this.rootNode.addChild(this.supportObj);
                     });
                     GUIHelp.addButton('RemoveSupportPillar', () => {
                         this.removeSupports();
