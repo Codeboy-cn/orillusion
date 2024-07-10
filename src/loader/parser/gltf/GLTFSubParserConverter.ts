@@ -1,8 +1,4 @@
-<<<<<<< HEAD
-import { AnimatorComponent, BlendShapeData, BlendShapePropertyData, LitMaterial, Material, Matrix4, PropertyAnimationClip, SkinnedMeshRenderer2 } from "../../..";
-=======
 import { AnimatorComponent, BlendShapeData, BlendShapePropertyData, GLTFMaterial, LitMaterial, Material, Matrix4, PropertyAnimationClip, SkinnedMeshRenderer2 } from "../../..";
->>>>>>> 4cf51f34937da6800f6cde2487defe12fe87ba8f
 import { Engine3D } from "../../../Engine3D";
 import { SkeletonAnimationComponent } from "../../../components/SkeletonAnimationComponent";
 import { DirectLight } from "../../../components/lights/DirectLight";

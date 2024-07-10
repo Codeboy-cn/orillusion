@@ -432,12 +432,8 @@ export class GPUBufferBase {
                 });
                 tBuffer['usedSize'] = mapAsyncArray.byteLength;
                 this.mapAsyncBuffersOutstanding++;
-<<<<<<< HEAD
-                if (this.mapAsyncBuffersOutstanding > 10) {
-=======
 
                 if (this.mapAsyncBuffersOutstanding > 20) {
->>>>>>> 4cf51f34937da6800f6cde2487defe12fe87ba8f
                     // ${(this.mapAsync.value * this.mapAsyncBuffersOutstanding).toFixed(2)}
                     console.warn(` Warning: mapAsync requests from ${this.mapAsyncBuffersOutstanding} frames ago have not resolved yet.  MB of staging buffers allocated.`);
                 }
