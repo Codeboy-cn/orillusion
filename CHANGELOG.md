@@ -1,3 +1,109 @@
+## [0.8.2](https://github.com/Orillusion/orillusion/compare/v0.8.1...v0.8.2) (2024-07-21)
+
+
+### Bug Fixes
+
+* **doc:** fix TextureCube order ([#388](https://github.com/Orillusion/orillusion/issues/388)) ([#421](https://github.com/Orillusion/orillusion/issues/421)) ([7e4e15d](https://github.com/Orillusion/orillusion/commit/7e4e15d1500d1e16e5a780123f78d602be9a9708))
+* **MeshRenderer:** replace geometry error ([#415](https://github.com/Orillusion/orillusion/issues/415)) ([c79e287](https://github.com/Orillusion/orillusion/commit/c79e2878c61480583ea4a73188e0e81c395d0dcb))
+* **PCF:** PCF shadow error ([#371](https://github.com/Orillusion/orillusion/issues/371)) ([c47257c](https://github.com/Orillusion/orillusion/commit/c47257c47d65c1e5c3ee4f0eae0b2bf42295561c))
+* **pick:** fix undefined values ([#416](https://github.com/Orillusion/orillusion/issues/416)) ([5548467](https://github.com/Orillusion/orillusion/commit/55484676627198c1b646c3944f4077e0b639adb0))
+* **pick:** fix gui pick events ([#422](https://github.com/Orillusion/orillusion/issues/422)) ([367f469](https://github.com/Orillusion/orillusion/commit/367f46904325e87b3f8a257d5cc3e44f96510132))
+* **pick:** fix right click ([#418](https://github.com/Orillusion/orillusion/issues/418)) ([b248c45](https://github.com/Orillusion/orillusion/commit/b248c455c428edc4b4c7233d39c6449e31322b12))
+
+
+### BREAKING CHANGES
+* **PointerEvent3D:** simplified `event.data` with `{worldPos, screenUv, meshID, worldNormal}`
+
+
+## [0.8.1](https://github.com/Orillusion/orillusion/compare/v0.7.2...v0.8.1) (2024-07-10)
+
+
+### Bug Fixes
+
+* **canvas:** fix external canvas resize on dpi change ([2e54053](https://github.com/Orillusion/orillusion/commit/2e54053efbffbd1d70d2a1b7c2e2f62ca672c4e9))
+* **effect:** fix grass get uniform data ([588721f](https://github.com/Orillusion/orillusion/commit/588721f52013fb9cadbe5d8156a41d2110636ac7))
+* **effect:** update windSpeed ([538ec2d](https://github.com/Orillusion/orillusion/commit/538ec2df976e1a45d13e3deaf15ef7c15fe5b409))
+* Error when lineJoin is set to round ([#366](https://github.com/Orillusion/orillusion/issues/366)) ([1ab8718](https://github.com/Orillusion/orillusion/commit/1ab87183c6910c2fc3e61d940b0183a2d5597b08))
+* fix issue of [#387](https://github.com/Orillusion/orillusion/issues/387) ([#394](https://github.com/Orillusion/orillusion/issues/394)) ([6271c37](https://github.com/Orillusion/orillusion/commit/6271c3748a1520cd444431200f7ec35111af049e))
+* **GlobalUniformGroup:** missing property for shadow camera ([1f90393](https://github.com/Orillusion/orillusion/commit/1f903935fc50be16763067b888c0c37cae860c5c))
+* **loaderFunctions:** onUrl on loadGltf ([65bda50](https://github.com/Orillusion/orillusion/commit/65bda50eac61694bb4e8354ee2f1744c876bd7ba))
+* object is disabled after removeChild  ([#381](https://github.com/Orillusion/orillusion/issues/381)) ([51ff3ee](https://github.com/Orillusion/orillusion/commit/51ff3ee84fb8aae46819d5c7db914b3dc873062f))
+* **objparser:** loadObj crash [#372](https://github.com/Orillusion/orillusion/issues/372) ([b3e9194](https://github.com/Orillusion/orillusion/commit/b3e9194630c9d0f3ab5a1cbc92dc7b760dd58f8b))
+* **picker:** missing normal in pickFire ([4e05c04](https://github.com/Orillusion/orillusion/commit/4e05c04dd22cccfb44e63c8dd2af859d4ff01c86))
+* **pick:** fix normal in pickInfo ([5197317](https://github.com/Orillusion/orillusion/commit/519731748ba046dd28891d99899e68e61a77c409))
+* Solve the issues mentioned in Issue367 ([#368](https://github.com/Orillusion/orillusion/issues/368)) ([7ab2f48](https://github.com/Orillusion/orillusion/commit/7ab2f489dfca66b6cb2cb84111097b430bb87c34))
+* **transform:** fix wrong localRotQuat ([8c5e2b3](https://github.com/Orillusion/orillusion/commit/8c5e2b3606378009045a460edf841e5d36142de8))
+
+
+### Features
+
+* **Animator:** Unified skeleton animation and morph animation to AnimatorComponent ([#405](https://github.com/Orillusion/orillusion/issues/405)) ([4cf51f3](https://github.com/Orillusion/orillusion/commit/4cf51f34937da6800f6cde2487defe12fe87ba8f))
+* **buffer:** return promise result ([590b213](https://github.com/Orillusion/orillusion/commit/590b213d41dd26ca86e1780376a7e04ece8a5166))
+* **GBuff:** compressed GBuff data. ([#412](https://github.com/Orillusion/orillusion/issues/412)) ([4649add](https://github.com/Orillusion/orillusion/commit/4649addc066cd53a5ee286940c1e254d64bde89e))
+* **orbit:** pan at xz plane ([52383f5](https://github.com/Orillusion/orillusion/commit/52383f5c60da7f6f2e3407de6bda355946f61fed))
+* **sample:** add camera path animation sample ([#385](https://github.com/Orillusion/orillusion/issues/385)) ([d447cd1](https://github.com/Orillusion/orillusion/commit/d447cd18e6e85763706e67c12e19d6a02e5e1dc4))
+* **sample:** add EatTheBox sample,add ShootTheBox sample ([#391](https://github.com/Orillusion/orillusion/issues/391)) ([e925d1f](https://github.com/Orillusion/orillusion/commit/e925d1f743ade799dac9d33c01ad829bcef386cb))
+
+
+
+## [0.7.2](https://github.com/Orillusion/orillusion/compare/v0.7.1...v0.7.2) (2024-01-26)
+
+
+### Bug Fixes
+
+* duplicated class name ([#341](https://github.com/Orillusion/orillusion/issues/341)) ([fe73994](https://github.com/Orillusion/orillusion/commit/fe73994063333feaff538285b82aefdd91ce02cf))
+* Fix the error caused by removing the Sky Box. ([#344](https://github.com/Orillusion/orillusion/issues/344)) ([b02c85a](https://github.com/Orillusion/orillusion/commit/b02c85a6c4637f3a0fbe630dbd9d9a39065b01d8))
+* Fix turning shadows on and off for Materials and MeshRenderers ([#343](https://github.com/Orillusion/orillusion/issues/343)) ([6858cc0](https://github.com/Orillusion/orillusion/commit/6858cc056a25c78e841d4c929ca36e09dd34e9fb))
+* **gltfParser:** Fixed some model indices parsing errors ([#354](https://github.com/Orillusion/orillusion/issues/354)) ([9714d6e](https://github.com/Orillusion/orillusion/commit/9714d6e8d7bdf6bdd9357f78fd33cf9dbc520649))
+* **media-extention:** fix get/set baseColor ([c6c5526](https://github.com/Orillusion/orillusion/commit/c6c5526cab00c21969e5d2b12ab358e487785edf))
+* **physics:** fix new build with Ammo ([bba64a1](https://github.com/Orillusion/orillusion/commit/bba64a1ab35a89b712cd7dd6843118a331b01afe))
+* Shadow of double side materials. ([#337](https://github.com/Orillusion/orillusion/issues/337)) ([e4004e7](https://github.com/Orillusion/orillusion/commit/e4004e747b4723db6f41636e997e662cb6343441))
+* **shadow:** copy texture to texture error ([#339](https://github.com/Orillusion/orillusion/issues/339)) ([6fea86a](https://github.com/Orillusion/orillusion/commit/6fea86ae644b58d0d5a909a667e2b111d286632e))
+* **SkeletonAnimation:** skeleton animation parser ([#353](https://github.com/Orillusion/orillusion/issues/353)) ([10ee99e](https://github.com/Orillusion/orillusion/commit/10ee99e4ebbc9b5c708c458c7d40bd93cb192375))
+
+
+### Features
+
+* **compute:** Add custom compute shader samples ([#336](https://github.com/Orillusion/orillusion/issues/336)) ([c4a7db1](https://github.com/Orillusion/orillusion/commit/c4a7db1a571529c97f550b4fe93d8dc74cf92f59))
+* Renderer of Shape3D ([#360](https://github.com/Orillusion/orillusion/issues/360)) ([9f856bb](https://github.com/Orillusion/orillusion/commit/9f856bb069e7a121b319ebee6b2384984a37e230)), closes [#304](https://github.com/Orillusion/orillusion/issues/304) [#318](https://github.com/Orillusion/orillusion/issues/318)
+* **sample:** add draw mesh line sample ([#331](https://github.com/Orillusion/orillusion/issues/331)) ([b7bf873](https://github.com/Orillusion/orillusion/commit/b7bf87362e6d9ad2d755ff22f462c71f2b2f18f1))
+* **sample:** add moveble light sample ([#355](https://github.com/Orillusion/orillusion/issues/355)) ([b7f186b](https://github.com/Orillusion/orillusion/commit/b7f186ba6009fd702b8a5280dca1c15a00290d3e))
+* **sample:** GUI text barrage ([#333](https://github.com/Orillusion/orillusion/issues/333)) ([ea2ed66](https://github.com/Orillusion/orillusion/commit/ea2ed6685f78c557cdd4447d4752f1a436ced20d))
+* **shader:** add ComputeShader auto binding ([#359](https://github.com/Orillusion/orillusion/issues/359)) ([b0319d9](https://github.com/Orillusion/orillusion/commit/b0319d9138a2d09896f021044f84c069287bbbdd))
+* **shader:** add logarithmic depth ([#346](https://github.com/Orillusion/orillusion/issues/346)) ([24afa9d](https://github.com/Orillusion/orillusion/commit/24afa9dea4da9e6a034303b965807cc8ccf4ee32))
+* update @orillusion/ammo ([a926196](https://github.com/Orillusion/orillusion/commit/a926196edac77e99ff631b5b924ae7faa1fef22b))
+
+
+### Performance Improvements
+
+* **build:** use esnext as build target ([2fc6f27](https://github.com/Orillusion/orillusion/commit/2fc6f27d91ebdee871168cad2a723d76411cdfd3))
+* Use pixelRatio from UIPanel. ([#338](https://github.com/Orillusion/orillusion/issues/338)) ([03529da](https://github.com/Orillusion/orillusion/commit/03529da3293da748d9f1a6183dab7ee902043bd3))
+
+
+
+## [0.7.1](https://github.com/Orillusion/orillusion/compare/v0.7.0...v0.7.1) (2023-11-14)
+
+
+### Bug Fixes
+
+* Auto sort transparent renderers. ([#318](https://github.com/Orillusion/orillusion/issues/318)) ([5becdc4](https://github.com/Orillusion/orillusion/commit/5becdc48739e4ce7745d15a60c46612f991ae5f2))
+* fix: load gltf sample
+* fix: fix grass sample
+* fix: fix media-extention material
+* fix: fix post sample resize bug
+* fix: fix csm shadow
+* fix: Cancel automatic resizing of rendertexture in GI
+* fix: Wrong offset for bloom
+* fix: reduce texture sample times
+* fix: texture Count Exceeded the maximum limit of 7
+
+### Features
+* **engine:** enable gpu attachments texture auto resize
+* **graphic:** add new graphic samples
+* **sample:** update physics car sample ([#327](https://github.com/Orillusion/orillusion/issues/327)) ([e09b243](https://github.com/Orillusion/orillusion/commit/e09b24386bb517d1277e00dcaa4105999d2dd856))
+
+
+
 # [0.7.0](https://github.com/Orillusion/orillusion/compare/v0.6.9...v0.7.0) (2023-11-01)
 
 

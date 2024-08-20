@@ -46,8 +46,8 @@ export class Sample_CandleFlame {
             let lightObj = this.lightObj = new Object3D();
             let pl = lightObj.addComponent(PointLight);
             pl.range = 56;
-            pl.radius = 1;
-            pl.intensity = 15;
+            pl.radius = 0.01;
+            pl.intensity = 5;
             pl.castShadow = true;
             pl.realTimeShadow = true;
             pl.lightColor = new Color(67 / 255, 195 / 255, 232 / 255);
@@ -104,8 +104,7 @@ export class Sample_CandleFlame {
             mat.baseMap = Engine3D.res.whiteTexture;
             mat.normalMap = Engine3D.res.normalTexture;
             mat.aoMap = Engine3D.res.whiteTexture;
-            mat.maskMap = Engine3D.res.createTexture(32, 32, 255.0, 255.0, 0.0, 1);
-            mat.emissiveMap = Engine3D.res.blackTexture;
+            mat.emissiveMap = Engine3D.res.whiteTexture;
             mat.roughness = 0.5;
             mat.metallic = 0.2;
 

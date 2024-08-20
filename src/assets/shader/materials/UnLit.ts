@@ -1,3 +1,6 @@
+/**
+ * @internal
+ */
 export let UnLit: string = /*wgsl*/ `
     #include "Common_vert"
     #include "Common_frag"
@@ -34,10 +37,7 @@ export let UnLit: string = /*wgsl*/ `
         }
         
         ORI_ShadingInput.BaseColor = color * materialUniform.baseColor ;
-        
         UnLit();
-
-        // ORI_FragmentOutput.color = vec4<f32>( 1.0,0.0,0.0,1.0) ;
     }
 `
 

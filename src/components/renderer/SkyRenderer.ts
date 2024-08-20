@@ -8,10 +8,12 @@ import { EntityCollect } from '../../gfx/renderJob/collect/EntityCollect';
 import { ClusterLightingBuffer } from '../../gfx/renderJob/passRenderer/cluster/ClusterLightingBuffer';
 import { RendererMask } from '../../gfx/renderJob/passRenderer/state/RendererMask';
 import { RendererPassState } from '../../gfx/renderJob/passRenderer/state/RendererPassState';
-import { PassType } from '../../gfx/renderJob/passRenderer/state/RendererType';
+import { PassType } from '../../gfx/renderJob/passRenderer/state/PassType';
 import { SkyMaterial } from '../../materials/SkyMaterial';
 import { Vector3 } from '../../math/Vector3';
 import { SphereGeometry } from '../../shape/SphereGeometry';
+import { Object3D } from '../../core/entities/Object3D';
+import { SphereReflection } from './SphereReflection';
 
 /**
  *
@@ -23,7 +25,6 @@ export class SkyRenderer extends MeshRenderer {
      * The material used in the Sky Box.
      */
     public skyMaterial: SkyMaterial;
-
 
     public init(): void {
         super.init();
@@ -55,6 +56,11 @@ export class SkyRenderer extends MeshRenderer {
             this._inRenderer = false;
             EntityCollect.instance.sky = null;
         }
+        super.onDisable();
+    }
+
+    public nodeUpdate(view: View3D, passType: PassType, renderPassState: RendererPassState, clusterLightingBuffer?: ClusterLightingBuffer) {
+        super.nodeUpdate(view, passType, renderPassState, clusterLightingBuffer);
     }
 
     public renderPass2(view: View3D, passType: PassType, rendererPassState: RendererPassState, clusterLightingBuffer: ClusterLightingBuffer, encoder: GPURenderPassEncoder, useBundle: boolean = false) {
@@ -72,6 +78,7 @@ export class SkyRenderer extends MeshRenderer {
             this.skyMaterial.name = 'skyMaterial';
         }
         this.material = this.skyMaterial;
+        // this.useSkyReflection();
     }
 
     /**
@@ -97,6 +104,16 @@ export class SkyRenderer extends MeshRenderer {
     public set roughness(value) {
         if (this.skyMaterial)
             this.skyMaterial.roughness = value;
+    }
+
+    public useSkyReflection() {
+        let reflection = new Object3D();
+        let ref = reflection.addComponent(SphereReflection);
+        ref.autoUpdate = false;
+        reflection.x = 0;
+        reflection.y = 300;
+        reflection.z = 0;
+        this.object3D.addChild(reflection);
     }
 
 }

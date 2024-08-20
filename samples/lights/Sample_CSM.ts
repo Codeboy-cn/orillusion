@@ -1,6 +1,7 @@
 import { GUIHelp } from "@orillusion/debug/GUIHelp";
 import { Scene3D, HoverCameraController, Engine3D, AtmosphericComponent, Object3D, Camera3D, Vector3, View3D, DirectLight, KelvinUtil, LitMaterial, MeshRenderer, BoxGeometry, CameraUtil, SphereGeometry, Color, Object3DUtil, BlendMode } from "@orillusion/core";
 import { GUIUtil } from "@samples/utils/GUIUtil";
+import { Graphic3D } from "@orillusion/graphic";
 
 //sample of csm
 class Sample_CSM {
@@ -9,9 +10,11 @@ class Sample_CSM {
     light: DirectLight;
     boxRenderer: MeshRenderer;
     viewCamera: Camera3D;
+    graphic3D: Graphic3D;
     async run() {
         Engine3D.setting.shadow.autoUpdate = true;
-        Engine3D.setting.shadow.shadowSize = 1024;
+        Engine3D.setting.shadow.shadowSize = 2048;
+        Engine3D.setting.shadow.shadowBound = 512;
         await Engine3D.init({ renderLoop: () => { this.loop(); } });
 
         GUIHelp.init();
@@ -26,8 +29,8 @@ class Sample_CSM {
         mainCamera.object3D.z = -15;
         mainCamera.object3D.addComponent(HoverCameraController).setCamera(-15, -35, 200);
 
-        sky.relativeTransform = this.initLight('mainLight', 30, 45);
-        this.initLight('subLight', 10, 10);
+        sky.relativeTransform = this.initLight('mainLight', 3, 45);
+        this.initLight('subLight', 2, 10);
         this.initScene();
 
         let view = new View3D();
@@ -35,6 +38,9 @@ class Sample_CSM {
         view.camera = mainCamera;
         this.view = view;
         this.viewCamera = mainCamera;
+
+        this.graphic3D = new Graphic3D();
+        this.scene.addChild(this.graphic3D);
 
         mainCamera.enableCSM = true;
         GUIHelp.addFolder('CSM')
@@ -138,7 +144,7 @@ class Sample_CSM {
         this._shadowPos.copy(light.direction).normalize(viewCamera.far);
         csmBound.center.add(this._shadowPos, this._shadowCameraTarget);
         csmBound.center.subtract(this._shadowPos, this._shadowPos);
-        view.graphic3D.drawLines('shadowLine', [this._shadowPos, this._shadowCameraTarget], new Color(1, 1, 0, 1));
+        this.graphic3D.drawLines('shadowLine', [this._shadowPos, this._shadowCameraTarget], new Color(1, 1, 0, 1));
     }
 
 }

@@ -1,23 +1,21 @@
 import { CSM } from "../../../../core/csm/CSM";
 
+/**
+ * @internal
+ */
 export let ShadowMapping_frag: string = /*wgsl*/ `
-    #if USE_SHADOWMAPING
     @group(1) @binding(auto) var shadowMapSampler: sampler;
     @group(1) @binding(auto) var shadowMap: texture_depth_2d_array;
-    #endif
-
     @group(1) @binding(auto) var pointShadowMapSampler: sampler;
     @group(1) @binding(auto) var pointShadowMap: texture_depth_cube_array;
 
-    struct ShadowStruct{
-      directShadowVisibility: array<f32, 8>,
-      pointShadows: array<f32, 8>,
-    }
-    var<private> shadowStrut: ShadowStruct ;
+    var<private> directShadowVisibility: array<f32, 8>;
+    var<private> pointShadows: array<f32, 8>;
+    var<private> shadowWeight: f32 = 1.0 ;
 
     fn useShadow(){
-        shadowStrut.directShadowVisibility = array<f32, 8>( 1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0) ;
-        shadowStrut.pointShadows = array<f32, 8>( 1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0) ;
+        directShadowVisibility = array<f32, 8>( 1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0) ;
+        pointShadows = array<f32, 8>(1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0) ;
         directShadowMaping(globalUniform.shadowBias);
         pointShadowMapCompare(globalUniform.pointShadowBias);
     }
@@ -33,7 +31,7 @@ export let ShadowMapping_frag: string = /*wgsl*/ `
     const csmCount:i32 = ${CSM.Cascades} ;
     var<private> csmLevel:i32 = -1;
     fn directShadowMaping(shadowBias: f32)  {
-      #if USE_SHADOWMAPING
+
         let enableCSM:bool = globalUniform.enableCSM > 0.5;
         for (var i: i32 = 0; i < dirCount ; i = i + 1) {
           if( i >= globalUniform.nDirShadowStart && i < globalUniform.nDirShadowEnd ){
@@ -48,7 +46,7 @@ export let ShadowMapping_frag: string = /*wgsl*/ `
                 visibility = 0.0;
                 var validCount = 0;
                 for(var csm:i32 = 0; csm < csmCount; csm ++){
-                  var csmShadowBias = globalUniform.csmShadowBias[csm];
+                  var csmShadowBias = globalUniform.csmShadowBias[csm] * shadowBias;
                   shadowMatrix = globalUniform.csmMatrix[csm];
                   let csmShadowResult = directShadowMapingIndex(light, shadowMatrix, csm, csmShadowBias);
                   if(csmShadowResult.y < 0.5){
@@ -94,10 +92,10 @@ export let ShadowMapping_frag: string = /*wgsl*/ `
               shadowMatrix = globalUniform.shadowMatrix[shadowIndex];
               visibility = directShadowMapingIndex(light, shadowMatrix, shadowIndex, shadowBias).x;
             #endif 
-            shadowStrut.directShadowVisibility[i] = visibility;
+            directShadowVisibility[i] = visibility;
           }
         }
-      #endif
+
     }
 
     fn directShadowMapingIndex(light:LightData, matrix:mat4x4<f32>, depthTexIndex:i32, shadowBias:f32) -> vec4<f32>
@@ -118,26 +116,32 @@ export let ShadowMapping_frag: string = /*wgsl*/ `
         {
           visibility = 0.0;
           isOutSideArea = 0.0;
-          var uvOnePixel = 1.0 / vec2<f32>(globalUniform.shadowMapSize);
+          var uvOnePixel = 1.0 / vec2<f32>(globalUniform.shadowMapSize) ;
           var totalWeight = 0.0;
-          var NoL = (dot(normalize(ORI_VertexVarying.vWorldNormal), normalize(-light.direction)));
-          let v = max(NoL, 0.0) ;
-          var bias = shadowBias / v;
-          for (var y = -1; y <= 1; y++) {
-            for (var x = -1; x <= 1; x++) {
-              var offset = vec2<f32>(f32(x), f32(y)) * uvOnePixel;
-              
-              // visibility += textureSampleCompare(shadowMap, shadowMapSampler, varying_shadowUV + offset, depthTexIndex, shadowPos.z - bias);
-              var depth = textureSampleLevel(shadowMap, shadowMapSampler, varying_shadowUV + offset, depthTexIndex, 0);
-              if ((shadowPos.z - bias ) < depth) {
-                visibility += 1.0 ;
-              }
-              totalWeight += 1.0;
+          // var NoL = (dot(normalize(ORI_VertexVarying.vWorldNormal), normalize(-light.direction)));
+          // let v = max(NoL, 0.0) ;
+          // var bias = max(0.05 * (dot(normalize(fragData.N), normalize(-light.direction)) ), -shadowBias); 
+          var bias = -0.005 * max(dot(fragData.N, -light.direction) , 0.0 ); 
+          bias = clamp(bias, 0, 0.01) + -shadowBias;
+
+          // var bias = shadowBias / v;
+          let bound = 1 ;
+          for (var y = -bound; y <= bound; y++) {
+            for (var x = -bound; x <= bound; x++) {
+                var offset = vec2<f32>(f32(x), f32(y)) ;
+                var offsetUV = offset * uvOnePixel ;
+                var weight = min(length(offset),1.0) ;
+                var depth = textureSampleLevel(shadowMap, shadowMapSampler, varying_shadowUV + offsetUV , depthTexIndex, 0);
+                if ((shadowPos.z - bias ) < depth) {
+                  visibility += weight ;
+                  totalWeight += weight;
+                }else{
+                  totalWeight += 1.0;
+                }
             }
           }
           visibility /= totalWeight;
-          visibility += 0.001;
-        }
+      }
       #endif
       return vec4<f32>(visibility, isOutSideArea, varying_shadowUV);
     }
@@ -175,7 +179,7 @@ export let ShadowMapping_frag: string = /*wgsl*/ `
                 }
               }
               shadow = min(max(shadow / (samples * samples * samples), 0.0), 1.0);
-          #endif
+            #endif
   
           #if USE_SOFT_SHADOW
               let vDis = length(globalUniform.CameraPos.xyz - worldPos.xyz);
@@ -201,7 +205,7 @@ export let ShadowMapping_frag: string = /*wgsl*/ `
           #endif
               for (var j = 0; j < pointCount ; j+=1 ) {
                   if(i32(light.castShadow) == j){
-                    shadowStrut.pointShadows[j] = 1.0 - shadow ;
+                    pointShadows[j] = 1.0 - shadow ;
                   }
               }
           #endif

@@ -4,11 +4,12 @@ import { ClusterLightingBuffer } from '../../gfx/renderJob/passRenderer/cluster/
 import { GeometryBase } from '../../core/geometry/GeometryBase';
 import { RendererMask } from '../../gfx/renderJob/passRenderer/state/RendererMask';
 import { RendererPassState } from '../../gfx/renderJob/passRenderer/state/RendererPassState';
-import { PassType } from '../../gfx/renderJob/passRenderer/state/RendererType';
+import { PassType } from '../../gfx/renderJob/passRenderer/state/PassType';
 import { MorphTargetData } from '../anim/morphAnim/MorphTargetData';
 import { RenderNode } from './RenderNode';
 import { EditorInspector, RegisterComponent } from '../../util/SerializeDecoration';
-import { Color, Material, mergeFunctions } from '../..';
+import { mergeFunctions } from '../../util/Global';
+import { Material } from '../../materials/Material';
 
 /**
  * The mesh renderer component is a component used to render the mesh
@@ -20,7 +21,7 @@ export class MeshRenderer extends RenderNode {
      * Enabling this option allows the grid to display any shadows cast on the grid.
      */
     public receiveShadow: boolean;
-    protected morphData: MorphTargetData;
+    public morphData: MorphTargetData;
 
     constructor() {
         super();
@@ -53,29 +54,34 @@ export class MeshRenderer extends RenderNode {
         return this._geometry;
     }
 
-    @EditorInspector
     public set geometry(value: GeometryBase) {
         //this must use super geometry has reference in super
         super.geometry = value;
-        let isMorphTarget = value.morphTargetDictionary != null;
-        if (isMorphTarget) {
-            this.morphData ||= new MorphTargetData();
-            this.morphData.morphTargetsRelative = value.morphTargetsRelative;
-            this.morphData.initMorphTarget(value);
-        }
-        this.morphData && (this.morphData.enable = isMorphTarget);
-        if (this.morphData && this.morphData.enable) {
-            this.addRendererMask(RendererMask.MorphTarget);
-        } else {
-            this.removeRendererMask(RendererMask.MorphTarget);
-            // this.onCompute = null;
-        }
+        if (value) {
+            let isMorphTarget = value.morphTargetDictionary != null;
+            if (isMorphTarget) {
+                this.morphData ||= new MorphTargetData();
+                this.morphData.morphTargetsRelative = value.morphTargetsRelative;
+                this.morphData.initMorphTarget(value);
+            }
+            this.morphData && (this.morphData.enable = isMorphTarget);
+            if (this.morphData?.enable) {
+                this.addRendererMask(RendererMask.MorphTarget);
+            } else {
+                this.removeRendererMask(RendererMask.MorphTarget);
+            }
 
-        this.object3D.bound = this._geometry.bounds.clone();
+            this.object3D.bound = this._geometry.bounds.clone();
+        } else {
+            if (this.morphData) {
+                this.morphData.enable = false;
+            }
+            this.removeRendererMask(RendererMask.MorphTarget);
+        }
         if (!this._readyPipeline) {
             this.initPipeline();
 
-            if (this._computes && this._computes) {
+            if (this._computes) {
                 this.onCompute = mergeFunctions(this.onCompute, () => {
                     for (let i = 0; i < this._computes.length; i++) {
                         const compute = this._computes[i];
@@ -94,7 +100,6 @@ export class MeshRenderer extends RenderNode {
         return this._materials[0];
     }
 
-    @EditorInspector
     public set material(value: Material) {
         this.materials = [value];
     }
@@ -154,7 +159,10 @@ export class MeshRenderer extends RenderNode {
     }
 
     // public onGraphic(view?: View3D) {
+    //     let graphic3D = view.scene.getChildByName('graphic3D')
+    //     if(!graphic3D)
+    //         return
     //     if (this._geometry)
-    //         view.graphic3D.drawMeshWireframe(this._geometry.instanceID, this._geometry, this.transform, Color.COLOR_RED);
+    //         graphic3D.drawMeshWireframe(this._geometry.instanceID, this._geometry, this.transform, Color.COLOR_RED);
     // }
 }

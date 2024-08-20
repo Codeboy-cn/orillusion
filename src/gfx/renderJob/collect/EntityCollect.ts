@@ -1,7 +1,7 @@
 
-import { Graphic3DMeshRenderer } from '../../..';
 import { Engine3D } from '../../../Engine3D';
 import { ILight } from '../../../components/lights/ILight';
+import { Reflection } from '../../../components/renderer/Reflection';
 import { RenderNode } from '../../../components/renderer/RenderNode';
 import { Camera3D } from '../../../core/Camera3D';
 import { Scene3D } from '../../../core/Scene3D';
@@ -13,7 +13,7 @@ import { Vector3 } from '../../../math/Vector3';
 import { zSorterUtil } from '../../../util/ZSorterUtil';
 import { RenderLayerUtil, RenderLayer } from '../config/RenderLayer';
 import { Probe } from '../passRenderer/ddgi/Probe';
-import { Graphic3DBatchRenderer } from '../passRenderer/graphic/Graphic3DBatchRenderer';
+// import { Graphic3DBatchRenderer } from '../passRenderer/graphic/Graphic3DBatchRenderer';
 import { RendererMask } from '../passRenderer/state/RendererMask';
 import { CollectInfo } from './CollectInfo';
 import { EntityBatchCollect } from './EntityBatchCollect';
@@ -33,8 +33,9 @@ export class EntityCollect {
     private _op_RenderNodes: Map<Scene3D, RenderNode[]>;
     private _tr_RenderNodes: Map<Scene3D, RenderNode[]>;
     private _octreeRenderNodes: Map<Scene3D, Octree>;
+    private _reflections: Map<Scene3D, Reflection[]>;
 
-    private _graphics: Graphic3DBatchRenderer[];
+    private _graphics: RenderNode[];
 
     private _op_renderGroup: Map<Scene3D, EntityBatchCollect>;
     private _tr_renderGroup: Map<Scene3D, EntityBatchCollect>;
@@ -69,6 +70,7 @@ export class EntityCollect {
 
         this._op_RenderNodes = new Map<Scene3D, RenderNode[]>();
         this._tr_RenderNodes = new Map<Scene3D, RenderNode[]>();
+        this._reflections = new Map<Scene3D, Reflection[]>();
 
         this._graphics = [];
 
@@ -104,7 +106,18 @@ export class EntityCollect {
         let isTransparent: boolean = renderNode.renderOrder >= 3000;
         if (renderNode.hasMask(RendererMask.Sky)) {
             this.sky = renderNode;
-        } else if (renderNode instanceof Graphic3DBatchRenderer) {
+        } else if (renderNode.hasMask(RendererMask.Reflection)) {
+            this.removeRenderNode(root, renderNode);
+            let maps = this._reflections.get(root);
+            if (!maps) {
+                maps = [];
+                this._reflections.set(root, maps);
+                maps.push(renderNode as Reflection);
+            }
+            if (!maps.includes(renderNode as Reflection)) {
+                maps.push(renderNode as Reflection);
+            }
+        } else if (renderNode.hasMask(RendererMask.Graphic3D)) {
             if (this._graphics.indexOf(renderNode) == -1) {
                 this._graphics.push(renderNode);
             }
@@ -158,6 +171,14 @@ export class EntityCollect {
         renderNode.detachSceneOctree();
         if (renderNode.hasMask(RendererMask.Sky)) {
             this.sky = null;
+        } else if (renderNode.hasMask(RendererMask.Reflection)) {
+            let maps = this._reflections.get(root);
+            if (maps) {
+                let index = maps.indexOf(renderNode as Reflection);
+                if (index != -1) {
+                    maps.splice(index, 1);
+                }
+            }
         } else if (!RenderLayerUtil.hasMask(renderNode.renderLayer, RenderLayer.None)) {
 
         } else {
@@ -226,6 +247,11 @@ export class EntityCollect {
         return list ? list : [];
     }
 
+    public getReflections(root: Scene3D) {
+        let list = this._reflections.get(root);
+        return list ? list : [];
+    }
+
     // sort renderers by renderOrder and camera depth
     public autoSortRenderNodes(scene: Scene3D): this {
         let renderList: RenderNode[] = this._tr_RenderNodes.get(scene);
@@ -289,7 +315,7 @@ export class EntityCollect {
         return this._tr_renderGroup.get(scene);
     }
 
-    public getGraphicList(): Graphic3DBatchRenderer[] {
+    public getGraphicList(): RenderNode[] {
         return this._graphics;
     }
 

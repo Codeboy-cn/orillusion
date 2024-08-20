@@ -15,6 +15,11 @@ export class Vector2 {
      */
     public static HELP_1: Vector2 = new Vector2();
 
+    /**
+     * @internal
+     */
+    public static HELP_2: Vector2 = new Vector2();
+
     public static readonly ZERO: Vector2 = new Vector2(0, 0);
 
     public static readonly SAFE_MAX: Vector2 = new Vector2(Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER);
@@ -268,6 +273,18 @@ export class Vector2 {
     public copyFrom(v: Vector2): Vector2 {
         this.x = v.x;
         this.y = v.y;
+        return this;
+    }
+
+    /**
+     * Add scaling vector
+     * @param v Source vector
+     * @param size Scale size
+     * @returns 
+     */
+    public addScaledVector(v: Vector2, size: number): Vector2 {
+        this.x += v.x * size;
+        this.y += v.y * size;
         return this;
     }
 

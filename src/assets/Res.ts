@@ -166,7 +166,7 @@ export class Res {
     public async load<T extends ParserBase>(url: string, c: Parser<T>, loaderFunctions?: LoaderFunctions) {
         let loader = new FileLoader();
         let parser = await loader.load(url, c, loaderFunctions);
-        let ret = parser.data;
+        let ret = parser.data as T["data"];
         return ret;
     }
 
@@ -375,7 +375,7 @@ export class Res {
     /**
      * load texture data from array of web url.
      * make sure there are six images in a group,
-     * and the order is: nx, px, py, ny, nz, pz
+     * and the order is: [+X, -X, +Y, -Y, +Z, -Z]
      * @param urls 
      */
     public async loadTextureCubeMaps(urls: string[]) {

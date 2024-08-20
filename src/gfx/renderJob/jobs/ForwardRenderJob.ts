@@ -9,6 +9,7 @@ import { webGPUContext } from '../../graphics/webGpu/Context3D';
 import { RTResourceConfig } from '../config/RTResourceConfig';
 import { RTResourceMap } from '../frame/RTResourceMap';
 import { GPUTextureFormat } from '../../graphics/webGpu/WebGPUConst';
+import { GUIPassRenderer } from '../passRenderer/color/GUIPassRenderer';
 /**
  * Forward+
  * Every time a forward rendering is performed, 
@@ -25,11 +26,9 @@ export class ForwardRenderJob extends RendererJob {
 
     public start(): void {
         super.start();
-
-        let rtFrame = GBufferFrame.getGBufferFrame("ColorPassGBuffer");
         {
-            let debugTextures = [];
             let colorPassRenderer = new ColorPassRenderer();
+            let rtFrame = GBufferFrame.getGBufferFrame(GBufferFrame.colorPass_GBuffer);
 
             if (Engine3D.setting.render.zPrePass) {
                 rtFrame.zPreTexture = this.depthPassRenderer.rendererPassState.depthTexture;
@@ -37,39 +36,25 @@ export class ForwardRenderJob extends RendererJob {
 
             colorPassRenderer.setRenderStates(rtFrame);
 
-            for (let i = 0; i < rtFrame.renderTargets.length; i++) {
-                const tex = rtFrame.renderTargets[i];
-                debugTextures.push(tex);
-            }
-
             if (Engine3D.setting.gi.enable) {
                 let lightEntries = GlobalBindGroup.getLightEntries(this.view.scene);
                 this.ddgiProbeRenderer = new DDGIProbeRenderer(lightEntries.irradianceVolume);
-                // this.ddgiProbeRenderer.clusterLightingRender = this.clusterLightingRender;
                 this.ddgiProbeRenderer.setInputTexture([
                     this.shadowMapPassRenderer.depth2DArrayTexture,
                     this.pointLightShadowRenderer.cubeArrayTexture
                 ]);
-
                 colorPassRenderer.setIrradiance(this.ddgiProbeRenderer.irradianceColorMap, this.ddgiProbeRenderer.irradianceDepthMap);
-
                 this.rendererMap.addRenderer(this.ddgiProbeRenderer);
-
-                debugTextures.push(
-                    this.ddgiProbeRenderer.positionMap,
-                    this.ddgiProbeRenderer.normalMap,
-                    this.ddgiProbeRenderer.colorMap,
-                    this.ddgiProbeRenderer.lightingPass.lightingTexture,
-                    this.ddgiProbeRenderer.irradianceColorMap,
-                    this.ddgiProbeRenderer.irradianceDepthMap,
-                );
-            }
-
-            if (this.postRenderer) {
-                this.postRenderer.setDebugTexture(debugTextures);
             }
 
             this.rendererMap.addRenderer(colorPassRenderer);
+        }
+
+        {
+            let guiFrame = GBufferFrame.getGUIBufferFrame();
+            let guiPassRenderer = new GUIPassRenderer();
+            guiPassRenderer.setRenderStates(guiFrame);
+            this.rendererMap.addRenderer(guiPassRenderer);
         }
 
         if (Engine3D.setting.render.debug) {

@@ -1,9 +1,56 @@
 import { GUIHelp } from "@orillusion/debug/GUIHelp";
-import { AnimatorComponent, AtmosphericComponent, BillboardType, BlendMode, BloomPost, Color, DepthOfFieldPost, DirectLight, Engine3D, GPUCullMode, GTAOPost, GlobalFog, GlobalIlluminationComponent, GodRayPost, LitMaterial, Material, MorphTargetBlender, Object3D, PointLight, SkinnedMeshRenderer2, SpotLight, Transform, UIImage, UIPanel, UIShadow, View3D } from "@orillusion/core";
 import { UVMoveComponent } from "@samples/material/script/UVMoveComponent";
+import { ProfilerDraw, PassType, OutlinePost, GBufferPost, Engine3D, AtmosphericComponent, GlobalFog, Transform, BloomPost, GodRayPost, Object3D, DirectLight, PointLight, SpotLight, GlobalIlluminationComponent, View3D, UIShadow, Color, UIPanel, GPUCullMode, BillboardType, LitMaterial, BlendMode, MorphTargetBlender, SkinnedMeshRenderer2, AnimatorComponent, GTAOPost, TAAPost, DepthOfFieldPost, Vector4, Vector2 } from "@orillusion/core";
 
 export class GUIUtil {
 
+    static renderProfiler(arg0: ProfilerDraw) {
+        let gui = GUIHelp._creatPanel();
+        let cache = {};
+        for (const key in PassType) {
+            let i = parseInt(key);
+            if (i >= 0) {
+            } else {
+                let fg = GUIHelp._addFolder(gui, key);
+                fg.open();
+                cache[key] = [
+                    GUIHelp._addLabelValue(fg, `indicesCount`, arg0[key].indicesCount),
+                    GUIHelp._addLabelValue(fg, `vertexCount`, arg0[key].vertexCount),
+                    GUIHelp._addLabelValue(fg, `triCount`, arg0[key].triCount),
+                    GUIHelp._addLabelValue(fg, `instanceCount`, arg0[key].instanceCount),
+                    GUIHelp._addLabelValue(fg, `drawCount`, arg0[key].drawCount),
+                    GUIHelp._addLabelValue(fg, `pipelineCount`, arg0[key].pipelineCount),
+                ]
+            }
+        }
+        gui.open();
+
+        setInterval(() => {
+            for (const key in PassType) {
+                let i = parseInt(key);
+                if (i >= 0) {
+                } else {
+                    cache[key][0].setValue(arg0[key].indicesCount);
+                    cache[key][1].setValue(arg0[key].vertexCount);
+                    cache[key][2].setValue(arg0[key].triCount);
+                    cache[key][3].setValue(arg0[key].instanceCount);
+                    cache[key][4].setValue(arg0[key].drawCount);
+                    cache[key][5].setValue(arg0[key].pipelineCount);
+                }
+            }
+        }, 2000);
+    }
+
+
+    static renderOutlinePost(post: OutlinePost) {
+        GUIHelp.addFolder('OutlinePost');
+        GUIHelp.add(post, 'outlinePixel', 0, 2048, 1);
+        GUIHelp.add(post, 'fadeOutlinePixel', 0.0001, 0.2, 0.00001);
+        GUIHelp.add(post, 'strength', 0.0001, 0.2, 0.00001);
+        GUIHelp.add(post, 'useAddMode');
+        open && GUIHelp.open();
+        GUIHelp.endFolder();
+    }
 
 
 
@@ -16,6 +63,27 @@ export class GUIUtil {
         open && GUIHelp.open();
         GUIHelp.endFolder();
     }
+
+
+    static renderGBufferPost(post: GBufferPost, open: boolean = true) {
+        GUIHelp.addFolder('GBufferPost&Reflection');
+        let bufferState = {
+            current: 0,
+            abldeo: 1,
+            viewNormal: 2,
+            worldNormal: 3,
+            roughness: 4,
+            metallic: 5,
+            alpha: 6,
+            modelID: 7,
+        }
+        GUIHelp.add(post, 'state', bufferState);
+        GUIHelp.add(post, 'size1', 64.0, 1024, 1.0);
+        GUIHelp.add(post, 'size2', 64.0, 1024, 1.0);
+        open && GUIHelp.open();
+        GUIHelp.endFolder();
+    }
+
 
     //render AtmosphericComponent
     public static renderAtmosphericSky(component: AtmosphericComponent, open: boolean = true, name?: string) {
@@ -61,13 +129,13 @@ export class GUIUtil {
     }
 
     //render transform
-    public static renderTransform(transform: Transform, open: boolean = true, name?: string, scSize?: number) {
+    public static renderTransform(transform: Transform, open: boolean = true, name?: string, scale?: number) {
         name ||= 'Transform';
         scSize ||= 2;
         GUIHelp.addFolder(name);
-        GUIHelp.add(transform, 'x', -100.0, 100.0, 0.01);
-        GUIHelp.add(transform, 'y', -100.0, 100.0, 0.01);
-        GUIHelp.add(transform, 'z', -100.0, 100.0, 0.01);
+        GUIHelp.add(transform, 'x', -scale, scale, 0.01);
+        GUIHelp.add(transform, 'y', -scale, scale, 0.01);
+        GUIHelp.add(transform, 'z', -scale, scale, 0.01);
         GUIHelp.add(transform, 'rotationX', 0.0, 360.0, 0.01);
         GUIHelp.add(transform, 'rotationY', 0.0, 360.0, 0.01);
         GUIHelp.add(transform, 'rotationZ', 0.0, 360.0, 0.01);
@@ -83,11 +151,23 @@ export class GUIUtil {
         name ||= 'Bloom';
         GUIHelp.addFolder(name);
         GUIHelp.add(bloom, 'downSampleBlurSize', 3, 15, 1);
-        GUIHelp.add(bloom, 'downSampleBlurSigma', 0.01, 1, 0.001);
+        GUIHelp.add(bloom, 'downSampleBlurSigma', 0.01, 500, 0.001);
         GUIHelp.add(bloom, 'upSampleBlurSize', 3, 15, 1);
-        GUIHelp.add(bloom, 'upSampleBlurSigma', 0.01, 1, 0.001);
+        GUIHelp.add(bloom, 'upSampleBlurSigma', 0.01, 500, 0.001);
         GUIHelp.add(bloom, 'luminanceThreshole', 0.001, 10.0, 0.001);
         GUIHelp.add(bloom, 'bloomIntensity', 0.001, 10.0, 0.001);
+        GUIHelp.add(bloom, 'hdr', 0.001, 10.0, 0.001);
+        open && GUIHelp.open();
+        GUIHelp.endFolder();
+    }
+
+    static renderGodRay(godRay: GodRayPost, open: boolean = true, name?: string) {
+        name ||= 'GodRay';
+        GUIHelp.addFolder(name);
+        GUIHelp.add(godRay, 'blendColor');
+        GUIHelp.add(godRay, 'rayMarchCount', 8, 20, 1);
+        GUIHelp.add(godRay, 'scatteringExponent', 1, 40, 1);
+        GUIHelp.add(godRay, 'intensity', 0.01, 5, 0.001);
         open && GUIHelp.open();
         GUIHelp.endFolder();
     }
@@ -126,7 +206,7 @@ export class GUIUtil {
         GUIHelp.add(light.transform, 'rotationY', 0.0, 360.0, 0.01);
         GUIHelp.add(light.transform, 'rotationZ', 0.0, 360.0, 0.01);
         GUIHelp.addColor(light, 'lightColor');
-        GUIHelp.add(light, 'intensity', 0.0, 300.0, 0.01);
+        GUIHelp.add(light, 'intensity', 0.0, 50.0, 0.01);
         GUIHelp.add(light, 'indirect', 0.0, 1.0, 0.01);
         GUIHelp.add(light, 'castShadow');
 
@@ -146,9 +226,9 @@ export class GUIUtil {
         GUIHelp.add(light, 'r', 0.0, 1.0, 0.001);
         GUIHelp.add(light, 'g', 0.0, 1.0, 0.001);
         GUIHelp.add(light, 'b', 0.0, 1.0, 0.001);
-        GUIHelp.add(light, 'intensity', 0.0, 1500.0, 0.001);
-        GUIHelp.add(light, 'at', 0.0, 1600.0, 0.001);
-        GUIHelp.add(light, 'radius', 0.0, 1000.0, 0.001);
+        GUIHelp.add(light, 'intensity', 0.0, 100.0, 0.001);
+        GUIHelp.add(light, 'at', 0.0, 100.0, 0.001);
+        GUIHelp.add(light, 'radius', 0.0, 1.0, 0.001);
         GUIHelp.add(light, 'range', 0.0, 1000.0, 0.001);
         GUIHelp.add(light, 'quadratic', 0.0, 2.0, 0.001);
         GUIHelp.add(light, 'castShadow');
@@ -169,9 +249,9 @@ export class GUIUtil {
         GUIHelp.add(light.transform, 'rotationZ', -360, 360.0, 0.01);
 
         GUIHelp.addColor(light, 'lightColor');
-        GUIHelp.add(light, 'intensity', 0.0, 1600.0, 0.001);
-        GUIHelp.add(light, 'at', 0.0, 1600.0, 0.001);
-        GUIHelp.add(light, 'radius', 0.0, 1000.0, 0.001);
+        GUIHelp.add(light, 'intensity', 0.0, 100.0, 0.001);
+        GUIHelp.add(light, 'at', 0.0, 100.0, 0.001);
+        GUIHelp.add(light, 'radius', 0.0, 10.0, 0.001);
         GUIHelp.add(light, 'range', 0.0, 1000.0, 0.001);
         GUIHelp.add(light, 'outerAngle', 0.0, 180.0, 0.001);
         GUIHelp.add(light, 'innerAngle', 0.0, 100.0, 0.001);
@@ -429,11 +509,17 @@ export class GUIUtil {
         GUIHelp.endFolder();
     }
 
-    static renderLitMaterial(mat: LitMaterial) {
+    static renderLitMaterial(mat: LitMaterial, open?: boolean) {
         GUIHelp.addFolder(mat.name);
         GUIHelp.addColor(mat, 'baseColor').onChange((v) => {
             let color = mat.baseColor;
             color.copyFromArray(v);
+            mat.baseColor = color;
+        });
+
+        GUIHelp.add(mat.baseColor, 'a').onChange((v) => {
+            let color = mat.baseColor;
+            color.a = v;
             mat.baseColor = color;
         });
 
@@ -463,6 +549,28 @@ export class GUIUtil {
         GUIHelp.add(mat, 'metallic', 0.0, 1.0, 0.0001).onChange((v) => {
             mat.metallic = v;
         });
+
+        GUIHelp.addColor(mat, 'clearcoatColor').onChange((v) => {
+            let color = mat.clearcoatColor;
+            color.copyFromArray(v);
+            mat.clearcoatColor = color;
+        });
+
+        GUIHelp.add(mat, 'clearcoatFactor', 0.0, 1.0, 0.0001).onChange((v) => {
+            mat.clearcoatFactor = v;
+        });
+
+        GUIHelp.add(mat, 'clearcoatRoughnessFactor', 0.0, 1.0, 0.0001).onChange((v) => {
+            mat.clearcoatRoughnessFactor = v;
+        });
+
+        GUIHelp.add(mat, 'ior', 1.0, 4.0, 0.0001).onChange((v) => {
+            mat.ior = v;
+        });
+
+        GUIHelp.add(mat, 'castShadow');
+        GUIHelp.add(mat, 'acceptShadow');
+        open && GUIHelp.open();
 
         GUIHelp.endFolder();
     }
@@ -551,11 +659,57 @@ export class GUIUtil {
         GUIHelp.endFolder();
     }
 
+    public static renderTAA(post: TAAPost, open: boolean = true) {
+        GUIHelp.addFolder("TAA");
+        GUIHelp.add(post, "jitterSeedCount", 2, 8, 1);
+        GUIHelp.add(post, "blendFactor", 0.0, 1.0, 0.01);
+        GUIHelp.add(post, "sharpFactor", 0.1, 0.9, 0.01);
+        GUIHelp.add(post, "sharpPreBlurFactor", 0.1, 0.9, 0.01);
+        GUIHelp.add(post, "temporalJitterScale", 0.0, 1.0, 0.01);
+        open && GUIHelp.open();
+        GUIHelp.endFolder();
+    }
+
     static renderDepthOfField(post: DepthOfFieldPost) {
         GUIHelp.addFolder("DOFPost");
         GUIHelp.add(post, 'near', 0, 100, 1)
         GUIHelp.add(post, 'far', 150, 300, 1)
         GUIHelp.add(post, 'pixelOffset', 0.0, 15, 1)
         GUIHelp.endFolder();
+    }
+
+    static RenderColor(target: Object, name: string) {
+        GUIHelp.addColor(target, name).onChange(v => {
+            let [r, g, b, a] = v;
+            target[name] = new Color(r / 255, g / 255, b / 255, a / 255)
+        })
+    }
+
+    static RenderVector4(label: string, target: Object, key: string, min: number, max: number, step: number = 0.01) {
+        let components = ['x', 'y', 'z', 'w'];
+        let data = {};
+        let vec4: Vector4 = target[key];
+        for (let component of components) {
+            data[label + component] = vec4[component];
+            GUIHelp.add(data, label + component, min, max, step).onChange(v => {
+                vec4[component] = v;
+                target[key] = vec4;
+            });
+
+        }
+    }
+
+    static RenderVector2(label: string, target: Object, key: string, min: number, max: number, step: number = 0.01) {
+        let keys = ['x', 'y'];
+        let data = {};
+        let vec2: Vector2 = target[key];
+        for (let component of keys) {
+            data[label + component] = vec2[component];
+            GUIHelp.add(data, label + component, min, max, step).onChange(v => {
+                vec2[component] = v;
+                target[key] = vec2;
+            });
+
+        }
     }
 }

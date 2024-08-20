@@ -1,3 +1,6 @@
+/**
+ * @internal
+ */
 export let FullQuad_vert_wgsl: string = /*wgsl*/ `
     #include "WorldMatrixUniform"
     #include "GlobalUniform"
@@ -10,7 +13,7 @@ export let FullQuad_vert_wgsl: string = /*wgsl*/ `
     };
 
     struct VertexOutput {
-        @location(0) fragUV: vec2<f32>,
+        @location(auto) fragUV: vec2<f32>,
         @builtin(position) position: vec4<f32>
     };
 
@@ -31,7 +34,9 @@ export let FullQuad_vert_wgsl: string = /*wgsl*/ `
         return output ;
     }
 `
-
+/**
+ * @internal
+ */
 export let Quad_vert_wgsl: string = /*wgsl*/ `
 #include "WorldMatrixUniform"
       #include "GlobalUniform"
@@ -44,12 +49,12 @@ export let Quad_vert_wgsl: string = /*wgsl*/ `
       };
 
       struct VertexOutput {
-          @location(0) fragUV: vec2<f32>,
+          @location(auto) fragUV: vec2<f32>,
           @builtin(position) member: vec4<f32>
       };
 
       @vertex
-      fn main(@builtin(instance_index) index : u32,@location(0) position: vec3<f32>, @location(1) TEXCOORD_1: vec2<f32>) -> VertexOutput {
+      fn main(@builtin(instance_index) index : u32,@location(auto) position: vec3<f32>, @location(auto) TEXCOORD_1: vec2<f32>) -> VertexOutput {
         //   let id = u32(index) ;
         //   let worldMatrix = models.matrix[id];
         //   let windowSize = vec2<f32>(globalUniform.windowWidth,globalUniform.windowHeight) ;
@@ -59,10 +64,12 @@ export let Quad_vert_wgsl: string = /*wgsl*/ `
           return VertexOutput(TEXCOORD_1, vec4<f32>(uv, 0.0, 1.0));
       }
 `
-
+/**
+ * @internal
+ */
 export let Quad_frag_wgsl: string = /*wgsl*/ `
     struct FragmentOutput {
-        @location(0) o_Target: vec4<f32>
+        @location(auto) o_Target: vec4<f32>
     };
 
     var<private> fragUV1: vec2<f32>;
@@ -73,7 +80,7 @@ export let Quad_frag_wgsl: string = /*wgsl*/ `
     var baseMap: texture_2d<f32>;
 
     @fragment
-    fn main(@location(0) fragUV: vec2<f32>) -> FragmentOutput {
+    fn main(@location(auto) fragUV: vec2<f32>) -> FragmentOutput {
         var uv = fragUV ;
         uv.y = 1.0 - uv.y ;
         var color: vec4<f32> = textureSample(baseMap, baseMapSampler, uv );
@@ -81,10 +88,12 @@ export let Quad_frag_wgsl: string = /*wgsl*/ `
         return FragmentOutput(color);
     }
 `
-
+/**
+ * @internal
+ */
 export let Quad_depth2d_frag_wgsl: string = /*wgsl*/ `
     struct FragmentOutput {
-        @location(0) o_Target: vec4<f32>
+        @location(auto) o_Target: vec4<f32>
     }; 
 
     var<private> fragUV1: vec2<f32>;
@@ -101,17 +110,19 @@ export let Quad_depth2d_frag_wgsl: string = /*wgsl*/ `
     }
 
     @fragment
-    fn main(@location(0) fragUV: vec2<f32>) -> FragmentOutput {
+    fn main(@location(auto) fragUV: vec2<f32>) -> FragmentOutput {
         var uv = fragUV ;
         uv.y = 1.0 - uv.y ;
         var depth = textureSample(baseMap, baseMapSampler, uv , vec2<i32>(0) ) ;
         return FragmentOutput(vec4<f32>(depth,0.0,0.0,1.0));
     }
 `
-
+/**
+ * @internal
+ */
 export let Quad_depthCube_frag_wgsl: string = /*wgsl*/ `
     struct FragmentOutput {
-        @location(0) o_Target: vec4<f32>
+        @location(auto) o_Target: vec4<f32>
     };
 
     var<private> fragUV1: vec2<f32>;
@@ -142,7 +153,7 @@ export let Quad_depthCube_frag_wgsl: string = /*wgsl*/ `
     }
 
     @fragment
-    fn main(@location(0) fragUV: vec2<f32>) -> FragmentOutput {
+    fn main(@location(auto) fragUV: vec2<f32>) -> FragmentOutput {
         var uv = fragUV ;
         uv.y = 1.0 - uv.y ;
         var ii = 0.16 ;
@@ -172,9 +183,12 @@ export let Quad_depthCube_frag_wgsl: string = /*wgsl*/ `
     }
 `
 
+/**
+ * @internal
+ */
 export let Quad_depth2dArray_frag_wgsl: string = /*wgsl*/ `
     struct FragmentOutput {
-        @location(0) o_Target: vec4<f32>
+        @location(auto) o_Target: vec4<f32>
     };
 
     var<private> fragUV1: vec2<f32>;
@@ -190,7 +204,7 @@ export let Quad_depth2dArray_frag_wgsl: string = /*wgsl*/ `
     }
 
     @fragment
-    fn main(@location(0) fragUV: vec2<f32>) -> FragmentOutput {
+    fn main(@location(auto) fragUV: vec2<f32>) -> FragmentOutput {
         var uv = fragUV ;
         uv.y = 1.0 - uv.y ;
     

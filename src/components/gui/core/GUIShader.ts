@@ -1,6 +1,7 @@
 ﻿import { GlobalUniform } from "../../../assets/shader/core/common/GlobalUniform";
 import { WorldMatrixUniform } from "../../../assets/shader/core/common/WorldMatrixUniform";
-import { ColorPassFragmentOutput } from "../../../assets/shader/core/struct/ColorPassFragmentOutput";
+import { FragmentOutput } from "../../../assets/shader/core/struct/FragmentOutput";
+
 
 /**
  * shader code
@@ -37,7 +38,7 @@ export class GUIShader {
     }
 
     private static readonly fs: string = /* wgsl */ `
-        ${ColorPassFragmentOutput}
+        ${FragmentOutput}
         ${this.bindTextureArray()}
 
         var<private> fragmentOutput: FragmentOutput;
@@ -97,13 +98,13 @@ export class GUIShader {
         
         @fragment
         fn FragMain( 
-            @location(0) vUV: vec2<f32>,
-            @location(1) vColor4: vec4<f32>,
-            @location(2) vLocalPos: vec2<f32>,
-            @location(3) vUvRec: vec4<f32>,
-            @location(4) vUvBorder: vec4<f32>,
-            @location(5) vUvSlice: vec2<f32>,
-            @location(6) vTextureID: f32,
+            @location(auto) vUV: vec2<f32>,
+            @location(auto) vColor4: vec4<f32>,
+            @location(auto) vLocalPos: vec2<f32>,
+            @location(auto) vUvRec: vec4<f32>,
+            @location(auto) vUvBorder: vec4<f32>,
+            @location(auto) vUvSlice: vec2<f32>,
+            @location(auto) vTextureID: f32,
             @builtin(front_facing) face: bool,
             @builtin(position) fragCoord : vec4<f32> 
         ) -> FragmentOutput {
@@ -149,14 +150,18 @@ export class GUIShader {
             }else if(texId == 6){            
                 ${this.sampleTexture(6)}
             }
-            color *= vColor4;
-            color.a *= scissorAlpha;
+            var rgb = color.rgb;
+            var alpha = color.a;
+
+            rgb *= vColor4.rgb;
+            alpha *= vColor4.a;
+            alpha *= scissorAlpha;
             if(color.a < EPSILON)
             { 
                 discard;
             }
 
-            fragmentOutput.color = color;
+            fragmentOutput.color = vec4<f32>(rgb, alpha);
             return fragmentOutput ;
         }`;
 
@@ -176,31 +181,30 @@ export class GUIShader {
             scissorRect:vec4<f32>,
 
             screenSize:vec2<f32>,
-            guiSolution:vec2<f32>,
-            
             scissorCornerRadius:f32,
             scissorFadeOutSize:f32,
 
             pixelRatio:f32,
-            empty:f32,
+
+            v3:vec3<f32>
         }
         
         struct VertexOutput {
-            @location(0) vUV: vec2<f32>,
-            @location(1) vColor4: vec4<f32>,
-            @location(2) vLocalPos: vec2<f32>,
-            @location(3) vUvRec: vec4<f32>,
-            @location(4) vUvBorder: vec4<f32>,
-            @location(5) vUvSlice: vec2<f32>,
-            @location(6) vTextureID: f32,
+            @location(auto) vUV: vec2<f32>,
+            @location(auto) vColor4: vec4<f32>,
+            @location(auto) vLocalPos: vec2<f32>,
+            @location(auto) vUvRec: vec4<f32>,
+            @location(auto) vUvBorder: vec4<f32>,
+            @location(auto) vUvSlice: vec2<f32>,
+            @location(auto) vTextureID: f32,
             
             @builtin(position) member: vec4<f32>
         };
         
          struct VertexInput{
             @builtin(instance_index) index : u32,
-            @location(0) uv: vec2<f32>,
-            @location(1) vIndex: f32,
+            @location(auto) uv: vec2<f32>,
+            @location(auto) vIndex: f32,
         }
 
         @group(2) @binding(0)

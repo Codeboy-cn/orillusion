@@ -12,12 +12,12 @@
         "noEmit": true,
         "rootDir": "./",
         "baseUrl": "./",
-        "outDir": "./js",
         "paths": {
             "../*": ["src/*"],
             "@orillusion/*": ["packages/*"],
             "@orillusion/core": ["src"],
-            "@samples/*": ["samples/*"]
+            "@samples/*": ["samples/*"],
+            "dat.gui": ["packages/debug/dat.gui.module"]
         },
         "types": ["vite/client", "@webgpu/types"],
         // for dev

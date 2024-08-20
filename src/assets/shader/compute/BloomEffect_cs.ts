@@ -1,4 +1,7 @@
-
+import { ColorUtil } from "../utils/ColorUtil";
+/**
+ * @internal
+ */
 let BloomCfg =  /*wgsl*/ `
 struct BloomCfg{
   downSampleStep: f32,
@@ -24,7 +27,9 @@ let CalcUV_01 = /*wgsl*/ `
 `
 
 //_______________calc weight
-
+/**
+ * @internal
+ */
 let GaussWeight2D: string =  /*wgsl*/ `
 fn GaussWeight2D(x:f32, y:f32, sigma:f32) -> f32
   {
@@ -36,11 +41,12 @@ fn GaussWeight2D(x:f32, y:f32, sigma:f32) -> f32
       return pow(E, a) / (2.0 * PI * sigma_2);
   }
 `
-
+/**
+ * @internal
+ */
 let GaussBlur = function (GaussNxN: string, inTex: string, inTexSampler: string) {
   var code: string = /*wgsl*/ `
-  
-  
+
   fn ${GaussNxN}(uv:vec2<f32>, n:i32, stride:vec2<f32>, sigma:f32) -> vec3<f32>
   {
       var color = vec3<f32>(0.0);
@@ -52,8 +58,7 @@ let GaussBlur = function (GaussNxN: string, inTex: string, inTexSampler: string)
           for(var j=-r; j<=r; j+=1)
           {
               let w = GaussWeight2D(f32(i), f32(j), sigma);
-              var coord:vec2<f32> = uv + vec2<f32>(f32(i), f32(j)) * stride;
-              // color += tex2D(tex, coord).rgb * w;
+              var coord:vec2<f32> = uv + vec2<f32>(f32(i), f32(j)) * stride ;
               color += textureSampleLevel(${inTex}, ${inTexSampler}, coord, 0.0).xyz * w;
               weight += w;
           }
@@ -69,8 +74,11 @@ let GaussBlur = function (GaussNxN: string, inTex: string, inTexSampler: string)
 
 
 //________________________pixel filter
-
+/**
+ * @internal
+ */
 export let threshold: string = /*wgsl*/ `
+${ColorUtil}
 ${BloomCfg}
 
 @group(0) @binding(1) var inTex : texture_2d<f32>;
@@ -88,23 +96,25 @@ fn CsMain( @builtin(workgroup_id) workgroup_id : vec3<u32> , @builtin(global_inv
       return;
   }
   var color = textureLoad(inTex, fragCoord, 0);
-  let lum = dot(vec3<f32>(0.2126, 0.7152, 0.0722), color.rgb);
-  
-  // if(lum<=bloomCfg.luminanceThreshole) {
-  //   color = vec4<f32>(0,0,0,color.w);
-  // }
-  var ret = color.xyz;
-  var brightness = lum;
-  var contribution = max(0, brightness - bloomCfg.luminanceThreshole);
-  contribution /=max(brightness, 0.00001);
-  ret = ret * contribution;
+  var linerColor = gammaToLiner(color.rgb);
+  var lum = dot(vec3<f32>(0.2126, 0.7152, 0.0722), linerColor.rgb) ;
 
-  textureStore(outTex, fragCoord, vec4<f32>(ret, color.w));
+  var ret = linerColor.xyz;
+  var contribution = max(0, lum - bloomCfg.luminanceThreshole) ;
+  // if(contribution > 0.0){
+    // ret = linerColor * contribution;
+  ret = ACESToneMapping(linerColor,contribution);
+  // }else{
+  //   ret = vec3f(0.0,0.0,0.0);
+  // }
+  textureStore(outTex, fragCoord, vec4<f32>(vec3f(ret), color.w));
 }
 `
 
 //________________________down sample
-
+/**
+ * @internal
+ */
 export let downSample: string = /*wgsl*/ `
 ${BloomCfg}
 
@@ -138,6 +148,9 @@ fn CsMain( @builtin(workgroup_id) workgroup_id : vec3<u32> , @builtin(global_inv
 
 
 //__________________________up sample
+/**
+ * @internal
+ */
 export let upSample = /*wgsl*/ `
 ${BloomCfg}
 
@@ -179,7 +192,11 @@ fn CsMain( @builtin(workgroup_id) workgroup_id : vec3<u32> , @builtin(global_inv
 
 
 //__________________________blend
+/**
+ * @internal
+ */
 export let post = /*wgsl*/ `
+${ColorUtil}
 ${BloomCfg}
 ${CalcUV_01}
 
@@ -190,19 +207,6 @@ ${CalcUV_01}
 
 var<private> texSize: vec2<u32>;
 var<private> fragCoord: vec2<i32>;
-
-fn ACESToneMapping(color: vec3<f32>, adapted_lum: f32) -> vec3<f32>
-{
-    let A = 2.51;
-    let B = 0.03;
-    let C = 2.43;
-    let D = 0.59;
-    let E = 0.14;
-
-    var color2 = color * adapted_lum;
-    color2 = (color2 * (A * color2 + B)) / (color2 * (C * color2 + D) + E);
-    return color2;
-}
 
 @compute @workgroup_size( 8 , 8 , 1 )
 fn CsMain( @builtin(workgroup_id) workgroup_id : vec3<u32> , @builtin(global_invocation_id) globalInvocation_id : vec3<u32>)

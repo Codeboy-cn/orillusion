@@ -1,10 +1,7 @@
-import { Engine3D } from "../Engine3D";
 import { Texture } from "../gfx/graphics/webGpu/core/texture/Texture";
-import { RenderShaderPass } from "../gfx/graphics/webGpu/shader/RenderShaderPass";
 import { StandShader } from "../loader/parser/prefab/mats/shader/StandShader";
 import { Color } from "../math/Color";
 import { Material } from "./Material";
-import { PhysicMaterial } from "./PhysicMaterial";
 
 export class LitMaterial extends Material {
 
@@ -22,8 +19,7 @@ export class LitMaterial extends Material {
         let sourceShader = this.shader.getDefaultColorShader();
         colorPass.defineValue = { ...sourceShader.defineValue }
         colorPass.setUniform(`shadowBias`, sourceShader.getUniform(`shadowBias`));
-        colorPass.setUniform(`transformUV1`, sourceShader.getUniform(`transformUV1`));
-        colorPass.setUniform(`transformUV2`, sourceShader.getUniform(`transformUV2`));
+
         colorPass.setUniform(`baseColor`, sourceShader.getUniform(`baseColor`));
         colorPass.setUniform(`specularColor`, sourceShader.getUniform(`specularColor`));
         colorPass.setUniform(`emissiveColor`, sourceShader.getUniform(`emissiveColor`));
@@ -44,12 +40,21 @@ export class LitMaterial extends Material {
         colorPass.setUniform(`clearcoatRoughnessFactor`, sourceShader.getUniform(`clearcoatRoughnessFactor`));
         colorPass.setUniform(`clearcoatColor`, sourceShader.getUniform(`clearcoatColor`));
         colorPass.setUniform(`clearcoatWeight`, sourceShader.getUniform(`clearcoatWeight`));
+        colorPass.setUniform(`clearcoatIor`, sourceShader.getUniform(`clearcoatIor`));
 
         colorPass.setTexture(`baseMap`, sourceShader.getTexture(`baseMap`));
         colorPass.setTexture(`normalMap`, sourceShader.getTexture(`normalMap`));
         colorPass.setTexture(`emissiveMap`, sourceShader.getTexture(`emissiveMap`));
         colorPass.setTexture(`aoMap`, sourceShader.getTexture(`aoMap`));
         colorPass.setTexture(`maskMap`, sourceShader.getTexture(`maskMap`));
+        colorPass.setTexture(`empty`, sourceShader.getTexture(`empty`));
+
+        colorPass.setUniform(`baseMapOffsetSize`, sourceShader.getUniform(`baseMapOffsetSize`));
+        colorPass.setUniform(`normalMapOffsetSize`, sourceShader.getUniform(`normalMapOffsetSize`));
+        colorPass.setUniform(`emissiveMapOffsetSize`, sourceShader.getUniform(`emissiveMapOffsetSize`));
+        colorPass.setUniform(`roughnessMapOffsetSize`, sourceShader.getUniform(`roughnessMapOffsetSize`));
+        colorPass.setUniform(`metallicMapOffsetSize`, sourceShader.getUniform(`metallicMapOffsetSize`));
+        colorPass.setUniform(`aoMapOffsetSize`, sourceShader.getUniform(`aoMapOffsetSize`));
         return litMaterial;
     }
 
@@ -140,6 +145,15 @@ export class LitMaterial extends Material {
     public get clearcoatRoughnessFactor() {
         return this.shader.getUniformFloat(`clearcoatRoughnessFactor`);
     }
+
+    public set ior(value: number) {
+        this.shader.setUniformFloat(`clearcoatIor`, value);
+    }
+
+    public get ior() {
+        return this.shader.getUniformFloat(`clearcoatIor`);
+    }
+
 
     public set alphaCutoff(value: number) {
         this.shader.setUniform(`alphaCutoff`, value);

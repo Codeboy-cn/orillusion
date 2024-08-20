@@ -1,3 +1,6 @@
+/**
+ * @internal
+ */
 export let Hair_shader_op: string = /*wgsl*/ `
     #include "Common_vert"
     #include "Common_frag"
@@ -104,9 +107,7 @@ export let Hair_shader_op: string = /*wgsl*/ `
             }
         #endif
 
-        #if USE_SHADOWMAPING
-            useShadow();
-        #endif
+        useShadow();
 
         ORI_ShadingInput.Specular = 1.0 ;
 
@@ -123,6 +124,9 @@ export let Hair_shader_op: string = /*wgsl*/ `
     }
 `
 
+/**
+ * @internal
+ */
 export let Hair_shader_tr: string = /*wgsl*/ `
 #include "Common_vert"
 #include "Common_frag"

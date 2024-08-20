@@ -1,3 +1,6 @@
+/**
+ * @internal
+ */
 export let ShadingInput: string = /*wgsl*/ `
     struct ShadingInput{
         BaseColor:vec4<f32>,
@@ -25,5 +28,22 @@ export let ShadingInput: string = /*wgsl*/ `
         FragDepth:f32,
 
         SSS:vec3f,
+
+        // color:vec4f ,
+        // normal:vec3f,
+        // alpha:f32,
+        // roughness:f32,
+        // metallic:f32,
+        // occlusion:f32,
+        // specularColor:vec4f ,
+        // specularIntensity:vec4f ,
+        // emissiveColor:vec4f,
+        // emissiveIntensity:f32,
+        // shadow:f32,
+        // ior:f32,
+        // alphaClip:f32,
+
+        // position:vec4f,
+        // depth:f32
     }
 `

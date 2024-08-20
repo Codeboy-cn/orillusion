@@ -1,9 +1,10 @@
-import { BoxGeometry, UnLitMaterial, Color, MeshRenderer, Vector3 } from '..';
+import { BoxGeometry, UnLitMaterial, Color, MeshRenderer } from '..';
 import { Object3D } from '../core/entities/Object3D';
+import { Vector3 } from '../math/Vector3';
 
 
 /**
- * @internal
+ * An object group contains xyz axis objects
  * @group Util
  */
 export class AxisObject extends Object3D {

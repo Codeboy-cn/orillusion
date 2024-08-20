@@ -362,7 +362,7 @@ export class Matrix4 {
             if (Math.abs(up.z) > 0.9999) {
                 zAxis.x += 0.0001;
             } else {
-                zAxis.z += 0.0001;
+                zAxis.z -= 0.0001;
             }
             zAxis.normalize();
         }
@@ -739,7 +739,7 @@ export class Matrix4 {
      * @param toDirection second direction
      * @version Orillusion3D  0.5.1
      */
-    public transformDir(fromDirection: Vector3, toDirection: Vector3) {
+    public transformDir(fromDirection: Vector3, toDirection: Vector3): this {
         let data = this.rawData;
 
         let v: Vector3 = Vector3.ZERO;
@@ -748,7 +748,7 @@ export class Matrix4 {
 
         if (e > 1.0 - EPSILON) {
             this.identity();
-        } else if (3 < -1.0 + EPSILON) {
+        } else if (e < -1.0 + EPSILON) {
             let up: Vector3 = Vector3.HELP_1;
             let left: Vector3 = Vector3.HELP_2; //
             let invLen: number = 0;
@@ -852,6 +852,8 @@ export class Matrix4 {
             data[11] = 0;
             data[15] = 1;
         }
+
+        return this;
     }
 
     /**
@@ -1090,7 +1092,7 @@ export class Matrix4 {
      * @param axis Rotation Angle around axis axis. Axis needs to be specified as the orientation of an axis between x/y/z
      * @version Orillusion3D  0.5.1
      */
-    public createByRotation(degrees: number, axis: Vector3): void {
+    public createByRotation(degrees: number, axis: Vector3): this {
         let tmp: Matrix4 = Matrix4.helpMatrix;
         let s: number;
         let c: number;
@@ -1157,6 +1159,7 @@ export class Matrix4 {
         }
 
         this.append(tmp);
+        return this;
     }
 
     /**

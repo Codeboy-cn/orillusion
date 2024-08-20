@@ -2,7 +2,7 @@ import { StorageGPUBuffer } from "../gfx/graphics/webGpu/core/buffer/StorageGPUB
 import { UniformGPUBuffer } from "../gfx/graphics/webGpu/core/buffer/UniformGPUBuffer";
 import { Texture } from "../gfx/graphics/webGpu/core/texture/Texture";
 import { RenderShaderPass } from "../gfx/graphics/webGpu/shader/RenderShaderPass";
-import { PassType } from "../gfx/renderJob/passRenderer/state/RendererType";
+import { PassType } from "../gfx/renderJob/passRenderer/state/PassType";
 import { Shader } from "../gfx/graphics/webGpu/shader/Shader";
 import { Color } from "../math/Color";
 import { Vector2 } from "../math/Vector2";
@@ -55,7 +55,31 @@ export class Material {
     }
 
     public set castShadow(value: boolean) {
-        this._defaultSubShader.shaderState.castShadow = value;
+        let shaderState = this._defaultSubShader.shaderState;
+        if (value != shaderState.castShadow) {
+            shaderState.castShadow = value;
+        }
+    }
+
+    public get acceptShadow(): boolean {
+        return this._defaultSubShader.shaderState.acceptShadow;
+    }
+
+    public set acceptShadow(value: boolean) {
+        let shaderState = this._defaultSubShader.shaderState;
+        if (shaderState.acceptShadow != value) {
+            shaderState.acceptShadow = value;
+            this._defaultSubShader.noticeShaderChange();
+            this._defaultSubShader.noticeValueChange();
+        }
+    }
+
+    public get castReflection(): boolean {
+        return this._defaultSubShader.shaderState.castReflection;
+    }
+
+    public set castReflection(value: boolean) {
+        this._defaultSubShader.shaderState.castReflection = value;
     }
 
     public get blendMode(): BlendMode {
@@ -72,6 +96,11 @@ export class Material {
 
     public set depthCompare(value: GPUCompareFunction) {
         this._defaultSubShader.depthCompare = value;
+        for (let item of this._shader.passShader.values()) {
+            for (let s of item) {
+                s.depthCompare = value;
+            }
+        }
     }
 
 
@@ -91,7 +120,14 @@ export class Material {
     }
 
     public set cullMode(value: GPUCullMode) {
-        this._defaultSubShader.cullMode = value;
+        if (this._defaultSubShader.cullMode != value) {
+            for (let list of this._shader.passShader.values()) {
+                for (let pass of list) {
+                    pass.cullMode = value;
+                }
+            }
+            this._defaultSubShader.cullMode = value;
+        }
     }
 
     public get depthWriteEnabled(): boolean {
@@ -104,6 +140,14 @@ export class Material {
 
     public set useBillboard(value: boolean) {
         this._defaultSubShader.setDefine("USE_BILLBOARD", value);
+    }
+
+    public get topology() {
+        return this._defaultSubShader.topology;
+    }
+
+    public set topology(value: GPUPrimitiveTopology) {
+        this._defaultSubShader.topology = value;
     }
 
     /**
