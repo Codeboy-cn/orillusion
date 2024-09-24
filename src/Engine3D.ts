@@ -23,6 +23,8 @@ import { Matrix4 } from './math/Matrix4';
 import { FXAAPost } from './gfx/renderJob/post/FXAAPost';
 import { PostProcessingComponent } from './components/post/PostProcessingComponent';
 import { GBufferFrame } from './gfx/renderJob/frame/GBufferFrame';
+import { RTResourceConfig } from './gfx/renderJob/config/RTResourceConfig';
+import { GPUTextureFormat } from './gfx/graphics/webGpu/WebGPUConst';
 
 /** 
  * Orillusion 3D Engine

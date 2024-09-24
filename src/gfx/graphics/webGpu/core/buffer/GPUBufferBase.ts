@@ -281,7 +281,7 @@ export class GPUBufferBase {
             this.memoryNodes.set(name, node);
         }
 
-        node.setFloat32Array(0, mat.rawData);
+        node.setFloatArray(0, mat.rawData);
     }
 
     public setMatrixArray(name: string, mats: Matrix4[]) {
@@ -292,7 +292,7 @@ export class GPUBufferBase {
         }
         for (let i = 0; i < mats.length; i++) {
             const mat = mats[i];
-            node.setFloat32Array(i * 16, mat.rawData);
+            node.setFloatArray(i * 16, mat.rawData);
         }
     }
 
