@@ -13,7 +13,7 @@ declare module Module {
     const HEAPF32: Float32Array;
     const HEAPF64: Float64Array;
 
-    function _initialize(count: number, useDoublePrecision: boolean, offset: number);
+    function _initialize(count: number, useDoublePrecision: boolean, threadCount: number); // If the threadCount is 0, multithreading is disabled
 
     function _allocMatrix(count: number);
     
