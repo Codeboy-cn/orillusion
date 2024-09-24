@@ -11,8 +11,7 @@ import { Struct } from "../../../../../util/struct/Struct";
 import { webGPUContext } from "../../Context3D";
 import { MemoryDO } from "../../../../../core/pool/memory/MemoryDO";
 import { MemoryInfo } from "../../../../../core/pool/memory/MemoryInfo";
-import { CreateFloatArray, FloatArray } from "@orillusion/wasm-matrix/WasmMatrix";
-import { Time } from "../../../../../util/Time";
+import { FloatArray } from "@orillusion/wasm-matrix/WasmMatrix";
 
 /**
  * @internal

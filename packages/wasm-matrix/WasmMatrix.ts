@@ -1,5 +1,5 @@
 import { Engine3D, Matrix4 } from '../../src';
-import matrixjs from './matrix.js';
+import matrix from './matrix';
 
 export type FloatArray = Float32Array | Float64Array;
 
@@ -19,12 +19,12 @@ export class WasmMatrix {
     static matrixSRTBufferPtr: number;
     static matrixContinuedSRTBufferPtr: number;
     static matrixStateBufferPtr: number;
-    static wasm: any;
+    static wasm: typeof matrix;
     static stateStruct: number = 4;
     static useDoublePrecision: boolean = false;
 
-    public static async init(count: number, useDoublePrecision: boolean) {
-        this.wasm = await matrixjs();
+    public static async init(count: number, useDoublePrecision: boolean = false) {
+        this.wasm = await matrix();
         this.useDoublePrecision = useDoublePrecision;
         this.wasm._initialize(count, useDoublePrecision, 0);
         this.allocMatrix(count);

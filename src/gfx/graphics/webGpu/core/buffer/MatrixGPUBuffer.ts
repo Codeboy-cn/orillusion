@@ -3,7 +3,6 @@ import { webGPUContext } from '../../Context3D';
 import { ArrayBufferData } from './ArrayBufferData';
 import { GPUBufferBase } from './GPUBufferBase';
 import { GPUBufferType } from './GPUBufferType';
-import { Time } from '../../../../../util/Time';
 /**
  * The buffer of the storage class
  * written in the computer shader or CPU Coder
