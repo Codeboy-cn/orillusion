@@ -116,6 +116,8 @@ export class Engine3D {
      * engine setting
      */
     public static setting: EngineSetting = {
+        doublePrecision: false,
+        
         occlusionQuery: {
             enable: true,
             debug: false,
@@ -339,7 +341,7 @@ export class Engine3D {
 
         this.setting = { ...this.setting, ...descriptor.engineSetting }
 
-        await WasmMatrix.init(Matrix4.allocCount);
+        await WasmMatrix.init(Matrix4.allocCount, this.setting.doublePrecision);
 
         await webGPUContext.init(descriptor.canvasConfig);
 
