@@ -141,12 +141,15 @@ export class GlobalUniformGroup {
         this.uniformGPUBuffer.setInt32(`renderState_left`, Engine3D.setting.render.renderState_left);
         this.uniformGPUBuffer.setInt32(`renderState_right`, Engine3D.setting.render.renderState_right);
         this.uniformGPUBuffer.setFloat(`renderState_split`, Engine3D.setting.render.renderState_split);
-        let mouseX = Engine3D.inputSystem.mouseX * webGPUContext.pixelRatio;
-        let mouseY = Engine3D.inputSystem.mouseY * webGPUContext.pixelRatio;
+        const ownerC = (camera?.transform as any)?.view3D?.engine3D;
+        const inputC = ownerC?.inputSystem ?? Engine3D.inputSystem;
+        const ctxC = ownerC?.context3D ?? webGPUContext;
+        let mouseX = (inputC?.mouseX ?? 0) * (ctxC?.pixelRatio ?? 1);
+        let mouseY = (inputC?.mouseY ?? 0) * (ctxC?.pixelRatio ?? 1);
         this.uniformGPUBuffer.setFloat(`mouseX`, mouseX);
         this.uniformGPUBuffer.setFloat(`mouseY`, mouseY);
-        this.uniformGPUBuffer.setFloat(`windowWidth`, webGPUContext.windowWidth);
-        this.uniformGPUBuffer.setFloat(`windowHeight`, webGPUContext.windowHeight);
+        this.uniformGPUBuffer.setFloat(`windowWidth`, ctxC?.windowWidth ?? 0);
+        this.uniformGPUBuffer.setFloat(`windowHeight`, ctxC?.windowHeight ?? 0);
         this.uniformGPUBuffer.setFloat(`near`, camera.near);
         this.uniformGPUBuffer.setFloat(`far`, camera.far);
         this.uniformGPUBuffer.setFloat(`pointShadowBias`, Engine3D.setting.shadow.pointShadowBias);
@@ -208,12 +211,15 @@ export class GlobalUniformGroup {
         this.uniformGPUBuffer.setInt32(`renderState_right`, Engine3D.setting.render.renderState_right);
         this.uniformGPUBuffer.setFloat(`renderState_split`, Engine3D.setting.render.renderState_split);
 
-        let mouseX = Engine3D.inputSystem.mouseX * webGPUContext.pixelRatio;
-        let mouseY = Engine3D.inputSystem.mouseY * webGPUContext.pixelRatio;
+        const ownerS = (camera?.transform as any)?.view3D?.engine3D;
+        const inputS = ownerS?.inputSystem ?? Engine3D.inputSystem;
+        const ctxS = ownerS?.context3D ?? webGPUContext;
+        let mouseX = (inputS?.mouseX ?? 0) * (ctxS?.pixelRatio ?? 1);
+        let mouseY = (inputS?.mouseY ?? 0) * (ctxS?.pixelRatio ?? 1);
         this.uniformGPUBuffer.setFloat(`mouseX`, mouseX);
         this.uniformGPUBuffer.setFloat(`mouseY`, mouseY);
-        this.uniformGPUBuffer.setFloat(`windowWidth`, webGPUContext.windowWidth);
-        this.uniformGPUBuffer.setFloat(`windowHeight`, webGPUContext.windowHeight);
+        this.uniformGPUBuffer.setFloat(`windowWidth`, ctxS?.windowWidth ?? 0);
+        this.uniformGPUBuffer.setFloat(`windowHeight`, ctxS?.windowHeight ?? 0);
         this.uniformGPUBuffer.setFloat(`near`, camera.near);
         this.uniformGPUBuffer.setFloat(`far`, camera.far);
 

@@ -65,16 +65,26 @@ export class PickFire extends CEventDispatcher {
         this._downEvent = new PointerEvent3D(PointerEvent3D.PICK_DOWN);
     }
 
+    private _inputSystem() {
+        // Multi-instance: prefer the input system owned by the view's
+        // engine. Fall back to the legacy static accessor so single-
+        // instance usage keeps working.
+        const owner = (this._view as any)?.engine3D;
+        return owner?.inputSystem ?? Engine3D.inputSystem;
+    }
+
     /**
     * start this manager
     */
     public start() {
+        const input = this._inputSystem();
+        if (!input) return;
         if (Engine3D.setting.pick.enable) {
-            Engine3D.inputSystem.addEventListener(PointerEvent3D.POINTER_DOWN, this.onTouchStart, this);
-            Engine3D.inputSystem.addEventListener(PointerEvent3D.POINTER_UP, this.onTouchEnd, this);
-            Engine3D.inputSystem.addEventListener(PointerEvent3D.POINTER_CLICK, this.onTouchOnce, this);
-            Engine3D.inputSystem.addEventListener(PointerEvent3D.POINTER_RIGHT_CLICK, this.onTouchOnce, this);
-            Engine3D.inputSystem.addEventListener(PointerEvent3D.POINTER_MOVE, this.onTouchMove, this);
+            input.addEventListener(PointerEvent3D.POINTER_DOWN, this.onTouchStart, this);
+            input.addEventListener(PointerEvent3D.POINTER_UP, this.onTouchEnd, this);
+            input.addEventListener(PointerEvent3D.POINTER_CLICK, this.onTouchOnce, this);
+            input.addEventListener(PointerEvent3D.POINTER_RIGHT_CLICK, this.onTouchOnce, this);
+            input.addEventListener(PointerEvent3D.POINTER_MOVE, this.onTouchMove, this);
         }
 
         if (Engine3D.setting.pick.mode == `pixel`) {
@@ -88,11 +98,13 @@ export class PickFire extends CEventDispatcher {
      * stop this manager
      */
     public stop() {
-        Engine3D.inputSystem.removeEventListener(PointerEvent3D.POINTER_DOWN, this.onTouchStart, this);
-        Engine3D.inputSystem.removeEventListener(PointerEvent3D.POINTER_UP, this.onTouchEnd, this);
-        Engine3D.inputSystem.removeEventListener(PointerEvent3D.POINTER_CLICK, this.onTouchOnce, this);
-        Engine3D.inputSystem.removeEventListener(PointerEvent3D.POINTER_RIGHT_CLICK, this.onTouchOnce, this);
-        Engine3D.inputSystem.removeEventListener(PointerEvent3D.POINTER_MOVE, this.onTouchMove, this);
+        const input = this._inputSystem();
+        if (!input) return;
+        input.removeEventListener(PointerEvent3D.POINTER_DOWN, this.onTouchStart, this);
+        input.removeEventListener(PointerEvent3D.POINTER_UP, this.onTouchEnd, this);
+        input.removeEventListener(PointerEvent3D.POINTER_CLICK, this.onTouchOnce, this);
+        input.removeEventListener(PointerEvent3D.POINTER_RIGHT_CLICK, this.onTouchOnce, this);
+        input.removeEventListener(PointerEvent3D.POINTER_MOVE, this.onTouchMove, this);
     }
 
     private onTouchStart(e: PointerEvent3D) {

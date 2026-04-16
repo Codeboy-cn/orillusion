@@ -76,10 +76,16 @@ export class LightBase extends ComponentBase implements ILight {
             ShadowLightsCollect.removeShadowLight(this);
         }
 
-        if (this.transform.view3D && Engine3D.renderJobs) {
-            let renderer = Engine3D.renderJobs.get(this.transform.view3D).reflectionRenderer;
-            if (renderer)
-                Engine3D.renderJobs.get(this.transform.view3D).reflectionRenderer.forceUpdate();
+        const view = this.transform.view3D;
+        if (view) {
+            // Under multi-instance, look up the render job from the
+            // engine that owns this light's view rather than the
+            // global default instance.
+            const owner = (view as any).engine3D as { renderJobs?: Map<any, any> } | undefined;
+            const jobs = owner?.renderJobs ?? Engine3D.renderJobs;
+            const job = jobs?.get(view);
+            const renderer = job?.reflectionRenderer;
+            if (renderer) renderer.forceUpdate();
         }
     }
 

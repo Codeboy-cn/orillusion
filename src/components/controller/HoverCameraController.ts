@@ -133,15 +133,26 @@ export class HoverCameraController extends ComponentBase {
         this._targetPos = new Object3D();
     }
 
+    private _input(): any {
+        // Prefer the input system owned by the engine that hosts this
+        // controller's view. Fall back to the legacy default instance
+        // so single-instance samples keep working.
+        const view = this.transform?.view3D;
+        const owner = (view as any)?.engine3D;
+        return owner?.inputSystem ?? Engine3D.inputSystem;
+    }
+
     /**
      * @internal
      */
     public start(): void {
         this.camera = this.object3D.getOrAddComponent(Camera3D);
-        Engine3D.inputSystem.addEventListener(PointerEvent3D.POINTER_DOWN, this.onMouseDown, this);
-        Engine3D.inputSystem.addEventListener(PointerEvent3D.POINTER_MOVE, this.onMouseMove, this, null, 10);
-        Engine3D.inputSystem.addEventListener(PointerEvent3D.POINTER_UP, this.onMouseUp, this, null, 10);
-        Engine3D.inputSystem.addEventListener(PointerEvent3D.POINTER_WHEEL, this.onMouseWheel, this);
+        const input = this._input();
+        if (!input) return;
+        input.addEventListener(PointerEvent3D.POINTER_DOWN, this.onMouseDown, this);
+        input.addEventListener(PointerEvent3D.POINTER_MOVE, this.onMouseMove, this, null, 10);
+        input.addEventListener(PointerEvent3D.POINTER_UP, this.onMouseUp, this, null, 10);
+        input.addEventListener(PointerEvent3D.POINTER_WHEEL, this.onMouseWheel, this);
     }
 
     public flowTarget(target: Object3D, offset: Vector3 = Vector3.ZERO) {

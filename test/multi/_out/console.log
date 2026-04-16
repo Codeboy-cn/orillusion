@@ -1,0 +1,51 @@
+[21:24:34.179] [verbose] [vite] connecting...  (http://localhost:4000/@vite/client:495)
+[21:24:34.214] [verbose] [vite] connected.  (http://localhost:4000/@vite/client:618)
+[21:24:34.298] [info] %c[MultiInstance.test.ts] color:yellow  (http://localhost:4000/test/util.ts:4)
+[21:24:34.301] [info] %c[create two Engine3D instances sharing GPU device] color:green  (http://localhost:4000/test/util.ts:10)
+[21:24:34.301] [info] Engine Version 0.8.5-dev.9  (http://localhost:4000/test/multi/:54)
+[21:24:34.304] [warning] %cElectron Security Warning (Insecure Content-Security-Policy) font-weight: bold; This renderer process has either no Content Security
+  Policy set or a policy with "unsafe-eval" enabled. This exposes users of
+  this app to unnecessary security risks.
+
+For more information and help, consult
+https://electronjs.org/docs/tutorial/security.
+This warning will not show up
+once the app is packaged.  (node:electron/js2c/renderer_init:2)
+[21:24:34.306] [info] wasm have loaded  (http://localhost:4000/test/multi/:54)
+[21:24:34.318] [info] [multi] engineA.id = 1 engineB.id = 2  (http://localhost:4000/test/multi/:54)
+[21:24:34.318] [info] [multi] shared device = true  (http://localhost:4000/test/multi/:54)
+[21:24:34.318] [info] [multi] distinct context3D = true  (http://localhost:4000/test/multi/:54)
+[21:24:34.319] [info] [multi] canvasA bound = true , canvasB bound = true  (http://localhost:4000/test/multi/:54)
+[21:24:34.319] [verbose] [time]: 17.919189453125 ms  (http://localhost:4000/test/util.ts:31)
+[21:24:34.319] [info] console.groupEnd  (http://localhost:4000/test/util.ts:32)
+[21:24:34.319] [info] %c[build isolated scenes and start two render loops] color:green  (http://localhost:4000/test/util.ts:10)
+[21:24:34.341] [info] [multi] scene A snapshot: {"instanceId":1,"canvasId":"canvasA","canvasSize":[320,240],"presentationSize":[320,240],"aspect":1.3333333333333333,"sceneChildren":4,"meshNames":["redBox"],"lightCount":1,"lightTypes":["Direct"],"cameraPos":[0,0,0],"cameraFov":60,"renderJobAttached":true}  (http://localhost:4000/test/multi/:54)
+[21:24:34.342] [info] [multi] scene B snapshot: {"instanceId":2,"canvasId":"canvasB","canvasSize":[320,240],"presentationSize":[320,240],"aspect":1.3333333333333333,"sceneChildren":4,"meshNames":["blueSphere"],"lightCount":1,"lightTypes":["Point"],"cameraPos":[0,0,0],"cameraFov":45,"renderJobAttached":true}  (http://localhost:4000/test/multi/:54)
+[21:24:34.342] [verbose] [time]: 23.078857421875 ms  (http://localhost:4000/test/util.ts:31)
+[21:24:34.342] [info] console.groupEnd  (http://localhost:4000/test/util.ts:32)
+[21:24:34.342] [info] %c[both engines advance their render loops] color:green  (http://localhost:4000/test/util.ts:10)
+[21:24:35.886] [info] [multi] engineA advanced frames: 52  (http://localhost:4000/test/multi/:54)
+[21:24:35.887] [info] [multi] engineB advanced frames: 52  (http://localhost:4000/test/multi/:54)
+[21:24:35.887] [info] [multi] final scene A: {"instanceId":1,"canvasId":"canvasA","canvasSize":[320,240],"presentationSize":[320,240],"aspect":1.3333333333333333,"sceneChildren":4,"meshNames":["redBox"],"lightCount":1,"lightTypes":["Direct"],"cameraPos":[57.94882583618164,31.05467987060547,100.3703842163086],"cameraFov":60,"renderJobAttached":true}  (http://localhost:4000/test/multi/:54)
+[21:24:35.888] [info] [multi] final scene B: {"instanceId":2,"canvasId":"canvasB","canvasSize":[320,240],"presentationSize":[320,240],"aspect":1.3333333333333333,"sceneChildren":4,"meshNames":["blueSphere"],"lightCount":1,"lightTypes":["Point"],"cameraPos":[0,0,139.98382568359375],"cameraFov":45,"renderJobAttached":true}  (http://localhost:4000/test/multi/:54)
+[21:24:35.888] [verbose] [time]: 1546.463134765625 ms  (http://localhost:4000/test/util.ts:31)
+[21:24:35.888] [info] console.groupEnd  (http://localhost:4000/test/util.ts:32)
+[21:24:36.390] [info] [object Object]  (http://localhost:4000/test/util.ts:77)
+[21:24:36.390] [info] console.groupEnd  (http://localhost:4000/test/util.ts:78)
+[21:24:36.469] [info] --- on-page log panel begin ---
+[21:24:36.469] [info] [LOG] Engine Version 0.8.5-dev.9
+[21:24:36.469] [info] [LOG] wasm have loaded
+[21:24:36.469] [info] [LOG] [multi] engineA.id = 1 engineB.id = 2
+[21:24:36.469] [info] [LOG] [multi] shared device = true
+[21:24:36.469] [info] [LOG] [multi] distinct context3D = true
+[21:24:36.469] [info] [LOG] [multi] canvasA bound = true , canvasB bound = true
+[21:24:36.469] [info] [LOG] [multi] scene A snapshot: {"instanceId":1,"canvasId":"canvasA","canvasSize":[320,240],"presentationSize":[320,240],"aspect":1.3333333333333333,"sceneChildren":4,"meshNames":["redBox"],"lightCount":1,"lightTypes":["Direct"],"cameraPos":[0,0,0],"cameraFov":60,"renderJobAttached":true}
+[21:24:36.469] [info] [LOG] [multi] scene B snapshot: {"instanceId":2,"canvasId":"canvasB","canvasSize":[320,240],"presentationSize":[320,240],"aspect":1.3333333333333333,"sceneChildren":4,"meshNames":["blueSphere"],"lightCount":1,"lightTypes":["Point"],"cameraPos":[0,0,0],"cameraFov":45,"renderJobAttached":true}
+[21:24:36.469] [info] [LOG] [multi] engineA advanced frames: 52
+[21:24:36.469] [info] [LOG] [multi] engineB advanced frames: 52
+[21:24:36.469] [info] [LOG] [multi] final scene A: {"instanceId":1,"canvasId":"canvasA","canvasSize":[320,240],"presentationSize":[320,240],"aspect":1.3333333333333333,"sceneChildren":4,"meshNames":["redBox"],"lightCount":1,"lightTypes":["Direct"],"cameraPos":[57.94882583618164,31.05467987060547,100.3703842163086],"cameraFov":60,"renderJobAttached":true}
+[21:24:36.469] [info] [LOG] [multi] final scene B: {"instanceId":2,"canvasId":"canvasB","canvasSize":[320,240],"presentationSize":[320,240],"aspect":1.3333333333333333,"sceneChildren":4,"meshNames":["blueSphere"],"lightCount":1,"lightTypes":["Point"],"cameraPos":[0,0,139.98382568359375],"cameraFov":45,"renderJobAttached":true}
+[21:24:36.469] [info] 
+[21:24:36.469] [info] --- on-page log panel end ---
+[21:24:36.508] [info] screenshot saved: /Users/jbai/orillusion/test/multi/_out/screenshot.png
+[21:24:36.508] [info] end event received: {"type":"end","success":3,"fail":0}
