@@ -30,6 +30,7 @@ export class PreDepthPassRenderer extends RendererBase {
         super();
         this.passType = PassType.DEPTH;
 
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
         let size = webGPUContext.presentationSize;
         let scale = 1;
         this.zBufferTexture = RTResourceMap.createRTTexture(RTResourceConfig.zBufferTexture_NAME, Math.floor(size[0] * scale), Math.floor(size[1] * scale), GPUTextureFormat.rgba16float, false);

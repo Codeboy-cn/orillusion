@@ -77,13 +77,15 @@ export class GBufferFrame extends RTFrame {
     /**
      * @internal
      */
-    public static getGBufferFrame(key: string, fixedWidth: number = 0, fixedHeight: number = 0, outColor: boolean = true, depthTexture?: RenderTexture): GBufferFrame {
-        let map = GBufferFrame._mapFor(webGPUContext);
+    public static getGBufferFrame(key: string, fixedWidth: number = 0, fixedHeight: number = 0, outColor: boolean = true, depthTexture?: RenderTexture, ctx?: Context3D): GBufferFrame {
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
+        let resolved = ctx ?? webGPUContext;
+        let map = GBufferFrame._mapFor(resolved);
         GBufferFrame.gBufferMap = map;
         let gBuffer: GBufferFrame;
         if (!map.has(key)) {
             gBuffer = new GBufferFrame();
-            let size = webGPUContext.presentationSize;
+            let size = resolved.presentationSize;
             gBuffer.createGBuffer(
                 key,
                 fixedWidth == 0 ? size[0] : fixedWidth,
