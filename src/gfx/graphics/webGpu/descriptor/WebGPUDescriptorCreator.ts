@@ -57,6 +57,7 @@ export class WebGPUDescriptorCreator {
             // if(!rps.customSize){
             rps.renderTargetTextures = [
                 {
+                    // eslint-disable-next-line @typescript-eslint/no-deprecated
                     format: webGPUContext.presentationFormat,
                 },
             ];
@@ -97,12 +98,14 @@ export class WebGPUDescriptorCreator {
             }
         } else {
             if (!renderPassState.customSize) {
+                // eslint-disable-next-line @typescript-eslint/no-deprecated
                 let clearValue = webGPUContext.canvasConfig && webGPUContext.canvasConfig.alpha ? [1.0, 1.0, 1.0, 0.0] : [0.0, 0.0, 0.0, 1.0]
                 size = presentationSize;
                 if (renderPassState.isOutTarget == true) {
                     attachMentTexture.push({
                         view: undefined,
                         resolveTarget: undefined,
+                        // eslint-disable-next-line @typescript-eslint/no-deprecated
                         loadOp: (webGPUContext.canvasConfig && webGPUContext.canvasConfig.alpha) || loadOp != null ? `load` : `clear`,
                         clearValue: clearValue,
                         storeOp: 'store',
@@ -151,6 +154,7 @@ export class WebGPUDescriptorCreator {
      */
     public static getRenderBundleDescriptor(renderPassState: RendererPassState): GPURenderBundleEncoderDescriptor {
         if (renderPassState.renderBundleEncoderDescriptor) return renderPassState.renderBundleEncoderDescriptor;
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
         let presentationSize = webGPUContext.presentationSize;
         let attachMentTexture = [];
         let size = [];
