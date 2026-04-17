@@ -112,18 +112,28 @@ export class Object3DTransformTools extends Object3D {
             this.mControllers[this.mTransformMode].reset();
     }
 
+    protected _input(): any {
+        const view = this.transform?.view3D;
+        const owner = (view as any)?.engine3D;
+        return owner?.inputSystem ?? Engine3D.inputSystem;
+    }
+
     protected activate() {
-        Engine3D.inputSystem.addEventListener(KeyEvent.KEY_DOWN, this.onKeyDown, this);
-        Engine3D.inputSystem.addEventListener(PointerEvent3D.POINTER_DOWN, this.onMouseDown, this, null, 99999);
-        Engine3D.inputSystem.addEventListener(PointerEvent3D.POINTER_MOVE, this.onMouseMove, this, null, 99999);
-        Engine3D.inputSystem.addEventListener(PointerEvent3D.POINTER_UP, this.onMouseUp, this, null, 99999);
+        const input = this._input();
+        if (!input) return;
+        input.addEventListener(KeyEvent.KEY_DOWN, this.onKeyDown, this);
+        input.addEventListener(PointerEvent3D.POINTER_DOWN, this.onMouseDown, this, null, 99999);
+        input.addEventListener(PointerEvent3D.POINTER_MOVE, this.onMouseMove, this, null, 99999);
+        input.addEventListener(PointerEvent3D.POINTER_UP, this.onMouseUp, this, null, 99999);
     }
 
     protected unactivate() {
-        Engine3D.inputSystem.removeEventListener(KeyEvent.KEY_DOWN, this.onKeyDown, this);
-        Engine3D.inputSystem.removeEventListener(PointerEvent3D.POINTER_DOWN, this.onMouseDown, this);
-        Engine3D.inputSystem.removeEventListener(PointerEvent3D.POINTER_MOVE, this.onMouseMove, this);
-        Engine3D.inputSystem.removeEventListener(PointerEvent3D.POINTER_UP, this.onMouseUp, this);
+        const input = this._input();
+        if (!input) return;
+        input.removeEventListener(KeyEvent.KEY_DOWN, this.onKeyDown, this);
+        input.removeEventListener(PointerEvent3D.POINTER_DOWN, this.onMouseDown, this);
+        input.removeEventListener(PointerEvent3D.POINTER_MOVE, this.onMouseMove, this);
+        input.removeEventListener(PointerEvent3D.POINTER_UP, this.onMouseUp, this);
     }
 
     protected onKeyDown(e: KeyEvent) {

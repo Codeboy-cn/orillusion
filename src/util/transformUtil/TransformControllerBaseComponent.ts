@@ -159,10 +159,17 @@ export class TransformControllerBaseComponent extends ComponentBase {
         }
     }
 
+    protected _input(): any {
+        const view = this.transform?.view3D;
+        const owner = (view as any)?.engine3D;
+        return owner?.inputSystem ?? Engine3D.inputSystem;
+    }
+
     protected pickAxis(): { intersectPoint?: Vector3; distance: number; obj: Object3D; axis: TransformAxisEnum } {
         const scene3D = this.object3D.transform.scene3D;
         const camera = scene3D.view.camera;
-        let ray = camera.screenPointToRay(Engine3D.inputSystem.mouseX, Engine3D.inputSystem.mouseY);
+        const input = this._input();
+        let ray = camera.screenPointToRay(input.mouseX, input.mouseY);
 
         let intersect: HitInfo;
         let lastResult: { intersectPoint?: Vector3; distance: number; obj: Object3D; axis: TransformAxisEnum };
@@ -209,10 +216,11 @@ export class TransformControllerBaseComponent extends ComponentBase {
         const scene3D = this.object3D.transform.scene3D;
         const camera = scene3D.view.camera;
         let screenPoint = camera.worldToScreenPoint(this.mX.transform.worldPosition);
-        let pos = camera.screenPointToWorld(Engine3D.inputSystem.mouseX, Engine3D.inputSystem.mouseY, screenPoint.z);
+        const input = this._input();
+        let pos = camera.screenPointToWorld(input.mouseX, input.mouseY, screenPoint.z);
         this.beginPoint.copyFrom(pos);
-        this.beginMousePos.x = Engine3D.inputSystem.mouseX;
-        this.beginMousePos.y = Engine3D.inputSystem.mouseY;
+        this.beginMousePos.x = input.mouseX;
+        this.beginMousePos.y = input.mouseY;
     }
 
     protected lastMoveObj: Object3D;
@@ -247,12 +255,13 @@ export class TransformControllerBaseComponent extends ComponentBase {
             const scene3D = this.object3D.transform.scene3D;
             const camera = scene3D.view.camera;
             let screenPoint = camera.worldToScreenPoint(this.mX.transform.worldPosition);
-            let pos = camera.screenPointToWorld(Engine3D.inputSystem.mouseX, Engine3D.inputSystem.mouseY, screenPoint.z);
+            const input = this._input();
+            let pos = camera.screenPointToWorld(input.mouseX, input.mouseY, screenPoint.z);
 
             this.currentPoint.copyFrom(pos);
             let offset = pos.subtract(this.beginPoint);
 
-            Vector3.HELP_0.set(Engine3D.inputSystem.mouseX, Engine3D.inputSystem.mouseY, 0);
+            Vector3.HELP_0.set(input.mouseX, input.mouseY, 0);
             let distance = Vector3.distance(Vector3.HELP_0, this.beginMousePos);
             this.beginMousePos.copyFrom(Vector3.HELP_0);
 

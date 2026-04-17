@@ -1,4 +1,3 @@
-import { Engine3D } from "../../Engine3D";
 import { ColliderComponent } from "../../components/ColliderComponent";
 import { MeshRenderer } from "../../components/renderer/MeshRenderer";
 import { BoxColliderShape } from "../../components/shape/BoxColliderShape";
@@ -51,12 +50,13 @@ export class RotationControlComponents extends TransformControllerBaseComponent 
         const scene3D = this.object3D.transform.scene3D;
         const camera = scene3D.view.camera;
         const pos = this.mZ.transform.worldPosition;
-        let ray = camera.screenPointToRay(Engine3D.inputSystem.mouseX, Engine3D.inputSystem.mouseY);
+        const input = this._input();
+        let ray = camera.screenPointToRay(input.mouseX, input.mouseY);
 
         if (this.currentAxis == TransformAxisEnum.X) {
             let screenPoint = camera.worldToScreenPoint(pos);
             Vector3.HELP_1.set(screenPoint.x, screenPoint.y, 0);
-            Vector3.HELP_2.set(Engine3D.inputSystem.mouseX, Engine3D.inputSystem.mouseY, 0);
+            Vector3.HELP_2.set(input.mouseX, input.mouseY, 0);
             let vec3 = Vector3.HELP_2.subtract(Vector3.HELP_1);
             let angle = Vector3.getAngle(Vector3.X_AXIS, vec3);
             if (vec3.y > 0) {
@@ -71,7 +71,7 @@ export class RotationControlComponents extends TransformControllerBaseComponent 
         if (this.currentAxis == TransformAxisEnum.Y) {
             let screenPoint = camera.worldToScreenPoint(pos);
             Vector3.HELP_1.set(screenPoint.x, screenPoint.y, 0);
-            Vector3.HELP_2.set(Engine3D.inputSystem.mouseX, Engine3D.inputSystem.mouseY, 0);
+            Vector3.HELP_2.set(input.mouseX, input.mouseY, 0);
             let vec3 = Vector3.HELP_2.subtract(Vector3.HELP_1);
             let angle = Vector3.getAngle(Vector3.X_AXIS, vec3);
             if (vec3.y > 0) {
@@ -86,7 +86,7 @@ export class RotationControlComponents extends TransformControllerBaseComponent 
         if (this.currentAxis == TransformAxisEnum.Z) {
             let screenPoint = camera.worldToScreenPoint(pos);
             Vector3.HELP_1.set(screenPoint.x, screenPoint.y, 0);
-            Vector3.HELP_2.set(Engine3D.inputSystem.mouseX, Engine3D.inputSystem.mouseY, 0);
+            Vector3.HELP_2.set(input.mouseX, input.mouseY, 0);
             let vec3 = Vector3.HELP_2.subtract(Vector3.HELP_1);
             let angle = Vector3.getAngle(Vector3.X_AXIS, vec3);
             if (vec3.y > 0) {
@@ -200,7 +200,8 @@ export class RotationControlComponents extends TransformControllerBaseComponent 
     protected pickAxis(): { intersectPoint?: Vector3; distance: number; obj: Object3D; axis: TransformAxisEnum } {
         const scene3D = this.object3D.transform.scene3D;
         const camera = scene3D.view.camera;
-        let ray = camera.screenPointToRay(Engine3D.inputSystem.mouseX, Engine3D.inputSystem.mouseY);
+        const input = this._input();
+        let ray = camera.screenPointToRay(input.mouseX, input.mouseY);
 
         let intersect: HitInfo;
         let lastResult: { intersectPoint?: Vector3; distance: number; obj: Object3D; axis: TransformAxisEnum };

@@ -265,7 +265,8 @@ export class PickFire extends CEventDispatcher {
                 this._interestList.push({ distance: distance, collider: iterator, intersectPoint: position });
             }
         } else if (Engine3D.setting.pick.mode == `bound`) {
-            this.ray = camera.screenPointToRay(Engine3D.inputSystem.mouseX, Engine3D.inputSystem.mouseY);
+            const input = this._inputSystem();
+            this.ray = camera.screenPointToRay(input.mouseX, input.mouseY);
             let intersect: HitInfo;
             let colliders = ComponentCollect.componentsEnablePickerList.get(this._view);;
             if (colliders) {
