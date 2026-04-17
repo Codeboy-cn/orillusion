@@ -77,7 +77,7 @@ export class WebGPUDescriptorCreator {
     // static getRenderPassDescriptor(attachMentTextures: VirtualTexture[], renderPassState:RenderPassState): any {
     public static getRenderPassDescriptor(renderPassState: RendererPassState, loadOp: GPULoadOp = null): any {
         if (renderPassState.renderPassDescriptor) return renderPassState.renderPassDescriptor;
-        let device = webGPUContext.device;
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
         let presentationSize = webGPUContext.presentationSize;
         let attachMentTexture = [];
 

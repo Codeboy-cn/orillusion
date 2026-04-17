@@ -56,7 +56,9 @@ export class UIPanel extends UIImage {
 
     init(param?: any) {
         super.init(param);
-        this._uiTransform.resize(webGPUContext.canvas.width, webGPUContext.canvas.height);
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
+        let ctx = webGPUContext;
+        this._uiTransform.resize(ctx.canvas.width, ctx.canvas.height);
         this.create(this.space);
         this.visible = false;
     }
@@ -158,9 +160,11 @@ export class UIPanel extends UIImage {
         panel._uiRenderer.needSortOnCameraZ = panel.needSortOnCameraZ;
 
         //update material
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
+        let ctx = view?.engine3D?.context3D ?? webGPUContext;
         if (this.space == GUISpace.View) {
-            let sW = webGPUContext.canvas.clientWidth;
-            let sH = webGPUContext.canvas.clientHeight;
+            let sW = ctx.canvas.clientWidth;
+            let sH = ctx.canvas.clientHeight;
             let pW = this._uiTransform.width;
             let pH = this._uiTransform.height;
             this.panelRatio = this.updateGUIPixelRatio(sW, sH, pW, pH);
@@ -171,7 +175,7 @@ export class UIPanel extends UIImage {
         for (let item of panel['_uiRenderer'].materials) {
             let material = item as GUIMaterial;
             material.setPanelRatio(this.panelRatio);
-            material.setScreenSize(webGPUContext.canvas.clientWidth, webGPUContext.canvas.clientHeight);
+            material.setScreenSize(ctx.canvas.clientWidth, ctx.canvas.clientHeight);
             material.setScissorEnable(panel.scissorEnable);
             if (panel.scissorEnable) {
                 let maskQuad = panel.mainQuads[0];
