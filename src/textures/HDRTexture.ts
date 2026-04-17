@@ -1,6 +1,6 @@
 import { Texture } from '../gfx/graphics/webGpu/core/texture/Texture';
 import { GPUTextureFormat } from '../gfx/graphics/webGpu/WebGPUConst';
-import { webGPUContext } from '../gfx/graphics/webGpu/Context3D';
+import { bindCtx, webGPUContext } from '../gfx/graphics/webGpu/Context3D';
 import { GPUContext } from '../gfx/renderJob/GPUContext';
 import { FileLoader } from '../loader/FileLoader';
 import { LoaderFunctions } from '../loader/LoaderFunctions';
@@ -27,7 +27,9 @@ export class HDRTexture extends Texture {
     public create(width: number = 32, height: number = 32, data: ArrayBuffer = null, useMipmap: boolean = true): this {
         this.width = width;
         this.height = height;
-        let device = webGPUContext.device;
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
+        bindCtx(this, webGPUContext);
+        let device = this._boundCtx!.device;
         const bit = 2; //half float
         const bytesPerRow = width * 4 * bit;
         let fixedData: ArrayBuffer = data;

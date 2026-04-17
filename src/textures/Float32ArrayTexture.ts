@@ -1,7 +1,7 @@
 import { Texture } from '../gfx/graphics/webGpu/core/texture/Texture';
 import { TextureMipmapGenerator } from '../gfx/graphics/webGpu/core/texture/TextureMipmapGenerator';
 import { GPUTextureFormat } from '../gfx/graphics/webGpu/WebGPUConst';
-import { webGPUContext } from '../gfx/graphics/webGpu/Context3D';
+import { bindCtx, webGPUContext } from '../gfx/graphics/webGpu/Context3D';
 import { GPUContext } from '../gfx/renderJob/GPUContext';
 /**
  * @internal
@@ -18,7 +18,9 @@ export class Float32ArrayTexture extends Texture {
      * @returns
      */
     public create(width: number, height: number, data: Float32Array, filtering: boolean = true) {
-        let device = webGPUContext.device;
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
+        bindCtx(this, webGPUContext);
+        let device = this._boundCtx!.device;
         const bytesPerRow = width * 4 * 4;
         this.format = GPUTextureFormat.rgba32float;
 
@@ -73,7 +75,9 @@ export class Float32ArrayTexture extends Texture {
      * @returns
      */
     public fromBuffer(width: number, height: number, textureDataBuffer: GPUBuffer): this {
-        let device = webGPUContext.device;
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
+        bindCtx(this, webGPUContext);
+        let device = this._boundCtx!.device;
         const bytesPerRow = width * 4 * 4;
         this.format = GPUTextureFormat.rgba32float;
 

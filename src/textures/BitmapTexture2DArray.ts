@@ -4,7 +4,7 @@ import { BitmapTexture2D } from './BitmapTexture2D';
 import { GPUContext } from '../gfx/renderJob/GPUContext';
 import { ITexture } from '../gfx/graphics/webGpu/core/texture/ITexture';
 import { Texture } from '../gfx/graphics/webGpu/core/texture/Texture';
-import { webGPUContext } from '../gfx/graphics/webGpu/Context3D';
+import { bindCtx, webGPUContext } from '../gfx/graphics/webGpu/Context3D';
 
 /**
  * Type BitmapTexture 2D Array , Use in GPU
@@ -130,6 +130,8 @@ export class BitmapTexture2DArray extends Texture implements ITexture {
     }
 
     internalCreateSampler() {
-        this.gpuSampler = webGPUContext.device.createSampler(this);
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
+        bindCtx(this, webGPUContext);
+        this.gpuSampler = this._boundCtx!.device.createSampler(this);
     }
 }

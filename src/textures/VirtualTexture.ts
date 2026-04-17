@@ -1,6 +1,6 @@
 import { Texture } from '../gfx/graphics/webGpu/core/texture/Texture';
 import { GPUAddressMode, GPUTextureFormat } from '../gfx/graphics/webGpu/WebGPUConst';
-import { webGPUContext } from '../gfx/graphics/webGpu/Context3D';
+import { bindCtx, webGPUContext } from '../gfx/graphics/webGpu/Context3D';
 import { GPUContext } from '../gfx/renderJob/GPUContext';
 import { UUID } from '../util/Global';
 /**
@@ -32,7 +32,8 @@ export class VirtualTexture extends Texture {
      */
     constructor(width: number, height: number, format: GPUTextureFormat = GPUTextureFormat.rgba8unorm, useMipMap: boolean = false, usage?: GPUFlagsConstant, numberLayer: number = 1, sampleCount: number = 0, mipmapCount: number = 1) {
         super(width, height, numberLayer);
-        let device = webGPUContext.device;
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
+        bindCtx(this, webGPUContext);
         this.name = UUID();
 
         this.useMipmap = useMipMap;
@@ -51,7 +52,9 @@ export class VirtualTexture extends Texture {
     }
 
     public resize(width, height) {
-        let device = webGPUContext.device;
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
+        bindCtx(this, webGPUContext);
+        let device = this._boundCtx!.device;
         if (this.gpuTexture) {
             Texture.delayDestroyTexture(this.gpuTexture);
             this.gpuTexture = null;
@@ -72,8 +75,8 @@ export class VirtualTexture extends Texture {
             this.samplerBindingLayout.type = `filtering`;
             this.sampler_comparisonBindingLayout.type = `comparison`;
             this.textureBindingLayout.sampleType = `depth`;
-            this.gpuSampler = webGPUContext.device.createSampler({});
-            this.gpuSampler_comparison = webGPUContext.device.createSampler({
+            this.gpuSampler = device.createSampler({});
+            this.gpuSampler_comparison = device.createSampler({
                 compare: 'less',
                 label: "sampler_comparison"
             });
@@ -85,8 +88,8 @@ export class VirtualTexture extends Texture {
                 type: 'comparison',
             }
             this.textureBindingLayout.sampleType = `depth`;
-            this.gpuSampler = webGPUContext.device.createSampler({});
-            this.gpuSampler_comparison = webGPUContext.device.createSampler({
+            this.gpuSampler = device.createSampler({});
+            this.gpuSampler_comparison = device.createSampler({
                 compare: 'less',
                 label: "sampler_comparison"
             });
@@ -122,7 +125,9 @@ export class VirtualTexture extends Texture {
     * @returns
     */
     public create(width: number, height: number, useMiamp: boolean = true) {
-        let device = webGPUContext.device;
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
+        bindCtx(this, webGPUContext);
+        let device = this._boundCtx!.device;
         const bytesPerRow = width * 4;
         let td = new Float32Array(width * height * 4);
 
@@ -152,9 +157,11 @@ export class VirtualTexture extends Texture {
     }
 
     public readTextureToImage() {
-        let device = webGPUContext.device;
-        let w = webGPUContext.windowWidth;
-        let h = webGPUContext.windowHeight;
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
+        const ctx = this._boundCtx ?? webGPUContext;
+        let device = ctx.device;
+        let w = ctx.windowWidth;
+        let h = ctx.windowHeight;
         const bytesPerRow = w * 4;
         let td = new Float32Array(w * h * 4);
 

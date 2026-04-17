@@ -1,7 +1,7 @@
 import { Texture } from '../gfx/graphics/webGpu/core/texture/Texture';
 import { TextureMipmapGenerator } from '../gfx/graphics/webGpu/core/texture/TextureMipmapGenerator';
 import { GPUTextureFormat } from '../gfx/graphics/webGpu/WebGPUConst';
-import { webGPUContext } from '../gfx/graphics/webGpu/Context3D';
+import { bindCtx, webGPUContext } from '../gfx/graphics/webGpu/Context3D';
 import { GPUContext } from '../gfx/renderJob/GPUContext';
 
 /**
@@ -20,7 +20,9 @@ export class Uint8ArrayTexture extends Texture {
      * @returns
      */
     public create(width: number, height: number, data: Uint8Array, useMipmap: boolean = false): this {
-        let device = webGPUContext.device;
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
+        bindCtx(this, webGPUContext);
+        let device = this._boundCtx!.device;
         const bytesPerRow = Math.ceil((width * 4) / 256) * 256;
 
         this.format = GPUTextureFormat.rgba8unorm;
@@ -61,7 +63,9 @@ export class Uint8ArrayTexture extends Texture {
      * validate the change of this texture
      */
     public updateTexture(width: number, height: number, data: Uint8Array) {
-        let device = webGPUContext.device;
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
+        bindCtx(this, webGPUContext);
+        let device = this._boundCtx!.device;
         const bytesPerRow = Math.ceil((width * 4) / 256) * 256;
         this.mipmapCount = Math.floor(true ? Math.log2(width) : 1);
 

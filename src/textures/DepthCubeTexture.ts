@@ -1,4 +1,4 @@
-import { webGPUContext } from "../gfx/graphics/webGpu/Context3D";
+import { bindCtx, webGPUContext } from "../gfx/graphics/webGpu/Context3D";
 import { GPUTextureFormat } from "../gfx/graphics/webGpu/WebGPUConst";
 import { ITexture } from "../gfx/graphics/webGpu/core/texture/ITexture";
 import { Texture } from "../gfx/graphics/webGpu/core/texture/Texture";
@@ -69,8 +69,11 @@ export class DepthCubeTexture extends Texture implements ITexture {
     }
 
     public internalCreateSampler() {
-        this.gpuSampler = webGPUContext.device.createSampler({});
-        this.gpuSampler_comparison = webGPUContext.device.createSampler({
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
+        bindCtx(this, webGPUContext);
+        const device = this._boundCtx!.device;
+        this.gpuSampler = device.createSampler({});
+        this.gpuSampler_comparison = device.createSampler({
             compare: 'less',
             label: "sampler_comparison"
         });

@@ -1,7 +1,7 @@
 import { BlurTexture2DBufferCreator } from '../gfx/generate/convert/BlurEffectCreator';
 import { TextureCube } from '../gfx/graphics/webGpu/core/texture/TextureCube';
 import { GPUTextureFormat } from '../gfx/graphics/webGpu/WebGPUConst';
-import { webGPUContext } from '../gfx/graphics/webGpu/Context3D';
+import { bindCtx, webGPUContext } from '../gfx/graphics/webGpu/Context3D';
 import { TextureCubeStdCreator } from "../gfx/generate/convert/TextureCubeStdCreator";
 import { Texture } from '../gfx/graphics/webGpu/core/texture/Texture';
 import { GPUContext } from '../gfx/renderJob/GPUContext';
@@ -23,7 +23,9 @@ export class BitmapTextureCube extends TextureCube {
     }
 
     protected generateImages(images: HTMLCanvasElement[] | ImageBitmap[] | OffscreenCanvas[] | Texture[]) {
-        let device = webGPUContext.device;
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
+        bindCtx(this, webGPUContext);
+        let device = this._boundCtx!.device;
         this.width = this.height = 32;
         if ('width' in images[0]) {
             this.width = this.height = images[0].width;
@@ -81,7 +83,9 @@ export class BitmapTextureCube extends TextureCube {
     }
 
     private uploadBaseImages(size: number, textures: HTMLCanvasElement[] | ImageBitmap[] | OffscreenCanvas[]) {
-        let device = webGPUContext.device;
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
+        bindCtx(this, webGPUContext);
+        let device = this._boundCtx!.device;
         const commandEncoder = GPUContext.beginCommandEncoder();
 
         for (let i = 0; i < 6; i++) {

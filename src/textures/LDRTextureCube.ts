@@ -1,5 +1,5 @@
 import { GPUTextureFormat } from "../gfx/graphics/webGpu/WebGPUConst";
-import { webGPUContext } from "../gfx/graphics/webGpu/Context3D";
+import { bindCtx, webGPUContext } from "../gfx/graphics/webGpu/Context3D";
 import { Texture } from "../gfx/graphics/webGpu/core/texture/Texture";
 import { TextureCube } from "../gfx/graphics/webGpu/core/texture/TextureCube";
 import { LoaderFunctions } from "../loader/LoaderFunctions";
@@ -75,7 +75,9 @@ export class LDRTextureCube extends TextureCube {
 
         this.textureDescriptor.size = { width: size, height: size, depthOrArrayLayers: 6 };
         this.textureDescriptor.dimension = '2d';
-        this.gpuSampler = webGPUContext.device.createSampler(this);
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
+        bindCtx(this, webGPUContext);
+        this.gpuSampler = this._boundCtx!.device.createSampler(this);
 
         this._faceData.uploadErpTexture(texture);
         return this;
