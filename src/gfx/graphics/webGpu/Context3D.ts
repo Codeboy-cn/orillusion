@@ -1,4 +1,4 @@
-import { CEvent, Texture } from '../../..';
+import { CEvent } from '../../../event/CEvent';
 import { CEventDispatcher } from '../../../event/CEventDispatcher';
 import { CResizeEvent } from '../../../event/CResizeEvent';
 import { CanvasConfig } from './CanvasConfig';
@@ -9,12 +9,13 @@ import { CanvasConfig } from './CanvasConfig';
  * GPUCanvasContext. Devices are fully isolated — no GPU resource
  * (texture, buffer, pipeline, layout) can be shared across contexts.
  *
- * Code that needs to create GPU resources reads `webGPUContext.device`,
- * which is an ES-module `let` binding swapped to the currently-active
- * Context3D by `setActiveContext3D()` before each engine renders. All
- * device-bound static caches are keyed by Context3D (see
- * `perContextResource()` in this module).
- * @internal
+ * Every GPU-bearing object in the scene graph (Texture, Material,
+ * Geometry, GPUBuffer, RenderShaderPass, ComputeShader, ...) binds to
+ * exactly one Context3D on first render and holds it in `_boundCtx`.
+ * Attempting to render the same object under a different Context3D
+ * throws — users must `.clone()` CPU data to share across engines.
+ *
+ * @group GFX
  */
 export class Context3D extends CEventDispatcher {
     public aspect: number;
@@ -92,8 +93,10 @@ export class Context3D extends CEventDispatcher {
         });
 
         this._resizeEvent = new CResizeEvent(CResizeEvent.RESIZE, { width: this.windowWidth, height: this.windowHeight });
-        const resizeObserver = new ResizeObserver(() => {
+        // Lazy require to avoid circular import at module load.
+        const resizeObserver = new ResizeObserver(async () => {
             this.updateSize();
+            const { Texture } = await import('./core/texture/Texture');
             Texture.destroyTexture();
         });
 
@@ -123,28 +126,36 @@ export class Context3D extends CEventDispatcher {
 }
 
 /**
- * Active Context3D. Most engine code reads `webGPUContext.canvas`,
- * `.context`, `.presentationSize`, `.device` etc. Before rendering a
- * specific engine, call `setActiveContext3D(engine.context3D)` so these
- * references point at the right device.
+ * @deprecated Migration shim. Points at the most-recently-active Context3D.
+ * In Plan-B, GPU-bearing objects should hold `_boundCtx` and use
+ * `bindCtx(this, ctx)` instead of reading this global. This shim exists
+ * only so that the file-by-file migration does not require a single
+ * big-bang commit. DO NOT use in new code.
  * @internal
  */
 export let webGPUContext: Context3D = new Context3D();
 
+/**
+ * @deprecated Migration shim. Use explicit `ctx` params threaded through
+ * the render call chain; use `bindCtx(this, ctx)` on GPU-bearing objects.
+ * @internal
+ */
 export function setActiveContext3D(ctx: Context3D): void {
     webGPUContext = ctx;
 }
 
+/**
+ * @deprecated Migration shim. Prefer explicit ctx threading.
+ * @internal
+ */
 export function getActiveContext3D(): Context3D {
     return webGPUContext;
 }
 
 /**
- * Helper for device-bound static caches: store one factory-created value
- * per Context3D. Call like:
- *   private static _cache = perContextResource<MyThing>();
- *   static get(): MyThing { return this._cache(() => new MyThing()); }
- * Each engine's device sees its own cached instance.
+ * @deprecated Migration shim. Old per-context cache helper.
+ * In Plan-B, each GPU-bearing object has a single-field GPU resource
+ * tied to its `_boundCtx`; this factory is no longer needed.
  * @internal
  */
 export function perContextResource<T>(): (factory: () => T, ctx?: Context3D) => T {
@@ -159,11 +170,38 @@ export function perContextResource<T>(): (factory: () => T, ctx?: Context3D) => 
     };
 }
 
-/** Backwards-compat shim: tests/old samples may import SharedGPU. */
+/**
+ * Bind a GPU-bearing object to a Context3D on first use. Idempotent for
+ * the same ctx; throws if called with a different ctx than the one this
+ * object was first bound to.
+ *
+ * Plan-B contract: each GPU-bearing resource (Texture / Material /
+ * Geometry / GPUBuffer / Shader / Pass) may only be used by a single
+ * Engine3D. To share across engines, users must clone CPU data.
+ *
+ * @internal
+ */
+export function bindCtx(owner: { _boundCtx: Context3D | null }, ctx: Context3D): Context3D {
+    if (owner._boundCtx === ctx) return ctx;
+    if (owner._boundCtx && owner._boundCtx !== ctx) {
+        throw new Error(
+            `GPU resource already bound to a different Engine3D. ` +
+            `Each GPU-bearing resource may only be used by one engine. ` +
+            `Clone the CPU data to share across engines.`
+        );
+    }
+    owner._boundCtx = ctx;
+    return ctx;
+}
+
+/**
+ * @deprecated Migration shim. Old static facade for shared GPU access.
+ * Use `engine.context3D` / `this._boundCtx` instead.
+ * @internal
+ */
 export class SharedGPU {
     public static get adapter(): GPUAdapter { return webGPUContext.adapter; }
     public static get device(): GPUDevice { return webGPUContext.device; }
     public static get presentationFormat(): GPUTextureFormat { return webGPUContext.presentationFormat; }
-    /** No-op — devices are now per Context3D. Kept for API compatibility. */
-    public static async init(): Promise<void> { /* intentional */ }
+    public static async init(): Promise<void> { /* no-op */ }
 }
