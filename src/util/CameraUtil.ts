@@ -4,6 +4,9 @@ import { webGPUContext } from '../gfx/graphics/webGpu/Context3D';
 import { Matrix4 } from '../math/Matrix4';
 import { Vector3 } from '../math/Vector3';
 
+// eslint-disable-next-line @typescript-eslint/no-deprecated
+const ctxOf = (camera?: Camera3D) => camera?._boundCtx ?? webGPUContext;
+
 /**
  * Camera3D tool class
  * @group Util
@@ -46,10 +49,11 @@ export class CameraUtil {
         let sc = 1;
         let ina: Vector3 = Vector3.HELP_0;
 
-        let ox = webGPUContext.canvas.offsetLeft;
-        let oy = webGPUContext.canvas.offsetTop;
-        let w = webGPUContext.canvas.clientWidth;
-        let h = webGPUContext.canvas.clientHeight;
+        let ctx = ctxOf(camera);
+        let ox = ctx.canvas.offsetLeft;
+        let oy = ctx.canvas.offsetTop;
+        let w = ctx.canvas.clientWidth;
+        let h = ctx.canvas.clientHeight;
         ina.x = (((mouse.x - ox) * sc) / w - 0.5) * 2;
         ina.y = -(((mouse.y - oy) * sc) / h - 0.5) * 2;
         ina.z = sZ;
@@ -80,10 +84,9 @@ export class CameraUtil {
         cameraToWorld.multiply(camera.projectionMatrix);
         cameraToWorld.perspectiveMultiplyPoint3(point, outP);
 
-        // let ox = webGPUContext.canvas.offsetLeft;
-        // let oy = webGPUContext.canvas.offsetTop;
-        let w = webGPUContext.canvas.clientWidth / 2;
-        let h = webGPUContext.canvas.clientHeight / 2;
+        let ctx = ctxOf(camera);
+        let w = ctx.canvas.clientWidth / 2;
+        let h = ctx.canvas.clientHeight / 2;
 
         // let w = camera.viewPort.width / 2;
         // let h = camera.viewPort.height / 2;
@@ -109,8 +112,9 @@ export class CameraUtil {
         // let w = camera.viewPort.width / 2;
         // let h = camera.viewPort.height / 2;
 
-        let w = webGPUContext.canvas.clientWidth / 2;
-        let h = webGPUContext.canvas.clientHeight / 2;
+        let ctx = ctxOf(camera);
+        let w = ctx.canvas.clientWidth / 2;
+        let h = ctx.canvas.clientHeight / 2;
 
         outP.x = (sceneX - w) / w;
         outP.y = (h - sceneY) / h;

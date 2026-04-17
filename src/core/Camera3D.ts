@@ -11,7 +11,7 @@ import { CameraUtil } from '../util/CameraUtil';
 import { Frustum } from './bound/Frustum';
 import { CameraType } from './CameraType';
 import { CubeCamera } from './CubeCamera';
-import { webGPUContext } from '../gfx/graphics/webGpu/Context3D';
+import { Context3D, webGPUContext } from '../gfx/graphics/webGpu/Context3D';
 import { FrustumCSM } from './csm/FrustumCSM';
 import { CSM } from './csm/CSM';
 import { CResizeEvent } from '../event/CResizeEvent';
@@ -21,6 +21,8 @@ import { CResizeEvent } from '../event/CResizeEvent';
  * @group Components
  */
 export class Camera3D extends ComponentBase {
+
+    public _boundCtx: Context3D | null = null;
 
     /**
      * camera Perspective
@@ -163,17 +165,21 @@ export class Camera3D extends ComponentBase {
         this.lookTarget = new Vector3(0, 0, 0);
 
         // TODO: set viewport based on View3D size
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
+        let ctx = this._boundCtx ?? webGPUContext;
         this.viewPort.x = 0;
         this.viewPort.y = 0;
-        this.viewPort.w = webGPUContext.presentationSize[0];
-        this.viewPort.h = webGPUContext.presentationSize[1];
+        this.viewPort.w = ctx.presentationSize[0];
+        this.viewPort.h = ctx.presentationSize[1];
 
-        this.updateProjection();        
-        webGPUContext.addEventListener(CResizeEvent.RESIZE, this.updateProjection, this)
+        this.updateProjection();
+        ctx.addEventListener(CResizeEvent.RESIZE, this.updateProjection, this)
     }
 
     public updateProjection() {
-        this.aspect = webGPUContext.aspect;
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
+        let ctx = this._boundCtx ?? webGPUContext;
+        this.aspect = ctx.aspect;
         if (this.type == CameraType.perspective) {
             this.perspective(this.fov, this.aspect, this.near, this.far);
         }else if(this.type == CameraType.ortho) {
