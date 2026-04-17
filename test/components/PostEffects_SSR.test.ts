@@ -2,8 +2,8 @@ import { test, expect, end, delay } from '../util'
 import { CameraUtil, Color, Engine3D, PostProcessingComponent, SSRPost, Scene3D, SkyRenderer, SolidColorSky, View3D } from '@orillusion/core';
 
 await test('Post SSR test', async () => {
-    await Engine3D.init();
-    Engine3D.frameRate = 1;
+    const engine = await Engine3D.create();
+    engine.frameRate = 1;
 
     let view = new View3D();
     view.scene = new Scene3D();
@@ -11,7 +11,7 @@ await test('Post SSR test', async () => {
     sky.map = new SolidColorSky(new Color(0, 0, 0))
     view.scene.envMap = sky.map
     view.camera = CameraUtil.createCamera3DObject(view.scene, "camera");
-    Engine3D.startRenderViews([view]);
+    engine.startViews([view]);
 
     let postProcessing = view.scene.addComponent(PostProcessingComponent);
     let ssr = postProcessing.addPost(SSRPost);

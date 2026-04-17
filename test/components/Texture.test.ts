@@ -1,8 +1,8 @@
 import { test, expect, end } from '../util'
 import { Camera3D, Color, Engine3D, Float16ArrayTexture, Float32ArrayTexture, Object3D, Scene3D, SolidColorSky } from '@orillusion/core';
 
-await Engine3D.init();
-Engine3D.frameRate = 10;
+const engine = await Engine3D.create();
+engine.frameRate = 10;
     
 await test('textue2D create Uint8Texture', async () => {
     let texture2D = Engine3D.res.createTexture(32, 64, 255, 255, 0, 255, 'uint8Texture')
