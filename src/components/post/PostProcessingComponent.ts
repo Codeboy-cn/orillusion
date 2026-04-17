@@ -1,4 +1,3 @@
-import { FXAAPost, webGPUContext } from "../..";
 import { Engine3D } from "../../Engine3D";
 import { PostBase } from "../../gfx/renderJob/post/PostBase";
 import { Ctor } from "../../util/Global";

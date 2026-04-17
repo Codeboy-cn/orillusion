@@ -5,7 +5,6 @@ import { ColorPassRenderer } from '../passRenderer/color/ColorPassRenderer';
 import { GBufferFrame } from '../frame/GBufferFrame';
 import { RendererJob } from './RendererJob';
 import { DDGIProbeRenderer } from '../passRenderer/ddgi/DDGIProbeRenderer';
-import { webGPUContext } from '../../graphics/webGpu/Context3D';
 import { RTResourceConfig } from '../config/RTResourceConfig';
 import { RTResourceMap } from '../frame/RTResourceMap';
 import { GPUTextureFormat } from '../../graphics/webGpu/WebGPUConst';
