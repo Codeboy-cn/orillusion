@@ -564,13 +564,14 @@ export class RenderNode extends ComponentBase {
                     let bdrflutTex = Engine3D.res.getTexture(`BRDFLUT`);
                     renderShader.setTexture(`brdflutMap`, bdrflutTex);
 
-                    let shadowRenderer = Engine3D.getRenderJob(view).shadowMapPassRenderer;
+                    let renderJob = view.engine3D.renderJobs.get(view);
+                    let shadowRenderer = renderJob.shadowMapPassRenderer;
                     if (shadowRenderer && shadowRenderer.depth2DArrayTexture) {
-                        renderShader.setTexture(`shadowMap`, Engine3D.getRenderJob(view).shadowMapPassRenderer.depth2DArrayTexture);
+                        renderShader.setTexture(`shadowMap`, shadowRenderer.depth2DArrayTexture);
                     }
                     // let shadowLight = ShadowLights.list;
                     // if (shadowLight.length) {
-                    let pointShadowRenderer = Engine3D.getRenderJob(view).pointLightShadowRenderer;
+                    let pointShadowRenderer = renderJob.pointLightShadowRenderer;
                     if (pointShadowRenderer && pointShadowRenderer.cubeArrayTexture) {
                         renderShader.setTexture(`pointShadowMap`, pointShadowRenderer.cubeArrayTexture);
                     }
