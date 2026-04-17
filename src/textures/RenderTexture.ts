@@ -1,6 +1,6 @@
 import { Texture } from '../gfx/graphics/webGpu/core/texture/Texture';
 import { GPUAddressMode, GPUTextureFormat } from '../gfx/graphics/webGpu/WebGPUConst';
-import { webGPUContext } from '../gfx/graphics/webGpu/Context3D';
+import { bindCtx, webGPUContext } from '../gfx/graphics/webGpu/Context3D';
 import { GPUContext } from '../gfx/renderJob/GPUContext';
 import { UUID } from '../util/Global';
 import { CResizeEvent } from '..';
@@ -49,7 +49,8 @@ export class RenderTexture extends Texture {
         this.resize(width, height);
 
         if (this.autoResize) {
-            webGPUContext.addEventListener(CResizeEvent.RESIZE, (e) => {
+            // eslint-disable-next-line @typescript-eslint/no-deprecated
+            (this._boundCtx ?? webGPUContext).addEventListener(CResizeEvent.RESIZE, (e) => {
                 let { width, height } = e.data;
                 this.resize(width, height);
                 this._textureChange = true;
@@ -58,7 +59,9 @@ export class RenderTexture extends Texture {
     }
 
     public resize(width, height) {
-        let device = webGPUContext.device;
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
+        bindCtx(this, webGPUContext);
+        let device = this._boundCtx!.device;
         if (this.gpuTexture) {
             Texture.delayDestroyTexture(this.gpuTexture);
             this.gpuTexture = null;
@@ -84,8 +87,8 @@ export class RenderTexture extends Texture {
             this.samplerBindingLayout.type = `filtering`;
             this.sampler_comparisonBindingLayout.type = `comparison`;
             this.textureBindingLayout.sampleType = `depth`;
-            this.gpuSampler = webGPUContext.device.createSampler({});
-            this.gpuSampler_comparison = webGPUContext.device.createSampler({
+            this.gpuSampler = device.createSampler({});
+            this.gpuSampler_comparison = device.createSampler({
                 compare: 'less',
                 label: "sampler_comparison"
             });
@@ -97,8 +100,8 @@ export class RenderTexture extends Texture {
                 type: 'comparison',
             }
             this.textureBindingLayout.sampleType = `depth`;
-            this.gpuSampler = webGPUContext.device.createSampler({});
-            this.gpuSampler_comparison = webGPUContext.device.createSampler({
+            this.gpuSampler = device.createSampler({});
+            this.gpuSampler_comparison = device.createSampler({
                 compare: 'less',
                 label: "sampler_comparison"
             });
@@ -131,7 +134,9 @@ export class RenderTexture extends Texture {
     * @returns
     */
     public create(width: number, height: number, useMiamp: boolean = true) {
-        let device = webGPUContext.device;
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
+        bindCtx(this, webGPUContext);
+        let device = this._boundCtx!.device;
         const bytesPerRow = width * 4;
         let td = new Float32Array(width * height * 4);
 
@@ -167,9 +172,11 @@ export class RenderTexture extends Texture {
     }
 
     public readTextureToImage() {
-        let device = webGPUContext.device;
-        let w = webGPUContext.windowWidth;
-        let h = webGPUContext.windowHeight;
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
+        const ctx = this._boundCtx ?? webGPUContext;
+        let device = ctx.device;
+        let w = ctx.windowWidth;
+        let h = ctx.windowHeight;
         const bytesPerRow = w * 4;
         let td = new Float32Array(w * h * 4);
 
