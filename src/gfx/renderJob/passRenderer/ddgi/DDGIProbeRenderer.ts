@@ -353,12 +353,14 @@ export class DDGIProbeRenderer extends RendererBase {
     */
     private writeToTexture(texture: RenderTexture, array: Float32Array, width: number, height: number) {
         console.log(texture.name);
-        const buffer = webGPUContext.device.createBuffer({
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
+        const device = (texture._boundCtx ?? webGPUContext).device;
+        const buffer = device.createBuffer({
             size: array.byteLength,
             usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC,
         });
 
-        webGPUContext.device.queue.writeBuffer(buffer, 0, array);
+        device.queue.writeBuffer(buffer, 0, array);
         const commandEncoder = GPUContext.beginCommandEncoder();
         commandEncoder.copyBufferToTexture(
             {

@@ -2,7 +2,7 @@
 import { CEvent } from "../../../../event/CEvent";
 import { CEventDispatcher } from "../../../../event/CEventDispatcher";
 import { RenderTexture } from "../../../../textures/RenderTexture";
-import { webGPUContext } from "../../../graphics/webGpu/Context3D";
+import { bindCtx, Context3D, webGPUContext } from "../../../graphics/webGpu/Context3D";
 import { GPUContext } from "../../GPUContext";
 import { DDGIProbeRenderer, GIRenderCompleteEvent, GIRenderStartEvent } from "./DDGIProbeRenderer";
 
@@ -17,6 +17,7 @@ export class DDGIIrradianceGPUBufferReader extends CEventDispatcher {
 
     public opDepthArray: Float32Array;
     public opColorArray: Float32Array;
+    public _boundCtx: Context3D | null = null;
 
     public initReader(probeRender: DDGIProbeRenderer, colorMap: RenderTexture, depthMap: RenderTexture) {
         this.probeRenderer = probeRender;
@@ -25,14 +26,18 @@ export class DDGIIrradianceGPUBufferReader extends CEventDispatcher {
         let giSetting = Engine3D.setting.gi;
         let pixelCount = giSetting.octRTMaxSize * giSetting.octRTMaxSize;
 
-        this.opColorBuffer = webGPUContext.device.createBuffer({
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
+        bindCtx(this, webGPUContext);
+        let device = this._boundCtx!.device;
+
+        this.opColorBuffer = device.createBuffer({
             size: pixelCount * 4 * 4,
             usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
             mappedAtCreation: false,
         });
         this.opColorArray = new Float32Array(pixelCount * 4);
 
-        this.opDepthBuffer = webGPUContext.device.createBuffer({
+        this.opDepthBuffer = device.createBuffer({
             size: pixelCount * 4 * 4,
             usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
             mappedAtCreation: false,

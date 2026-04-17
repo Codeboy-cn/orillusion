@@ -1,6 +1,6 @@
 import { MemoryDO } from '../../../../core/pool/memory/MemoryDO';
 import { MemoryInfo } from '../../../../core/pool/memory/MemoryInfo';
-import { webGPUContext } from '../../../../gfx/graphics/webGpu/Context3D';
+import { bindCtx, Context3D, webGPUContext } from '../../../../gfx/graphics/webGpu/Context3D';
 /**
  * @internal
  * @group Animation
@@ -14,6 +14,7 @@ export class SkeletonBlendComputeArgs extends MemoryDO {
     protected _isDirty: boolean = false;
     protected _argumentsBuffer: GPUBuffer;
     protected _argumentsBufferEntries: GPUBindGroupEntry;
+    public _boundCtx: Context3D | null = null;
 
     constructor() {
         super();
@@ -67,7 +68,8 @@ export class SkeletonBlendComputeArgs extends MemoryDO {
     public updateGPUBuffer(): this {
         if (this._isDirty) {
             this._isDirty = false;
-            webGPUContext.device.queue.writeBuffer(this._argumentsBuffer, 0, this.shareDataBuffer);
+            // eslint-disable-next-line @typescript-eslint/no-deprecated
+            (this._boundCtx ?? webGPUContext).device.queue.writeBuffer(this._argumentsBuffer, 0, this.shareDataBuffer);
         }
         return this;
     }
@@ -95,7 +97,9 @@ export class SkeletonBlendComputeArgs extends MemoryDO {
     }
 
     protected generateGPUBuffer() {
-        let device = webGPUContext.device;
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
+        bindCtx(this, webGPUContext);
+        let device = this._boundCtx!.device;
 
         this._argumentsBuffer = device.createBuffer({
             size: this.shareDataBuffer.byteLength,

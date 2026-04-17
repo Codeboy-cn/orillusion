@@ -195,7 +195,9 @@ export class GUIPick {
     private pick(colliders: IUIInteractive[]): GUIHitInfo {
         this._ray = this._view.camera.screenPointToRay(Engine3D.inputSystem.mouseX, Engine3D.inputSystem.mouseY);
         let screenPos = new Vector2(Engine3D.inputSystem.mouseX, Engine3D.inputSystem.mouseY);
-        let screenSize = new Vector2(webGPUContext.canvas.clientWidth, webGPUContext.canvas.clientHeight);
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
+        let ctx = this._view.engine3D?.context3D ?? webGPUContext;
+        let screenSize = new Vector2(ctx.canvas.clientWidth, ctx.canvas.clientHeight);
 
         let hitInfo: GUIHitInfo;
         for (const iterator of colliders) {

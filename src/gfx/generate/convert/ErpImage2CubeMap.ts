@@ -11,7 +11,8 @@ import { ErpImage2CubeMapRgbe2rgba_cs } from '../../../assets/shader/compute/Erp
  */
 export class ErpImage2CubeMap {
     public static convertRGBE2RGBA(image: VirtualTexture, data: Float32Array): void {
-        const device = webGPUContext.device;
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
+        const device = (image._boundCtx ?? webGPUContext).device;
         const computePipeline = device.createComputePipeline({
             layout: `auto`,
             compute: {
@@ -80,8 +81,10 @@ export class ErpImage2CubeMap {
 
     //Image is the float32 color value converted from rgbe to rgba
     public static makeTextureCube(image: Texture, dstSize: number, dstView: GPUTextureView): void {
-        const device = webGPUContext.device;
-        const state = this._state(() => ({ makeFaceTexturePipeline: null, configBuffer: null, quaternionBuffer: null }));
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
+        const ctx = image._boundCtx ?? webGPUContext;
+        const device = ctx.device;
+        const state = this._state(() => ({ makeFaceTexturePipeline: null, configBuffer: null, quaternionBuffer: null }), ctx);
         state.makeFaceTexturePipeline ||= device.createComputePipeline({
             layout: `auto`,
             compute: {

@@ -40,7 +40,8 @@ export class ClusterLightingRender extends RendererBase {
         this._clusterGenerateCompute = new ComputeShader(ClusterBoundsSource_cs);
         this._clusterLightingCompute = new ComputeShader(ClusterLighting_cs);
 
-        let size = webGPUContext.presentationSize;
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
+        let size = (view.engine3D?.context3D ?? webGPUContext).presentationSize;
         let numClusters = ClusterConfig.clusterTileX * ClusterConfig.clusterTileY * ClusterConfig.clusterTileZ;
 
         let camera = view.camera;
@@ -123,7 +124,8 @@ export class ClusterLightingRender extends RendererBase {
             this._clusterLightingCompute.workerSizeX = ClusterConfig.clusterTileZ;
         }
 
-        let size = webGPUContext.presentationSize;
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
+        let size = (view.engine3D?.context3D ?? webGPUContext).presentationSize;
         this.clusterLightingBuffer.update(
             size[0], size[1],
             this.clusterPix, ClusterConfig.clusterTileX, ClusterConfig.clusterTileY, ClusterConfig.clusterTileZ, lights.length, this.maxNumLightsPerCluster,

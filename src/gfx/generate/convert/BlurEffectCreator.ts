@@ -1,5 +1,5 @@
 import { BlurEffectCreatorBlur_cs, BlurEffectCreatorSample_cs } from '../../../assets/shader/compute/BlurEffectCreator_cs';
-import { webGPUContext } from '../../graphics/webGpu/Context3D';
+import { Context3D, webGPUContext } from '../../graphics/webGpu/Context3D';
 import { GPUContext } from '../../renderJob/GPUContext';
 /**
  * @internal
@@ -7,8 +7,9 @@ import { GPUContext } from '../../renderJob/GPUContext';
  */
 export class BlurTexture2DBufferCreator {
     //Image is the texture of converting from rgba8unorm to rgba8unorm
-    public static blurImageFromTexture(image: { width: number; height: number; gpuTexture: GPUTexture }, dstWidth: number, dstHeight: number, blur: boolean): GPUTexture {
-        const device = webGPUContext.device;
+    public static blurImageFromTexture(image: { width: number; height: number; gpuTexture: GPUTexture }, dstWidth: number, dstHeight: number, blur: boolean, ctx?: Context3D): GPUTexture {
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
+        const device = (ctx ?? webGPUContext).device;
         let code: string = blur ? BlurEffectCreatorBlur_cs : BlurEffectCreatorSample_cs;
         const computePipeline = device.createComputePipeline({
             layout: `auto`,
