@@ -22,6 +22,9 @@ export class GPUContext {
     public static matrixCount: number = 0;
     public static lastRenderPassState: RendererPassState;
     public static LastCommand: GPUCommandEncoder;
+    /** Device that owns LastCommand. Used to submit to the correct queue when
+     *  multiple engines share this static facade. */
+    public static LastCommandDevice: GPUDevice;
 
     /**
      * renderPipeline before render need bind pipeline
@@ -111,11 +114,14 @@ export class GPUContext {
     public static beginCommandEncoder(): GPUCommandEncoder {
         ProfilerUtil.countStart("GPUContext", "beginCommandEncoder");
         if (this.LastCommand) {
-            // eslint-disable-next-line @typescript-eslint/no-deprecated
-            webGPUContext.device.queue.submit([this.LastCommand.finish()]);
+            // Submit to the device that created LastCommand, not the
+            // currently-active shim — the two can differ when multiple
+            // engines share this static facade.
+            this.LastCommandDevice.queue.submit([this.LastCommand.finish()]);
         }
         // eslint-disable-next-line @typescript-eslint/no-deprecated
-        this.LastCommand = webGPUContext.device.createCommandEncoder();
+        this.LastCommandDevice = webGPUContext.device;
+        this.LastCommand = this.LastCommandDevice.createCommandEncoder();
         return this.LastCommand;
     }
 
@@ -125,9 +131,9 @@ export class GPUContext {
      */
     public static endCommandEncoder(command: GPUCommandEncoder) {
         if (this.LastCommand == command) {
-            // eslint-disable-next-line @typescript-eslint/no-deprecated
-            webGPUContext.device.queue.submit([this.LastCommand.finish()]);
+            this.LastCommandDevice.queue.submit([this.LastCommand.finish()]);
             this.LastCommand = null;
+            this.LastCommandDevice = null;
             ProfilerUtil.countStart("GPUContext", "endCommandEncoder");
         }
     }
