@@ -10,7 +10,7 @@ import { GlobalBindGroupLayout } from "../core/bindGroups/GlobalBindGroupLayout"
 import { GPUBufferBase } from "../core/buffer/GPUBufferBase";
 import { UniformNode } from "../core/uniforms/UniformNode";
 import { Texture } from "../core/texture/Texture";
-import { Context3D, webGPUContext } from "../Context3D";
+import { bindCtx, webGPUContext } from "../Context3D";
 import { ShaderConverter } from "./converter/ShaderConverter";
 import { ShaderPassBase } from "./ShaderPassBase";
 import { ShaderStage } from "./ShaderStage";
@@ -56,31 +56,16 @@ export class RenderShaderPass extends ShaderPassBase {
     public textures: { [name: string]: Texture };
 
     /**
-     * Render pipeline (per-Context3D — same RenderShaderPass instance can be
-     * used by multiple Engine3D instances, each getting its own pipeline).
+     * Render pipeline. Plan B: one pipeline per RenderShaderPass, bound to
+     * a single Context3D. Attempts to use this pass with a second engine
+     * throw via bindCtx.
      */
-    private _pipelines: Map<Context3D, GPURenderPipeline> = new Map();
-    public get pipeline(): GPURenderPipeline { return this._pipelines.get(webGPUContext); }
-    public set pipeline(v: GPURenderPipeline) {
-        if (v == null) this._pipelines.delete(webGPUContext);
-        else this._pipelines.set(webGPUContext, v);
-    }
+    public pipeline: GPURenderPipeline = null;
 
     /**
-     * BindGroup layouts (per-Context3D)
+     * BindGroup layouts (single-field, bound to one Context3D)
      */
-    private _bindGroupLayouts: Map<Context3D, GPUBindGroupLayout[]> = new Map();
-    public get bindGroupLayouts(): GPUBindGroupLayout[] {
-        let arr = this._bindGroupLayouts.get(webGPUContext);
-        if (!arr) {
-            arr = [];
-            this._bindGroupLayouts.set(webGPUContext, arr);
-        }
-        return arr;
-    }
-    public set bindGroupLayouts(v: GPUBindGroupLayout[]) {
-        this._bindGroupLayouts.set(webGPUContext, v);
-    }
+    public bindGroupLayouts: GPUBindGroupLayout[] = [];
 
 
 
@@ -362,18 +347,12 @@ export class RenderShaderPass extends ShaderPassBase {
      * @param noticeFun 
      */
     public apply(geometry: GeometryBase, rendererPassState: RendererPassState, noticeFun?: Function) {
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
+        bindCtx(this, webGPUContext);
         this.materialDataUniformBuffer.apply();
 
-        // Rebuild when shader state changed OR when this Context3D has not
-        // yet seen a pipeline (e.g. same RenderShaderPass first rendered
-        // under Engine A, now being rendered under Engine B). The second
-        // check makes materials sharable across engines.
-        //
-        // Pipeline rebuild must happen before any per-group rebuild below,
-        // since genGroups for this context reads this.bindGroupLayouts,
-        // which is only populated by createGroupLayouts inside reBuild.
-        const needsPipelineForCtx = !this._pipelines.has(webGPUContext);
-        if (this._valueChange || needsPipelineForCtx) {
+        // Plan B: rebuild only when shader state changes or first time.
+        if (this._valueChange || !this.pipeline) {
             if (this._shaderChange) {
                 this.preCompile(geometry);
                 this._shaderChange = false;
@@ -381,9 +360,6 @@ export class RenderShaderPass extends ShaderPassBase {
             this.shaderVariant = ShaderReflection.genRenderShaderVariant(this);
             this.reBuild(geometry, rendererPassState);
             this._valueChange = false;
-            // reBuild's createGroupLayouts already regenerates every bind
-            // group for the active context, so clear the textureChange
-            // flag to avoid a redundant (and at this point safe) rebuild.
             this._textureChange = false;
             if (noticeFun) {
                 noticeFun();
@@ -486,7 +462,9 @@ export class RenderShaderPass extends ShaderPassBase {
         if (!shaderModule) {
             shader = this.applyPostDefine(shader, renderPassState);
 
-            shaderModule = webGPUContext.device.createShaderModule({
+            // eslint-disable-next-line @typescript-eslint/no-deprecated
+            const device = (this._boundCtx ?? webGPUContext).device;
+            shaderModule = device.createShaderModule({
                 label: stage == ShaderStage.vertex ? this.vsName : this.fsName,
                 code: shader,
             });
@@ -732,7 +710,9 @@ export class RenderShaderPass extends ShaderPassBase {
                 }
             }
 
-            let gpubindGroup = webGPUContext.device.createBindGroup({
+            // eslint-disable-next-line @typescript-eslint/no-deprecated
+            const device = (this._boundCtx ?? webGPUContext).device;
+            let gpubindGroup = device.createBindGroup({
                 layout: this.bindGroupLayouts[groupIndex],
                 entries: entries
             });
@@ -832,6 +812,8 @@ export class RenderShaderPass extends ShaderPassBase {
     private createGroupLayouts() {
         this._groupsShaderReflectionVarInfos = [];
         let shaderReflection = this.shaderReflection;
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
+        const device = (this._boundCtx ?? webGPUContext).device;
         this.bindGroupLayouts = [GlobalBindGroupLayout.getGlobalDataBindGroupLayout()];
 
         // Binding Group 1 is Global , skip
@@ -840,7 +822,7 @@ export class RenderShaderPass extends ShaderPassBase {
             if (shaderRefs) {
                 let entries = this.getGroupLayout(i, shaderRefs);
                 this._groupsShaderReflectionVarInfos[i] = shaderRefs;
-                let layout = webGPUContext.device.createBindGroupLayout({
+                let layout = device.createBindGroupLayout({
                     entries,
                     label: `vs${this.vsName} fs${this.fsName} ${shaderRefs.length}`
                 });
@@ -850,7 +832,7 @@ export class RenderShaderPass extends ShaderPassBase {
             }
         }
 
-        let layouts = webGPUContext.device.createPipelineLayout({
+        let layouts = device.createPipelineLayout({
             bindGroupLayouts: this.bindGroupLayouts,
         });
 
