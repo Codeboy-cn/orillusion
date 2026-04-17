@@ -76,7 +76,7 @@ class Sample_Destroy {
         view.scene = scene3D
         view.camera = camera
         // start render
-        engine.startView(view)
+        engine.startRenderView(view)
     }
 }
 

@@ -77,7 +77,7 @@ export class BunnySimulator extends MeshRenderer {
     }
 
     public start() {
-        const input = (this.transform as any)?.view3D?.engine3D?.inputSystem ?? Engine3D.inputSystem;
+        const input = (this.transform as any)?.view3D?.engine3D?.inputSystem;
         input.addEventListener(KeyEvent.KEY_DOWN, (e: KeyEvent) => this.updateKeyState(e.keyCode, true), this);
         input.addEventListener(KeyEvent.KEY_UP, (e: KeyEvent) => this.updateKeyState(e.keyCode, false), this);
     }

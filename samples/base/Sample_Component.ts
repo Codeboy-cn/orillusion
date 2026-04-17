@@ -24,7 +24,7 @@ class Sample_UseComponent {
         view.camera = mainCamera;
 
         // start render
-        engine.startView(view);
+        engine.startRenderView(view);
 
         // create cube
         let cube = Object3DUtil.GetSingleCube(2, 4, 1, 0.7, 1, 0.5);

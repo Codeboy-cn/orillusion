@@ -13,7 +13,7 @@ class Sample_MultipleConstraints {
 
     async run() {
         // init physics and engine
-        await Physics.init({ useSoftBody: true, useDrag: true });
+        await Physics.init({ useSoftBody: true });
         const engine = await Engine3D.create({ renderLoop: () => Physics.update() });
 
         this.gui = new dat.GUI();
@@ -50,7 +50,8 @@ class Sample_MultipleConstraints {
 
         this.physicsDebug();
 
-        engine.startView(view);
+        Physics.enableDragger(view);
+        engine.startRenderView(view);
 
         // Create ground, turntable, and chains
         this.createGround();

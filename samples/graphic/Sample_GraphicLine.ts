@@ -16,7 +16,7 @@ class Sample_GraphicLine {
         GUIHelp.init();
         let param = createSceneParam();
         param.camera.distance = 200;
-        let exampleScene = createExampleScene(param);
+        let exampleScene = createExampleScene(engine, param);
         exampleScene.atmosphericSky.exposure = 1.0;
         this.view = exampleScene.view;
         this.scene = exampleScene.scene;
@@ -24,7 +24,7 @@ class Sample_GraphicLine {
         this.graphic3D = new Graphic3D();
         this.scene.addChild(this.graphic3D);
 
-        engine.startViews([exampleScene.view]);
+        engine.startRenderViews([exampleScene.view]);
         let job = engine.renderJobs.get(exampleScene.view);
         await this.initScene();
     }

@@ -27,9 +27,9 @@ class Sample_PBR {
         view.scene = this.scene;
         view.camera = camera;
 
-        engine.startView(view);
+        engine.startRenderView(view);
 
-        GUIUtil.renderDebug();
+        GUIUtil.renderDebug(view);
 
         await this.initScene();
         sky.relativeTransform = this.lightObj3D.transform;

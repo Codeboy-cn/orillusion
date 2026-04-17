@@ -31,7 +31,7 @@ export class Sample_MorphTarget {
         sky.relativeTransform = this.lightObj3D.transform;
         await this.initMorphModel();
 
-        engine.startView(view);
+        engine.startRenderView(view);
 
         let postCom = this.scene.addComponent(PostProcessingComponent);
         postCom.addPost(FXAAPost);

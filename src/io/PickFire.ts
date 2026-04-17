@@ -70,7 +70,7 @@ export class PickFire extends CEventDispatcher {
         // engine. Fall back to the legacy static accessor so single-
         // instance usage keeps working.
         const owner = (this._view as any)?.engine3D;
-        return owner?.inputSystem ?? Engine3D.inputSystem;
+        return owner?.inputSystem;
     }
 
     /**

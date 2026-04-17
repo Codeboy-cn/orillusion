@@ -22,7 +22,7 @@ class Sample_TextureSample {
         view.scene = this.scene;
         view.camera = camera;
 
-        engine.startView(view);
+        engine.startRenderView(view);
         await this.initScene();
         sky.relativeTransform = this.lightObj3D.transform;
     }

@@ -101,7 +101,7 @@ function createDirectLight(param: ExampleSceneParam): DirectLight {
 
 
 /******** make a scene by param *******/
-export function createExampleScene(param?: ExampleSceneParam) {
+export function createExampleScene(engine: Engine3D, param?: ExampleSceneParam) {
     exampleSceneParam ||= createSceneParam();
     param ||= exampleSceneParam;
 
@@ -118,7 +118,7 @@ export function createExampleScene(param?: ExampleSceneParam) {
     // init Camera3D
     let cameraData = param.camera;
     let camera = CameraUtil.createCamera3DObject(scene);
-    camera.perspective(cameraData.fov, Engine3D.aspect, cameraData.near, cameraData.far);
+    camera.perspective(cameraData.fov, engine.aspect, cameraData.near, cameraData.far);
 
     // init Camera Controller
     let hoverCtrl = camera.object3D.addComponent(HoverCameraController);

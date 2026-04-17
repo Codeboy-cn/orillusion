@@ -10,7 +10,7 @@ import { Graphic3D } from '@orillusion/graphic'
 class Sample_Dominoes {
     async run() {
         // init physics and engine
-        await Physics.init({ useDrag: true });
+        await Physics.init();
         const engine = await Engine3D.create({ renderLoop: () => Physics.update() });
 
         let scene = new Scene3D();
@@ -41,7 +41,8 @@ class Sample_Dominoes {
         view.camera = camera;
         view.scene = scene;
 
-        engine.startView(view);
+        Physics.enableDragger(view);
+        engine.startRenderView(view);
 
         await this.initScene(scene);
 

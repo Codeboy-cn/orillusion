@@ -25,7 +25,7 @@ class Smaple_VertexAnimation {
         view.camera.perspective(60, engine.aspect, 1, 2000);
         view.camera.object3D.addComponent(HoverCameraController).setCamera(35, -20, 150);
 
-        engine.startView(view);
+        engine.startRenderView(view);
 
         this.createScene();
         sky.relativeTransform = this.lightObj.transform;

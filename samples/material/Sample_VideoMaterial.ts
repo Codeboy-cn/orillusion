@@ -42,7 +42,7 @@ async function demo() {
     view.scene = scene;
     view.camera = mainCamera;
     // start render
-    engine.startView(view);
+    engine.startRenderView(view);
 }
 
 demo();

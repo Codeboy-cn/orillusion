@@ -31,9 +31,9 @@ export class Sample_PointLight {
         view.scene = this.scene;
         view.camera = mainCamera;
 
-        engine.startView(view);
+        engine.startRenderView(view);
 
-        GUIUtil.renderDebug();
+        GUIUtil.renderDebug(view);
     }
 
     initScene(scene: Scene3D) {

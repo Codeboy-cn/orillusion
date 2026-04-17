@@ -16,7 +16,7 @@ await test('DirectionLight test', async () => {
     pl.castShadow = true;
 
     view.scene.addChild(directLight);
-    engine.startViews([view]);
+    engine.startRenderViews([view]);
 })
 
 setTimeout(end, 500)

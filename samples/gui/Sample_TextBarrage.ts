@@ -61,7 +61,7 @@ class Sample_TextBarrage {
         }
 
         // start render
-        engine.startView(view);
+        engine.startRenderView(view);
     }
 }
 
@@ -93,7 +93,7 @@ class TextBarrageAnimation extends ComponentBase {
             const now = Date.now();
             const dt = now - this.lastTime;
             this.lastTime = now;
-            const engine = (this.transform as any)?.view3D?.engine3D ?? Engine3D;
+            const engine = (this.transform as any)?.view3D?.engine3D;
             let halfWidth = engine.width * 0.5,
                 halfHeight = engine.height * 0.5;
             let { x, y, width, height } = this._text.uiTransform;
@@ -119,7 +119,7 @@ class TextBarrageAnimation extends ComponentBase {
         text.text = `${words[getRandomNum(0, wordLastIndex)]} ${words[getRandomNum(0, wordLastIndex)]}`;
         // Reset color
         text.color = colors[getRandomNum(0, colors.length - 1)];
-        const engine = (this.transform as any)?.view3D?.engine3D ?? Engine3D;
+        const engine = (this.transform as any)?.view3D?.engine3D;
         const halfWidth = engine.width * 0.5;
         const halfHeight = engine.height * 0.5;
         // Reset position

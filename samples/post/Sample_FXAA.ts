@@ -30,7 +30,7 @@ class Sample_Bloom {
 		let view = new View3D();
 		view.scene = this.scene;
 		view.camera = mainCamera;
-		engine.startView(view);
+		engine.startRenderView(view);
 		// 1. 必须在 startRenderView 后添加 post 才可以，否则错误
 		let postProcessing = this.scene.addComponent(PostProcessingComponent);
 		let post = postProcessing.addPost(FXAAPost);

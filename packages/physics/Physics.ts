@@ -1,5 +1,5 @@
 import Ammo from '@orillusion/ammo';
-import { Vector3, Time, BoundingBox, Object3D, Quaternion } from '@orillusion/core';
+import { Vector3, Time, BoundingBox, Object3D, Quaternion, View3D } from '@orillusion/core';
 import { ContactProcessedUtil } from './utils/ContactProcessedUtil';
 import { RigidBodyUtil } from './utils/RigidBodyUtil';
 import { TempPhyMath } from './utils/TempPhyMath';
@@ -40,7 +40,7 @@ class _Physics {
      */
     public get physicsDragger() {
         if (!this._physicsDragger) {
-            console.warn('To enable the dragger, set useDrag: true in Physics.init() during initialization.');
+            console.warn('To enable the dragger, call Physics.enableDragger(view) after Physics.init().');
         }
         return this._physicsDragger;
     }
@@ -56,7 +56,7 @@ class _Physics {
      * @param options.physicBound - 物理边界，默认范围：2000 2000 2000，超出边界时将会销毁该刚体。
      * @param options.destroyObjectBeyondBounds - 是否在超出边界时销毁3D对象。默认 `false` 仅销毁刚体。
      */
-    public async init(options: { useSoftBody?: boolean, useDrag?: boolean, physicBound?: Vector3, destroyObjectBeyondBounds?: boolean } = {}) {
+    public async init(options: { useSoftBody?: boolean, physicBound?: Vector3, destroyObjectBeyondBounds?: boolean } = {}) {
         await Ammo.bind(window)(Ammo);
 
         TempPhyMath.init();
@@ -64,11 +64,16 @@ class _Physics {
         this.TEMP_TRANSFORM = new Ammo.btTransform();
         this.initWorld(options.useSoftBody);
 
-        if (options.useDrag) this._physicsDragger = new PhysicsDragger();
-
         this._isInited = true;
         this._destroyObjectBeyondBounds = options.destroyObjectBeyondBounds;
         this._physicBound = new BoundingBox(new Vector3(), options.physicBound || new Vector3(2000, 2000, 2000));
+    }
+
+    /**
+     * 启用刚体拖拽器，绑定到指定 View。必须在 Physics.init 之后、渲染开始之前调用。
+     */
+    public enableDragger(view: View3D) {
+        this._physicsDragger = new PhysicsDragger(view);
     }
 
     /**

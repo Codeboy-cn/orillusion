@@ -50,9 +50,9 @@ export class Sample_GraphicTrailing3 {
         this.graphic3D = new Graphic3D();
         this.scene.addChild(this.graphic3D);
 
-        engine.startView(this.view);
+        engine.startRenderView(this.view);
 
-        GUIUtil.renderDebug();
+        GUIUtil.renderDebug(this.view);
 
         let post = this.scene.addComponent(PostProcessingComponent);
         let bloom = post.addPost(BloomPost);

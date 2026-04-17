@@ -5,6 +5,7 @@ import { GUIUtil } from "@samples/utils/GUIUtil";
 
 class Sample_GICornellBox {
     scene: Scene3D;
+    view: View3D;
     async run() {
 
         Engine3D.setting.material.materialChannelDebug = true;
@@ -42,7 +43,7 @@ class Sample_GICornellBox {
         const engine = await Engine3D.create({
             renderLoop: () => {
                 if (this.giComponent?.isStart) {
-                    GUIUtil.renderGIComponent(this.giComponent);
+                    GUIUtil.renderGIComponent(this.giComponent, this.view);
                     this.giComponent = null;
                 }
             }
@@ -50,12 +51,13 @@ class Sample_GICornellBox {
         let param = createSceneParam();
         param.camera.distance = 100;
 
-        let exampleScene = createExampleScene(param);
+        let exampleScene = createExampleScene(engine, param);
         exampleScene.hoverCtrl.setCamera(0, 0, 50, new Vector3(0, 10, 0));
         // exampleScene.camera.enableCSM = true;
         this.scene = exampleScene.scene;
-        this.addGIProbes(this.scene.view);
-        engine.startViews([exampleScene.view]);
+        this.view = exampleScene.view;
+        this.addGIProbes(this.view);
+        engine.startRenderViews([exampleScene.view]);
 
         let postProcessing = this.scene.addComponent(PostProcessingComponent);
         postProcessing.addPost(BloomPost);

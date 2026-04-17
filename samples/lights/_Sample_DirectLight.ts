@@ -27,7 +27,7 @@ class Sample_DirectLight {
         view.scene = this.scene;
         view.camera = mainCamera;
 
-        engine.startView(view);
+        engine.startRenderView(view);
 
     }
 

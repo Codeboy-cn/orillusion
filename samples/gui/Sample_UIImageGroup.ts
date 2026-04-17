@@ -14,10 +14,10 @@ export class Sample_UIImageGroup {
         GUIHelp.init();
 
         const engine = await Engine3D.create();
-        let exampleScene = createExampleScene();
+        let exampleScene = createExampleScene(engine);
         this.scene = exampleScene.scene;
         this.scene.addComponent(Stats);
-        engine.startView(exampleScene.view);
+        engine.startRenderView(exampleScene.view);
 
 
         GUIHelp.open();
@@ -56,7 +56,7 @@ export class Sample_UIImageGroup {
         let xy = this.imageGroup.getXY(1);
         let pos = { x: 0, y: xy.y };
         let action = () => this.imageGroup.setXY(1, pos.x, pos.y);
-        const engine = this.scene.view.engine3D ?? Engine3D;
+        const engine = this.scene.view.engine3D;
         GUIHelp.add(pos, 'x', - engine.width * 0.5, engine.width * 0.5, 1).onChange(action);
         GUIHelp.add(pos, 'y', - engine.height * 0.5, engine.height * 0.5, 1).onChange(action);
         GUIHelp.open();

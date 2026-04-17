@@ -13,10 +13,10 @@ class Sample_PixelPick {
         // init Engine3D
         const engine = await Engine3D.create({});
 
-        let exampleScene = createExampleScene();
+        let exampleScene = createExampleScene(engine);
         this.scene = exampleScene.scene;
 
-        engine.startView(exampleScene.view);
+        engine.startRenderView(exampleScene.view);
 
         let postProcessing = this.scene.getOrAddComponent(PostProcessingComponent);
         let bloomPost = postProcessing.addPost(BloomPost);

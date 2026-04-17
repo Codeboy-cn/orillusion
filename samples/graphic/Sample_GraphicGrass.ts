@@ -44,7 +44,7 @@ export class Sample_GraphicGrass {
         this.graphic3D = new Graphic3D();
         this.scene.addChild(this.graphic3D);
 
-        engine.startView(this.view);
+        engine.startRenderView(this.view);
 
         await this.initScene();
 

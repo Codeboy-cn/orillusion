@@ -30,7 +30,7 @@ export class Demo_Softbody {
         view.scene = scene;
         view.camera = camera;
 
-        engine.startView(view);
+        engine.startRenderView(view);
     }
 
     async initScene(scene: Scene3D) {

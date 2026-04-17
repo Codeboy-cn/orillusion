@@ -9,9 +9,9 @@ class Sample_AtmosphericSky {
         // init engine
         const engine = await Engine3D.create({});
         // init scene
-        let scene: Scene3D = createExampleScene().scene;
+        let scene: Scene3D = createExampleScene(engine).scene;
         // start renderer
-        engine.startView(scene.view);
+        engine.startRenderView(scene.view);
         // add atmospheric sky
         let sky = scene.getComponent(AtmosphericComponent);
 

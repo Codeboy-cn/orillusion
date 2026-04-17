@@ -29,7 +29,7 @@ export class Demo_Cloth {
         view.scene = scene;
         view.camera = camera;
 
-        engine.startView(view);
+        engine.startRenderView(view);
     }
 
     async initScene(scene: Scene3D) {

@@ -17,7 +17,7 @@ await test('SpotLight test', async () => {
     pl.castShadow = true;
     
     view.scene.addChild(spotLight);
-    engine.startViews([view]);
+    engine.startRenderViews([view]);
 })
 
 

@@ -26,7 +26,7 @@ class Sample_LoadGLTF {
         view.scene = this.scene;
         view.camera = camera;
 
-        engine.startView(view);
+        engine.startRenderView(view);
 
         await this.initScene();
     }

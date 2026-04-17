@@ -42,9 +42,9 @@ export class Sample_GraphicMesh_2 {
         this.graphic3D = new Graphic3D();
         this.scene.addChild(this.graphic3D);
 
-        engine.startView(view);
+        engine.startRenderView(view);
 
-        GUIUtil.renderDebug();
+        GUIUtil.renderDebug(view);
 
         await this.initScene();
     }

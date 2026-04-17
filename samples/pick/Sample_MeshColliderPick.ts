@@ -12,13 +12,13 @@ class Sample_MeshColliderPick {
         // init Engine3D
         const engine = await Engine3D.create({});
 
-        let exampleScene = createExampleScene();
+        let exampleScene = createExampleScene(engine);
         this.scene = exampleScene.scene;
 
         GUIHelp.init();
 
         GUIUtil.renderDirLight(exampleScene.light, false);
-        engine.startView(exampleScene.view);
+        engine.startRenderView(exampleScene.view);
 
         this.initPickObject(this.scene);
     }

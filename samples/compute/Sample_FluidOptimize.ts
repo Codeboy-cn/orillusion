@@ -35,7 +35,7 @@ export class Demo_FluidOptimize {
         view.scene = scene;
         view.camera = camera;
 
-        engine.startView(view);
+        engine.startRenderView(view);
         await this.initScene(scene);
     }
 

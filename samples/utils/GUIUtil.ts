@@ -247,11 +247,10 @@ export class GUIUtil {
         GUIHelp.endFolder();
     }
 
-    public static renderGIComponent(component: GlobalIlluminationComponent): void {
+    public static renderGIComponent(component: GlobalIlluminationComponent, view: View3D): void {
         let volume = component['_volume'];
         let giSetting = volume.setting;
-        let view: View3D = Engine3D.views[0];
-        let renderJob = Engine3D.getRenderJob(view);
+        let renderJob = view.engine3D.getRenderJob(view);
 
         function onProbesChange(): void {
             component['changeProbesPosition']();
@@ -334,7 +333,7 @@ export class GUIUtil {
                 const rayNumber = Engine3D.setting.gi.rayNumber;
                 for (let i = 0; i < rayNumber; i++) {
                     let id = `showRays${probeIndex}${i}`;
-                    view.graphic3D.Clear(id);
+                    (view as any).graphic3D?.Clear(id);
                 }
             }
         });
@@ -452,15 +451,16 @@ export class GUIUtil {
     }
 
 
-    static renderDebug() {
+    static renderDebug(view: View3D) {
         // if (Engine3D.setting.render.debug) {
 
         GUIHelp.removeFolder(`RenderPerformance`);
         //debug
         let f = GUIHelp.addFolder('RenderPerformance');
         f.open();
-        if (Engine3D.getRenderJob(Engine3D.views[0]).postRenderer) {
-            let debugTextures = Engine3D.getRenderJob(Engine3D.views[0]).postRenderer.debugTextures;
+        let renderJob = view.engine3D.getRenderJob(view);
+        if (renderJob.postRenderer) {
+            let debugTextures = renderJob.postRenderer.debugTextures;
             let debugTextureObj = { normalRender: -1 };
             for (let i = 0; i < debugTextures.length; i++) {
                 const tex = debugTextures[i];

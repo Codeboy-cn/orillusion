@@ -17,7 +17,7 @@ await test('PointLight test', async () => {
     pl.castShadow = true;
 
     view.scene.addChild(pointLight);
-    engine.startViews([view]);
+    engine.startRenderViews([view]);
 })
 
 setTimeout(end, 500)

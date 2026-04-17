@@ -33,7 +33,7 @@ export class GUIPick {
      */
     private _input(): any {
         const owner = (this._view as any)?.engine3D;
-        return owner?.inputSystem ?? Engine3D.inputSystem;
+        return owner?.inputSystem;
     }
 
     public init(view: View3D): void {

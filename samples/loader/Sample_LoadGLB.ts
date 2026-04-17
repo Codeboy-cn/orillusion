@@ -15,7 +15,7 @@ export class Sample_LoadGLB {
         Engine3D.setting.shadow.shadowBound = 150;
         Engine3D.setting.shadow.shadowBias = 0.1;
 
-        let ex = createExampleScene();
+        let ex = createExampleScene(engine);
         this.scene = ex.scene;
         this.scene.removeComponent(AtmosphericComponent);
         let sky = this.scene.getOrAddComponent(SkyRenderer);
@@ -23,7 +23,7 @@ export class Sample_LoadGLB {
         sky.map = skyMap;
         this.scene.envMap = skyMap;
 
-        engine.startView(this.scene.view);
+        engine.startRenderView(this.scene.view);
         GUIHelp.endFolder();
         await this.initScene();
 

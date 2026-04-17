@@ -95,7 +95,7 @@ class Sample_CameraPathAnimation {
         this.graphic3D = new Graphic3D()
         scene.addChild(this.graphic3D)
 
-        engine.startView(view);
+        engine.startRenderView(view);
 
         await this.initScene(scene, hoverCtrl);
         hoverCtrl.enable = true;

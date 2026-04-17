@@ -8,7 +8,7 @@ await test('Post GTAOPost test', async () => {
     let view = new View3D();
     view.scene = new Scene3D();
     view.camera = CameraUtil.createCamera3DObject(view.scene, "camera");
-    engine.startViews([view]);
+    engine.startRenderViews([view]);
 
     let postProcessing = view.scene.addComponent(PostProcessingComponent);
     let gtao = postProcessing.addPost(GTAOPost);

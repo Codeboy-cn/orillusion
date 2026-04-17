@@ -25,9 +25,9 @@ export class Sample_OctTreeRay {
         param.camera.distance = 400;
         param.camera.near = 0.1;
         param.camera.far = 10000;
-        let exampleScene = createExampleScene(param);
+        let exampleScene = createExampleScene(engine, param);
         exampleScene.light.castShadow = false;
-        engine.startViews([exampleScene.view]);
+        engine.startRenderViews([exampleScene.view]);
         engine.renderJobs.get(exampleScene.view);
 
         this.view = exampleScene.view;
@@ -75,7 +75,7 @@ export class Sample_OctTreeRay {
 
     private queryResult: OctreeEntity[] = [];
     private octreeTest() {
-        const input = this.view.engine3D?.inputSystem ?? Engine3D.inputSystem;
+        const input = this.view.engine3D?.inputSystem;
         let ray = this.view.camera.screenPointToRay(input.mouseX, input.mouseY);
         this.queryResult.length = 0;
         let now: number = Date.now();

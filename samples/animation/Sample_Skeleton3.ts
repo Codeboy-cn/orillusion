@@ -35,7 +35,7 @@ class Sample_Skeleton3 {
         this.view.scene = this.scene;
         this.view.camera = mainCamera;
 
-        engine.startView(this.view);
+        engine.startRenderView(this.view);
     }
 
     async initScene(scene: Scene3D) {

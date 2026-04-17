@@ -20,7 +20,7 @@ class Sample_UIMultipleTextures {
         let view = new View3D()
         view.scene = scene3D
         view.camera = camera
-        engine.startView(view)
+        engine.startRenderView(view)
         // create panel root
         let panelRoot: Object3D = new Object3D()
         let panel: UIPanel = panelRoot.addComponent(WorldPanel)

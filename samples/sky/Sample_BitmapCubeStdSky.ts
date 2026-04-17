@@ -7,7 +7,7 @@ class Sample_BitmapCubeStdSky {
         // init engine
         const engine = await Engine3D.create({});
         // init scene
-        let scene: Scene3D = createExampleScene().scene;
+        let scene: Scene3D = createExampleScene(engine).scene;
         let sky = scene.getOrAddComponent(SkyRenderer);
         sky.map = await Engine3D.res.loadTextureCubeStd('sky/StandardCubeMap-2.jpg');
 
@@ -15,7 +15,7 @@ class Sample_BitmapCubeStdSky {
         scene.addChild(Object3DUtil.GetSingleCube(10, 10, 10, 0.6, 0.6, 0.6));
 
         // start renderer
-        engine.startView(scene.view);
+        engine.startRenderView(scene.view);
     }
 }
 

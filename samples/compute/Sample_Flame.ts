@@ -28,7 +28,7 @@ export class Demo_Flame {
         let view = new View3D();
         view.scene = scene;
         view.camera = camera;
-        engine.startView(view);
+        engine.startRenderView(view);
     }
 
     async initScene(scene: Scene3D) {

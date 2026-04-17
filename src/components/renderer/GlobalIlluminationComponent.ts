@@ -28,7 +28,7 @@ export class GlobalIlluminationComponent extends ComponentBase {
     private _debugMr: MeshRenderer[] = [];
 
     public init(scene: Scene3D): void {
-        scene ||= this.transform?.view3D?.scene ?? Engine3D.views[0]?.scene;
+        scene ||= this.transform?.view3D?.scene;
         Engine3D.setting.gi.enable = true;
         this._volume = GlobalBindGroup.getLightEntries(scene).irradianceVolume;
         this.initProbe(scene);

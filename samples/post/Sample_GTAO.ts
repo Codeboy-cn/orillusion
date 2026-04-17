@@ -34,7 +34,7 @@ export class Sample_GTAO {
 		let view = new View3D();
 		view.scene = this.scene;
 		view.camera = mainCamera;
-		engine.startView(view);
+		engine.startRenderView(view);
 
 		this.lightObj = new Object3D();
 		this.lightObj.rotationX = 15;

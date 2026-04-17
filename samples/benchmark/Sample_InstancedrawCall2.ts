@@ -47,7 +47,7 @@ class Sample_SphereDraw {
         view.camera = mainCamera;
 
         // start render
-        engine.startView(view);
+        engine.startRenderView(view);
 
         GUIHelp.init();
         GUIHelp.open();

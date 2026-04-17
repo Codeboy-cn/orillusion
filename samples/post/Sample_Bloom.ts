@@ -33,7 +33,7 @@ class Sample_Bloom {
 		let view = new View3D();
 		view.scene = this.scene;
 		view.camera = mainCamera;
-		engine.startView(view);
+		engine.startRenderView(view);
 
 		let postProcessing = this.scene.addComponent(PostProcessingComponent);
 		let post = postProcessing.addPost(BloomPost);

@@ -34,7 +34,7 @@ export class Sample_Outline {
         let view = new View3D()
         view.scene = this.scene
         view.camera = mainCamera
-        engine.startView(view)
+        engine.startRenderView(view)
 
         let postProcessing = this.scene.addComponent(PostProcessingComponent)
         postProcessing.addPost(FXAAPost)

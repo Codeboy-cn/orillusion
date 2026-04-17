@@ -25,13 +25,13 @@ class Sample_POI {
         let param = createSceneParam();
         param.light.intensity = 5;
         param.camera.distance = 30;
-        let exampleScene = createExampleScene(param);
+        let exampleScene = createExampleScene(engine, param);
 
         GUIHelp.init();
 
         this.scene = exampleScene.scene;
 
-        engine.startView(exampleScene.view);
+        engine.startRenderView(exampleScene.view);
         let postCom = this.scene.addComponent(PostProcessingComponent);
         let bloom = postCom.addPost(BloomPost);
 

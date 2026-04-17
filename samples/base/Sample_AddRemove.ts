@@ -53,7 +53,7 @@ class Sample_AddRemove {
         this.view.camera = mainCamera;
 
         // start render
-        engine.startView(this.view);
+        engine.startRenderView(this.view);
 
         // let postProcessing = scene.addComponent(PostProcessingComponent);
         // postProcessing.addPost(FXAAPost);

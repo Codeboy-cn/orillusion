@@ -22,12 +22,12 @@ class Sample_PhysicsCar {
         const engine = await Engine3D.create({ renderLoop: () => this.loop() });
 
         let sceneParam = createSceneParam();
-        let exampleScene = createExampleScene(sceneParam);
+        let exampleScene = createExampleScene(engine, sceneParam);
         this.camera = exampleScene.camera;
         this.scene = exampleScene.scene;
         await this.initScene(this.scene);
 
-        engine.startView(exampleScene.view);
+        engine.startRenderView(exampleScene.view);
         
         GUIHelp.init();
         GUIHelp.open();
@@ -228,7 +228,7 @@ class VehicleKeyboardController extends ComponentBase {
         addWheel(false, x, -y, -z, r);
     }
     private _inputSystem() {
-        return (this.transform as any)?.view3D?.engine3D?.inputSystem ?? Engine3D.inputSystem;
+        return (this.transform as any)?.view3D?.engine3D?.inputSystem;
     }
     onEnable() {
         const input = this._inputSystem();

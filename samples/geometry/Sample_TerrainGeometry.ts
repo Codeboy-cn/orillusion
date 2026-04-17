@@ -26,7 +26,7 @@ class Sample_Terrain {
         this.view.camera.object3D.z = -15;
         this.view.camera.object3D.addComponent(HoverCameraController).setCamera(35, -20, 10000);
 
-        engine.startView(this.view);
+        engine.startRenderView(this.view);
 
         this.post = this.view.scene.addComponent(PostProcessingComponent);
         let fxaa = this.post.addPost(FXAAPost);

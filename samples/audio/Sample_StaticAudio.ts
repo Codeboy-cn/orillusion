@@ -37,7 +37,7 @@ export class Static_Audio {
         view.scene = this.scene;
         view.camera = mainCamera;
 
-        engine.startView(view);
+        engine.startRenderView(view);
         await this.initScene();
     }
 

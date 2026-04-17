@@ -7,7 +7,7 @@ class Sample_HDRSky {
         // init engine
         const engine = await Engine3D.create({});
         // init scene
-        let scene: Scene3D = createExampleScene().scene;
+        let scene: Scene3D = createExampleScene(engine).scene;
         let sky = scene.getOrAddComponent(SkyRenderer);
         sky.map = await Engine3D.res.loadHDRTextureCube('/hdri/sunset.hdr');
 
@@ -15,7 +15,7 @@ class Sample_HDRSky {
         scene.addChild(Object3DUtil.GetSingleCube(10, 10, 10, 0.6, 0.6, 0.6));
 
         // start renderer
-        engine.startView(scene.view);
+        engine.startRenderView(scene.view);
     }
 
 }

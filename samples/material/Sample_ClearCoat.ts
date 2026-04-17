@@ -28,7 +28,7 @@ class Sample_ClearCoat {
         view.scene = this.scene;
         view.camera = camera;
 
-        engine.startView(view);
+        engine.startRenderView(view);
         await this.initScene();
 
     }

@@ -39,8 +39,8 @@ class Sample_DirectLightShadow {
         view.scene = this.scene;
         view.camera = mainCamera;
 
-        engine.startView(view);
-        GUIUtil.renderDebug();
+        engine.startRenderView(view);
+        GUIUtil.renderDebug(view);
     }
 
     // create direction light

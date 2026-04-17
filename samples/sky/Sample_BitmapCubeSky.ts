@@ -7,7 +7,7 @@ class Sample_BitmapCubeSky {
         // init engine
         const engine = await Engine3D.create({});
         // init scene
-        let scene: Scene3D = createExampleScene().scene;
+        let scene: Scene3D = createExampleScene(engine).scene;
         let sky = scene.getOrAddComponent(SkyRenderer);
         // load sky texture (nx/px/py/ny/nz/pz), a total of 6 images
         let urls: string[] = [];
@@ -23,7 +23,7 @@ class Sample_BitmapCubeSky {
         scene.addChild(Object3DUtil.GetSingleCube(10, 10, 10, 0.6, 0.6, 0.6));
 
         // start renderer
-        engine.startView(scene.view);
+        engine.startRenderView(scene.view);
 
     }
 }

@@ -36,7 +36,7 @@ export class Demo_Fluid {
         view.scene = scene;
         view.camera = camera;
 
-        engine.startView(view);
+        engine.startRenderView(view);
         await this.initScene(scene);
     }
 

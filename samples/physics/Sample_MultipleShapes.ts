@@ -65,7 +65,7 @@ class Sample_MultipleShapes {
         view.camera = camera;
         view.scene = this.scene;
 
-        engine.startView(view);
+        engine.startRenderView(view);
 
         this.setupPhysicsGUI();
 

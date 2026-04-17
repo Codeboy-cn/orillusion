@@ -139,7 +139,7 @@ export class HoverCameraController extends ComponentBase {
         // so single-instance samples keep working.
         const view = this.transform?.view3D;
         const owner = (view as any)?.engine3D;
-        return owner?.inputSystem ?? Engine3D.inputSystem;
+        return owner?.inputSystem;
     }
 
     /**

@@ -5,7 +5,7 @@ import dat from "dat.gui";
 
 class Sample_Cloth {
     async run() {
-        await Physics.init({ useSoftBody: true, useDrag: true });
+        await Physics.init({ useSoftBody: true });
         const engine = await Engine3D.create({ renderLoop: () => Physics.update() });
         let view = new View3D();
         view.scene = new Scene3D();
@@ -24,7 +24,8 @@ class Sample_Cloth {
         view.scene.addChild(lightObj3D);
         sky.relativeTransform = lightObj3D.transform;
 
-        engine.startView(view);
+        Physics.enableDragger(view);
+        engine.startRenderView(view);
 
         this.createScene(view.scene);
     }

@@ -29,13 +29,13 @@ export class Sample_OutlineEffectPick {
         // init Engine3D
         const engine = await Engine3D.create({});
 
-        let exampleScene = createExampleScene();
+        let exampleScene = createExampleScene(engine);
         this.scene = exampleScene.scene;
 
         GUIHelp.init();
         GUIUtil.renderDirLight(exampleScene.light, false);
 
-        let job = engine.startView(exampleScene.view);
+        let job = engine.startRenderView(exampleScene.view);
         job.addPost(new OutlinePost());
 
         this.initPickObject(this.scene);

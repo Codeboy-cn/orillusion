@@ -15,7 +15,7 @@ class Sample_TextGeometry {
         view.camera.object3D.z = -15;
         view.camera.object3D.addComponent(HoverCameraController).setCamera(35, -20, 150);
 
-        engine.startView(view);
+        engine.startRenderView(view);
 
         await this.createScene(view.scene);
         sky.relativeTransform = this.lightObj.transform;

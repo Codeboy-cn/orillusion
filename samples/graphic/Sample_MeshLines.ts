@@ -62,7 +62,7 @@ class Sample_MeshLines {
         view.camera = mainCamera;
 
         // start render
-        engine.startView(view);
+        engine.startRenderView(view);
 
         engine.inputSystem.addEventListener(PointerEvent3D.POINTER_DOWN, this.onMouseDown, this, null, 999);
         engine.inputSystem.addEventListener(PointerEvent3D.POINTER_MOVE, this.onMouseMove, this);

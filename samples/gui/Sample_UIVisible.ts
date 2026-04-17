@@ -14,8 +14,8 @@ export class Sample_UIVisible {
 
         const engine = await Engine3D.create({ renderLoop: () => { this.renderUpdate(); } });
 
-        let exampleScene = createExampleScene();
-        engine.startView(exampleScene.view);
+        let exampleScene = createExampleScene(engine);
+        engine.startRenderView(exampleScene.view);
 
         // create floor
         let floor = Object3DUtil.GetSingleCube(100, 2, 50, 0.5, 0.5, 0.5);

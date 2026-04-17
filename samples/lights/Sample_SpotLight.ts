@@ -29,7 +29,7 @@ class Sample_SpotLight {
         view.scene = this.scene;
         view.camera = mainCamera;
 
-        engine.startView(view);
+        engine.startRenderView(view);
     }
 
     initScene() {

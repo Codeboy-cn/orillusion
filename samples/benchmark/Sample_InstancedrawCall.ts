@@ -51,7 +51,7 @@ class Sample_drawCallInstance {
         view.camera = mainCamera;
 
         // start render
-        engine.startView(view);
+        engine.startRenderView(view);
         GUIHelp.init();
         GUIHelp.open();
         GUIHelp.add(this, "anim").onChange = () => this.anim != this.anim;

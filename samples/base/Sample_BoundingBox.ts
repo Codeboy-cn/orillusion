@@ -18,8 +18,8 @@ class Sample_BoundingBox {
         param.camera.near = 0.01;
         param.camera.far = 1000;
         param.camera.distance = 20;
-        let exampleScene = createExampleScene(param);
-        engine.startViews([exampleScene.view]);
+        let exampleScene = createExampleScene(engine, param);
+        engine.startRenderViews([exampleScene.view]);
         engine.renderJobs.get(exampleScene.view);
 
         let box = Object3DUtil.GetSingleCube(5, 3, 8, 1, 1, 1);

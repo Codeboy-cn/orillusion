@@ -9,10 +9,10 @@ export class Sample_LoadJson {
         const engine = await Engine3D.create();
         let param = createSceneParam();
         param.camera.distance = 10;
-        let exampleScene = createExampleScene(param);
+        let exampleScene = createExampleScene(engine, param);
 
         this.scene = exampleScene.scene;
-        engine.startView(exampleScene.view);
+        engine.startRenderView(exampleScene.view);
 
         let json = await Engine3D.res.loadJSON('json/anim_0.json', { onProgress: this.onLoadProgress, onComplete: this.onComplete });
         console.log('[loaded]', json);

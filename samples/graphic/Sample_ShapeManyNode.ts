@@ -42,7 +42,7 @@ export class Sample_ShapeManyNode {
         this.view.scene = this.scene;
         this.view.camera = camera;
 
-        engine.startView(this.view);
+        engine.startRenderView(this.view);
 
         await this.initScene();
 

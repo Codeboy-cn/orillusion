@@ -43,9 +43,9 @@ export class Sample_GraphicMeshWave {
         this.graphic3D = new Graphic3D();
         this.scene.addChild(this.graphic3D);
 
-        engine.startView(view);
+        engine.startRenderView(view);
 
-        GUIUtil.renderDebug();
+        GUIUtil.renderDebug(view);
 
         await this.initScene();
         sky.relativeTransform = this.lightObj3D.transform;

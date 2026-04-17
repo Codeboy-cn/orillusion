@@ -16,8 +16,8 @@ class Sample_UIPanelScissor {
 
         let param = createSceneParam();
         param.camera.distance = 50;
-        let exampleScene = createExampleScene(param);
-        engine.startView(exampleScene.view);
+        let exampleScene = createExampleScene(engine, param);
+        engine.startRenderView(exampleScene.view);
 
         // create floor
         let floor = Object3DUtil.GetSingleCube(100, 2, 50, 0.5, 0.5, 0.5);

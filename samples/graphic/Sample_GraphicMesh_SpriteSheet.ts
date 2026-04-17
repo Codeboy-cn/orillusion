@@ -53,9 +53,9 @@ export class Sample_GraphicMesh_SpriteSheet {
         this.graphic3D = new Graphic3D();
         this.scene.addChild(this.graphic3D);
 
-        engine.startView(this.view);
+        engine.startRenderView(this.view);
 
-        GUIUtil.renderDebug();
+        GUIUtil.renderDebug(this.view);
 
         await this.initScene();
     }

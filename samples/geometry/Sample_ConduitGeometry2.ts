@@ -22,10 +22,10 @@ class Sample_ConduitGeometry2 {
         let param = createSceneParam();
         param.camera.distance = 60;
         const engine = await Engine3D.create();
-        let exampleScene = createExampleScene(param);
+        let exampleScene = createExampleScene(engine, param);
         // exampleScene.camera.enableCSM = true;
         this.scene = exampleScene.scene;
-        let job = engine.startView(exampleScene.view);
+        let job = engine.startRenderView(exampleScene.view);
         // job.addPost(new BloomPost());
         await this.createMaterial();
         await this.loadCurveData();

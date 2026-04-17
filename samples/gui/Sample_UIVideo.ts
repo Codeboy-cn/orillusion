@@ -12,8 +12,8 @@ export class Sample_UIVideo {
 
         const engine = await Engine3D.create();
 
-        let exampleScene = createExampleScene();
-        engine.startView(exampleScene.view);
+        let exampleScene = createExampleScene(engine);
+        engine.startRenderView(exampleScene.view);
 
         // create floor
         let floor = Object3DUtil.GetSingleCube(100, 10, 50, 0.5, 0.5, 0.5);

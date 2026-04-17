@@ -28,7 +28,7 @@ class Sample_DepthOfView {
         let view = new View3D()
         view.scene = this.scene
         view.camera = camera
-        engine.startView(view)
+        engine.startRenderView(view)
 
         let postProcessing = this.scene.addComponent(PostProcessingComponent)
         let DOFPost = postProcessing.addPost(DepthOfFieldPost)

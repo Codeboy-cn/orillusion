@@ -21,7 +21,7 @@ class Sample_CullMode {
         view.scene = scene;
         view.camera = camera;
 
-        engine.startView(view);
+        engine.startRenderView(view);
 
         // add direct light
         let lightObj = new Object3D();

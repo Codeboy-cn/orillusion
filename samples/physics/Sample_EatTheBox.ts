@@ -65,7 +65,7 @@ class Sample_EatTheBox {
         //create player(ball)
         this.createBall();
         //start render
-        engine.startView(this.view);
+        engine.startRenderView(this.view);
 
         //add debug UI
         const gui = new dat.GUI();
@@ -215,7 +215,7 @@ class MoveScript extends ComponentBase {
     y: number = 0;
     direction: Vector3 = new Vector3();
     init(): void {
-        const input = (this.transform as any)?.view3D?.engine3D?.inputSystem ?? Engine3D.inputSystem;
+        const input = (this.transform as any)?.view3D?.engine3D?.inputSystem;
         input.addEventListener(KeyEvent.KEY_DOWN, this.keyDown, this);
         input.addEventListener(KeyEvent.KEY_UP, this.keyUp, this);
     }

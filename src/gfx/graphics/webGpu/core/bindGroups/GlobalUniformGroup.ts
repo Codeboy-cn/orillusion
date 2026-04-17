@@ -144,7 +144,7 @@ export class GlobalUniformGroup {
         this.uniformGPUBuffer.setInt32(`renderState_right`, Engine3D.setting.render.renderState_right);
         this.uniformGPUBuffer.setFloat(`renderState_split`, Engine3D.setting.render.renderState_split);
         const ownerC = (camera?.transform as any)?.view3D?.engine3D;
-        const inputC = ownerC?.inputSystem ?? Engine3D.inputSystem;
+        const inputC = ownerC?.inputSystem;
         const ctxC = ownerC?.context3D ?? webGPUContext;
         let mouseX = (inputC?.mouseX ?? 0) * (ctxC?.pixelRatio ?? 1);
         let mouseY = (inputC?.mouseY ?? 0) * (ctxC?.pixelRatio ?? 1);
@@ -214,7 +214,7 @@ export class GlobalUniformGroup {
         this.uniformGPUBuffer.setFloat(`renderState_split`, Engine3D.setting.render.renderState_split);
 
         const ownerS = (camera?.transform as any)?.view3D?.engine3D;
-        const inputS = ownerS?.inputSystem ?? Engine3D.inputSystem;
+        const inputS = ownerS?.inputSystem;
         const ctxS = ownerS?.context3D ?? webGPUContext;
         let mouseX = (inputS?.mouseX ?? 0) * (ctxS?.pixelRatio ?? 1);
         let mouseY = (inputS?.mouseY ?? 0) * (ctxS?.pixelRatio ?? 1);

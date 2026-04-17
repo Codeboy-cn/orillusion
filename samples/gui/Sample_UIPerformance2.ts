@@ -74,10 +74,10 @@ export class Sample_UIPerformance2 {
         }
 
         const engine = await Engine3D.create({ renderLoop: () => { this.renderUpdate(); } });
-        let exampleScene = createExampleScene();
+        let exampleScene = createExampleScene(engine);
         this.scene = exampleScene.scene;
         this.scene.addComponent(Stats);
-        engine.startView(exampleScene.view);
+        engine.startRenderView(exampleScene.view);
         await Engine3D.res.loadAtlas('atlas/Sheet_atlas.json');
         await Engine3D.res.loadFont('fnt/0.fnt');
 
@@ -133,7 +133,7 @@ export class Sample_UIPerformance2 {
     spriteSheets: SpriteSheet[];
 
     private createSpriteSheets(root: Object3D) {
-        const engine = this.scene.view.engine3D ?? Engine3D;
+        const engine = this.scene.view.engine3D;
         let width = engine.width;
         let height = engine.height;
         let bound = new BoundingBox(new Vector3(0, 0, 0), new Vector3(width, height));

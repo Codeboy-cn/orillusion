@@ -20,7 +20,7 @@ class SamplePhysics01 {
 
         let sceneParam = createSceneParam();
         sceneParam.camera.distance = 50;
-        let exampleScene = createExampleScene(sceneParam);
+        let exampleScene = createExampleScene(engine, sceneParam);
 
         GUIHelp.init();
         GUIUtil.renderDirLight(exampleScene.light, false);
@@ -28,7 +28,7 @@ class SamplePhysics01 {
         this.scene = exampleScene.scene;
         await this.initScene(this.scene);
 
-        engine.startView(exampleScene.view);
+        engine.startRenderView(exampleScene.view);
     }
 
     async initScene(scene: Scene3D) {

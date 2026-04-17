@@ -23,7 +23,7 @@ export class FirstPersonCameraController extends ComponentBase {
     private _input(): any {
         const view = this.transform?.view3D;
         const owner = (view as any)?.engine3D;
-        return owner?.inputSystem ?? Engine3D.inputSystem;
+        return owner?.inputSystem;
     }
 
     public start() {

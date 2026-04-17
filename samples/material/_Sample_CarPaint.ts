@@ -49,7 +49,7 @@ export class Sample_CarPaint {
 
 		await this.initScene();
 
-		engine.startView(this.view);
+		engine.startRenderView(this.view);
 
 		let ssgi: SSGIPost;
 		let postProcessing = this.scene.addComponent(PostProcessingComponent);

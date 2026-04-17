@@ -9,8 +9,7 @@ class Sample_dofSpringConstraint {
     gui: dat.GUI;
 
     async run() {
-        // Initialize physics and engine
-        await Physics.init({ useDrag: true });
+        await Physics.init();
         const engine = await Engine3D.create({ renderLoop: () => Physics.update() });
 
         let scene = this.scene = new Scene3D();
@@ -47,7 +46,9 @@ class Sample_dofSpringConstraint {
         view.camera = camera;
         view.scene = scene;
 
-        engine.startView(view);
+        Physics.enableDragger(view);
+
+        engine.startRenderView(view);
 
         // Create ground, bridge, and ball
         this.createGround();

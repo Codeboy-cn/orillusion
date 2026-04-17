@@ -27,21 +27,14 @@ import { GBufferFrame } from './gfx/renderJob/frame/GBufferFrame';
 /**
  * Orillusion 3D Engine.
  *
- * The engine can be used in two modes:
- *  - Legacy single-instance: call `Engine3D.init()` and the static
- *    methods. A default instance is created under the hood and all
- *    static accessors proxy to it.
- *  - Multi-instance: call `await Engine3D.create({ canvasConfig })`
- *    to obtain an Engine3D instance. Multiple instances share the
- *    WebGPU device but own their own canvas, input system, views,
- *    render jobs and render loop.
+ * Call `await Engine3D.create({ canvasConfig })` to obtain an engine
+ * instance. Each instance owns its canvas, input system, views and
+ * render jobs; instances share a single WebGPU device pool and a
+ * shared RAF render loop.
  *
  * @group engine3D
  */
 export class Engine3D {
-
-    // -------- static facade (default instance) --------
-    private static _defaultInstance: Engine3D | null = null;
 
     /** Engine-level settings. Shared across instances. */
     public static setting: EngineSetting = {
@@ -179,41 +172,6 @@ export class Engine3D {
         this.context3D = new Context3D();
     }
 
-    // -------- static legacy API --------
-
-    /**
-     * Pick the default instance used by the legacy static API.
-     * Created lazily by `Engine3D.init()` and used by callers that
-     * still read static fields such as `Engine3D.views` or
-     * `Engine3D.inputSystem`.
-     */
-    public static getDefault(): Engine3D {
-        if (!this._defaultInstance) this._defaultInstance = new Engine3D();
-        return this._defaultInstance;
-    }
-
-    public static get views(): View3D[] { return this.getDefault().views; }
-    public static set views(v: View3D[]) { this.getDefault().views = v; }
-    public static get renderJobs(): Map<View3D, RendererJob> { return this.getDefault().renderJobs; }
-    public static get inputSystem(): InputSystem { return this.getDefault().inputSystem; }
-    public static set inputSystem(v: InputSystem) { this.getDefault().inputSystem = v; }
-
-    public static get frameRate(): number { return this.getDefault().frameRate; }
-    public static set frameRate(value: number) { this.getDefault().frameRate = value; }
-
-    public static get size(): number[] { return this.getDefault().context3D.presentationSize; }
-    public static get aspect(): number { return this.getDefault().context3D.aspect; }
-    public static get width(): number { return this.getDefault().context3D.windowWidth; }
-    public static get height(): number { return this.getDefault().context3D.windowHeight; }
-
-    /** Legacy single-instance init. Creates (or re-uses) the default instance. */
-    public static async init(descriptor: { canvasConfig?: CanvasConfig; beforeRender?: Function; renderLoop?: Function; lateRender?: Function, engineSetting?: EngineSetting } = {}) {
-        let inst = this.getDefault();
-        await Engine3D._initSharedSubsystems(descriptor.engineSetting);
-        await inst._initInstance(descriptor);
-        return;
-    }
-
     /** Multi-instance factory. Each returned engine owns its own canvas & render loop. */
     public static async create(descriptor: { canvasConfig?: CanvasConfig; beforeRender?: Function; renderLoop?: Function; lateRender?: Function, engineSetting?: EngineSetting } = {}): Promise<Engine3D> {
         await Engine3D._initSharedSubsystems(descriptor.engineSetting);
@@ -323,46 +281,21 @@ export class Engine3D {
         return renderJob;
     }
 
-    public startView(view: View3D): RendererJob {
+    public startRenderView(view: View3D): RendererJob {
         this.views = [view];
         let job = this._startRenderJob(view);
         Engine3D._ensureLoop();
         return job;
     }
 
-    public startViews(views: View3D[]) {
+    public startRenderViews(views: View3D[]) {
         this.views = views;
         for (let v of views) this._startRenderJob(v);
         Engine3D._ensureLoop();
     }
 
-    public getRenderJobOf(view: View3D): RendererJob {
+    public getRenderJob(view: View3D): RendererJob {
         return this.renderJobs.get(view);
-    }
-
-    // -------- legacy static render-start methods --------
-
-    public static startRenderView(view: View3D) {
-        return this.getDefault().startView(view);
-    }
-
-    public static startRenderViews(views: View3D[]) {
-        this.getDefault().startViews(views);
-    }
-
-    public static getRenderJob(view: View3D): RendererJob {
-        // Multi-instance: first try the engine that owns this view.
-        const owner = (view as any)?.engine3D as Engine3D | undefined;
-        if (owner) {
-            const job = owner.renderJobs.get(view);
-            if (job) return job;
-        }
-        // Fall back to scanning every registered engine.
-        for (const eng of Engine3D._instances) {
-            const job = eng.renderJobs.get(view);
-            if (job) return job;
-        }
-        return this.getDefault().renderJobs.get(view);
     }
 
     public static pause() {

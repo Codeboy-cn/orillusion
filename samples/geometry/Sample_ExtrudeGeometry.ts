@@ -27,7 +27,7 @@ class Sample_ExtrudeGeometry {
 
         view.scene.addChild(new GridObject(1000, 100))
 
-        engine.startView(view);
+        engine.startRenderView(view);
 
         this.createShapes();
     }

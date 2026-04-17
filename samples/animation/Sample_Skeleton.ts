@@ -28,7 +28,7 @@ class Sample_Skeleton {
         view.scene = this.scene;
         view.camera = camera;
 
-        engine.startView(view);
+        engine.startRenderView(view);
 
         let postCom = this.scene.addComponent(PostProcessingComponent);
         postCom.addPost(FXAAPost);

@@ -33,7 +33,7 @@ class Sample_ShadowToggle {
         view.scene = this.scene;
         view.camera = mainCamera;
 
-        engine.startView(view);
+        engine.startRenderView(view);
     }
 
     // create direction light

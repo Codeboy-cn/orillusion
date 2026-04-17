@@ -17,8 +17,8 @@ export class Sample_UIMultiPanel {
 
         let sceneData = createSceneParam();
         sceneData.camera.distance = 160;
-        let exampleScene = createExampleScene(sceneData);
-        engine.startView(exampleScene.view);
+        let exampleScene = createExampleScene(engine, sceneData);
+        engine.startRenderView(exampleScene.view);
         this.scene = exampleScene.scene;
         this.camera = exampleScene.camera;
         this.view = exampleScene.view;

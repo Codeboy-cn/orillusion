@@ -23,7 +23,7 @@ class Sample_UnlitMaterial {
         view.scene = this.scene;
         view.camera = mainCamera;
 
-        engine.startView(view);
+        engine.startRenderView(view);
     }
 
     async initScene(scene: Scene3D) {

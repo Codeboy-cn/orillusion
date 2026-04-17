@@ -93,7 +93,7 @@ class Sample_MovebleLight {
         let view = new View3D();
         view.scene = scene;
         view.camera = camera;
-        engine.startView(view);
+        engine.startRenderView(view);
     }
     private onMove(e: PointerEvent3D) {
         //set pick position as light position

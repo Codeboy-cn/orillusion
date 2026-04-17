@@ -54,7 +54,7 @@ export class Sample_SSGI {
 		await this.initScene();
 		sky.relativeTransform = this.lightObj.transform;
 
-		engine.startView(this.view);
+		engine.startRenderView(this.view);
 
 		let ssgi: SSGIPost;
 		let postProcessing = this.scene.addComponent(PostProcessingComponent);

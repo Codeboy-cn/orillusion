@@ -19,7 +19,7 @@ class Sample_PhysicsBox {
 
         let sceneParam = createSceneParam();
         sceneParam.camera.distance = 50;
-        let exampleScene = createExampleScene(sceneParam);
+        let exampleScene = createExampleScene(engine, sceneParam);
         this.scene = exampleScene.scene;
 
         GUIHelp.init();
@@ -27,7 +27,7 @@ class Sample_PhysicsBox {
 
         await this.initScene(this.scene);
         GUIHelp.addButton('Make Ball', () => { this.createSphere(); })
-        engine.startView(exampleScene.view);
+        engine.startRenderView(exampleScene.view);
     }
 
     initMaterials() {

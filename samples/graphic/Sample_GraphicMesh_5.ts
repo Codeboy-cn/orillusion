@@ -49,9 +49,9 @@ export class Sample_GraphicMesh_5 {
         this.graphic3D = new Graphic3D();
         this.scene.addChild(this.graphic3D);
 
-        engine.startView(this.view);
+        engine.startRenderView(this.view);
 
-        GUIUtil.renderDebug();
+        GUIUtil.renderDebug(this.view);
 
         await this.initScene();
     }

@@ -8,8 +8,8 @@ class Sample_UIMultiCanvas {
         const engine = await Engine3D.create();
         await Engine3D.res.loadFont('fnt/0.fnt');
 
-        let exampleScene = createExampleScene();
-        engine.startView(exampleScene.view);
+        let exampleScene = createExampleScene(engine);
+        engine.startRenderView(exampleScene.view);
 
         // create floor
         let floor = Object3DUtil.GetSingleCube(100, 2, 50, 0.5, 0.5, 0.5);

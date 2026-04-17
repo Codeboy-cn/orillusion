@@ -61,7 +61,7 @@ let view = new View3D();
 view.scene = scene3D;
 view.camera = camera;
 // start render
-engine.startView(view);
+engine.startRenderView(view);
 
 // add debug GUI
 let gui = new dat.GUI();

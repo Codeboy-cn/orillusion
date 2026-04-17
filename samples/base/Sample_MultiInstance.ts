@@ -84,7 +84,7 @@ class Sample_MultiInstance {
         const viewA = new View3D();
         viewA.scene = sceneA;
         viewA.camera = camA;
-        engineA.startView(viewA);
+        engineA.startRenderView(viewA);
 
         // ---------- Engine B ----------
         const engineB = await Engine3D.create({ canvasConfig: { canvas: b.canvas } });
@@ -120,7 +120,7 @@ class Sample_MultiInstance {
         const viewB = new View3D();
         viewB.scene = sceneB;
         viewB.camera = camB;
-        engineB.startView(viewB);
+        engineB.startRenderView(viewB);
 
         console.log('[multi-sample] engineA.id =', engineA.id, 'engineB.id =', engineB.id);
         console.log('[multi-sample] isolated GPU devices =', engineA.context3D.device !== engineB.context3D.device);

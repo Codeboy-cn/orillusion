@@ -26,10 +26,10 @@ class Sample_PBRMaterial {
         view.scene = this.scene;
         view.camera = camera;
 
-        engine.startView(view);
+        engine.startRenderView(view);
         await this.initScene();
 
-        GUIUtil.renderDebug();
+        GUIUtil.renderDebug(view);
     }
 
     async initScene() {

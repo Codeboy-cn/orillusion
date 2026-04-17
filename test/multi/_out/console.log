@@ -1,9 +1,9 @@
-[11:10:41.716] [verbose] [vite] connecting...  (http://localhost:4000/@vite/client:495)
-[11:10:41.766] [verbose] [vite] connected.  (http://localhost:4000/@vite/client:618)
-[11:10:41.871] [info] %c[MultiInstance.test.ts] color:yellow  (http://localhost:4000/test/util.ts:4)
-[11:10:41.874] [info] %c[create two Engine3D instances with isolated GPU devices] color:green  (http://localhost:4000/test/util.ts:10)
-[11:10:41.874] [info] Engine Version 0.8.5-dev.9  (http://localhost:4000/test/multi/:54)
-[11:10:41.877] [warning] %cElectron Security Warning (Insecure Content-Security-Policy) font-weight: bold; This renderer process has either no Content Security
+[11:37:11.148] [verbose] [vite] connecting...  (http://localhost:4000/@vite/client:495)
+[11:37:11.187] [verbose] [vite] connected.  (http://localhost:4000/@vite/client:618)
+[11:37:11.267] [info] %c[MultiInstance.test.ts] color:yellow  (http://localhost:4000/test/util.ts:4)
+[11:37:11.270] [info] %c[create two Engine3D instances with isolated GPU devices] color:green  (http://localhost:4000/test/util.ts:10)
+[11:37:11.270] [info] Engine Version 0.8.5-dev.9  (http://localhost:4000/test/multi/:54)
+[11:37:11.274] [warning] %cElectron Security Warning (Insecure Content-Security-Policy) font-weight: bold; This renderer process has either no Content Security
   Policy set or a policy with "unsafe-eval" enabled. This exposes users of
   this app to unnecessary security risks.
 
@@ -11,723 +11,705 @@ For more information and help, consult
 https://electronjs.org/docs/tutorial/security.
 This warning will not show up
 once the app is packaged.  (node:electron/js2c/renderer_init:2)
-[11:10:41.878] [info] wasm have loaded  (http://localhost:4000/test/multi/:54)
-[11:10:41.936] [info] [multi] engineA.id = 1 engineB.id = 2  (http://localhost:4000/test/multi/:54)
-[11:10:41.936] [info] [multi] isolated devices = true  (http://localhost:4000/test/multi/:54)
-[11:10:41.937] [info] [multi] isolated adapters = true  (http://localhost:4000/test/multi/:54)
-[11:10:41.937] [info] [multi] distinct context3D = true  (http://localhost:4000/test/multi/:54)
-[11:10:41.937] [info] [multi] canvasA bound = true , canvasB bound = true  (http://localhost:4000/test/multi/:54)
-[11:10:41.937] [verbose] [time]: 62.72802734375 ms  (http://localhost:4000/test/util.ts:31)
-[11:10:41.937] [info] console.groupEnd  (http://localhost:4000/test/util.ts:32)
-[11:10:41.937] [info] %c[start two render loops on isolated scenes] color:green  (http://localhost:4000/test/util.ts:10)
-[11:10:41.942] [info] [multi] scene A snapshot: {"instanceId":1,"canvasId":"canvasA","canvasSize":[320,240],"presentationSize":[320,240],"aspect":1.3333333333333333,"sceneChildren":4,"meshNames":["redBox"],"lightCount":1,"lightTypes":["Direct"],"cameraPos":[0,0,0],"cameraFov":60,"renderJobAttached":true}  (http://localhost:4000/test/multi/:54)
-[11:10:41.942] [info] [multi] scene B snapshot: {"instanceId":2,"canvasId":"canvasB","canvasSize":[320,240],"presentationSize":[320,240],"aspect":1.3333333333333333,"sceneChildren":4,"meshNames":["blueSphere"],"lightCount":1,"lightTypes":["Point"],"cameraPos":[0,0,0],"cameraFov":45,"renderJobAttached":true}  (http://localhost:4000/test/multi/:54)
-[11:10:41.942] [verbose] [time]: 5.870849609375 ms  (http://localhost:4000/test/util.ts:31)
-[11:10:41.942] [info] console.groupEnd  (http://localhost:4000/test/util.ts:32)
-[11:10:41.942] [info] %c[both engines advance their render loops] color:green  (http://localhost:4000/test/util.ts:10)
-[11:10:43.471] [info] [multi] engineA advanced frames: 87  (http://localhost:4000/test/multi/:54)
-[11:10:43.472] [info] [multi] engineB advanced frames: 87  (http://localhost:4000/test/multi/:54)
-[11:10:43.472] [info] [multi] final scene A: {"instanceId":1,"canvasId":"canvasA","canvasSize":[320,240],"presentationSize":[320,240],"aspect":1.3333333333333333,"sceneChildren":4,"meshNames":["redBox"],"lightCount":1,"lightTypes":["Direct"],"cameraPos":[57.955535888671875,31.058277130126953,100.38192749023438],"cameraFov":60,"renderJobAttached":true}  (http://localhost:4000/test/multi/:54)
-[11:10:43.472] [info] [multi] final scene B: {"instanceId":2,"canvasId":"canvasB","canvasSize":[320,240],"presentationSize":[320,240],"aspect":1.3333333333333333,"sceneChildren":4,"meshNames":["blueSphere"],"lightCount":1,"lightTypes":["Point"],"cameraPos":[0,0,139.99996948242188],"cameraFov":45,"renderJobAttached":true}  (http://localhost:4000/test/multi/:54)
-[11:10:43.473] [verbose] [time]: 1530.04296875 ms  (http://localhost:4000/test/util.ts:31)
-[11:10:43.473] [info] console.groupEnd  (http://localhost:4000/test/util.ts:32)
-[11:10:43.473] [info] %c[Plan B: bindCtx throws when the same GPU resource is used by two engines] color:green  (http://localhost:4000/test/util.ts:10)
-[11:10:43.473] [verbose] [time]: 0.239013671875 ms  (http://localhost:4000/test/util.ts:31)
-[11:10:43.473] [info] console.groupEnd  (http://localhost:4000/test/util.ts:32)
-[11:10:43.473] [info] %c[Plan B: each engine with its own independent scene graph renders fine] color:green  (http://localhost:4000/test/util.ts:10)
-[11:10:43.486] [warning] [Sampler (unlabeled)] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:11.274] [info] wasm have loaded  (http://localhost:4000/test/multi/:54)
+[11:37:11.320] [info] [multi] engineA.id = 1 engineB.id = 2  (http://localhost:4000/test/multi/:54)
+[11:37:11.320] [info] [multi] isolated devices = true  (http://localhost:4000/test/multi/:54)
+[11:37:11.320] [info] [multi] isolated adapters = true  (http://localhost:4000/test/multi/:54)
+[11:37:11.320] [info] [multi] distinct context3D = true  (http://localhost:4000/test/multi/:54)
+[11:37:11.320] [info] [multi] canvasA bound = true , canvasB bound = true  (http://localhost:4000/test/multi/:54)
+[11:37:11.320] [verbose] [time]: 50.49609375 ms  (http://localhost:4000/test/util.ts:31)
+[11:37:11.320] [info] console.groupEnd  (http://localhost:4000/test/util.ts:32)
+[11:37:11.320] [info] %c[start two render loops on isolated scenes] color:green  (http://localhost:4000/test/util.ts:10)
+[11:37:11.326] [info] [multi] scene A snapshot: {"instanceId":1,"canvasId":"canvasA","canvasSize":[320,240],"presentationSize":[320,240],"aspect":1.3333333333333333,"sceneChildren":4,"meshNames":["redBox"],"lightCount":1,"lightTypes":["Direct"],"cameraPos":[0,0,0],"cameraFov":60,"renderJobAttached":true}  (http://localhost:4000/test/multi/:54)
+[11:37:11.326] [info] [multi] scene B snapshot: {"instanceId":2,"canvasId":"canvasB","canvasSize":[320,240],"presentationSize":[320,240],"aspect":1.3333333333333333,"sceneChildren":4,"meshNames":["blueSphere"],"lightCount":1,"lightTypes":["Point"],"cameraPos":[0,0,0],"cameraFov":45,"renderJobAttached":true}  (http://localhost:4000/test/multi/:54)
+[11:37:11.326] [verbose] [time]: 5.85498046875 ms  (http://localhost:4000/test/util.ts:31)
+[11:37:11.326] [info] console.groupEnd  (http://localhost:4000/test/util.ts:32)
+[11:37:11.326] [info] %c[both engines advance their render loops] color:green  (http://localhost:4000/test/util.ts:10)
+[11:37:12.851] [info] [multi] engineA advanced frames: 86  (http://localhost:4000/test/multi/:54)
+[11:37:12.852] [info] [multi] engineB advanced frames: 86  (http://localhost:4000/test/multi/:54)
+[11:37:12.852] [info] [multi] final scene A: {"instanceId":1,"canvasId":"canvasA","canvasSize":[320,240],"presentationSize":[320,240],"aspect":1.3333333333333333,"sceneChildren":4,"meshNames":["redBox"],"lightCount":1,"lightTypes":["Direct"],"cameraPos":[57.95553207397461,31.05827522277832,100.38192749023438],"cameraFov":60,"renderJobAttached":true}  (http://localhost:4000/test/multi/:54)
+[11:37:12.853] [info] [multi] final scene B: {"instanceId":2,"canvasId":"canvasB","canvasSize":[320,240],"presentationSize":[320,240],"aspect":1.3333333333333333,"sceneChildren":4,"meshNames":["blueSphere"],"lightCount":1,"lightTypes":["Point"],"cameraPos":[0,0,139.9999542236328],"cameraFov":45,"renderJobAttached":true}  (http://localhost:4000/test/multi/:54)
+[11:37:12.853] [verbose] [time]: 1526.837158203125 ms  (http://localhost:4000/test/util.ts:31)
+[11:37:12.853] [info] console.groupEnd  (http://localhost:4000/test/util.ts:32)
+[11:37:12.853] [info] %c[Plan B: bindCtx throws when the same GPU resource is used by two engines] color:green  (http://localhost:4000/test/util.ts:10)
+[11:37:12.853] [verbose] [time]: 0.31591796875 ms  (http://localhost:4000/test/util.ts:31)
+[11:37:12.853] [info] console.groupEnd  (http://localhost:4000/test/util.ts:32)
+[11:37:12.853] [info] %c[Plan B: each engine with its own independent scene graph renders fine] color:green  (http://localhost:4000/test/util.ts:10)
+[11:37:12.873] [warning] [Sampler (unlabeled)] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While validating entries[16] as a Sampler.
 Expected entry layout: {type: SamplerBindingType::Filtering}
  - While validating [BindGroupDescriptor] against [BindGroupLayout "vspbrlitshader fspbrlitshader 24"]
  - While calling [Device "device-0"].CreateBindGroup([BindGroupDescriptor]).
   (http://localhost:4000/test/multi/:0)
-[11:10:43.486] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:12.873] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:43.486] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:12.873] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:43.500] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:12.882] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:43.500] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:12.882] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:43.517] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:12.899] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:43.517] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:12.899] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:43.538] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:12.915] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:43.538] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:12.915] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:43.551] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:12.932] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:43.551] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:12.932] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:43.571] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:12.948] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:43.571] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:12.948] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:43.583] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:12.965] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:43.583] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:12.965] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:43.600] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:12.982] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:43.600] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:12.982] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:43.619] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:12.998] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:43.619] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:12.998] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:43.635] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:13.015] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:43.636] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:13.015] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:43.650] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:13.032] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:43.650] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:13.032] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:43.667] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:13.048] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:43.667] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:13.048] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:43.683] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:13.065] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:43.683] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:13.065] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:43.700] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:13.081] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:43.700] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:13.082] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:43.717] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:13.099] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:43.717] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:13.099] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:43.734] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:13.116] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:43.734] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:13.116] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:43.751] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:13.131] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:43.751] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:13.131] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:43.767] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:13.148] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:43.767] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:13.148] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:43.784] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:13.165] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:43.784] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:13.165] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:43.798] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:13.182] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:43.798] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:13.182] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:43.817] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:13.198] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:43.817] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:13.198] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:43.836] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:13.215] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:43.836] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:13.215] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:43.850] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:13.231] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:43.850] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:13.231] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:43.869] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:13.249] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:43.869] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:13.249] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:43.882] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:13.270] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:43.882] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:13.270] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:43.900] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:13.282] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:43.900] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:13.282] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:43.920] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:13.298] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:43.920] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:13.298] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:43.932] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:13.315] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:43.932] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:13.315] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:43.953] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:13.332] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:43.953] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:13.332] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:43.965] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:13.348] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:43.965] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:13.348] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:43.986] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:13.365] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:43.986] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:13.365] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:44.002] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:13.385] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:44.002] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:13.385] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:44.015] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:13.397] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:44.015] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:13.397] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:44.035] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:13.415] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:44.035] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:13.415] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:44.050] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:13.436] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:44.050] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:13.437] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:44.072] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:13.447] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:44.072] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:13.447] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:44.081] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:13.465] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:44.081] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:13.465] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:44.103] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:13.486] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:44.103] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:13.486] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:44.119] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:13.498] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:44.119] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:13.498] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:44.132] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:13.517] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:44.132] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:13.518] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:44.151] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:13.532] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:44.151] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:13.532] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:44.167] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:13.548] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:44.167] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:13.548] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:44.183] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:13.565] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:44.183] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:13.565] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:44.202] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:13.582] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:44.202] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:13.582] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:44.219] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:13.598] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:44.220] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:13.598] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:44.234] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:13.615] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:44.234] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:13.615] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:44.250] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:13.632] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:44.250] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:13.632] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:44.266] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:13.648] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:44.266] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:13.648] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:44.284] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:13.665] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:44.284] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:13.665] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:44.300] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:13.684] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:44.300] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:13.684] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:44.317] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:13.698] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:44.317] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:13.698] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:44.333] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:13.715] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:44.333] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:13.715] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:44.350] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:13.735] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:44.350] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:13.735] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:44.365] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:13.748] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:44.365] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:13.748] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:44.381] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:13.765] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:44.381] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:13.765] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:44.400] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:13.782] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:44.400] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:13.782] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:44.417] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:13.803] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:44.417] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:13.803] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:44.433] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:13.815] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:44.433] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:13.815] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:44.449] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:13.835] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:44.449] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:13.835] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:44.467] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:13.848] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:44.467] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:13.848] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:44.484] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:13.868] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:44.484] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:13.868] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:44.501] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:13.881] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:44.501] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:13.881] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:44.501] [info] [multi] Plan B engineA advanced 62 engineB advanced 62  (http://localhost:4000/test/multi/:54)
-[11:10:44.501] [verbose] [time]: 1028.4599609375 ms  (http://localhost:4000/test/util.ts:31)
-[11:10:44.501] [info] console.groupEnd  (http://localhost:4000/test/util.ts:32)
-[11:10:44.519] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:13.889] [info] [multi] Plan B engineA advanced 62 engineB advanced 62  (http://localhost:4000/test/multi/:54)
+[11:37:13.890] [verbose] [time]: 1036.5791015625 ms  (http://localhost:4000/test/util.ts:31)
+[11:37:13.890] [info] console.groupEnd  (http://localhost:4000/test/util.ts:32)
+[11:37:13.898] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:44.519] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:13.899] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:44.534] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:13.917] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:44.534] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:13.917] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:44.554] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:13.933] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:44.554] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:13.933] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:44.567] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:13.948] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:44.567] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:13.948] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:44.584] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:13.965] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:44.584] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:13.965] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:44.603] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:13.982] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:44.603] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:13.982] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:44.617] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:14.001] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:44.617] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:14.001] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:44.634] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:14.015] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:44.634] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:14.015] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:44.651] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:14.033] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:44.651] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:14.033] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:44.667] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:14.050] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:44.667] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:14.050] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:44.684] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:14.065] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:44.684] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:14.065] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:44.701] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:14.082] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:44.701] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:14.082] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:44.717] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:14.101] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:44.717] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:14.101] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:44.734] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:14.115] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:44.734] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:14.116] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:44.750] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:14.132] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:44.750] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:14.132] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:44.771] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:14.152] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:44.772] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:14.152] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:44.783] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:14.165] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:44.783] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:14.165] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:44.803] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:14.182] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:44.803] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:14.182] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:44.817] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:14.201] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:44.817] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:14.201] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:44.834] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:14.217] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:44.834] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:14.217] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:44.850] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:14.232] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:44.850] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:14.232] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:44.866] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:14.249] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:44.866] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:14.249] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:44.883] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:14.265] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:44.884] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:14.265] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:44.900] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:14.286] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:44.900] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:14.286] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:44.917] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:14.298] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:44.917] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:14.298] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:44.933] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:14.317] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:44.933] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:14.318] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:44.949] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:14.332] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:44.949] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:14.332] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:44.966] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:14.349] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:44.966] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:14.349] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:44.983] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:14.365] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:44.983] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:14.365] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:44.999] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:14.382] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:44.999] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:14.382] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:45.003] [info] [object Object]  (http://localhost:4000/test/util.ts:77)
-[11:10:45.003] [info] console.groupEnd  (http://localhost:4000/test/util.ts:78)
-[11:10:45.017] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:14.392] [info] [object Object]  (http://localhost:4000/test/util.ts:77)
+[11:37:14.392] [info] console.groupEnd  (http://localhost:4000/test/util.ts:78)
+[11:37:14.398] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:45.017] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:14.399] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:45.035] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:14.419] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:45.035] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:14.419] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:45.052] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:14.431] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:45.053] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:14.431] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:45.069] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:14.448] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:45.069] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:14.448] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:45.085] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:14.468] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:45.086] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:14.468] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:45.100] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:14.482] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:45.101] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:14.482] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:45.121] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:14.498] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:45.121] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:14.498] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:45.133] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:14.516] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:45.133] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:14.516] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:45.150] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:14.531] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:45.151] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:14.531] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:45.165] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:14.548] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:45.165] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:14.548] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:45.184] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:14.565] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:45.184] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:14.565] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:45.200] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:14.582] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:45.200] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:14.582] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:45.218] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:14.598] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:45.218] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:14.598] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:45.233] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:14.615] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:45.234] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:14.615] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:45.250] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:14.626] [info] --- on-page log panel begin ---
+[11:37:14.626] [info] [LOG] Engine Version 0.8.5-dev.9
+[11:37:14.626] [info] [LOG] wasm have loaded
+[11:37:14.626] [info] [LOG] [multi] engineA.id = 1 engineB.id = 2
+[11:37:14.626] [info] [LOG] [multi] isolated devices = true
+[11:37:14.626] [info] [LOG] [multi] isolated adapters = true
+[11:37:14.626] [info] [LOG] [multi] distinct context3D = true
+[11:37:14.626] [info] [LOG] [multi] canvasA bound = true , canvasB bound = true
+[11:37:14.626] [info] [LOG] [multi] scene A snapshot: {"instanceId":1,"canvasId":"canvasA","canvasSize":[320,240],"presentationSize":[320,240],"aspect":1.3333333333333333,"sceneChildren":4,"meshNames":["redBox"],"lightCount":1,"lightTypes":["Direct"],"cameraPos":[0,0,0],"cameraFov":60,"renderJobAttached":true}
+[11:37:14.626] [info] [LOG] [multi] scene B snapshot: {"instanceId":2,"canvasId":"canvasB","canvasSize":[320,240],"presentationSize":[320,240],"aspect":1.3333333333333333,"sceneChildren":4,"meshNames":["blueSphere"],"lightCount":1,"lightTypes":["Point"],"cameraPos":[0,0,0],"cameraFov":45,"renderJobAttached":true}
+[11:37:14.626] [info] [LOG] [multi] engineA advanced frames: 86
+[11:37:14.626] [info] [LOG] [multi] engineB advanced frames: 86
+[11:37:14.626] [info] [LOG] [multi] final scene A: {"instanceId":1,"canvasId":"canvasA","canvasSize":[320,240],"presentationSize":[320,240],"aspect":1.3333333333333333,"sceneChildren":4,"meshNames":["redBox"],"lightCount":1,"lightTypes":["Direct"],"cameraPos":[57.95553207397461,31.05827522277832,100.38192749023438],"cameraFov":60,"renderJobAttached":true}
+[11:37:14.626] [info] [LOG] [multi] final scene B: {"instanceId":2,"canvasId":"canvasB","canvasSize":[320,240],"presentationSize":[320,240],"aspect":1.3333333333333333,"sceneChildren":4,"meshNames":["blueSphere"],"lightCount":1,"lightTypes":["Point"],"cameraPos":[0,0,139.9999542236328],"cameraFov":45,"renderJobAttached":true}
+[11:37:14.626] [info] [LOG] [multi] Plan B engineA advanced 62 engineB advanced 62
+[11:37:14.626] [info] 
+[11:37:14.626] [info] --- on-page log panel end ---
+[11:37:14.637] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:45.251] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:14.637] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:45.267] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
+[11:37:14.664] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
  - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
   (http://localhost:4000/test/multi/:0)
-[11:10:45.267] [warning] [Invalid CommandBuffer] is invalid.
+[11:37:14.664] [warning] [Invalid CommandBuffer] is invalid.
  - While calling [Queue].Submit([[Invalid CommandBuffer]])
   (http://localhost:4000/test/multi/:0)
-[11:10:45.267] [info] --- on-page log panel begin ---
-[11:10:45.267] [info] [LOG] Engine Version 0.8.5-dev.9
-[11:10:45.267] [info] [LOG] wasm have loaded
-[11:10:45.267] [info] [LOG] [multi] engineA.id = 1 engineB.id = 2
-[11:10:45.267] [info] [LOG] [multi] isolated devices = true
-[11:10:45.267] [info] [LOG] [multi] isolated adapters = true
-[11:10:45.267] [info] [LOG] [multi] distinct context3D = true
-[11:10:45.268] [info] [LOG] [multi] canvasA bound = true , canvasB bound = true
-[11:10:45.268] [info] [LOG] [multi] scene A snapshot: {"instanceId":1,"canvasId":"canvasA","canvasSize":[320,240],"presentationSize":[320,240],"aspect":1.3333333333333333,"sceneChildren":4,"meshNames":["redBox"],"lightCount":1,"lightTypes":["Direct"],"cameraPos":[0,0,0],"cameraFov":60,"renderJobAttached":true}
-[11:10:45.268] [info] [LOG] [multi] scene B snapshot: {"instanceId":2,"canvasId":"canvasB","canvasSize":[320,240],"presentationSize":[320,240],"aspect":1.3333333333333333,"sceneChildren":4,"meshNames":["blueSphere"],"lightCount":1,"lightTypes":["Point"],"cameraPos":[0,0,0],"cameraFov":45,"renderJobAttached":true}
-[11:10:45.268] [info] [LOG] [multi] engineA advanced frames: 87
-[11:10:45.268] [info] [LOG] [multi] engineB advanced frames: 87
-[11:10:45.268] [info] [LOG] [multi] final scene A: {"instanceId":1,"canvasId":"canvasA","canvasSize":[320,240],"presentationSize":[320,240],"aspect":1.3333333333333333,"sceneChildren":4,"meshNames":["redBox"],"lightCount":1,"lightTypes":["Direct"],"cameraPos":[57.955535888671875,31.058277130126953,100.38192749023438],"cameraFov":60,"renderJobAttached":true}
-[11:10:45.268] [info] [LOG] [multi] final scene B: {"instanceId":2,"canvasId":"canvasB","canvasSize":[320,240],"presentationSize":[320,240],"aspect":1.3333333333333333,"sceneChildren":4,"meshNames":["blueSphere"],"lightCount":1,"lightTypes":["Point"],"cameraPos":[0,0,139.99996948242188],"cameraFov":45,"renderJobAttached":true}
-[11:10:45.268] [info] [LOG] [multi] Plan B engineA advanced 62 engineB advanced 62
-[11:10:45.268] [info] 
-[11:10:45.268] [info] --- on-page log panel end ---
-[11:10:45.289] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
- - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
-  (http://localhost:4000/test/multi/:0)
-[11:10:45.289] [warning] [Invalid CommandBuffer] is invalid.
- - While calling [Queue].Submit([[Invalid CommandBuffer]])
-  (http://localhost:4000/test/multi/:0)
-[11:10:45.319] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
- - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
-  (http://localhost:4000/test/multi/:0)
-[11:10:45.319] [warning] [Invalid CommandBuffer] is invalid.
- - While calling [Queue].Submit([[Invalid CommandBuffer]])
-  (http://localhost:4000/test/multi/:0)
-[11:10:45.319] [warning] [Buffer "IndicesGPUBuffer"] is associated with [Device "device-1"], and cannot be used with [Device "device-0"].
- - While encoding [RenderPassEncoder "undefined renderPassDescriptor zPreTextureclear"].SetIndexBuffer([Buffer "IndicesGPUBuffer"], IndexFormat::Uint16, 0, 18446744073709551615).
-  (http://localhost:4000/test/multi/:0)
-[11:10:45.319] [warning] [Invalid CommandBuffer] is invalid.
- - While calling [Queue].Submit([[Invalid CommandBuffer]])
-  (http://localhost:4000/test/multi/:0)
-[11:10:45.319] [info] screenshot saved: /Users/jbai/orillusion/test/multi/_out/screenshot.png
-[11:10:45.319] [info] end event received: {"type":"end","success":5,"fail":0}
+[11:37:14.664] [info] screenshot saved: /Users/jbai/orillusion/test/multi/_out/screenshot.png
+[11:37:14.664] [info] end event received: {"type":"end","success":5,"fail":0}

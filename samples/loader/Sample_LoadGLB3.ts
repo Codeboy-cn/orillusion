@@ -11,12 +11,12 @@ export class Sample_LoadGLB3 {
         Engine3D.setting.shadow.shadowBound = 5;
         Engine3D.setting.shadow.shadowBias = 0.002;
 
-        let exampleScene = createExampleScene();
+        let exampleScene = createExampleScene(engine);
         this.scene = exampleScene.scene;
 
         exampleScene.hoverCtrl.setCamera(-45, -20, 8);
         exampleScene.light.intensity = 5;
-        engine.startView(exampleScene.view);
+        engine.startRenderView(exampleScene.view);
         await this.initScene();
     }
 

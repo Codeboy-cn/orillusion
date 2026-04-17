@@ -11,7 +11,7 @@ await test('Post SSR test', async () => {
     sky.map = new SolidColorSky(new Color(0, 0, 0))
     view.scene.envMap = sky.map
     view.camera = CameraUtil.createCamera3DObject(view.scene, "camera");
-    engine.startViews([view]);
+    engine.startRenderViews([view]);
 
     let postProcessing = view.scene.addComponent(PostProcessingComponent);
     let ssr = postProcessing.addPost(SSRPost);

@@ -19,7 +19,7 @@ export class View3D extends CEventListener {
     public readonly canvasList: GUICanvas[];
     /**
      * Reference to the Engine3D instance that owns this view. Set by
-     * `Engine3D.startView`. Components that need per-instance state
+     * `engine.startRenderView(view)`. Components that need per-instance state
      * (input system, context, etc.) read it via this back-pointer so
      * they work under multi-instance setups.
      */

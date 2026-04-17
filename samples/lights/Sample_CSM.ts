@@ -50,7 +50,7 @@ class Sample_CSM {
         GUIHelp.add(Engine3D.setting.shadow, 'csmAreaScale', 0.1, 1, 0.01);
         GUIHelp.open();
         GUIHelp.endFolder();
-        engine.startView(view);
+        engine.startRenderView(view);
     }
 
     // create direction light

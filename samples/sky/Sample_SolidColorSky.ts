@@ -9,7 +9,7 @@ class HDRSkyMap {
         const engine = await Engine3D.create({});
         GUIHelp.init();
         // init scene
-        let scene = createExampleScene().scene;
+        let scene = createExampleScene(engine).scene;
         // use solid color as background
         let sky = scene.getOrAddComponent(SkyRenderer);
         sky.map = new SolidColorSky(new Color(0.3, 0.5, 0.3, 1));
@@ -22,7 +22,7 @@ class HDRSkyMap {
         // add a grid
         scene.addChild(new GridObject(1000, 100));
         // start renderer
-        engine.startView(scene.view);
+        engine.startRenderView(scene.view);
     }
 
 }

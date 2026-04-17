@@ -29,7 +29,7 @@ class Sample_LightEnable {
         view.scene = this.scene;
         view.camera = mainCamera;
 
-        engine.startViews([view]);
+        engine.startRenderViews([view]);
     }
 
     initScene(scene: Scene3D) {

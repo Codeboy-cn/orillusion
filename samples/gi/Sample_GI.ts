@@ -5,6 +5,7 @@ import { GUIHelp } from "@orillusion/debug/GUIHelp";
 class Sample_GI {
     lightObj3D: Object3D;
     scene: Scene3D;
+    view: View3D;
     async run() {
 
         Engine3D.setting.material.materialChannelDebug = true;
@@ -39,7 +40,7 @@ class Sample_GI {
         const engine = await Engine3D.create({
             renderLoop: () => {
                 if (this.giComponent?.isStart) {
-                    GUIUtil.renderGIComponent(this.giComponent);
+                    GUIUtil.renderGIComponent(this.giComponent, this.view);
                     this.giComponent = null;
                 }
             }
@@ -58,17 +59,18 @@ class Sample_GI {
         let view = new View3D();
         view.scene = this.scene;
         view.camera = camera;
+        this.view = view;
 
         await this.initScene();
 
         this.addGIProbes(view);
 
-        engine.startView(view);
+        engine.startRenderView(view);
 
         let postCom = this.scene.addComponent(PostProcessingComponent);
         postCom.addPost(FXAAPost);
 
-        GUIUtil.renderDebug();
+        GUIUtil.renderDebug(view);
 
         /******** light *******/
         {

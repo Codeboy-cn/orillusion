@@ -8,7 +8,7 @@ await test('Post TAAPost test', async () => {
     let view = new View3D();
     view.scene = new Scene3D();
     view.camera = CameraUtil.createCamera3DObject(view.scene, "camera");
-    engine.startViews([view]);
+    engine.startRenderViews([view]);
 
     let postProcessing = view.scene.addComponent(PostProcessingComponent);
     let taa = postProcessing.addPost(TAAPost);

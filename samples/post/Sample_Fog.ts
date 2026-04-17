@@ -25,7 +25,7 @@ class Sample_Fog {
         let view = new View3D();
         view.scene = this.scene;
         view.camera = mainCamera;
-        engine.startView(view);
+        engine.startRenderView(view);
 
         GUIHelp.init();
         GUIUtil.renderAtmosphericSky(sky, false);

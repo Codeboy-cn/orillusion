@@ -116,7 +116,7 @@ class Sample_ShootTheBox {
         this.view = new View3D();
         this.view.scene = scene;
         this.view.camera = camera;
-        engine.startView(this.view);
+        engine.startRenderView(this.view);
     }
 
     private MouseDown(e: PointerEvent3D) {

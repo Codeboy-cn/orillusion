@@ -24,7 +24,7 @@ class Sample_ChangeMaterial {
         view.scene = this.scene;
         view.camera = camera;
 
-        engine.startView(view);
+        engine.startRenderView(view);
 
         await this.initScene();
         sky.relativeTransform = this.lightObj.transform;

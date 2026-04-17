@@ -30,7 +30,7 @@ export class Sample_CandleFlame {
         view.scene = scene;
         view.camera = camera;
 
-        engine.startView(view);
+        engine.startRenderView(view);
     }
 
     async addParticleTo(scene: Scene3D) {

@@ -29,8 +29,8 @@ export class Sample_OctTreeFrustum {
         param.camera.distance = 400;
         param.camera.near = 0.1;
         param.camera.far = 10000;
-        let exampleScene = createExampleScene(param);
-        engine.startViews([exampleScene.view]);
+        let exampleScene = createExampleScene(engine, param);
+        engine.startRenderViews([exampleScene.view]);
         engine.renderJobs.get(exampleScene.view);
 
         this.view = exampleScene.view;

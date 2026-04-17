@@ -72,7 +72,7 @@ function snapshot(engine: Engine3D, view: View3D, canvas: HTMLCanvasElement): In
         lightTypes,
         cameraPos: [cam.transform.worldPosition.x, cam.transform.worldPosition.y, cam.transform.worldPosition.z],
         cameraFov: (cam as any).fov ?? -1,
-        renderJobAttached: !!engine.getRenderJobOf(view),
+        renderJobAttached: !!engine.getRenderJob(view),
     };
 }
 
@@ -179,9 +179,9 @@ await test('create two Engine3D instances with isolated GPU devices', async () =
 
 await test('start two render loops on isolated scenes', async () => {
     engineA.use();
-    engineA.startView(viewA);
+    engineA.startRenderView(viewA);
     engineB.use();
-    engineB.startView(viewB);
+    engineB.startRenderView(viewB);
 
     // log initial state
     const reportA = snapshot(engineA, viewA, canvasA);

@@ -22,7 +22,7 @@ class Sample_BlendMode2 {
         view.scene = this.scene;
         view.camera = camera;
 
-        engine.startView(view);
+        engine.startRenderView(view);
 
         await this.initScene();
 

@@ -30,7 +30,7 @@ class Sample_Skeleton2 {
         view.scene = this.scene;
         view.camera = mainCamera;
 
-        engine.startView(view);
+        engine.startRenderView(view);
 
         await this.initScene(this.scene);
         sky.relativeTransform = this.lightObj3D.transform;

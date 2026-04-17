@@ -33,13 +33,13 @@ export class Sample_PointLightShadow {
         view.scene = this.scene;
         view.camera = mainCamera;
 
-        engine.startView(view);
+        engine.startRenderView(view);
 
         let post = this.scene.addComponent(PostProcessingComponent);
         post.addPost(FXAAPost);
 
         setTimeout(() => {
-            GUIUtil.renderDebug();
+            GUIUtil.renderDebug(view);
         }, 1000);
     }
 

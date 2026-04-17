@@ -37,7 +37,7 @@ class Sample_MatrixAllocation {
         view.scene = scene;
         view.camera = mainCamera;
 
-        engine.startView(view);
+        engine.startRenderView(view);
 
         GUIHelp.init();
         GUIHelp.addButton('add', () => {

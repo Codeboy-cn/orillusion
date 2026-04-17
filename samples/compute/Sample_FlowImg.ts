@@ -21,7 +21,7 @@ export class Demo_FlowImg {
         view.scene = scene;
         view.camera = camera;
 
-        engine.startView(view);
+        engine.startRenderView(view);
     }
 
     async initScene(scene: Scene3D) {

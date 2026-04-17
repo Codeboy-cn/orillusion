@@ -18,7 +18,7 @@ class Sample_PropertyAnimation {
         GUIHelp.init();
         let param = createSceneParam();
         param.camera.distance = 16;
-        let exampleScene = createExampleScene(param);
+        let exampleScene = createExampleScene(engine, param);
 
         GUIUtil.renderDirLight(exampleScene.light, false);
 
@@ -26,7 +26,7 @@ class Sample_PropertyAnimation {
         // exampleScene.camera.enableCSM = true;
         await this.initScene(this.scene);
 
-        engine.startView(exampleScene.view);
+        engine.startRenderView(exampleScene.view);
 
         let postCom = this.scene.addComponent(PostProcessingComponent);
         postCom.addPost(FXAAPost);

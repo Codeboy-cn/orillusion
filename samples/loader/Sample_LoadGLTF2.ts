@@ -12,9 +12,9 @@ class Sample_LoadGLTF2 {
 
         //init engine
         const engine = await Engine3D.create();
-        let exampleScene = createExampleScene();
+        let exampleScene = createExampleScene(engine);
         this.scene = exampleScene.scene;
-        engine.startView(exampleScene.view);
+        engine.startRenderView(exampleScene.view);
         await this.initScene();
     }
 
