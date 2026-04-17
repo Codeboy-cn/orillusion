@@ -99,6 +99,7 @@ export class GPUContext {
      */
     public static createPipeline(gpuRenderPipeline: GPURenderPipelineDescriptor) {
         ProfilerUtil.countStart("GPUContext", "pipeline");
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
         let pipeline: GPURenderPipeline = webGPUContext.device.createRenderPipeline(gpuRenderPipeline);
         return pipeline;
     }
@@ -110,8 +111,10 @@ export class GPUContext {
     public static beginCommandEncoder(): GPUCommandEncoder {
         ProfilerUtil.countStart("GPUContext", "beginCommandEncoder");
         if (this.LastCommand) {
+            // eslint-disable-next-line @typescript-eslint/no-deprecated
             webGPUContext.device.queue.submit([this.LastCommand.finish()]);
         }
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
         this.LastCommand = webGPUContext.device.createCommandEncoder();
         return this.LastCommand;
     }
@@ -122,6 +125,7 @@ export class GPUContext {
      */
     public static endCommandEncoder(command: GPUCommandEncoder) {
         if (this.LastCommand == command) {
+            // eslint-disable-next-line @typescript-eslint/no-deprecated
             webGPUContext.device.queue.submit([this.LastCommand.finish()]);
             this.LastCommand = null;
             ProfilerUtil.countStart("GPUContext", "endCommandEncoder");
@@ -134,6 +138,7 @@ export class GPUContext {
      * @returns renderBundleEncoder {@link GPURenderBundleEncoder}
      */
     public static recordBundleEncoder(des: GPURenderBundleEncoderDescriptor): GPURenderBundleEncoder {
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
         let bundleEncoder: GPURenderBundleEncoder = webGPUContext.device.createRenderBundleEncoder(des);
         return bundleEncoder;
     }
@@ -169,8 +174,10 @@ export class GPUContext {
             if (att0) {
                 if (renderPassState.multisample > 0) {
                     att0.view = renderPassState.multiTexture.createView();
+                    // eslint-disable-next-line @typescript-eslint/no-deprecated
                     att0.resolveTarget = webGPUContext.context.getCurrentTexture().createView();
                 } else {
+                    // eslint-disable-next-line @typescript-eslint/no-deprecated
                     att0.view = webGPUContext.context.getCurrentTexture().createView();
                 }
             }
