@@ -1,10 +1,14 @@
-import { PoolNode, RenderShaderPass } from "../../..";
+import { perContextResource } from "./Context3D";
 
 export class PipelinePool {
-    private static pipelineMap: Map<string, GPURenderPipeline> = new Map<string, GPURenderPipeline>();
+    private static _mapStore = perContextResource<Map<string, GPURenderPipeline>>();
+
+    private static map() {
+        return this._mapStore(() => new Map<string, GPURenderPipeline>());
+    }
 
     public static getSharePipeline(shaderVariant: string) {
-        let pipeline = this.pipelineMap.get(shaderVariant);
+        let pipeline = this.map().get(shaderVariant);
         if (pipeline) {
             return pipeline;
         } else {
@@ -13,6 +17,6 @@ export class PipelinePool {
     }
 
     public static setSharePipeline(shaderVariant: string, pipeline: GPURenderPipeline) {
-        this.pipelineMap.set(shaderVariant, pipeline);
+        this.map().set(shaderVariant, pipeline);
     }
 }

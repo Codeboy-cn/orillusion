@@ -46,7 +46,7 @@ export class SkyRenderer extends MeshRenderer {
             this.castNeedPass();
 
             if (!this._inRenderer && this.transform.scene3D) {
-                EntityCollect.instance.sky = this;
+                EntityCollect.instance.setSky(this.transform.scene3D, this);
                 this._inRenderer = true;
             }
         }

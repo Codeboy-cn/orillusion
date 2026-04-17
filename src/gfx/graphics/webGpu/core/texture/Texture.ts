@@ -1,10 +1,14 @@
 import { GPUAddressMode, GPUFilterMode } from '../../WebGPUConst';
 import { TextureMipmapGenerator } from './TextureMipmapGenerator';
-import { webGPUContext } from '../../Context3D';
-import { TextureMipmapCompute } from './TextureMipmapCompute';
+import { Context3D, webGPUContext, perContextResource } from '../../Context3D';
 
 /**
- * Texture
+ * Texture — CPU-authoritative scene-graph object. GPU resources
+ * (`gpuTexture`, `view`, `gpuSampler`, `gpuSampler_comparison`) are
+ * context-local: writes land on the currently-active `Context3D`'s slot,
+ * reads return the slot for the active context. This lets the same
+ * Texture instance participate in multiple Engine3D instances with each
+ * engine owning its own device-local GPU copy.
  * @group Texture
  */
 export class Texture implements GPUSamplerDescriptor {
@@ -20,9 +24,25 @@ export class Texture implements GPUSamplerDescriptor {
     public url: string;
 
     /**
-     * gpu texture
+     * gpu texture (per-Context3D). Reads auto-materialize against the
+     * currently-active Context3D if a descriptor is set: the first access
+     * from a new context creates the GPUTexture and replays the source
+     * image upload (if any) so the texture is usable immediately.
      */
-    protected gpuTexture: GPUTexture;
+    private _gpuTextures: Map<Context3D, GPUTexture> = new Map();
+    protected get gpuTexture(): GPUTexture {
+        let t = this._gpuTextures.get(webGPUContext);
+        if (!t && this.textureDescriptor) {
+            t = webGPUContext.device.createTexture(this.textureDescriptor);
+            this._gpuTextures.set(webGPUContext, t);
+            this._uploadSourceImage(t);
+        }
+        return t;
+    }
+    protected set gpuTexture(v: GPUTexture) {
+        if (v == null) this._gpuTextures.delete(webGPUContext);
+        else this._gpuTextures.set(webGPUContext, v);
+    }
 
     /**
      * Return index in texture array
@@ -30,19 +50,67 @@ export class Texture implements GPUSamplerDescriptor {
     public pid: number;
 
     /**
-     * GPUTextureView
+     * GPUTextureView (per-Context3D). Reads auto-materialize from
+     * `viewDescriptor` against the currently-active context when the
+     * underlying gpuTexture is a real GPUTexture (not an external one).
      */
-    public view: GPUTextureView | GPUExternalTexture; // Assigned later
+    private _views: Map<Context3D, GPUTextureView | GPUExternalTexture> = new Map();
+    public get view(): GPUTextureView | GPUExternalTexture {
+        let v = this._views.get(webGPUContext);
+        if (!v && this.viewDescriptor) {
+            const t = this.gpuTexture;
+            if (t instanceof GPUTexture) {
+                v = t.createView(this.viewDescriptor);
+                if (this.name) (v as GPUTextureView).label = this.name;
+                this._views.set(webGPUContext, v);
+            }
+        }
+        return v;
+    }
+    public set view(v: GPUTextureView | GPUExternalTexture) {
+        if (v == null) this._views.delete(webGPUContext);
+        else this._views.set(webGPUContext, v);
+    }
 
     /**
-     * GPUSampler
+     * GPUSampler (per-Context3D). Auto-materializes using this Texture as
+     * its own GPUSamplerDescriptor the first time each context asks.
      */
-    public gpuSampler: GPUSampler;
+    private _gpuSamplers: Map<Context3D, GPUSampler> = new Map();
+    public get gpuSampler(): GPUSampler {
+        let s = this._gpuSamplers.get(webGPUContext);
+        if (!s) {
+            s = webGPUContext.device.createSampler(this);
+            this._gpuSamplers.set(webGPUContext, s);
+        }
+        return s;
+    }
+    public set gpuSampler(v: GPUSampler) {
+        if (v == null) this._gpuSamplers.delete(webGPUContext);
+        else this._gpuSamplers.set(webGPUContext, v);
+    }
 
     /**
-     * GPUSampler for comparison
+     * GPUSampler for comparison (per-Context3D). Auto-materializes with
+     * `compare: 'less'` when the format/binding requests a comparison
+     * sampler (depth textures) and no explicit sampler has been set.
      */
-    public gpuSampler_comparison: GPUSampler;
+    private _gpuSamplers_cmp: Map<Context3D, GPUSampler> = new Map();
+    public get gpuSampler_comparison(): GPUSampler {
+        let s = this._gpuSamplers_cmp.get(webGPUContext);
+        if (!s) {
+            s = webGPUContext.device.createSampler({
+                compare: this._compare || 'less',
+                label: 'sampler_comparison',
+            });
+            this._gpuSamplers_cmp.set(webGPUContext, s);
+        }
+        return s;
+    }
+    public set gpuSampler_comparison(v: GPUSampler) {
+        if (v == null) this._gpuSamplers_cmp.delete(webGPUContext);
+        else this._gpuSamplers_cmp.set(webGPUContext, v);
+    }
 
     /**
      * GPUTextureFormat
@@ -299,14 +367,26 @@ export class Texture implements GPUSamplerDescriptor {
 
         this.updateGPUTexture();
 
-        let device = webGPUContext.device;
-        if (this.gpuTexture instanceof GPUTexture)
-            device.queue.copyExternalImageToTexture({ source: this._sourceImageData }, { texture: this.gpuTexture }, [this.width, this.height]);
-
-        if (this.useMipmap) {
+        // gpuTexture getter auto-uploads _sourceImageData for fresh slots,
+        // so accessing it here materializes the current context's copy.
+        const tex = this.gpuTexture;
+        if (tex instanceof GPUTexture && this.useMipmap) {
             TextureMipmapGenerator.webGPUGenerateMipmap(this);
-            // TextureMipmapCompute.createMipmap(this,this.mipmapCount);
         }
+    }
+
+    /**
+     * Upload the cached source image (if any) into the given GPU texture.
+     * Called from the gpuTexture getter when materializing a fresh slot on
+     * a new Context3D so multi-engine users don't have to re-issue loads.
+     */
+    private _uploadSourceImage(tex: GPUTexture) {
+        if (!this._sourceImageData) return;
+        webGPUContext.device.queue.copyExternalImageToTexture(
+            { source: this._sourceImageData },
+            { texture: tex },
+            [this.width, this.height],
+        );
     }
 
     /**
@@ -327,10 +407,9 @@ export class Texture implements GPUSamplerDescriptor {
                 this.updateTextureDescription();
                 this.updateGPUTexture();
 
-                let device = webGPUContext.device;
-                if (this.gpuTexture instanceof GPUTexture)
-                    device.queue.copyExternalImageToTexture({ source: this._sourceImageData }, { texture: this.gpuTexture }, [this.width, this.height]);
-                TextureMipmapGenerator.webGPUGenerateMipmap(this);
+                if (this.gpuTexture instanceof GPUTexture) {
+                    TextureMipmapGenerator.webGPUGenerateMipmap(this);
+                }
             }
         } else {
             this.samplerBindingLayout.type = 'non-filtering';
@@ -338,10 +417,8 @@ export class Texture implements GPUSamplerDescriptor {
                 this._useMipmap = false;
                 this.updateTextureDescription();
                 this.updateGPUTexture();
-
-                let device = webGPUContext.device;
-                if (this.gpuTexture instanceof GPUTexture)
-                    device.queue.copyExternalImageToTexture({ source: this._sourceImageData }, { texture: this.gpuTexture }, [this.width, this.height]);
+                // gpuTexture getter re-uploads _sourceImageData on access.
+                void this.gpuTexture;
             }
         }
 
@@ -368,38 +445,34 @@ export class Texture implements GPUSamplerDescriptor {
     }
 
     protected updateGPUTexture() {
-        if (this.gpuTexture) {
-            if (this.gpuTexture instanceof GPUTexture)
-                this.gpuTexture.destroy();
+        // Descriptor changed: destroy the GPU texture on every context this
+        // Texture has been materialized on and invalidate all views/samplers.
+        // The next access on each context re-materializes lazily from the
+        // current descriptor via the gpuTexture/view/gpuSampler getters.
+        for (const t of this._gpuTextures.values()) {
+            if (t instanceof GPUTexture) {
+                try { t.destroy(); } catch { /* ignore */ }
+            }
         }
-        this.gpuTexture = null;
-        this.view = null;
-        this.gpuTexture = this.getGPUTexture();
+        this._gpuTextures.clear();
+        this._views.clear();
+        this._gpuSamplers.clear();
+        this._gpuSamplers_cmp.clear();
     }
 
     /**
-     * create or get GPUTexture
-     * @returns GPUTexture
+     * create or get GPUTexture (delegates to the per-context gpuTexture
+     * getter, which handles lazy creation + source-image upload).
      */
     public getGPUTexture() {
-        if (!this.gpuTexture) {
-            this.gpuTexture = webGPUContext.device.createTexture(this.textureDescriptor);
-        }
         return this.gpuTexture;
     }
 
     /**
-     * create or get GPUTextureView
-     * @returns GPUTextureView | GPUExternalTexture
+     * create or get GPUTextureView (delegates to the per-context view
+     * getter, which handles lazy creation from `viewDescriptor`).
      */
-    public getGPUView(index: number = 0): GPUTextureView | GPUExternalTexture {
-        if (!this.view) {
-            this.gpuTexture = this.getGPUTexture();
-            if (this.gpuTexture instanceof GPUTexture) {
-                this.view = this.gpuTexture.createView(this.viewDescriptor);
-                this.view.label = this.name;
-            }
-        }
+    public getGPUView(_index: number = 0): GPUTextureView | GPUExternalTexture {
         return this.view;
     }
 
@@ -414,23 +487,31 @@ export class Texture implements GPUSamplerDescriptor {
     }
 
     protected noticeChange() {
-        this.gpuSampler = webGPUContext.device.createSampler(this);
-        this._stateChangeRef.forEach((v, k) => {
+        // Descriptor-affecting change: drop every context's cached sampler
+        // so the next access rebuilds from the updated GPUSamplerDescriptor.
+        this._gpuSamplers.clear();
+        this._gpuSamplers_cmp.clear();
+        this._stateChangeRef.forEach((v) => {
             v();
         });
     }
 
     /**
-     * release the texture
+     * release the texture on every context it's materialized on
      */
     public destroy(force?: boolean) {
-        if (force && this.gpuTexture instanceof GPUTexture) {
-            this.gpuSampler = null;
-            this.gpuSampler_comparison = null;
+        if (force) {
+            for (const t of this._gpuTextures.values()) {
+                if (t instanceof GPUTexture) {
+                    try { t.destroy(); } catch { /* ignore */ }
+                }
+            }
+            this._gpuTextures.clear();
+            this._views.clear();
+            this._gpuSamplers.clear();
+            this._gpuSamplers_cmp.clear();
             this.textureBindingLayout = null;
             this.textureDescriptor = null;
-            this.gpuTexture.destroy();
-            this.gpuTexture = null;
         }
         this._stateChangeRef.clear();
     }
@@ -545,17 +626,22 @@ export class Texture implements GPUSamplerDescriptor {
         }
     }
 
-    private static _texs: GPUTexture[] = [];
+    private static _texsStore = perContextResource<GPUTexture[]>();
+    private static _texs(): GPUTexture[] {
+        return this._texsStore(() => []);
+    }
     public static delayDestroyTexture(tex: GPUTexture) {
-        if (!this._texs.includes(tex)) {
-            this._texs.push(tex);
+        let list = this._texs();
+        if (!list.includes(tex)) {
+            list.push(tex);
         }
     }
 
     public static destroyTexture() {
-        if (this._texs.length > 0) {
-            while (this._texs.length > 0) {
-                this._texs.shift().destroy();
+        let list = this._texs();
+        if (list.length > 0) {
+            while (list.length > 0) {
+                list.shift().destroy();
             }
         }
     }

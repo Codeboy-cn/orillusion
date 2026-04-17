@@ -4,49 +4,16 @@ import { CResizeEvent } from '../../../event/CResizeEvent';
 import { CanvasConfig } from './CanvasConfig';
 
 /**
- * Shared WebGPU device state across Engine3D instances.
- * Device / adapter / format are obtained once and reused; each engine
- * keeps its own Context3D with a dedicated canvas + GPUCanvasContext.
- * @internal
- */
-export class SharedGPU {
-    public static adapter: GPUAdapter;
-    public static device: GPUDevice;
-    public static presentationFormat: GPUTextureFormat;
-    private static _initPromise: Promise<void>;
-
-    public static async init(): Promise<void> {
-        if (this.device) return;
-        if (this._initPromise) return this._initPromise;
-        this._initPromise = (async () => {
-            if (navigator.gpu === undefined) throw new Error('Your browser does not support WebGPU!');
-            this.adapter = await navigator.gpu.requestAdapter({ powerPreference: 'high-performance' });
-            if (!this.adapter) throw new Error('Your browser does not support WebGPU!');
-            this.device = await this.adapter.requestDevice({
-                requiredFeatures: [
-                    'bgra8unorm-storage',
-                    'depth-clip-control',
-                    'depth32float-stencil8',
-                    'indirect-first-instance',
-                    'rg11b10ufloat-renderable',
-                ],
-                requiredLimits: {
-                    minUniformBufferOffsetAlignment: 256,
-                    maxStorageBufferBindingSize: this.adapter.limits.maxStorageBufferBindingSize
-                }
-            });
-            if (!this.device) throw new Error('Your browser does not support WebGPU!');
-            this.device.label = 'device';
-            this.presentationFormat = navigator.gpu.getPreferredCanvasFormat();
-        })();
-        return this._initPromise;
-    }
-}
-
-/**
- * Per-instance WebGPU canvas context. Device/adapter/format are read
- * from SharedGPU; canvas / GPUCanvasContext / size are owned by the
- * instance.
+ * Per-instance WebGPU device/context. Each Engine3D instance owns its
+ * own Context3D with a dedicated GPUAdapter, GPUDevice, canvas and
+ * GPUCanvasContext. Devices are fully isolated — no GPU resource
+ * (texture, buffer, pipeline, layout) can be shared across contexts.
+ *
+ * Code that needs to create GPU resources reads `webGPUContext.device`,
+ * which is an ES-module `let` binding swapped to the currently-active
+ * Context3D by `setActiveContext3D()` before each engine renders. All
+ * device-bound static caches are keyed by Context3D (see
+ * `perContextResource()` in this module).
  * @internal
  */
 export class Context3D extends CEventDispatcher {
@@ -60,14 +27,33 @@ export class Context3D extends CEventDispatcher {
     private _pixelRatio: number = 1.0;
     private _resizeEvent: CEvent;
 
+    public adapter: GPUAdapter;
+    public device: GPUDevice;
+    public presentationFormat: GPUTextureFormat;
+
     public get pixelRatio() { return this._pixelRatio; }
 
-    public get adapter(): GPUAdapter { return SharedGPU.adapter; }
-    public get device(): GPUDevice { return SharedGPU.device; }
-    public get presentationFormat(): GPUTextureFormat { return SharedGPU.presentationFormat; }
-
     async init(canvasConfig?: CanvasConfig): Promise<boolean> {
-        await SharedGPU.init();
+        if (navigator.gpu === undefined) throw new Error('Your browser does not support WebGPU!');
+        this.adapter = await navigator.gpu.requestAdapter({ powerPreference: 'high-performance' });
+        if (!this.adapter) throw new Error('Your browser does not support WebGPU!');
+        this.device = await this.adapter.requestDevice({
+            requiredFeatures: [
+                'bgra8unorm-storage',
+                'depth-clip-control',
+                'depth32float-stencil8',
+                'indirect-first-instance',
+                'rg11b10ufloat-renderable',
+            ],
+            requiredLimits: {
+                minUniformBufferOffsetAlignment: 256,
+                maxStorageBufferBindingSize: this.adapter.limits.maxStorageBufferBindingSize
+            }
+        });
+        if (!this.device) throw new Error('Your browser does not support WebGPU!');
+        this.device.label = `device-${Context3D._nextLabel++}`;
+        this.presentationFormat = navigator.gpu.getPreferredCanvasFormat();
+
         this.canvasConfig = canvasConfig;
         if (canvasConfig && canvasConfig.canvas) {
             this.canvas = canvasConfig.canvas;
@@ -98,8 +84,8 @@ export class Context3D extends CEventDispatcher {
 
         this.context = this.canvas.getContext('webgpu');
         this.context.configure({
-            device: SharedGPU.device,
-            format: SharedGPU.presentationFormat,
+            device: this.device,
+            format: this.presentationFormat,
             usage: GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT,
             alphaMode: 'premultiplied',
             colorSpace: `srgb`
@@ -132,13 +118,15 @@ export class Context3D extends CEventDispatcher {
             this.dispatchEvent(this._resizeEvent);
         }
     }
+
+    private static _nextLabel: number = 0;
 }
 
 /**
  * Active Context3D. Most engine code reads `webGPUContext.canvas`,
  * `.context`, `.presentationSize`, `.device` etc. Before rendering a
  * specific engine, call `setActiveContext3D(engine.context3D)` so these
- * references point at the right canvas.
+ * references point at the right device.
  * @internal
  */
 export let webGPUContext: Context3D = new Context3D();
@@ -149,4 +137,33 @@ export function setActiveContext3D(ctx: Context3D): void {
 
 export function getActiveContext3D(): Context3D {
     return webGPUContext;
+}
+
+/**
+ * Helper for device-bound static caches: store one factory-created value
+ * per Context3D. Call like:
+ *   private static _cache = perContextResource<MyThing>();
+ *   static get(): MyThing { return this._cache(() => new MyThing()); }
+ * Each engine's device sees its own cached instance.
+ * @internal
+ */
+export function perContextResource<T>(): (factory: () => T, ctx?: Context3D) => T {
+    const store = new WeakMap<Context3D, T>();
+    return (factory: () => T, ctx: Context3D = webGPUContext): T => {
+        let v = store.get(ctx);
+        if (v === undefined) {
+            v = factory();
+            store.set(ctx, v);
+        }
+        return v;
+    };
+}
+
+/** Backwards-compat shim: tests/old samples may import SharedGPU. */
+export class SharedGPU {
+    public static get adapter(): GPUAdapter { return webGPUContext.adapter; }
+    public static get device(): GPUDevice { return webGPUContext.device; }
+    public static get presentationFormat(): GPUTextureFormat { return webGPUContext.presentationFormat; }
+    /** No-op — devices are now per Context3D. Kept for API compatibility. */
+    public static async init(): Promise<void> { /* intentional */ }
 }

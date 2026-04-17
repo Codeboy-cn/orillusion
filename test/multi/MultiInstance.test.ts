@@ -86,88 +86,101 @@ let engineB!: Engine3D;
 let viewA!: View3D;
 let viewB!: View3D;
 
-await test('create two Engine3D instances sharing GPU device', async () => {
+await test('create two Engine3D instances with isolated GPU devices', async () => {
+    // Build each engine's scene while that engine's Context3D is active so
+    // all GPU resources (buffers, samplers, default textures) are created
+    // on that engine's device. The pattern is create → (use →) build → startView.
     engineA = await Engine3D.create({ canvasConfig: { canvas: canvasA, devicePixelRatio: 1 } });
+    engineA.use();
+    {
+        // ----- Scene A: red box + direct light -----
+        const sceneA = new Scene3D();
+        sceneA.addComponent(AtmosphericComponent);
+
+        const camA = CameraUtil.createCamera3D(null, sceneA);
+        camA.perspective(60, engineA.context3D.aspect, 1, 2000);
+        const ctrlA = camA.object3D.addComponent(HoverCameraController);
+        ctrlA.setCamera(30, -15, 120);
+
+        const lightObjA = new Object3D();
+        lightObjA.rotationX = 45; lightObjA.rotationY = 60;
+        const dirA = lightObjA.addComponent(DirectLight);
+        dirA.lightColor = KelvinUtil.color_temperature_to_rgb(5500);
+        dirA.intensity = 3;
+        sceneA.addChild(lightObjA);
+
+        const boxA = new Object3D();
+        boxA.name = 'redBox';
+        const mrA = boxA.addComponent(MeshRenderer);
+        mrA.geometry = new BoxGeometry(40, 40, 40);
+        const matA = new LitMaterial();
+        matA.baseColor = new Color(1, 0.15, 0.15, 1);
+        mrA.material = matA;
+        sceneA.addChild(boxA);
+
+        viewA = new View3D();
+        viewA.scene = sceneA;
+        viewA.camera = camA;
+    }
+
     engineB = await Engine3D.create({ canvasConfig: { canvas: canvasB, devicePixelRatio: 1 } });
+    engineB.use();
+    {
+        // ----- Scene B: blue sphere + point light -----
+        const sceneB = new Scene3D();
+        sceneB.addComponent(AtmosphericComponent);
+
+        const camB = CameraUtil.createCamera3D(null, sceneB);
+        camB.perspective(45, engineB.context3D.aspect, 1, 2000);
+        const ctrlB = camB.object3D.addComponent(HoverCameraController);
+        ctrlB.setCamera(0, 0, 140);
+
+        const ptLightObj = new Object3D();
+        ptLightObj.transform.x = 40;
+        ptLightObj.transform.y = 30;
+        const ptLight = ptLightObj.addComponent(PointLight);
+        ptLight.lightColor = new Color(1, 1, 1);
+        ptLight.intensity = 30;
+        ptLight.range = 300;
+        sceneB.addChild(ptLightObj);
+
+        const sphB = new Object3D();
+        sphB.name = 'blueSphere';
+        const mrB = sphB.addComponent(MeshRenderer);
+        mrB.geometry = new SphereGeometry(25, 32, 32);
+        const matB = new LitMaterial();
+        matB.baseColor = new Color(0.1, 0.4, 1.0, 1);
+        mrB.material = matB;
+        sceneB.addChild(sphB);
+
+        viewB = new View3D();
+        viewB.scene = sceneB;
+        viewB.camera = camB;
+    }
 
     const diffIds = engineA.id !== engineB.id;
-    const sameDevice = engineA.context3D.device === engineB.context3D.device;
+    const diffDevices = engineA.context3D.device !== engineB.context3D.device;
+    const diffAdapters = engineA.context3D.adapter !== engineB.context3D.adapter;
     const canvasAok = engineA.context3D.canvas === canvasA;
     const canvasBok = engineB.context3D.canvas === canvasB;
     const diffContexts = engineA.context3D !== engineB.context3D;
     console.log('[multi] engineA.id =', engineA.id, 'engineB.id =', engineB.id);
-    console.log('[multi] shared device =', sameDevice);
+    console.log('[multi] isolated devices =', diffDevices);
+    console.log('[multi] isolated adapters =', diffAdapters);
     console.log('[multi] distinct context3D =', diffContexts);
     console.log('[multi] canvasA bound =', canvasAok, ', canvasB bound =', canvasBok);
 
     expect(diffIds).toEqual(true);
-    expect(sameDevice).toEqual(true);
+    expect(diffDevices).toEqual(true);
     expect(diffContexts).toEqual(true);
     expect(canvasAok).toEqual(true);
     expect(canvasBok).toEqual(true);
 });
 
-await test('build isolated scenes and start two render loops', async () => {
-    // ----- Scene A: red box + direct light -----
-    const sceneA = new Scene3D();
-    sceneA.addComponent(AtmosphericComponent);
-
-    const camA = CameraUtil.createCamera3D(null, sceneA);
-    camA.perspective(60, engineA.context3D.aspect, 1, 2000);
-    const ctrlA = camA.object3D.addComponent(HoverCameraController);
-    ctrlA.setCamera(30, -15, 120);
-
-    const lightObjA = new Object3D();
-    lightObjA.rotationX = 45; lightObjA.rotationY = 60;
-    const dirA = lightObjA.addComponent(DirectLight);
-    dirA.lightColor = KelvinUtil.color_temperature_to_rgb(5500);
-    dirA.intensity = 3;
-    sceneA.addChild(lightObjA);
-
-    const boxA = new Object3D();
-    boxA.name = 'redBox';
-    const mrA = boxA.addComponent(MeshRenderer);
-    mrA.geometry = new BoxGeometry(40, 40, 40);
-    const matA = new LitMaterial();
-    matA.baseColor = new Color(1, 0.15, 0.15, 1);
-    mrA.material = matA;
-    sceneA.addChild(boxA);
-
-    viewA = new View3D();
-    viewA.scene = sceneA;
-    viewA.camera = camA;
+await test('start two render loops on isolated scenes', async () => {
+    engineA.use();
     engineA.startView(viewA);
-
-    // ----- Scene B: blue sphere + point light -----
-    const sceneB = new Scene3D();
-    sceneB.addComponent(AtmosphericComponent);
-
-    const camB = CameraUtil.createCamera3D(null, sceneB);
-    camB.perspective(45, engineB.context3D.aspect, 1, 2000);
-    const ctrlB = camB.object3D.addComponent(HoverCameraController);
-    ctrlB.setCamera(0, 0, 140);
-
-    const ptLightObj = new Object3D();
-    ptLightObj.transform.x = 40;
-    ptLightObj.transform.y = 30;
-    const ptLight = ptLightObj.addComponent(PointLight);
-    ptLight.lightColor = new Color(1, 1, 1);
-    ptLight.intensity = 30;
-    ptLight.range = 300;
-    sceneB.addChild(ptLightObj);
-
-    const sphB = new Object3D();
-    sphB.name = 'blueSphere';
-    const mrB = sphB.addComponent(MeshRenderer);
-    mrB.geometry = new SphereGeometry(25, 32, 32);
-    const matB = new LitMaterial();
-    matB.baseColor = new Color(0.1, 0.4, 1.0, 1);
-    mrB.material = matB;
-    sceneB.addChild(sphB);
-
-    viewB = new View3D();
-    viewB.scene = sceneB;
-    viewB.camera = camB;
+    engineB.use();
     engineB.startView(viewB);
 
     // log initial state
@@ -203,6 +216,131 @@ await test('both engines advance their render loops', async () => {
 
     expect(deltaA > 5).toEqual(true);
     expect(deltaB > 5).toEqual(true);
+});
+
+await test('share one Geometry + Material + Texture across both engines', async () => {
+    // Build *one* shared JS-side scene-graph object set and attach it to
+    // Object3Ds in both engines. The per-context GPU resource Maps should
+    // let each engine upload its own device copy transparently.
+    const sharedGeo = new BoxGeometry(20, 20, 20);
+
+    // Build a tiny CPU-side image and feed it through BitmapTexture2D so
+    // the Texture has a concrete `_sourceImageData` for auto-re-upload.
+    // BitmapTexture2D only generates from HTMLCanvasElement / ImageBitmap,
+    // so we draw into a DOM <canvas> here.
+    const cvs = document.createElement('canvas');
+    cvs.width = 32; cvs.height = 32;
+    const g = cvs.getContext('2d')!;
+    g.fillStyle = '#ff00ff';
+    g.fillRect(0, 0, 32, 32);
+    g.fillStyle = '#00ffff';
+    g.fillRect(0, 0, 16, 16);
+    g.fillRect(16, 16, 16, 16);
+    const { BitmapTexture2D, GPUTextureFormat } = await import('@orillusion/core');
+    const sharedTex = new BitmapTexture2D(false);
+    sharedTex.format = GPUTextureFormat.rgba8unorm;
+    (sharedTex as any).source = cvs;
+    // Give the generator a chance to finish its uploads.
+    for (let i = 0; i < 10; i++) await delay(20);
+
+    const sharedMat = new LitMaterial();
+    sharedMat.baseColor = new Color(1, 1, 1, 1);
+    sharedMat.baseMap = sharedTex;
+
+    // Attach the same geometry/material to a new Object3D in each scene.
+    engineA.use();
+    const hostA = new Object3D();
+    hostA.name = 'sharedHostA';
+    hostA.transform.x = -30;
+    const mrSA = hostA.addComponent(MeshRenderer);
+    mrSA.geometry = sharedGeo;
+    mrSA.material = sharedMat;
+    viewA.scene.addChild(hostA);
+
+    engineB.use();
+    const hostB = new Object3D();
+    hostB.name = 'sharedHostB';
+    hostB.transform.x = 30;
+    const mrSB = hostB.addComponent(MeshRenderer);
+    mrSB.geometry = sharedGeo;
+    mrSB.material = sharedMat;
+    viewB.scene.addChild(hostB);
+
+    // Let both engines advance a few frames so each device materializes
+    // its own GPU resources for the shared objects.
+    const startA = engineA.frameCount;
+    const startB = engineB.frameCount;
+    for (let i = 0; i < 20; i++) await delay(50);
+
+    const deltaA = engineA.frameCount - startA;
+    const deltaB = engineB.frameCount - startB;
+
+    // Introspect the shared texture: it should be materialized on both
+    // contexts (one GPUTexture per device).
+    const texCtxCount = (sharedTex as any)._gpuTextures?.size ?? -1;
+    console.log('[multi] shared texture materialized on', texCtxCount, 'contexts');
+    console.log('[multi] engineA advanced', deltaA, 'frames, engineB advanced', deltaB, 'frames');
+
+    expect(deltaA > 5).toEqual(true);
+    expect(deltaB > 5).toEqual(true);
+    expect(texCtxCount >= 2).toEqual(true);
+});
+
+await test('build & render a shared scene graph WITHOUT calling engine.use()', async () => {
+    // Build geometry/material/texture with the currently-active context
+    // being whatever was left by the previous test, then attach to both
+    // engines' scenes. We never call engine.use() here — phase 2/3 lazy
+    // per-context materialization should cover us at render time.
+    const { BitmapTexture2D, GPUTextureFormat } = await import('@orillusion/core');
+
+    const cvs = document.createElement('canvas');
+    cvs.width = 32; cvs.height = 32;
+    const g = cvs.getContext('2d')!;
+    g.fillStyle = '#ffaa00';
+    g.fillRect(0, 0, 32, 32);
+    g.fillStyle = '#0044ff';
+    g.fillRect(8, 8, 16, 16);
+
+    const sharedTex2 = new BitmapTexture2D(false);
+    sharedTex2.format = GPUTextureFormat.rgba8unorm;
+    (sharedTex2 as any).source = cvs;
+    for (let i = 0; i < 10; i++) await delay(20);
+
+    const sharedGeo2 = new SphereGeometry(10, 16, 16);
+    const sharedMat2 = new LitMaterial();
+    sharedMat2.baseColor = new Color(1, 1, 1, 1);
+    sharedMat2.baseMap = sharedTex2;
+
+    // No engineA.use() / engineB.use() anywhere in this test.
+    const hostA2 = new Object3D();
+    hostA2.name = 'noUseHostA';
+    hostA2.transform.y = 25;
+    const mrA2 = hostA2.addComponent(MeshRenderer);
+    mrA2.geometry = sharedGeo2;
+    mrA2.material = sharedMat2;
+    viewA.scene.addChild(hostA2);
+
+    const hostB2 = new Object3D();
+    hostB2.name = 'noUseHostB';
+    hostB2.transform.y = -25;
+    const mrB2 = hostB2.addComponent(MeshRenderer);
+    mrB2.geometry = sharedGeo2;
+    mrB2.material = sharedMat2;
+    viewB.scene.addChild(hostB2);
+
+    const startA = engineA.frameCount;
+    const startB = engineB.frameCount;
+    for (let i = 0; i < 20; i++) await delay(50);
+    const deltaA = engineA.frameCount - startA;
+    const deltaB = engineB.frameCount - startB;
+
+    const texCtx = (sharedTex2 as any)._gpuTextures?.size ?? -1;
+    console.log('[multi] (no-use) texture materialized on', texCtx, 'contexts');
+    console.log('[multi] (no-use) engineA advanced', deltaA, 'engineB advanced', deltaB);
+
+    expect(deltaA > 5).toEqual(true);
+    expect(deltaB > 5).toEqual(true);
+    expect(texCtx >= 2).toEqual(true);
 });
 
 setTimeout(end, 500);

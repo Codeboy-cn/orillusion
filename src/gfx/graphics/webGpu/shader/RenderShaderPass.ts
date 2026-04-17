@@ -10,7 +10,7 @@ import { GlobalBindGroupLayout } from "../core/bindGroups/GlobalBindGroupLayout"
 import { GPUBufferBase } from "../core/buffer/GPUBufferBase";
 import { UniformNode } from "../core/uniforms/UniformNode";
 import { Texture } from "../core/texture/Texture";
-import { webGPUContext } from "../Context3D";
+import { Context3D, webGPUContext } from "../Context3D";
 import { ShaderConverter } from "./converter/ShaderConverter";
 import { ShaderPassBase } from "./ShaderPassBase";
 import { ShaderStage } from "./ShaderStage";
@@ -56,14 +56,31 @@ export class RenderShaderPass extends ShaderPassBase {
     public textures: { [name: string]: Texture };
 
     /**
-     * Render pipeline
+     * Render pipeline (per-Context3D — same RenderShaderPass instance can be
+     * used by multiple Engine3D instances, each getting its own pipeline).
      */
-    public pipeline: GPURenderPipeline;
+    private _pipelines: Map<Context3D, GPURenderPipeline> = new Map();
+    public get pipeline(): GPURenderPipeline { return this._pipelines.get(webGPUContext); }
+    public set pipeline(v: GPURenderPipeline) {
+        if (v == null) this._pipelines.delete(webGPUContext);
+        else this._pipelines.set(webGPUContext, v);
+    }
 
     /**
-     * BindGroup layout
+     * BindGroup layouts (per-Context3D)
      */
-    public bindGroupLayouts: GPUBindGroupLayout[];
+    private _bindGroupLayouts: Map<Context3D, GPUBindGroupLayout[]> = new Map();
+    public get bindGroupLayouts(): GPUBindGroupLayout[] {
+        let arr = this._bindGroupLayouts.get(webGPUContext);
+        if (!arr) {
+            arr = [];
+            this._bindGroupLayouts.set(webGPUContext, arr);
+        }
+        return arr;
+    }
+    public set bindGroupLayouts(v: GPUBindGroupLayout[]) {
+        this._bindGroupLayouts.set(webGPUContext, v);
+    }
 
 
 
@@ -347,12 +364,16 @@ export class RenderShaderPass extends ShaderPassBase {
     public apply(geometry: GeometryBase, rendererPassState: RendererPassState, noticeFun?: Function) {
         this.materialDataUniformBuffer.apply();
 
-        if (this._textureChange && this._textureGroup != -1) {
-            this._textureChange = false;
-            this.genGroups(this._textureGroup, this.shaderReflection.groups, true);
-        }
-
-        if (this._valueChange) {
+        // Rebuild when shader state changed OR when this Context3D has not
+        // yet seen a pipeline (e.g. same RenderShaderPass first rendered
+        // under Engine A, now being rendered under Engine B). The second
+        // check makes materials sharable across engines.
+        //
+        // Pipeline rebuild must happen before any per-group rebuild below,
+        // since genGroups for this context reads this.bindGroupLayouts,
+        // which is only populated by createGroupLayouts inside reBuild.
+        const needsPipelineForCtx = !this._pipelines.has(webGPUContext);
+        if (this._valueChange || needsPipelineForCtx) {
             if (this._shaderChange) {
                 this.preCompile(geometry);
                 this._shaderChange = false;
@@ -360,10 +381,18 @@ export class RenderShaderPass extends ShaderPassBase {
             this.shaderVariant = ShaderReflection.genRenderShaderVariant(this);
             this.reBuild(geometry, rendererPassState);
             this._valueChange = false;
-            // this.genRenderPipeline(geometry, rendererPassState);
+            // reBuild's createGroupLayouts already regenerates every bind
+            // group for the active context, so clear the textureChange
+            // flag to avoid a redundant (and at this point safe) rebuild.
+            this._textureChange = false;
             if (noticeFun) {
                 noticeFun();
             }
+        }
+
+        if (this._textureChange && this._textureGroup != -1) {
+            this._textureChange = false;
+            this.genGroups(this._textureGroup, this.shaderReflection.groups, true);
         }
     }
 

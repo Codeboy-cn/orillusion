@@ -1,6 +1,6 @@
 import { VirtualTexture } from '../../../textures/VirtualTexture';
 import { Texture } from '../../graphics/webGpu/core/texture/Texture';
-import { webGPUContext } from '../../graphics/webGpu/Context3D';
+import { webGPUContext, perContextResource } from '../../graphics/webGpu/Context3D';
 import { TextureCubeUtils } from './TextureCubeUtils';
 import { GPUContext } from '../../renderJob/GPUContext';
 import { ErpImage2CubeMapCreateCube_cs } from '../../../assets/shader/compute/ErpImage2CubeMapCreateCube_cs';
@@ -76,14 +76,13 @@ export class ErpImage2CubeMap {
         configBuffer.destroy();
     }
 
-    private static makeFaceTexturePipeline: GPUComputePipeline;
-    private static configBuffer: GPUBuffer;
-    private static quaternionBuffer: GPUBuffer;
+    private static _state = perContextResource<{ makeFaceTexturePipeline: GPUComputePipeline; configBuffer: GPUBuffer; quaternionBuffer: GPUBuffer }>();
 
     //Image is the float32 color value converted from rgbe to rgba
     public static makeTextureCube(image: Texture, dstSize: number, dstView: GPUTextureView): void {
         const device = webGPUContext.device;
-        ErpImage2CubeMap.makeFaceTexturePipeline ||= device.createComputePipeline({
+        const state = this._state(() => ({ makeFaceTexturePipeline: null, configBuffer: null, quaternionBuffer: null }));
+        state.makeFaceTexturePipeline ||= device.createComputePipeline({
             layout: `auto`,
             compute: {
                 module: device.createShaderModule({
@@ -92,20 +91,20 @@ export class ErpImage2CubeMap {
                 entryPoint: 'main',
             },
         });
-        const computePipeline = ErpImage2CubeMap.makeFaceTexturePipeline;
+        const computePipeline = state.makeFaceTexturePipeline;
 
         //config
         const configStride = 4 * 4; //4 float
-        ErpImage2CubeMap.configBuffer ||= device.createBuffer({
+        state.configBuffer ||= device.createBuffer({
             size: configStride,
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
         });
-        device.queue.writeBuffer(ErpImage2CubeMap.configBuffer, 0, new Uint32Array([image.width, image.height, dstSize, dstSize]));
+        device.queue.writeBuffer(state.configBuffer, 0, new Uint32Array([image.width, image.height, dstSize, dstSize]));
 
         //quaternion
         const quaternionSize = 4 * 6; ////xyzw * float
-        if (!ErpImage2CubeMap.quaternionBuffer) {
-            ErpImage2CubeMap.quaternionBuffer = device.createBuffer({
+        if (!state.quaternionBuffer) {
+            state.quaternionBuffer = device.createBuffer({
                 size: quaternionSize * 4 * 6,
                 usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
             });
@@ -118,7 +117,7 @@ export class ErpImage2CubeMap {
                 qArray[i * 4 + 2] = q.z;
                 qArray[i * 4 + 3] = q.w;
             }
-            device.queue.writeBuffer(ErpImage2CubeMap.quaternionBuffer, 0, qArray);
+            device.queue.writeBuffer(state.quaternionBuffer, 0, qArray);
         }
 
         //output
@@ -126,14 +125,14 @@ export class ErpImage2CubeMap {
             {
                 binding: 0,
                 resource: {
-                    buffer: ErpImage2CubeMap.configBuffer,
+                    buffer: state.configBuffer,
                     size: 4 * 4,
                 },
             },
             {
                 binding: 1,
                 resource: {
-                    buffer: ErpImage2CubeMap.quaternionBuffer,
+                    buffer: state.quaternionBuffer,
                     size: quaternionSize * 4,
                 },
             },

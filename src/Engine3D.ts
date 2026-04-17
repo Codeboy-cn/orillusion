@@ -6,7 +6,7 @@ import { InputSystem } from './io/InputSystem';
 import { View3D } from './core/View3D';
 import { version } from '../package.json';
 
-import { Context3D, SharedGPU, setActiveContext3D } from './gfx/graphics/webGpu/Context3D';
+import { Context3D, perContextResource, setActiveContext3D } from './gfx/graphics/webGpu/Context3D';
 import { RTResourceMap } from './gfx/renderJob/frame/RTResourceMap';
 
 import { ForwardRenderJob } from './gfx/renderJob/jobs/ForwardRenderJob';
@@ -131,8 +131,22 @@ export class Engine3D {
         reflectionSetting: { reflectionProbeMaxCount: 8, reflectionProbeSize: 256, width: 256 * 6, height: 8 * 256, enable: true }
     };
 
-    /** Shared resource manager (initialized lazily). */
-    public static res: Res;
+    /** Per-instance resource manager (initialized lazily per-device).
+     *  The `Res` instance is cached in the store *before* `initDefault()`
+     *  runs, because `initDefault()` creates a `LitMaterial` whose default
+     *  shader recursively reads `Engine3D.res` — the re-entrant call must
+     *  see the same (partially-initialized) instance instead of looping
+     *  the factory.
+     */
+    private static _resStore = perContextResource<Res>();
+    public static get res(): Res {
+        const r = this._resStore(() => new Res());
+        if (!(r as any)._didInitDefault) {
+            (r as any)._didInitDefault = true;
+            r.initDefault();
+        }
+        return r;
+    }
 
     /** All registered engine instances (for the shared render loop). */
     private static _instances: Set<Engine3D> = new Set();
@@ -208,7 +222,7 @@ export class Engine3D {
         return inst;
     }
 
-    /** Initialize shared cross-instance subsystems (WebGPU device, shader lib, etc.). Idempotent. */
+    /** One-time process-wide init (shader text templates, wasm matrix pool, settings). */
     private static async _initSharedSubsystems(settingOverride?: EngineSetting) {
         if (settingOverride) this.setting = { ...this.setting, ...settingOverride };
         if (this._sharedInit) return;
@@ -217,15 +231,10 @@ export class Engine3D {
             console.warn('WebGPU is only supported in secure contexts (HTTPS or localhost)');
         }
         await WasmMatrix.init(Matrix4.allocCount, this.setting.doublePrecision);
-        await SharedGPU.init();
         this.setting.reflectionSetting.width = this.setting.reflectionSetting.reflectionProbeSize * 6;
         this.setting.reflectionSetting.height = this.setting.reflectionSetting.reflectionProbeSize * this.setting.reflectionSetting.reflectionProbeMaxCount;
         ShaderLib.init();
-        ShaderUtil.init();
-        GlobalBindGroup.init();
         ShadowLightsCollect.init();
-        this.res = new Res();
-        this.res.initDefault();
         this._sharedInit = true;
     }
 
@@ -235,8 +244,13 @@ export class Engine3D {
         setActiveContext3D(this.context3D);
         await this.context3D.init(descriptor.canvasConfig);
 
-        // Instance-local resource registries.
+        // Device-scoped subsystem init.
+        ShaderUtil.init();
+        GlobalBindGroup.init();
         RTResourceMap.init();
+
+        // Eagerly create this device's default textures / BRDF LUT /sky cube.
+        void Engine3D.res;
 
         // Pre-compute reflection GBuffer (scoped to this engine's context).
         GBufferFrame.getGBufferFrame(
@@ -260,6 +274,24 @@ export class Engine3D {
         this._frameRate = value;
         this._frameRateValue = 1000 / value;
         if (value >= 360) this._frameRateValue = 0;
+    }
+
+    /**
+     * Set this engine's Context3D as the currently-active WebGPU context.
+     *
+     * **Normally not needed.** Scene-graph objects (Geometry, Material,
+     * Texture) materialize their GPU resources lazily per-context on first
+     * access during render, so building scenes in any order across
+     * multiple engines works without calling `use()`. This method remains
+     * as an escape hatch for code that performs eager GPU work at
+     * construction time (some advanced custom Material / custom Texture
+     * subclasses) and wants to pick which device that work targets.
+     *
+     * Returns the engine for fluent chaining.
+     */
+    public use(): this {
+        setActiveContext3D(this.context3D);
+        return this;
     }
 
     public dispose() {

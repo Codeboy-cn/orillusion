@@ -108,9 +108,10 @@ export class RendererBase extends CEventDispatcher {
                 renderPassEncoder.executeBundles(op_bundleList);
             }
 
-            if (!maskTr && EntityCollect.instance.sky) {
+            const sky = EntityCollect.instance.getSky(view.scene);
+            if (!maskTr && sky) {
                 GPUContext.bindCamera(renderPassEncoder, camera);
-                EntityCollect.instance.sky.renderPass2(view, this._rendererType, this.rendererPassState, clusterLightingBuffer, renderPassEncoder);
+                sky.renderPass2(view, this._rendererType, this.rendererPassState, clusterLightingBuffer, renderPassEncoder);
             }
 
             this.drawRenderNodes(view, renderPassEncoder, command, collectInfo.opaqueList, occlusionSystem);

@@ -1,5 +1,5 @@
 import { Texture } from '../core/texture/Texture';
-import { webGPUContext } from '../Context3D';
+import { Context3D, webGPUContext } from '../Context3D';
 import { ShaderPassBase } from './ShaderPassBase';
 import { ShaderReflection, ShaderReflectionVarInfo } from './value/ShaderReflectionInfo';
 import { Preprocessor } from './util/Preprocessor';
@@ -34,7 +34,14 @@ export class ComputeShader extends ShaderPassBase {
      */
     public workerSizeZ: number = 0;
 
-    protected _computePipeline: GPUComputePipeline;
+    // per-Context3D compute pipeline; same ComputeShader can be dispatched
+    // from multiple Engine3D instances, each holding its own device-local pipeline.
+    private _computePipelines: Map<Context3D, GPUComputePipeline> = new Map();
+    protected get _computePipeline(): GPUComputePipeline { return this._computePipelines.get(webGPUContext); }
+    protected set _computePipeline(v: GPUComputePipeline) {
+        if (v == null) this._computePipelines.delete(webGPUContext);
+        else this._computePipelines.set(webGPUContext, v);
+    }
     protected _csShaderModule: GPUShaderModule;
     protected _destCS: string;
     protected _sourceCS: string;

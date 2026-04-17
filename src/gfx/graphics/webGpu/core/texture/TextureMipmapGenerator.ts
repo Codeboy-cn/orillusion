@@ -1,6 +1,5 @@
 import { GPUContext } from '../../../../renderJob/GPUContext';
-import { webGPUContext } from '../../Context3D';
-import { GPUFilterMode } from '../../WebGPUConst';
+import { webGPUContext, perContextResource } from '../../Context3D';
 import { Texture } from './Texture';
 /**
  * @internal
@@ -34,12 +33,15 @@ export class TextureMipmapGenerator {
         return outColor;
         }
       `;
-    private static pipelineCache: { [key: string]: GPURenderPipeline } = {};
-    private static pipeline: any;
+    private static _pipelineCacheStore = perContextResource<{ [key: string]: GPURenderPipeline }>();
+    private static get pipelineCache(): { [key: string]: GPURenderPipeline } {
+        return TextureMipmapGenerator._pipelineCacheStore(() => ({}));
+    }
 
     public static getMipmapPipeline(texture: Texture) {
         let gpuDevice = webGPUContext.device;
-        let pipeline: GPURenderPipeline = TextureMipmapGenerator.pipelineCache[texture.format];
+        let cache = TextureMipmapGenerator.pipelineCache;
+        let pipeline: GPURenderPipeline = cache[texture.format];
         if (!pipeline) {
             // Create a simple shader that renders a fullscreen textured quad.
             const mipmapShaderModule = gpuDevice.createShaderModule({
@@ -91,7 +93,7 @@ export class TextureMipmapGenerator {
                     stripIndexFormat: 'uint32',
                 },
             });
-            TextureMipmapGenerator.pipelineCache[texture.format] = pipeline;
+            cache[texture.format] = pipeline;
         }
         return pipeline;
     }

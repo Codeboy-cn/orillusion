@@ -44,8 +44,9 @@ export class Scene3D extends Object3D {
             this.envMapChange = true;
         }
         this._envMap = value;
-        if (EntityCollect.instance.sky && `map` in EntityCollect.instance.sky)
-            EntityCollect.instance.sky.map = value;
+        const sky = EntityCollect.instance.getSky(this);
+        if (sky && `map` in sky)
+            (sky as any).map = value;
 
         // let reflection = new Object3D();
         // let ref = reflection.addComponent(SphereReflection);
@@ -62,8 +63,9 @@ export class Scene3D extends Object3D {
      *  A smaller value produces a sky box with weaker exposure and a darker appearance.
      */
     public get exposure(): number {
-        if (EntityCollect.instance.sky && `exposure` in EntityCollect.instance.sky)
-            return EntityCollect.instance.sky.exposure as number;
+        const sky = EntityCollect.instance.getSky(this);
+        if (sky && `exposure` in sky)
+            return (sky as any).exposure as number;
         return 0;
     }
 
@@ -71,8 +73,9 @@ export class Scene3D extends Object3D {
      * Set the exposure of the Sky Box.
      */
     public set exposure(value: number) {
-        if (EntityCollect.instance.sky && `exposure` in EntityCollect.instance.sky) {
-            EntityCollect.instance.sky.exposure = value;
+        const sky = EntityCollect.instance.getSky(this);
+        if (sky && `exposure` in sky) {
+            (sky as any).exposure = value;
             Engine3D.setting.sky.skyExposure = value;
         }
     }
@@ -81,8 +84,9 @@ export class Scene3D extends Object3D {
      * Get the roughness of the Sky Box.
      */
     public get roughness(): number {
-        if (EntityCollect.instance.sky && `roughness` in EntityCollect.instance.sky) {
-            return EntityCollect.instance.sky.roughness as number;
+        const sky = EntityCollect.instance.getSky(this);
+        if (sky && `roughness` in sky) {
+            return (sky as any).roughness as number;
         }
     }
 
@@ -90,8 +94,9 @@ export class Scene3D extends Object3D {
      * Set the roughness of the Sky Box.
      */
     public set roughness(value: number) {
-        if (EntityCollect.instance.sky && `roughness` in EntityCollect.instance.sky) {
-            EntityCollect.instance.sky.roughness = value;
+        const sky = EntityCollect.instance.getSky(this);
+        if (sky && `roughness` in sky) {
+            (sky as any).roughness = value;
         }
     }
 }

@@ -8,18 +8,22 @@ import { Vector3 } from "../../../../../math/Vector3";
 import { Vector4 } from "../../../../../math/Vector4";
 import { Struct } from "../../../../../util/struct/Struct";
 
-import { webGPUContext } from "../../Context3D";
+import { Context3D, webGPUContext } from "../../Context3D";
 import { MemoryDO } from "../../../../../core/pool/memory/MemoryDO";
 import { MemoryInfo } from "../../../../../core/pool/memory/MemoryInfo";
 import { FloatArray } from "../../../../../components/matrix/WasmMatrix";
 
 /**
+ * CPU-authoritative GPU buffer. The CPU-side memory (`memory`, `memoryNodes`)
+ * is the single source of truth. GPU buffers are materialized lazily, one per
+ * WebGPU `Context3D` (device), so the same data object can be rendered by any
+ * number of `Engine3D` instances with each engine getting its own device-local
+ * GPU buffer. Constructors do NOT allocate on the GPU.
  * @internal
  * @group GFX
  */
 export class GPUBufferBase {
     public bufferType: GPUBufferType;
-    public buffer: GPUBuffer;
     public memory: MemoryDO;
     public memoryNodes: Map<string | number, MemoryInfo>;
     public seek: number;
@@ -29,14 +33,58 @@ export class GPUBufferBase {
     public visibility: number = GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT | GPUShaderStage.COMPUTE;
     protected mapAsyncBuffersOutstanding = 0;
     protected mapAsyncReady: GPUBuffer[];
-    private _readBuffer: GPUBuffer;
+    private _readBuffers: Map<Context3D, GPUBuffer> = new Map();
     private _dataView: Float32Array;
+
+    // Per-context lazy GPU buffers. Keyed by Context3D; each engine gets its
+    // own device-local copy that is uploaded from `memory.shareDataBuffer`.
+    private _buffers: Map<Context3D, GPUBuffer> = new Map();
+    private _label?: string;
 
     constructor() {
         this.mapAsyncReady = [];
-        // this.memory = new MemoryDO();
-        // this.memoryNodes = new Map<string | number, MemoryInfo>();
-        // this._dataView = new Float32Array(this.memory.shareDataBuffer);
+    }
+
+    /**
+     * Return the GPU buffer for the currently-active Context3D. Materializes
+     * lazily on first access from a given context.
+     */
+    public get buffer(): GPUBuffer {
+        const ctx = webGPUContext;
+        let b = this._buffers.get(ctx);
+        if (!b) b = this._materialize(ctx);
+        return b;
+    }
+
+    /**
+     * Materialize this buffer on a specific Context3D. Uploads any CPU-side
+     * initial data via queue.writeBuffer.
+     */
+    private _materialize(ctx: Context3D): GPUBuffer {
+        if (!this.usage || !this.byteSize) {
+            throw new Error(`GPUBufferBase._materialize: usage/byteSize not set (call createBuffer() first)`);
+        }
+        const b = ctx.device.createBuffer({
+            label: this._label,
+            size: this.byteSize,
+            usage: this.usage,
+            mappedAtCreation: false,
+        });
+        this._buffers.set(ctx, b);
+        if (this.memory && this.memory.shareDataBuffer) {
+            ctx.device.queue.writeBuffer(b, 0, this.memory.shareDataBuffer);
+        }
+        return b;
+    }
+
+    /**
+     * Destroy every materialized GPU buffer, forcing re-materialization on next access.
+     */
+    private _invalidateGpu() {
+        for (const b of this._buffers.values()) {
+            try { b.destroy(); } catch { /* ignore */ }
+        }
+        this._buffers.clear();
     }
 
     public debug() {
@@ -335,7 +383,6 @@ export class GPUBufferBase {
 
     public setStruct<T extends Struct>(c: { new(): T }, index: number, data: any, property?: string) {
         let ref = Struct.Ref(c);
-        let size = Struct.GetSize(c);
 
         let name = index;
         let node = this.memoryNodes.get(name);
@@ -401,19 +448,26 @@ export class GPUBufferBase {
         }
     }
 
-    // public writeFloat(v: number) {
-    //     this.memory.shareFloat32Array[this.seek] = v;
-    //     this.seek += 1;
-    // }
-
     public clean() {
-        // this._dataView = new Float32Array(this.memory.shareDataBuffer);
         this._dataView.fill(0, 0, this._dataView.length);
     }
 
+    /**
+     * Upload CPU-side memory to every materialized GPU buffer. Also eagerly
+     * materializes on the currently-active context if it hasn't been yet —
+     * this preserves existing semantics where `new UniformGPUBuffer(16); apply();`
+     * produces a usable GPU buffer.
+     */
     public apply() {
-        webGPUContext.device.queue.writeBuffer(this.buffer, 0, this.memory.shareDataBuffer);//, this.memory.shareFloat32Array.byteOffset, this.memory.shareFloat32Array.byteLength);
-        // this.applyMapAsync();
+        if (!this.memory || !this.memory.shareDataBuffer) return;
+        const active = webGPUContext;
+        if (!this._buffers.has(active) && this.usage && this.byteSize) {
+            this._materialize(active);
+            return;
+        }
+        for (const [ctx, b] of this._buffers) {
+            ctx.device.queue.writeBuffer(b, 0, this.memory.shareDataBuffer);
+        }
     }
 
     public mapAsyncWrite(floatArray: FloatArray, len: number) {
@@ -424,8 +478,9 @@ export class GPUBufferBase {
             mapAsyncArray = floatArray as Float32Array;
         }
         // Upload data using mapAsync and a queue of staging buffers.
-        let bytesLen = len;
-        let device = webGPUContext.device;
+        const ctx = webGPUContext;
+        const device = ctx.device;
+        const destBuffer = this.buffer; // lazy-materialize for current context
         if (mapAsyncArray.length > 0) {
             let tBuffer: GPUBuffer = null;
             while (this.mapAsyncReady.length) {
@@ -446,7 +501,6 @@ export class GPUBufferBase {
                 this.mapAsyncBuffersOutstanding++;
 
                 if (this.mapAsyncBuffersOutstanding > 20) {
-                    // ${(this.mapAsync.value * this.mapAsyncBuffersOutstanding).toFixed(2)}
                     console.warn(` Warning: mapAsync requests from ${this.mapAsyncBuffersOutstanding} frames ago have not resolved yet.  MB of staging buffers allocated.`);
                 }
             }
@@ -455,10 +509,8 @@ export class GPUBufferBase {
             b.set(a);
             tBuffer.unmap();
             const commandEncoder = device.createCommandEncoder();
-            commandEncoder.copyBufferToBuffer(tBuffer, 0, this.buffer, 0, len * 4);
-            // TODO: combine this submit with the main one, but we'll have to delay calling mapAsync until after the submit.
+            commandEncoder.copyBufferToBuffer(tBuffer, 0, destBuffer, 0, len * 4);
             device.queue.submit([commandEncoder.finish()]);
-            // TODO: use this data during rendering.
             tBuffer.mapAsync(GPUMapMode.WRITE).then(() => this.mapAsyncReady.push(tBuffer));
         }
     }
@@ -477,37 +529,29 @@ export class GPUBufferBase {
         this.visibility = null;
 
         this.outFloat32Array = null;
-        if (this.buffer) {
-            this.buffer.destroy();
-        }
-        this.buffer = null;
+        this._invalidateGpu();
 
         if (this.memory) {
             this.memory.destroy();
         }
         this.memory = null;
 
-        if (this._readBuffer) {
-            this._readBuffer.destroy();
+        for (const rb of this._readBuffers.values()) {
+            try { rb.destroy(); } catch { /* ignore */ }
         }
+        this._readBuffers.clear();
     }
 
+    /**
+     * Configure this buffer. Does NOT allocate a GPU buffer — that happens
+     * lazily per context in `get buffer`.
+     */
     protected createBuffer(usage: GPUBufferUsageFlags, size: number, data?: ArrayBufferData, debugLabel?: string) {
-        let device = webGPUContext.device;
-
-        if (this.buffer) {
-            this.destroy();
-        }
+        this._invalidateGpu();
 
         this.byteSize = size * 4;
         this.usage = usage;
-
-        this.buffer = device.createBuffer({
-            label: debugLabel,
-            size: this.byteSize,
-            usage: usage,
-            mappedAtCreation: false,
-        });
+        this._label = debugLabel;
 
         this.memory = new MemoryDO();
         this.memoryNodes = new Map<string | number, MemoryInfo>();
@@ -515,8 +559,7 @@ export class GPUBufferBase {
         this.memory.allocation(this.byteSize);
         if (data) {
             let m = this.memory.allocation_node(data.length * 4);
-            m.setArrayBuffer(0, data);
-            this.apply();
+            m.setArrayBuffer(0, data as unknown as ArrayBuffer);
         }
     }
 
@@ -528,9 +571,7 @@ export class GPUBufferBase {
         let device = webGPUContext.device;
         let tByteSize = size * 4;
         let tUsage = usage;
-        if (this.buffer) {
-            this.destroy();
-        }
+        this._invalidateGpu();
         let buffer = device.createBuffer({
             size: tByteSize,
             usage: tUsage,
@@ -543,14 +584,10 @@ export class GPUBufferBase {
         let structSize = Struct.GetSize(struct);
         let totalLength = structSize * count;
 
-        let device = webGPUContext.device;
-        this.buffer = device.createBuffer({
-            label: "StructStorageGPUBuffer",
-            size: totalLength,
-            // size: totalLength * 4,
-            usage: usage,
-            mappedAtCreation: false,
-        });
+        this._invalidateGpu();
+        this.byteSize = totalLength;
+        this.usage = usage;
+        this._label = "StructStorageGPUBuffer";
 
         this.memory = new MemoryDO();
         this.memoryNodes = new Map<string | number, MemoryInfo>();
@@ -573,32 +610,34 @@ export class GPUBufferBase {
     public readBuffer(promise = false) {
         this.outFloat32Array ||= new Float32Array(this.memory.shareDataBuffer.byteLength / 4);
 
-        if (!this._readBuffer) {
-            this._readBuffer = webGPUContext.device.createBuffer({
+        const ctx = webGPUContext;
+        let rb = this._readBuffers.get(ctx);
+        if (!rb) {
+            rb = ctx.device.createBuffer({
                 size: this.memory.shareDataBuffer.byteLength,
                 usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
                 mappedAtCreation: false,
             });
+            this._readBuffers.set(ctx, rb);
         }
 
-        let p = this.read();
+        let p = this.read(ctx, rb);
         return promise ? p : this.outFloat32Array;
     }
 
     private _readFlag: boolean = false;
-    private async read() {
+    private async read(ctx: Context3D, rb: GPUBuffer) {
         if (!this._readFlag) {
             this._readFlag = true;
 
-            let command = webGPUContext.device.createCommandEncoder();;
-            command.copyBufferToBuffer(this.buffer, 0, this._readBuffer, 0, this.memory.shareDataBuffer.byteLength);
-            webGPUContext.device.queue.submit([command.finish()]);
+            let command = ctx.device.createCommandEncoder();
+            command.copyBufferToBuffer(this.buffer, 0, rb, 0, this.memory.shareDataBuffer.byteLength);
+            ctx.device.queue.submit([command.finish()]);
 
-            await this._readBuffer.mapAsync(GPUMapMode.READ);
-            const copyArrayBuffer = this._readBuffer.getMappedRange();
+            await rb.mapAsync(GPUMapMode.READ);
+            const copyArrayBuffer = rb.getMappedRange();
             this.outFloat32Array.set(new Float32Array(copyArrayBuffer), 0);
-            // this.memory.shareDataBuffer.set(new Float32Array(copyArrayBuffer), 0);
-            this._readBuffer.unmap();
+            rb.unmap();
             this._readFlag = false;
         }
         return this.outFloat32Array;

@@ -1,0 +1,62 @@
+[
+  {
+    "sample": "base/Sample_Transform.ts",
+    "errors": [],
+    "log_count": 6
+  },
+  {
+    "sample": "base/Sample_AddRemove.ts",
+    "errors": [],
+    "log_count": 6
+  },
+  {
+    "sample": "base/Sample_CameraType.ts",
+    "errors": [],
+    "log_count": 6
+  },
+  {
+    "sample": "lights/Sample_PointLight.ts",
+    "errors": [],
+    "log_count": 6
+  },
+  {
+    "sample": "lights/Sample_SpotLight.ts",
+    "errors": [],
+    "log_count": 6
+  },
+  {
+    "sample": "lights/Sample_CSM.ts",
+    "errors": [],
+    "log_count": 6
+  },
+  {
+    "sample": "material/Sample_PBR.ts",
+    "errors": [],
+    "log_count": 6
+  },
+  {
+    "sample": "material/Sample_UnlitMaterial.ts",
+    "errors": [],
+    "log_count": 6
+  },
+  {
+    "sample": "post/Sample_Bloom.ts",
+    "errors": [],
+    "log_count": 6
+  },
+  {
+    "sample": "post/Sample_Fog.ts",
+    "errors": [],
+    "log_count": 6
+  },
+  {
+    "sample": "post/Sample_SSR.ts",
+    "errors": [],
+    "log_count": 6
+  },
+  {
+    "sample": "geometry/Sample_TextGeometry.ts",
+    "errors": [],
+    "log_count": 6
+  }
+]

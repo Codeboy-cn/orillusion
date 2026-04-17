@@ -1,6 +1,6 @@
-[21:31:09.206] [verbose] [vite] connecting...  (http://localhost:4000/@vite/client:495)
-[21:31:09.242] [verbose] [vite] connected.  (http://localhost:4000/@vite/client:618)
-[21:31:09.244] [warning] %cElectron Security Warning (Insecure Content-Security-Policy) font-weight: bold; This renderer process has either no Content Security
+[06:04:31.912] [verbose] [vite] connecting...  (http://localhost:4000/@vite/client:495)
+[06:04:35.878] [verbose] [vite] connected.  (http://localhost:4000/@vite/client:618)
+[06:04:35.878] [warning] %cElectron Security Warning (Insecure Content-Security-Policy) font-weight: bold; This renderer process has either no Content Security
   Policy set or a policy with "unsafe-eval" enabled. This exposes users of
   this app to unnecessary security risks.
 
@@ -8,9 +8,9 @@ For more information and help, consult
 https://electronjs.org/docs/tutorial/security.
 This warning will not show up
 once the app is packaged.  (node:electron/js2c/renderer_init:2)
-[21:31:09.347] [verbose] [vite] connecting...  (http://localhost:4000/@vite/client:495)
-[21:31:09.352] [verbose] [vite] connected.  (http://localhost:4000/@vite/client:618)
-[21:31:09.352] [warning] %cElectron Security Warning (Insecure Content-Security-Policy) font-weight: bold; This renderer process has either no Content Security
+[06:04:35.907] [verbose] [vite] connecting...  (http://localhost:4000/@vite/client:495)
+[06:04:35.911] [verbose] [vite] connected.  (http://localhost:4000/@vite/client:618)
+[06:04:35.912] [warning] %cElectron Security Warning (Insecure Content-Security-Policy) font-weight: bold; This renderer process has either no Content Security
   Policy set or a policy with "unsafe-eval" enabled. This exposes users of
   this app to unnecessary security risks.
 
@@ -18,8 +18,9 @@ For more information and help, consult
 https://electronjs.org/docs/tutorial/security.
 This warning will not show up
 once the app is packaged.  (node:electron/js2c/renderer_init:2)
-[21:31:09.510] [info] Engine Version 0.8.5-dev.9  (http://localhost:4000/src/Engine3D.ts:232)
-[21:31:09.578] [info] wasm have loaded  (http://localhost:4000/src/components/matrix/matrix.js:8)
-[21:31:09.721] [info] [multi-sample] engineA.id = 1 engineB.id = 2  (http://localhost:4000/samples/base/Sample_MultiInstance.ts:100)
-[21:31:09.721] [info] [multi-sample] shared GPU device = true  (http://localhost:4000/samples/base/Sample_MultiInstance.ts:101)
-[21:31:09.721] [info] [multi-sample] distinct context3D = true  (http://localhost:4000/samples/base/Sample_MultiInstance.ts:102)
+[06:04:36.355] [info] Engine Version 0.8.5-dev.9  (http://localhost:4000/src/Engine3D.ts:246)
+[06:04:36.367] [info] wasm have loaded  (http://localhost:4000/src/components/matrix/matrix.js:8)
+[06:04:36.651] [info] [multi-sample] engineA.id = 1 engineB.id = 2  (http://localhost:4000/samples/base/Sample_MultiInstance.ts:102)
+[06:04:36.651] [info] [multi-sample] isolated GPU devices = true  (http://localhost:4000/samples/base/Sample_MultiInstance.ts:103)
+[06:04:36.651] [info] [multi-sample] isolated adapters = true  (http://localhost:4000/samples/base/Sample_MultiInstance.ts:104)
+[06:04:36.651] [info] [multi-sample] distinct context3D = true  (http://localhost:4000/samples/base/Sample_MultiInstance.ts:105)

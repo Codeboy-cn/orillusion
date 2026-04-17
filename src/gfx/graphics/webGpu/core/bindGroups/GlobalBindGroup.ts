@@ -1,5 +1,6 @@
 import { Camera3D } from "../../../../../core/Camera3D";
 import { Scene3D } from "../../../../../core/Scene3D";
+import { perContextResource } from "../../Context3D";
 import { GlobalUniformGroup } from "./GlobalUniformGroup";
 import { LightEntries } from "./groups/LightEntries";
 import { ReflectionEntries } from "./groups/ReflectionEntries";
@@ -8,19 +9,28 @@ import { MatrixBindGroup } from "./MatrixBindGroup";
 /**
  * @internal
  * Use Global DO Matrix ArrayBuffer Descriptor
+ *
+ * All caches below are keyed by Camera3D/Scene3D which are owned by a
+ * single Engine3D (user code creates them per engine), so they are
+ * inherently per-device safe. `modelMatrixBindGroup` owns a device-bound
+ * GPU buffer, so it is stored per Context3D.
+ *
  * @group GFX
  */
 export class GlobalBindGroup {
-    private static _cameraBindGroups: Map<Camera3D, GlobalUniformGroup>;
-    private static _lightEntriesMap: Map<Scene3D, LightEntries>;
-    private static _reflectionEntriesMap: Map<Scene3D, ReflectionEntries>;
-    public static modelMatrixBindGroup: MatrixBindGroup;
+    private static _cameraBindGroups: Map<Camera3D, GlobalUniformGroup> = new Map<Camera3D, GlobalUniformGroup>();
+    private static _lightEntriesMap: Map<Scene3D, LightEntries> = new Map<Scene3D, LightEntries>();
+    private static _reflectionEntriesMap: Map<Scene3D, ReflectionEntries> = new Map<Scene3D, ReflectionEntries>();
+
+    private static _modelMatrixStore = perContextResource<MatrixBindGroup>();
+
+    public static get modelMatrixBindGroup(): MatrixBindGroup {
+        return this._modelMatrixStore(() => new MatrixBindGroup());
+    }
 
     public static init() {
-        this.modelMatrixBindGroup = new MatrixBindGroup();
-        this._cameraBindGroups = new Map<Camera3D, GlobalUniformGroup>();
-        this._lightEntriesMap = new Map<Scene3D, LightEntries>();
-        this._reflectionEntriesMap = new Map<Scene3D, ReflectionEntries>();
+        // Pre-warm for active context.
+        void this.modelMatrixBindGroup;
     }
 
     public static getAllCameraGroup() {
@@ -79,7 +89,4 @@ export class GlobalBindGroup {
         }
         return this._reflectionEntriesMap.get(scene);
     }
-
-
-
 }

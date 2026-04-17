@@ -24,7 +24,7 @@ class Sample_MultiInstance {
 
         const bar = document.createElement('div');
         bar.style.cssText = 'padding:6px 10px;background:#222;border-bottom:1px solid #333';
-        bar.textContent = 'Multi-instance demo — two Engine3D sharing one GPU device';
+        bar.textContent = 'Multi-instance demo — two Engine3D with fully isolated GPU devices';
         host.appendChild(bar);
 
         const stage = document.createElement('div');
@@ -48,11 +48,12 @@ class Sample_MultiInstance {
         const a = makePane('Engine A — red box + direct light');
         const b = makePane('Engine B — blue sphere + point light');
 
+        // Scene-graph objects materialize GPU resources lazily per-Context3D
+        // on first render, so you can build both engines' scenes in any order
+        // without any explicit `engine.use()` bookkeeping.
         const engineA = await Engine3D.create({ canvasConfig: { canvas: a.canvas } });
-        const engineB = await Engine3D.create({ canvasConfig: { canvas: b.canvas } });
 
         a.title.textContent = `Engine A (id=${engineA.id}) — red box + direct light`;
-        b.title.textContent = `Engine B (id=${engineB.id}) — blue sphere + point light`;
 
         // ---------- Scene A ----------
         const sceneA = new Scene3D();
@@ -84,6 +85,10 @@ class Sample_MultiInstance {
         viewA.scene = sceneA;
         viewA.camera = camA;
         engineA.startView(viewA);
+
+        // ---------- Engine B ----------
+        const engineB = await Engine3D.create({ canvasConfig: { canvas: b.canvas } });
+        b.title.textContent = `Engine B (id=${engineB.id}) — blue sphere + point light`;
 
         // ---------- Scene B ----------
         const sceneB = new Scene3D();
@@ -118,7 +123,8 @@ class Sample_MultiInstance {
         engineB.startView(viewB);
 
         console.log('[multi-sample] engineA.id =', engineA.id, 'engineB.id =', engineB.id);
-        console.log('[multi-sample] shared GPU device =', engineA.context3D.device === engineB.context3D.device);
+        console.log('[multi-sample] isolated GPU devices =', engineA.context3D.device !== engineB.context3D.device);
+        console.log('[multi-sample] isolated adapters =', engineA.context3D.adapter !== engineB.context3D.adapter);
         console.log('[multi-sample] distinct context3D =', engineA.context3D !== engineB.context3D);
     }
 }

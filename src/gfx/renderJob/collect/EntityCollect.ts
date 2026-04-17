@@ -51,7 +51,22 @@ export class EntityCollect {
             giLightingChange: true
         }
 
-    public sky: RenderNode;
+    /**
+     * Per-scene sky renderer. Each scene (i.e. each Engine3D instance)
+     * has at most one active sky. Indexing by scene avoids cross-device
+     * resource leaks when multiple engines run simultaneously.
+     */
+    private _skyMap: Map<Scene3D, RenderNode> = new Map<Scene3D, RenderNode>();
+
+    public getSky(scene: Scene3D): RenderNode | undefined {
+        return scene ? this._skyMap.get(scene) : undefined;
+    }
+
+    public setSky(scene: Scene3D, node: RenderNode | null): void {
+        if (!scene) return;
+        if (node) this._skyMap.set(scene, node);
+        else this._skyMap.delete(scene);
+    }
 
     private _collectInfo: CollectInfo;
 
@@ -105,7 +120,7 @@ export class EntityCollect {
         if (!root) return;
         let isTransparent: boolean = renderNode.renderOrder >= 3000;
         if (renderNode.hasMask(RendererMask.Sky)) {
-            this.sky = renderNode;
+            this.setSky(root, renderNode);
         } else if (renderNode.hasMask(RendererMask.Reflection)) {
             this.removeRenderNode(root, renderNode);
             let maps = this._reflections.get(root);
@@ -170,7 +185,7 @@ export class EntityCollect {
     public removeRenderNode(root: Scene3D, renderNode: RenderNode) {
         renderNode.detachSceneOctree();
         if (renderNode.hasMask(RendererMask.Sky)) {
-            this.sky = null;
+            this.setSky(root, null);
         } else if (renderNode.hasMask(RendererMask.Reflection)) {
             let maps = this._reflections.get(root);
             if (maps) {
@@ -289,7 +304,7 @@ export class EntityCollect {
     public getRenderNodes(scene: Scene3D, camera: Camera3D): CollectInfo {
         this.autoSortRenderNodes(scene);
         this._collectInfo.clean();
-        this._collectInfo.sky = this.sky;
+        this._collectInfo.sky = this.getSky(scene);
 
         if (Engine3D.setting.occlusionQuery.octree) {
             this.rendererOctree = this.getOctree(scene);

@@ -12,6 +12,7 @@ import { UniformNode } from "../core/uniforms/UniformNode";
 import { ShaderReflection } from "./value/ShaderReflectionInfo";
 import { UniformValue } from "./value/UniformValue";
 import { MaterialDataUniformGPUBuffer } from "../core/buffer/MaterialDataUniformGPUBuffer";
+import { Context3D, webGPUContext } from "../Context3D";
 
 
 export class ShaderPassBase {
@@ -36,9 +37,22 @@ export class ShaderPassBase {
     public fsEntryPoint: string = `main`;
 
     /**
-     * BindGroup collection 
+     * BindGroup collection (per-Context3D). A single ShaderPass instance can
+     * be bound from multiple Engine3D instances simultaneously; each engine
+     * maintains its own array of bind groups created against its device.
      */
-    public bindGroups: GPUBindGroup[];
+    private _bindGroupsPerCtx: Map<Context3D, GPUBindGroup[]> = new Map();
+    public get bindGroups(): GPUBindGroup[] {
+        let arr = this._bindGroupsPerCtx.get(webGPUContext);
+        if (!arr) {
+            arr = [];
+            this._bindGroupsPerCtx.set(webGPUContext, arr);
+        }
+        return arr;
+    }
+    public set bindGroups(v: GPUBindGroup[]) {
+        this._bindGroupsPerCtx.set(webGPUContext, v);
+    }
 
     /**
      * Shader reflection info
@@ -75,6 +89,7 @@ export class ShaderPassBase {
         this.constValues = {};
         this.uniforms = {};
         this._bufferDic = new Map<string, GPUBufferBase>();
+        // bindGroups routes through per-context Map; no eager init needed.
     };
 
     /**
