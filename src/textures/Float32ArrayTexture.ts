@@ -32,7 +32,7 @@ export class Float32ArrayTexture extends Texture {
             usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC,
         });
 
-        device.queue.writeBuffer(textureDataBuffer, 0, data);
+        device.queue.writeBuffer(textureDataBuffer, 0, data as BufferSource);
         const commandEncoder = GPUContext.beginCommandEncoder();
         commandEncoder.copyBufferToTexture(
             {

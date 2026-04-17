@@ -360,7 +360,7 @@ export class DDGIProbeRenderer extends RendererBase {
             usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC,
         });
 
-        device.queue.writeBuffer(buffer, 0, array);
+        device.queue.writeBuffer(buffer, 0, array as BufferSource);
         const commandEncoder = GPUContext.beginCommandEncoder();
         commandEncoder.copyBufferToTexture(
             {

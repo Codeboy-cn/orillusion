@@ -64,7 +64,7 @@ export class Float16ArrayTexture extends Texture {
             usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC,
         }));
 
-        device.queue.writeBuffer(textureDataBuffer, 0, uint16Array);
+        device.queue.writeBuffer(textureDataBuffer, 0, uint16Array as BufferSource);
         const commandEncoder = GPUContext.beginCommandEncoder();
         commandEncoder.copyBufferToTexture(
             {

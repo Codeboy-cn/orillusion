@@ -16,12 +16,12 @@ export class ShadowLightsCollect {
 
     public static directionLightList: Map<Scene3D, ILight[]>;
     public static pointLightList: Map<Scene3D, ILight[]>;
-    public static shadowLights: Map<Scene3D, Float32Array>;
+    public static shadowLights: Map<Scene3D, Float32Array<ArrayBuffer>>;
 
     public static init() {
         this.directionLightList = new Map<Scene3D, ILight[]>();
         this.pointLightList = new Map<Scene3D, ILight[]>();
-        this.shadowLights = new Map<Scene3D, Float32Array>();
+        this.shadowLights = new Map<Scene3D, Float32Array<ArrayBuffer>>();
     }
 
     public static createBuffer(view: View3D) {

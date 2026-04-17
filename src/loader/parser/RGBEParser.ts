@@ -143,7 +143,7 @@ export class RGBEParser extends ParserBase {
     }
 
     public getHDRTexture() {
-        let texture = new HDRTexture().create(this._width, this._height, this._rgbeArray);
+        let texture = new HDRTexture().create(this._width, this._height, this._rgbeArray.buffer as ArrayBuffer);
         return texture;
     }
 

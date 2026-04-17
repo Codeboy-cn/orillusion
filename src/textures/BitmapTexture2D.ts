@@ -87,7 +87,7 @@ export class BitmapTexture2D extends Texture {
                     // const img = await r.blob();
                     // await this.loadFromBlob(img);
                     LoaderBase.read(url, r, loaderFunctions).then((chunks) => {
-                        let img = new Blob([chunks], { type: 'image/jpeg' });
+                        let img = new Blob([chunks as BlobPart], { type: 'image/jpeg' });
                         chunks = null;
                         this.loadFromBlob(img).then(() => {
                             succ(true);

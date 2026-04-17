@@ -24,7 +24,7 @@ export class GeometryIndicesBuffer {
     }
 
     public upload(data: ArrayBufferData) {
-        this.indicesGPUBuffer.indicesNode.setArrayBuffer(0, data as ArrayBuffer);
+        this.indicesGPUBuffer.indicesNode.setArrayBuffer(0, data as unknown as ArrayBuffer);
         this.indicesGPUBuffer.apply();
     }
 

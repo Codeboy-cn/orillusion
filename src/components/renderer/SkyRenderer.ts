@@ -55,7 +55,7 @@ export class SkyRenderer extends MeshRenderer {
     public onDisable(): void {
         if (this._inRenderer && this.transform.scene3D) {
             this._inRenderer = false;
-            EntityCollect.instance.sky = null;
+            EntityCollect.instance.setSky(this.transform.scene3D, null);
         }
         super.onDisable();
     }

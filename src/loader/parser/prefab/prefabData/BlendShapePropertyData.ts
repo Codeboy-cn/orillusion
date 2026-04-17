@@ -6,8 +6,8 @@ export class BlendShapePropertyData {
     public shapeIndex: number;
     public frameCount: number;
     // public blendShapeFrameDatas: BlendShapeFrameData[];
-    public blendPositionList = new Float32Array();
-    public blendNormalList = new Float32Array();
+    public blendPositionList: Float32Array = new Float32Array();
+    public blendNormalList: Float32Array = new Float32Array();
     public formBytes(byteArray: BytesArray) {
         let bytes = byteArray.readBytesArray();
 
