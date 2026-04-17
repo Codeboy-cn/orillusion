@@ -1,8 +1,6 @@
 import { Matrix4 } from '../../../../../math/Matrix4';
 import { UUID } from '../../../../../util/Global';
-import { webGPUContext } from '../../Context3D';
 import { MatrixGPUBuffer } from '../buffer/MatrixGPUBuffer';
-import { StorageGPUBuffer } from '../buffer/StorageGPUBuffer';
 /**
  * @author sirxu
  * @internal

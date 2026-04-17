@@ -58,9 +58,11 @@ export class GlobalUniformGroup {
         this.uniformByteLength = this.uniformGPUBuffer.memory.shareDataBuffer.byteLength;
         this.matrixesByteLength = (Matrix4.block * 4) * Matrix4.maxCount;
 
-        this.globalBindGroup = webGPUContext.device.createBindGroup({
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
+        let ctx = (this.uniformGPUBuffer as any)._boundCtx ?? webGPUContext;
+        this.globalBindGroup = ctx.device.createBindGroup({
             label: `global_bindGroupLayout`,
-            layout: GlobalBindGroupLayout.getGlobalDataBindGroupLayout(),
+            layout: GlobalBindGroupLayout.getGlobalDataBindGroupLayout(ctx),
             entries: [
                 {
                     binding: 0,

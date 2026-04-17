@@ -1,10 +1,13 @@
-import { webGPUContext, perContextResource } from "../../Context3D";
+import { Context3D, webGPUContext, perContextResource } from "../../Context3D";
 
 export class GlobalBindGroupLayout {
 
+    // eslint-disable-next-line @typescript-eslint/no-deprecated
     private static _cache = perContextResource<GPUBindGroupLayout>();
 
-    public static getGlobalDataBindGroupLayout(): GPUBindGroupLayout {
+    public static getGlobalDataBindGroupLayout(ctx?: Context3D): GPUBindGroupLayout {
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
+        let resolved = ctx ?? webGPUContext;
         return this._cache(() => {
             let entries: GPUBindGroupLayoutEntry[] = [];
             entries.push({
@@ -23,7 +26,7 @@ export class GlobalBindGroupLayout {
                 },
             });
 
-            return webGPUContext.device.createBindGroupLayout({ entries });
-        });
+            return resolved.device.createBindGroupLayout({ entries });
+        }, resolved);
     }
 }

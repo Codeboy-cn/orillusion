@@ -69,8 +69,10 @@ fn samplePixel(face:i32, uv01:vec2<f32>) -> vec4<f32> {
     private static _state = perContextResource<{ configBuffer: GPUBuffer; blurSettingBuffer: GPUBuffer; pipeline: GPUComputePipeline }>();
 
     static createFace(index: number, size: number, inTex: Texture, outTex: RenderTexture): void {
-        const device = webGPUContext.device;
-        const state = this._state(() => ({ configBuffer: null, blurSettingBuffer: null, pipeline: null }));
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
+        const ctx = inTex._boundCtx ?? outTex._boundCtx ?? webGPUContext;
+        const device = ctx.device;
+        const state = this._state(() => ({ configBuffer: null, blurSettingBuffer: null, pipeline: null }), ctx);
         if (state.pipeline == null) {
             state.pipeline = device.createComputePipeline({
                 layout: `auto`,

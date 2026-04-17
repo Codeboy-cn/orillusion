@@ -13,14 +13,16 @@ export class IBLEnvMapCreator {
     private static _state = perContextResource<{ configBuffer: GPUBuffer; quaternionBuffer: GPUBuffer; blurSettingBuffer: GPUBuffer; pipeline: GPUComputePipeline; quaternionUploaded: boolean }>();
 
     static importantSample(image: { width: number; height: number; erpTexture: Texture }, dstSize: number, roughness: number, dstView: GPUTextureView): void {
-        const device = webGPUContext.device;
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
+        const ctx = image.erpTexture._boundCtx ?? webGPUContext;
+        const device = ctx.device;
         const state = this._state(() => ({
             configBuffer: null,
             quaternionBuffer: null,
             blurSettingBuffer: null,
             pipeline: null,
             quaternionUploaded: false,
-        }));
+        }), ctx);
 
         if (state.pipeline == null) {
             state.pipeline = device.createComputePipeline({

@@ -30,7 +30,8 @@ export class MatrixGPUBuffer extends GPUBufferBase {
         }
         // Upload data using mapAsync and a queue of staging buffers.
         let bytesLen = len;
-        let device = webGPUContext.device;
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
+        let device = (this._boundCtx ?? webGPUContext).device;
         if (mapAsyncArray.length > 0) {
             let tBuffer: GPUBuffer = null;
             while (this.mapAsyncReady.length) {
