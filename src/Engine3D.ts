@@ -276,6 +276,11 @@ export class Engine3D {
         if (value >= 360) this._frameRateValue = 0;
     }
 
+    public get size(): number[] { return this.context3D.presentationSize; }
+    public get aspect(): number { return this.context3D.aspect; }
+    public get width(): number { return this.context3D.windowWidth; }
+    public get height(): number { return this.context3D.windowHeight; }
+
     /**
      * Set this engine's Context3D as the currently-active WebGPU context.
      *
