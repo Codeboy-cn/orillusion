@@ -4,7 +4,6 @@ import { UniformGPUBuffer } from '../../graphics/webGpu/core/buffer/UniformGPUBu
 import { WebGPUDescriptorCreator } from '../../graphics/webGpu/descriptor/WebGPUDescriptorCreator';
 import { ComputeShader } from '../../graphics/webGpu/shader/ComputeShader';
 import { GPUTextureFormat } from '../../graphics/webGpu/WebGPUConst';
-import { webGPUContext } from '../../graphics/webGpu/Context3D';
 import { GPUContext } from '../GPUContext';
 import { RendererPassState } from '../passRenderer/state/RendererPassState';
 import { PostBase } from './PostBase';
@@ -202,8 +201,8 @@ export class OutlinePost extends PostBase {
         this.blendCompute.workerSizeZ = 1;
     }
 
-    private createResource() {
-        let presentationSize = webGPUContext.presentationSize;
+    private _createOutlineResources() {
+        let presentationSize = this._boundCtx!.presentationSize;
         let w = presentationSize[0];
         let h = presentationSize[1];
         let textureScale = Engine3D.setting.render.postProcessing.outline.textureScale;
@@ -272,7 +271,7 @@ export class OutlinePost extends PostBase {
      */
     render(view: View3D, command: GPUCommandEncoder) {
         if (!this.calcWeightCompute) {
-            this.createResource();
+            this._createOutlineResources();
             this.createCompute();
             this.createGUI();
             this.rendererPassState = WebGPUDescriptorCreator.createRendererPassState(this.rtFrame, null);
@@ -293,7 +292,7 @@ export class OutlinePost extends PostBase {
     }
 
     public onResize(): void {
-        let presentationSize = webGPUContext.presentationSize;
+        let presentationSize = this._boundCtx!.presentationSize;
         let w = presentationSize[0];
         let h = presentationSize[1];
         let textureScale = Engine3D.setting.render.postProcessing.outline.textureScale;

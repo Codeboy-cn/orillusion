@@ -2,7 +2,6 @@ import { UniformGPUBuffer } from '../../graphics/webGpu/core/buffer/UniformGPUBu
 import { WebGPUDescriptorCreator } from '../../graphics/webGpu/descriptor/WebGPUDescriptorCreator';
 import { ComputeShader } from '../../graphics/webGpu/shader/ComputeShader';
 import { GPUTextureFormat } from '../../graphics/webGpu/WebGPUConst';
-import { webGPUContext } from '../../graphics/webGpu/Context3D';
 import { GPUContext } from '../GPUContext';
 import { RendererPassState } from '../passRenderer/state/RendererPassState';
 import { PostBase } from './PostBase';
@@ -205,11 +204,11 @@ export class BloomPost extends PostBase {
         this.postCompute.workerSizeZ = 1;
     }
 
-    private createResource() {
+    private _createBloomResources() {
         let setting = Engine3D.setting.render.postProcessing.bloom;
         this.bloomSetting = new UniformGPUBuffer(4 * 2); //vector4 * 2
 
-        let [screenWidth, screenHeight] = webGPUContext.presentationSize;
+        let [screenWidth, screenHeight] = this._boundCtx!.presentationSize;
         let usage = GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.COPY_SRC | GPUTextureUsage.TEXTURE_BINDING;
 
         this.RT_threshold = new VirtualTexture(screenWidth, screenHeight, GPUTextureFormat.rgba16float, false, usage);
@@ -246,7 +245,7 @@ export class BloomPost extends PostBase {
      */
     render(view: View3D, command: GPUCommandEncoder) {
         if (!this.thresholdCompute) {
-            this.createResource();
+            this._createBloomResources();
             this.createThreshouldCompute();
 
             this.createDownSampleComputes();
@@ -276,7 +275,7 @@ export class BloomPost extends PostBase {
     public onResize() {
         let cfg = Engine3D.setting.render.postProcessing.bloom;
 
-        let [screenWidth, screenHeight] = webGPUContext.presentationSize;
+        let [screenWidth, screenHeight] = this._boundCtx!.presentationSize;
         this.RT_threshold.resize(screenWidth, screenHeight);
 
         const N = cfg.downSampleStep;

@@ -4,7 +4,6 @@ import { Engine3D } from '../../../Engine3D';
 import { Color } from '../../../math/Color';
 import { VirtualTexture } from '../../../textures/VirtualTexture';
 import { GPUTextureFormat } from '../../graphics/webGpu/WebGPUConst';
-import { webGPUContext } from '../../graphics/webGpu/Context3D';
 import { PostBase } from './PostBase';
 import { View3D } from '../../../core/View3D';
 import { GBufferFrame } from '../frame/GBufferFrame';
@@ -89,8 +88,8 @@ export class GlobalFog extends PostBase {
 
     rtFrame: RTFrame;
 
-    private createResource() {
-        let [w, h] = webGPUContext.presentationSize;
+    private _createFogTarget() {
+        let [w, h] = this._boundCtx!.presentationSize;
         this.fogOpTexture = new VirtualTexture(w, h, GPUTextureFormat.rgba16float, false, GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.COPY_SRC | GPUTextureUsage.TEXTURE_BINDING);
         this.fogOpTexture.name = 'fogTex';
         let fogDesc = new RTDescriptor();
@@ -229,7 +228,7 @@ export class GlobalFog extends PostBase {
      */
     render(view: View3D, command: GPUCommandEncoder) {
         if (!this.fogCompute) {
-            this.createResource();
+            this._createFogTarget();
             this.createCompute(view);
             this.onResize();
 
@@ -252,7 +251,7 @@ export class GlobalFog extends PostBase {
     }
 
     public onResize() {
-        let [w, h] = webGPUContext.presentationSize;
+        let [w, h] = this._boundCtx!.presentationSize;
         this.fogOpTexture.resize(w, h);
         this.fogCompute.workerSizeX = Math.ceil(this.fogOpTexture.width / 8);
         this.fogCompute.workerSizeY = Math.ceil(this.fogOpTexture.height / 8);

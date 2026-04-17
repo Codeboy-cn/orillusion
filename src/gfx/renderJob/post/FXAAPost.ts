@@ -2,7 +2,6 @@ import { ShaderLib } from '../../../assets/shader/ShaderLib';
 import { Engine3D } from '../../../Engine3D';
 import { Vector2 } from '../../../math/Vector2';
 import { GPUTextureFormat } from '../../graphics/webGpu/WebGPUConst';
-import { webGPUContext } from '../../graphics/webGpu/Context3D';
 import { PostBase } from './PostBase';
 import { View3D } from '../../../core/View3D';
 import { FXAAShader } from '../../../assets/shader/post/FXAAShader';
@@ -22,9 +21,11 @@ export class FXAAPost extends PostBase {
     renderTexture: RenderTexture;
     constructor() {
         super();
-        let [w, h] = webGPUContext.presentationSize;
         ShaderLib.register("FXAA_Shader", FXAAShader);
+    }
 
+    protected createResource(view: View3D) {
+        let [w, h] = this._boundCtx!.presentationSize;
         this.renderTexture = this.createRTTexture(`FXAAPost`, w, h, GPUTextureFormat.rgba16float);
         this.postQuad = this.createViewQuad(`fxaa`, 'FXAA_Shader', this.renderTexture);
         this.postQuad.quadShader.setUniform("u_texel", new Vector2(1.0 / w, 1.0 / h));
@@ -32,7 +33,7 @@ export class FXAAPost extends PostBase {
     }
 
     public onResize() {
-        let [w, h] = webGPUContext.presentationSize;
+        let [w, h] = this._boundCtx!.presentationSize;
         this.renderTexture.resize(w, h);
     }
 

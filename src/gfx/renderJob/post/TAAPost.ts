@@ -5,7 +5,6 @@ import { UniformGPUBuffer } from '../../graphics/webGpu/core/buffer/UniformGPUBu
 import { WebGPUDescriptorCreator } from '../../graphics/webGpu/descriptor/WebGPUDescriptorCreator';
 import { ComputeShader } from '../../graphics/webGpu/shader/ComputeShader';
 import { GPUTextureFormat } from '../../graphics/webGpu/WebGPUConst';
-import { webGPUContext } from '../../graphics/webGpu/Context3D';
 import { GPUContext } from '../GPUContext';
 import { RendererPassState } from '../passRenderer/state/RendererPassState';
 import { PostBase } from './PostBase';
@@ -185,11 +184,11 @@ export class TAAPost extends PostBase {
         this.sharpCompute.workerSizeZ = 1;
     }
 
-    private createResource() {
+    private _createTaaResources() {
         this.preProjMatrix = new Matrix4().identity();
         this.preViewMatrix = new Matrix4().identity();
 
-        let [w, h] = webGPUContext.presentationSize;
+        let [w, h] = this._boundCtx!.presentationSize;
 
         this.preColorBuffer = new StorageGPUBuffer(w * h * 4, GPUBufferUsage.COPY_SRC);
 
@@ -226,7 +225,7 @@ export class TAAPost extends PostBase {
      */
     render(view: View3D, command: GPUCommandEncoder) {
         if (!this.taaCompute) {
-            this.createResource();
+            this._createTaaResources();
             this.createCompute(view);
             this.rendererPassState = WebGPUDescriptorCreator.createRendererPassState(this.rtFrame, null);
         }
@@ -249,7 +248,7 @@ export class TAAPost extends PostBase {
     }
 
     public onResize(): void {
-        let [w, h] = webGPUContext.presentationSize;
+        let [w, h] = this._boundCtx!.presentationSize;
 
         this.preColorBuffer.resizeBuffer(w * h * 4);
 

@@ -5,7 +5,6 @@ import { UniformGPUBuffer } from '../../graphics/webGpu/core/buffer/UniformGPUBu
 import { WebGPUDescriptorCreator } from '../../graphics/webGpu/descriptor/WebGPUDescriptorCreator';
 import { ComputeShader } from '../../graphics/webGpu/shader/ComputeShader';
 import { GPUTextureFormat } from '../../graphics/webGpu/WebGPUConst';
-import { webGPUContext } from '../../graphics/webGpu/Context3D';
 import { GPUContext } from '../GPUContext';
 import { RendererPassState } from '../passRenderer/state/RendererPassState';
 import { PostBase } from './PostBase';
@@ -147,11 +146,11 @@ export class SSGIPost extends PostBase {
     }
 
 
-    private createResource() {
+    private _createSsgiResources() {
         let rtFrame = GBufferFrame.getGBufferFrame("ColorPassGBuffer");
         this.gBufferTexture = rtFrame.getCompressGBufferTexture();
 
-        let presentationSize = webGPUContext.presentationSize;
+        let presentationSize = this._boundCtx!.presentationSize;
         let w = presentationSize[0];
         let h = presentationSize[1];
 
@@ -234,7 +233,7 @@ export class SSGIPost extends PostBase {
 
     public compute(view: View3D): void {
         if (!this.ssgiCompute) {
-            this.createResource();
+            this._createSsgiResources();
             this.createCompute();
             this.onResize();
 
@@ -281,7 +280,7 @@ export class SSGIPost extends PostBase {
     }
 
     public onResize() {
-        let presentationSize = webGPUContext.presentationSize;
+        let presentationSize = this._boundCtx!.presentationSize;
         let w = presentationSize[0];
         let h = presentationSize[1];
         this.outTexture.resize(w, h);

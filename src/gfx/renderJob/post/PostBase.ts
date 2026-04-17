@@ -10,7 +10,7 @@ import { PostRenderer } from '../passRenderer/post/PostRenderer';
 import { View3D } from '../../../core/View3D';
 import { Reference } from '../../../util/Reference';
 import { CResizeEvent } from '../../../event/CResizeEvent';
-import { webGPUContext } from '../../graphics/webGpu/Context3D';
+import { bindCtx, Context3D, webGPUContext } from '../../graphics/webGpu/Context3D';
 import { RendererPassState } from '../passRenderer/state/RendererPassState';
 /**
  * @internal
@@ -21,15 +21,28 @@ export class PostBase {
     public enable: boolean = true;
     public postRenderer: PostRenderer;
     public rendererPassState: RendererPassState;
+    public _boundCtx: Context3D | null = null;
+    private _resourceCreated: boolean = false;
     protected rtViewQuad: Map<string, ViewQuad>;
     protected virtualTexture: Map<string, VirtualTexture>;
 
     constructor() {
         this.rtViewQuad = new Map<string, ViewQuad>();
         this.virtualTexture = new Map<string, VirtualTexture>();
-
-        webGPUContext.addEventListener(CResizeEvent.RESIZE, this.onResize, this);
     }
+
+    protected bindView(view: View3D) {
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
+        let ctx = view?.engine3D?.context3D ?? webGPUContext;
+        bindCtx(this, ctx);
+        ctx.addEventListener(CResizeEvent.RESIZE, this.onResize, this);
+        if (!this._resourceCreated) {
+            this._resourceCreated = true;
+            this.createResource(view);
+        }
+    }
+
+    protected createResource(view: View3D) { }
 
     protected createRTTexture(name: string, rtWidth: number, rtHeight: number, format: GPUTextureFormat, useMipmap: boolean = false, sampleCount: number = 0) {
         let rt = RTResourceMap.createRTTexture(name, rtWidth, rtHeight, format, useMipmap, sampleCount);

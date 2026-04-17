@@ -5,7 +5,6 @@ import { UniformGPUBuffer } from '../../graphics/webGpu/core/buffer/UniformGPUBu
 import { WebGPUDescriptorCreator } from '../../graphics/webGpu/descriptor/WebGPUDescriptorCreator';
 import { ComputeShader } from '../../graphics/webGpu/shader/ComputeShader';
 import { GPUTextureFormat } from '../../graphics/webGpu/WebGPUConst';
-import { webGPUContext } from '../../graphics/webGpu/Context3D';
 import { GPUContext } from '../GPUContext';
 import { RendererPassState } from '../passRenderer/state/RendererPassState';
 import { PostBase } from './PostBase';
@@ -170,8 +169,8 @@ export class GTAOPost extends PostBase {
         this.gtaoSetting = gtaoSetting;
     }
 
-    private createResource() {
-        let [w, h] = webGPUContext.presentationSize;
+    private _createGtaoResources() {
+        let [w, h] = this._boundCtx!.presentationSize;
         this.gtaoTexture = new VirtualTexture(w, h, GPUTextureFormat.rgba16float, false, GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.COPY_SRC | GPUTextureUsage.TEXTURE_BINDING);
         this.gtaoTexture.name = 'gtaoTex';
         let gtaoDec = new RTDescriptor();
@@ -198,7 +197,7 @@ export class GTAOPost extends PostBase {
      */
     render(view: View3D, command: GPUCommandEncoder) {
         if (!this.gtaoCompute) {
-            this.createResource();
+            this._createGtaoResources();
             this.createCompute();
             this.onResize();
 
@@ -233,7 +232,7 @@ export class GTAOPost extends PostBase {
     }
 
     public onResize() {
-        let [w, h] = webGPUContext.presentationSize;
+        let [w, h] = this._boundCtx!.presentationSize;
         this.gtaoTexture.resize(w, h);
         this.gtaoCompute.workerSizeX = Math.ceil(this.gtaoTexture.width / 8);
         this.gtaoCompute.workerSizeY = Math.ceil(this.gtaoTexture.height / 8);

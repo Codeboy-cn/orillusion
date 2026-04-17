@@ -5,7 +5,6 @@ import { UniformGPUBuffer } from '../../graphics/webGpu/core/buffer/UniformGPUBu
 import { WebGPUDescriptorCreator } from '../../graphics/webGpu/descriptor/WebGPUDescriptorCreator';
 import { ComputeShader } from '../../graphics/webGpu/shader/ComputeShader';
 import { GPUTextureFormat } from '../../graphics/webGpu/WebGPUConst';
-import { webGPUContext } from '../../graphics/webGpu/Context3D';
 import { GPUContext } from '../GPUContext';
 import { RendererPassState } from '../passRenderer/state/RendererPassState';
 import { PostBase } from './PostBase';
@@ -99,12 +98,12 @@ export class GBufferPost extends PostBase {
         return this._state2;
     }
 
-    private createResource() {
+    private _createGBufferPostResources() {
         let rtFrame = GBufferFrame.getGBufferFrame("ColorPassGBuffer");
         this.currentRenderTexture = rtFrame.getColorTexture();
         this.gBufferTexture = rtFrame.getCompressGBufferTexture();
 
-        let [w, h] = webGPUContext.presentationSize;
+        let [w, h] = this._boundCtx!.presentationSize;
 
         this.outTexture = new VirtualTexture(w, h, GPUTextureFormat.rgba16float, false, GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.COPY_SRC | GPUTextureUsage.TEXTURE_BINDING);
         this.outTexture.name = 'outTexture';
@@ -152,7 +151,7 @@ export class GBufferPost extends PostBase {
 
     public compute(view: View3D): void {
         if (!this.testCompute) {
-            this.createResource();
+            this._createGBufferPostResources();
             this.createCompute();
             this.onResize();
 
@@ -167,7 +166,7 @@ export class GBufferPost extends PostBase {
     }
 
     public onResize() {
-        let [w, h] = webGPUContext.presentationSize;
+        let [w, h] = this._boundCtx!.presentationSize;
         this.outTexture.resize(w, h);
 
         this.testCompute.workerSizeX = Math.ceil(this.outTexture.width / 16);

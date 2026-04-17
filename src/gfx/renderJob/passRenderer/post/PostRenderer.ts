@@ -40,6 +40,7 @@ export class PostRenderer extends RendererBase {
         let has = this.postList.get(clsName);
         if (!has) {
             this.postList.set(clsName, post);
+            post['bindView'](view);
             post.onAttach(view);
         }
     }

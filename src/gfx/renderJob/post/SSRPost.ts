@@ -7,7 +7,6 @@ import { UniformGPUBuffer } from '../../graphics/webGpu/core/buffer/UniformGPUBu
 import { WebGPUDescriptorCreator } from '../../graphics/webGpu/descriptor/WebGPUDescriptorCreator';
 import { ComputeShader } from '../../graphics/webGpu/shader/ComputeShader';
 import { GPUTextureFormat } from '../../graphics/webGpu/WebGPUConst';
-import { webGPUContext } from '../../graphics/webGpu/Context3D';
 import { GPUContext } from '../GPUContext';
 import { RendererPassState } from '../passRenderer/state/RendererPassState';
 import { PostBase } from './PostBase';
@@ -208,8 +207,8 @@ export class SSRPost extends PostBase {
         this.SSR_Blend_Compute.workerSizeZ = 1;
     }
 
-    private createResource() {
-        let [w, h] = webGPUContext.presentationSize;
+    private _createSsrResources() {
+        let [w, h] = this._boundCtx!.presentationSize;
 
         this.finalTexture = new VirtualTexture(w, h, GPUTextureFormat.rgba16float, false, GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.TEXTURE_BINDING);
         this.finalTexture.name = 'ssrOutTex';
@@ -252,7 +251,7 @@ export class SSRPost extends PostBase {
      */
     render(view: View3D, command: GPUCommandEncoder) {
         if (!this.SSR_RayTraceCompute) {
-            this.createResource();
+            this._createSsrResources();
             this.createISShader();
             this.createRayTraceShader();
             this.createBlendShader(this.isRetTexture);
@@ -284,7 +283,7 @@ export class SSRPost extends PostBase {
     }
 
     public onResize(): void {
-        let [w, h] = webGPUContext.presentationSize;
+        let [w, h] = this._boundCtx!.presentationSize;
 
         let ssrWidth = Math.ceil(w * Engine3D.setting.render.postProcessing.ssr.pixelRatio);
         let ssrHeight = Math.ceil(h * Engine3D.setting.render.postProcessing.ssr.pixelRatio);

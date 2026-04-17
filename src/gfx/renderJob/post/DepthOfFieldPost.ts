@@ -5,7 +5,6 @@ import { UniformGPUBuffer } from '../../graphics/webGpu/core/buffer/UniformGPUBu
 import { WebGPUDescriptorCreator } from '../../graphics/webGpu/descriptor/WebGPUDescriptorCreator';
 import { ComputeShader } from '../../graphics/webGpu/shader/ComputeShader';
 import { GPUTextureFormat } from '../../graphics/webGpu/WebGPUConst';
-import { webGPUContext } from '../../graphics/webGpu/Context3D';
 import { GPUContext } from '../GPUContext';
 import { RTResourceMap } from '../frame/RTResourceMap';
 import { RendererPassState } from '../passRenderer/state/RendererPassState';
@@ -138,8 +137,8 @@ export class DepthOfFieldPost extends PostBase {
         this.blurComputes[0].setSamplerTexture('inTex', this.getLastRenderTexture());
     }
 
-    private createResource() {
-        let presentationSize = webGPUContext.presentationSize;
+    private _createDofResources() {
+        let presentationSize = this._boundCtx!.presentationSize;
         let w = presentationSize[0];
         let h = presentationSize[1];
 
@@ -169,7 +168,7 @@ export class DepthOfFieldPost extends PostBase {
      */
     public render(view: View3D, command: GPUCommandEncoder) {
         if (!this.blurComputes) {
-            this.createResource();
+            this._createDofResources();
             this.createBlurCompute();
             let standUniform = GlobalBindGroup.getCameraGroup(view.camera);
             for (let i = 0; i < this.blurComputes.length; i++) {
@@ -196,7 +195,7 @@ export class DepthOfFieldPost extends PostBase {
     }
 
     public onResize(): void {
-        let presentationSize = webGPUContext.presentationSize;
+        let presentationSize = this._boundCtx!.presentationSize;
         let w = presentationSize[0];
         let h = presentationSize[1];
         let cfg = Engine3D.setting.render.postProcessing.depthOfView;

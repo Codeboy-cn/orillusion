@@ -5,7 +5,6 @@ import { UniformGPUBuffer } from '../../graphics/webGpu/core/buffer/UniformGPUBu
 import { WebGPUDescriptorCreator } from '../../graphics/webGpu/descriptor/WebGPUDescriptorCreator';
 import { ComputeShader } from '../../graphics/webGpu/shader/ComputeShader';
 import { GPUTextureFormat } from '../../graphics/webGpu/WebGPUConst';
-import { webGPUContext } from '../../graphics/webGpu/Context3D';
 import { GPUContext } from '../GPUContext';
 import { RendererPassState } from '../passRenderer/state/RendererPassState';
 import { PostBase } from './PostBase';
@@ -115,8 +114,8 @@ export class GodRayPost extends PostBase {
         this.onResize();
     }
 
-    private createResource() {
-        let presentationSize = webGPUContext.presentationSize;
+    private _createGodRayResources() {
+        let presentationSize = this._boundCtx!.presentationSize;
         let [w, h] = presentationSize;
         this.godRayTexture = new VirtualTexture(w, h, GPUTextureFormat.rgba16float, false, GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.COPY_SRC | GPUTextureUsage.TEXTURE_BINDING);
         this.godRayTexture.name = 'godRayTexture';
@@ -126,7 +125,7 @@ export class GodRayPost extends PostBase {
     }
 
     public onResize() {
-        let presentationSize = webGPUContext.presentationSize;
+        let presentationSize = this._boundCtx!.presentationSize;
         let [w, h] = presentationSize;
         this.godRayTexture.resize(w, h);
         this.historyGodRayData.resizeBuffer(4 * this.godRayTexture.width * this.godRayTexture.height);
@@ -142,7 +141,7 @@ export class GodRayPost extends PostBase {
      */
     render(view: View3D, command: GPUCommandEncoder) {
         if (!this.godRayCompute) {
-            this.createResource();
+            this._createGodRayResources();
             this.createCompute(view);
 
             let lightUniformEntries = GlobalBindGroup.getLightEntries(view.scene);
@@ -161,7 +160,7 @@ export class GodRayPost extends PostBase {
         this.godRaySetting.setFloat('intensity', setting.intensity);
         this.godRaySetting.setFloat('rayMarchCount', setting.rayMarchCount);
 
-        let presentationSize = webGPUContext.presentationSize;
+        let presentationSize = this._boundCtx!.presentationSize;
         let [w, h] = presentationSize;
         this.godRaySetting.setFloat('viewPortWidth', w);
         this.godRaySetting.setFloat('viewPortHeight', h);
