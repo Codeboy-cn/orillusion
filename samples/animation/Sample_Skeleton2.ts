@@ -12,7 +12,7 @@ class Sample_Skeleton2 {
         Engine3D.setting.shadow.updateFrameRate = 1;
         Engine3D.setting.shadow.shadowSize = 2048;
 
-        await Engine3D.init();
+        const engine = await Engine3D.create();
 
         this.scene = new Scene3D();
         let sky = this.scene.addComponent(AtmosphericComponent);
@@ -30,7 +30,7 @@ class Sample_Skeleton2 {
         view.scene = this.scene;
         view.camera = mainCamera;
 
-        Engine3D.startRenderView(view);
+        engine.startView(view);
 
         await this.initScene(this.scene);
         sky.relativeTransform = this.lightObj3D.transform;

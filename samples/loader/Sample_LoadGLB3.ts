@@ -6,7 +6,7 @@ export class Sample_LoadGLB3 {
     scene: Scene3D;
 
     async run() {
-        await Engine3D.init();
+        const engine = await Engine3D.create();
         Engine3D.setting.shadow.autoUpdate = true;
         Engine3D.setting.shadow.shadowBound = 5;
         Engine3D.setting.shadow.shadowBias = 0.002;
@@ -16,7 +16,7 @@ export class Sample_LoadGLB3 {
 
         exampleScene.hoverCtrl.setCamera(-45, -20, 8);
         exampleScene.light.intensity = 5;
-        Engine3D.startRenderView(exampleScene.view);
+        engine.startView(exampleScene.view);
         await this.initScene();
     }
 

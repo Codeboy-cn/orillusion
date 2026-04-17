@@ -7,11 +7,11 @@ import { AtmosphericComponent, Engine3D, GPUCullMode, MeshRenderer, Object3D, Pl
 class Sample_AtmosphericSky {
     async run() {
         // init engine
-        await Engine3D.init({});
+        const engine = await Engine3D.create({});
         // init scene
         let scene: Scene3D = createExampleScene().scene;
         // start renderer
-        Engine3D.startRenderView(scene.view);
+        engine.startView(scene.view);
         // add atmospheric sky
         let sky = scene.getComponent(AtmosphericComponent);
 

@@ -9,7 +9,7 @@ class Sample_FlightHelmet {
     flightHelmetObj: Object3D;
 
     async run() {
-        await Engine3D.init({
+        const engine = await Engine3D.create({
             canvasConfig: {
                 alpha: true,
                 zIndex: 0,
@@ -26,7 +26,7 @@ class Sample_FlightHelmet {
 
         this.scene = new Scene3D();
         let camera = CameraUtil.createCamera3DObject(this.scene);
-        camera.perspective(60, Engine3D.aspect, 1, 5000.0);
+        camera.perspective(60, engine.aspect, 1, 5000.0);
 
         camera.object3D.addComponent(HoverCameraController).setCamera(-45, -30, 15);
 
@@ -34,7 +34,7 @@ class Sample_FlightHelmet {
         view.scene = this.scene;
         view.camera = camera;
 
-        Engine3D.startRenderView(view);
+        engine.startView(view);
 
         let postCom = this.scene.addComponent(PostProcessingComponent);
         postCom.addPost(FXAAPost);

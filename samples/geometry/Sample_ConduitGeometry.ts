@@ -13,10 +13,10 @@ class Sample_ConduitGeometry {
     async run() {
         let param = createSceneParam();
         param.camera.distance = 30;
-        await Engine3D.init();
+        const engine = await Engine3D.create();
         let exampleScene = createExampleScene(param);
         this.scene = exampleScene.scene;
-        Engine3D.startRenderView(exampleScene.view);
+        engine.startView(exampleScene.view);
         await this.createMaterial();
 
         GUIHelp.init();

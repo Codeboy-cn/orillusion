@@ -23,15 +23,15 @@ export class Sample_OctTreeFrustum {
         Engine3D.setting.occlusionQuery.octree = { width: 1000, height: 1000, depth: 1000, x: 0, y: 0, z: 0 }
 
         // init engine
-        await Engine3D.init({ renderLoop: () => { this.loop() } });
+        const engine = await Engine3D.create({ renderLoop: () => { this.loop() } });
         GUIHelp.init();
         let param = createSceneParam();
         param.camera.distance = 400;
         param.camera.near = 0.1;
         param.camera.far = 10000;
         let exampleScene = createExampleScene(param);
-        Engine3D.startRenderViews([exampleScene.view]);
-        Engine3D.getRenderJob(exampleScene.view);
+        engine.startViews([exampleScene.view]);
+        engine.renderJobs.get(exampleScene.view);
 
         this.view = exampleScene.view;
         this.view.scene.addComponent(Stats);
@@ -45,7 +45,7 @@ export class Sample_OctTreeFrustum {
 
         this.entities = this.initBoxList();
         this.camera = new Object3D().addComponent(Camera3D);
-        this.camera.perspective(60, Engine3D.aspect, 1, 1000);
+        this.camera.perspective(60, engine.aspect, 1, 1000);
         this.view.scene.addChild(this.camera.object3D);
 
         GUIUtil.renderTransform(this.camera.transform);

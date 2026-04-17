@@ -13,12 +13,12 @@ export class Sample_UIMultiPanel {
 
         GUIHelp.init();
 
-        await Engine3D.init({ renderLoop: () => { this.renderUpdate(); } });
+        const engine = await Engine3D.create({ renderLoop: () => { this.renderUpdate(); } });
 
         let sceneData = createSceneParam();
         sceneData.camera.distance = 160;
         let exampleScene = createExampleScene(sceneData);
-        Engine3D.startRenderView(exampleScene.view);
+        engine.startView(exampleScene.view);
         this.scene = exampleScene.scene;
         this.camera = exampleScene.camera;
         this.view = exampleScene.view;

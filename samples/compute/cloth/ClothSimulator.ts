@@ -65,8 +65,9 @@ export class ClothSimulator extends MeshRenderer {
     }
 
     public start() {
-        Engine3D.inputSystem.addEventListener(KeyEvent.KEY_DOWN, (e: KeyEvent) => this.updateKeyState(e.keyCode, true), this);
-        Engine3D.inputSystem.addEventListener(KeyEvent.KEY_UP, (e: KeyEvent) => this.updateKeyState(e.keyCode, false), this);
+        const input = (this.transform as any)?.view3D?.engine3D?.inputSystem ?? Engine3D.inputSystem;
+        input.addEventListener(KeyEvent.KEY_DOWN, (e: KeyEvent) => this.updateKeyState(e.keyCode, true), this);
+        input.addEventListener(KeyEvent.KEY_UP, (e: KeyEvent) => this.updateKeyState(e.keyCode, false), this);
     }
 
     public SetInteractionSphere(sphere: Object3D) {

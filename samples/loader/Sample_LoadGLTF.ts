@@ -14,19 +14,19 @@ class Sample_LoadGLTF {
 
 
         //init engine
-        await Engine3D.init();
+        const engine = await Engine3D.create();
 
         this.scene = new Scene3D();
 
         let camera = CameraUtil.createCamera3DObject(this.scene);
-        camera.perspective(60, Engine3D.aspect, 0.01, 5000.0);
+        camera.perspective(60, engine.aspect, 0.01, 5000.0);
         camera.object3D.addComponent(HoverCameraController).setCamera(25, -5, 100);
 
         let view = new View3D();
         view.scene = this.scene;
         view.camera = camera;
 
-        Engine3D.startRenderView(view);
+        engine.startView(view);
 
         await this.initScene();
     }

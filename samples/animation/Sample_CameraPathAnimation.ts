@@ -55,13 +55,13 @@ class Sample_CameraPathAnimation {
         Engine3D.setting.pick.enable = true;
         Engine3D.setting.pick.mode = `pixel`;
 
-        await Engine3D.init({ renderLoop: () => this.loop() });
+        const engine = await Engine3D.create({ renderLoop: () => this.loop() });
 
         let scene = new Scene3D();
         scene.addComponent(Stats);
 
         let camera = CameraUtil.createCamera3DObject(scene);
-        camera.perspective(60, Engine3D.aspect, 1, 1000.0);
+        camera.perspective(60, engine.aspect, 1, 1000.0);
         camera.transform.rotationX = 90;
         camera.enableCSM = true;
 
@@ -95,7 +95,7 @@ class Sample_CameraPathAnimation {
         this.graphic3D = new Graphic3D()
         scene.addChild(this.graphic3D)
 
-        Engine3D.startRenderView(view);
+        engine.startView(view);
 
         await this.initScene(scene, hoverCtrl);
         hoverCtrl.enable = true;
@@ -421,8 +421,8 @@ class AxisController extends ComponentBase {
         this.axisObject.transform.enable = false;
         this.view.scene.addChild(this.axisObject);
 
-        Engine3D.inputSystem.addEventListener(PointerEvent3D.POINTER_MOVE, this.onPointerMove, this);
-        Engine3D.inputSystem.addEventListener(PointerEvent3D.POINTER_UP, this.onPointerUp, this);
+        this.view.engine3D.inputSystem.addEventListener(PointerEvent3D.POINTER_MOVE, this.onPointerMove, this);
+        this.view.engine3D.inputSystem.addEventListener(PointerEvent3D.POINTER_UP, this.onPointerUp, this);
     }
 
     private onPickClick(e: PointerEvent3D) {
@@ -493,7 +493,7 @@ class AxisController extends ComponentBase {
         let p1 = new Plane(targetPos, cameraDirection);
 
         // 判断平面是否和射线相交，并计算交点
-        let ray = camera.screenPointToRay(Engine3D.inputSystem.mouseX, Engine3D.inputSystem.mouseY);
+        let ray = camera.screenPointToRay(this.view.engine3D.inputSystem.mouseX, this.view.engine3D.inputSystem.mouseY);
         let intersection = this._tmpVecB;
         let hasIntersection = p1.intersectsRay(ray, intersection);
 

@@ -9,7 +9,7 @@ class Sample_DepthOfView {
     async run() {
         Engine3D.setting.shadow.enable = true
         Engine3D.setting.shadow.shadowBound = 100
-        await Engine3D.init({
+        const engine = await Engine3D.create({
             canvasConfig: {
                 devicePixelRatio: 1
             }
@@ -28,7 +28,7 @@ class Sample_DepthOfView {
         let view = new View3D()
         view.scene = this.scene
         view.camera = camera
-        Engine3D.startRenderView(view)
+        engine.startView(view)
 
         let postProcessing = this.scene.addComponent(PostProcessingComponent)
         let DOFPost = postProcessing.addPost(DepthOfFieldPost)

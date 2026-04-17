@@ -11,10 +11,10 @@ class Sample_LoadGLTF2 {
         Engine3D.setting.shadow.shadowBound = 80;
 
         //init engine
-        await Engine3D.init();
+        const engine = await Engine3D.create();
         let exampleScene = createExampleScene();
         this.scene = exampleScene.scene;
-        Engine3D.startRenderView(exampleScene.view);
+        engine.startView(exampleScene.view);
         await this.initScene();
     }
 

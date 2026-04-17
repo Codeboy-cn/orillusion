@@ -11,7 +11,7 @@ export class Demo_Flame {
     protected mVelocity: Vector3 = new Vector3();
 
     async run() {
-        await Engine3D.init({});
+        const engine = await Engine3D.create({});
 
         GUIHelp.init();
 
@@ -28,7 +28,7 @@ export class Demo_Flame {
         let view = new View3D();
         view.scene = scene;
         view.camera = camera;
-        Engine3D.startRenderView(view);
+        engine.startView(view);
     }
 
     async initScene(scene: Scene3D) {

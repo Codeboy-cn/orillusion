@@ -28,7 +28,7 @@ export class Sample_CarPaint {
 		Engine3D.setting.render.hdrExposure = 1.0;
 
 		GUIHelp.init();
-		await Engine3D.init();
+		const engine = await Engine3D.create();
 
 		this.scene = new Scene3D();
 		let sky = this.scene.getOrAddComponent(SkyRenderer);
@@ -49,7 +49,7 @@ export class Sample_CarPaint {
 
 		await this.initScene();
 
-		Engine3D.startRenderView(this.view);
+		engine.startView(this.view);
 
 		let ssgi: SSGIPost;
 		let postProcessing = this.scene.addComponent(PostProcessingComponent);

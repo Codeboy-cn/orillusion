@@ -6,7 +6,7 @@ class Sample_TextBarrage {
 
     async run() {
         // init engine
-        await Engine3D.init();
+        const engine = await Engine3D.create();
         // create new Scene
         let scene = new Scene3D();
         this.scene = scene;
@@ -20,7 +20,7 @@ class Sample_TextBarrage {
 
         // init camera3D
         let mainCamera = CameraUtil.createCamera3D(null, scene);
-        mainCamera.perspective(60, Engine3D.aspect, 1, 2000.0);
+        mainCamera.perspective(60, engine.aspect, 1, 2000.0);
         this.camera = mainCamera;
 
         // add a basic camera controller
@@ -36,7 +36,7 @@ class Sample_TextBarrage {
         let panelRoot: Object3D = new Object3D();
         const panel = panelRoot.addComponent(ViewPanel);
         // resize panel radio
-        webGPUContext.addEventListener(CResizeEvent.RESIZE, () => panel.uiTransform.resize(Engine3D.width, Engine3D.height), this);
+        webGPUContext.addEventListener(CResizeEvent.RESIZE, () => panel.uiTransform.resize(engine.width, engine.height), this);
 
         // add to UIcanvas
         let canvas = view.enableUICanvas();
@@ -61,7 +61,7 @@ class Sample_TextBarrage {
         }
 
         // start render
-        Engine3D.startRenderView(view);
+        engine.startView(view);
     }
 }
 
@@ -93,8 +93,9 @@ class TextBarrageAnimation extends ComponentBase {
             const now = Date.now();
             const dt = now - this.lastTime;
             this.lastTime = now;
-            let halfWidth = Engine3D.width * 0.5,
-                halfHeight = Engine3D.height * 0.5;
+            const engine = (this.transform as any)?.view3D?.engine3D ?? Engine3D;
+            let halfWidth = engine.width * 0.5,
+                halfHeight = engine.height * 0.5;
             let { x, y, width, height } = this._text.uiTransform;
 
             // move text to left
@@ -118,8 +119,9 @@ class TextBarrageAnimation extends ComponentBase {
         text.text = `${words[getRandomNum(0, wordLastIndex)]} ${words[getRandomNum(0, wordLastIndex)]}`;
         // Reset color
         text.color = colors[getRandomNum(0, colors.length - 1)];
-        const halfWidth = Engine3D.width * 0.5;
-        const halfHeight = Engine3D.height * 0.5;
+        const engine = (this.transform as any)?.view3D?.engine3D ?? Engine3D;
+        const halfWidth = engine.width * 0.5;
+        const halfHeight = engine.height * 0.5;
         // Reset position
         this._text.uiTransform.x = isFirst ? getRandomNum(halfWidth, halfWidth * 3) : halfWidth + this._text.uiTransform.width;
         this._text.uiTransform.y = getRandomNum(-halfHeight + this._text.uiTransform.height, halfHeight - this._text.uiTransform.height);

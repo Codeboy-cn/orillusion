@@ -12,7 +12,7 @@ export class Demo_Softbody {
         Engine3D.setting.shadow.shadowBound = 8;
         //Engine3D.setting.shadow.shadowBias = 0.000001;
 
-        await Engine3D.init({});
+        const engine = await Engine3D.create({});
 
         GUIHelp.init();
 
@@ -30,7 +30,7 @@ export class Demo_Softbody {
         view.scene = scene;
         view.camera = camera;
 
-        Engine3D.startRenderView(view);
+        engine.startView(view);
     }
 
     async initScene(scene: Scene3D) {

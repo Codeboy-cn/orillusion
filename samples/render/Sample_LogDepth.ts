@@ -3,11 +3,11 @@ import { Engine3D, Scene3D, AtmosphericComponent, View3D, CameraUtil, HoverCamer
 export class Sample_LogDepth {
     async run() {
         Engine3D.setting.render.useLogDepth = true;
-        await Engine3D.init();
+        const engine = await Engine3D.create();
 
         let scene = new Scene3D();
         let camera = CameraUtil.createCamera3DObject(scene);
-        camera.perspective(60, Engine3D.aspect, 1.0, 6000 * 10000.0);
+        camera.perspective(60, engine.aspect, 1.0, 6000 * 10000.0);
 
         let cameraController = camera.object3D.addComponent(HoverCameraController);
         cameraController.setCamera(20, -45, 2000 * 10000.0);
@@ -19,7 +19,7 @@ export class Sample_LogDepth {
         let view = new View3D();
         view.scene = scene;
         view.camera = camera;
-        Engine3D.startRenderView(view);
+        engine.startView(view);
     }
 
     async initScene(scene: Scene3D) {

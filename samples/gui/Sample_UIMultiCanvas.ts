@@ -5,11 +5,11 @@ class Sample_UIMultiCanvas {
     async run() {
         Engine3D.setting.shadow.autoUpdate = true;
 
-        await Engine3D.init();
+        const engine = await Engine3D.create();
         await Engine3D.res.loadFont('fnt/0.fnt');
 
         let exampleScene = createExampleScene();
-        Engine3D.startRenderView(exampleScene.view);
+        engine.startView(exampleScene.view);
 
         // create floor
         let floor = Object3DUtil.GetSingleCube(100, 2, 50, 0.5, 0.5, 0.5);

@@ -30,7 +30,7 @@ export class Sample_SSGI {
 		Engine3D.setting.render.hdrExposure = 1.0;
 
 		GUIHelp.init();
-		await Engine3D.init();
+		const engine = await Engine3D.create();
 
 		this.scene = new Scene3D();
 		// this.scene.addComponent(Stats);
@@ -54,7 +54,7 @@ export class Sample_SSGI {
 		await this.initScene();
 		sky.relativeTransform = this.lightObj.transform;
 
-		Engine3D.startRenderView(this.view);
+		engine.startView(this.view);
 
 		let ssgi: SSGIPost;
 		let postProcessing = this.scene.addComponent(PostProcessingComponent);

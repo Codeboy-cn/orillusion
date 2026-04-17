@@ -36,7 +36,7 @@ class Sample_GI {
         Engine3D.setting.shadow.autoUpdate = true;
         Engine3D.setting.shadow.updateFrameRate = 1;
 
-        await Engine3D.init({
+        const engine = await Engine3D.create({
             renderLoop: () => {
                 if (this.giComponent?.isStart) {
                     GUIUtil.renderGIComponent(this.giComponent);
@@ -49,7 +49,7 @@ class Sample_GI {
         let sky = this.scene.addComponent(AtmosphericComponent);
 
         let camera = CameraUtil.createCamera3DObject(this.scene);
-        camera.perspective(60, Engine3D.aspect, 0.01, 5000.0);
+        camera.perspective(60, engine.aspect, 0.01, 5000.0);
 
         let ctrl = camera.object3D.addComponent(HoverCameraController);
         ctrl.setCamera(0, -45, 200);
@@ -63,7 +63,7 @@ class Sample_GI {
 
         this.addGIProbes(view);
 
-        Engine3D.startRenderView(view);
+        engine.startView(view);
 
         let postCom = this.scene.addComponent(PostProcessingComponent);
         postCom.addPost(FXAAPost);

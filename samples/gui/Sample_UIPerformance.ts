@@ -69,11 +69,11 @@ export class Sample_UISpriteSheet {
             this.keyFrames.push((frameStart + i).toString().padStart(5, '0'));
         }
 
-        await Engine3D.init({ renderLoop: () => { this.renderUpdate(); } });
+        const engine = await Engine3D.create({ renderLoop: () => { this.renderUpdate(); } });
         let exampleScene = createExampleScene();
         this.scene = exampleScene.scene;
         this.scene.addComponent(Stats);
-        Engine3D.startRenderView(exampleScene.view);
+        engine.startView(exampleScene.view);
         await Engine3D.res.loadAtlas('atlas/Sheet_atlas.json');
         await Engine3D.res.loadFont('fnt/0.fnt');
 
@@ -130,8 +130,9 @@ export class Sample_UISpriteSheet {
     spriteSheets: SpriteSheet[];
 
     private createSpriteSheets(root: Object3D) {
-        let width = Engine3D.width;
-        let height = Engine3D.height;
+        const engine = this.scene.view.engine3D ?? Engine3D;
+        let width = engine.width;
+        let height = engine.height;
         let bound = new BoundingBox(new Vector3(0, 0, 0), new Vector3(width, height));
         //color
         let color: Color = Color.random();

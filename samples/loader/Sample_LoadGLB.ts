@@ -10,7 +10,7 @@ export class Sample_LoadGLB {
 
     async run() {
         GUIHelp.init();
-        await Engine3D.init();
+        const engine = await Engine3D.create();
         Engine3D.setting.shadow.autoUpdate = true;
         Engine3D.setting.shadow.shadowBound = 150;
         Engine3D.setting.shadow.shadowBias = 0.1;
@@ -23,7 +23,7 @@ export class Sample_LoadGLB {
         sky.map = skyMap;
         this.scene.envMap = skyMap;
 
-        Engine3D.startRenderView(this.scene.view);
+        engine.startView(this.scene.view);
         GUIHelp.endFolder();
         await this.initScene();
 

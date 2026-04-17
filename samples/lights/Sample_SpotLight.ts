@@ -10,7 +10,7 @@ class Sample_SpotLight {
         Engine3D.setting.occlusionQuery.enable = false;
         Engine3D.setting.shadow.enable = true;
         Engine3D.setting.shadow.pointShadowBias = 0.002;
-        await Engine3D.init({});
+        const engine = await Engine3D.create({});
 
         GUIHelp.init();
 
@@ -19,7 +19,7 @@ class Sample_SpotLight {
 
         // init camera3D
         let mainCamera = CameraUtil.createCamera3D(null, this.scene);
-        mainCamera.perspective(60, Engine3D.aspect, 1, 2000.0);
+        mainCamera.perspective(60, engine.aspect, 1, 2000.0);
         //set camera data
         mainCamera.object3D.addComponent(HoverCameraController).setCamera(0, -25, 1000);
 
@@ -29,7 +29,7 @@ class Sample_SpotLight {
         view.scene = this.scene;
         view.camera = mainCamera;
 
-        Engine3D.startRenderView(view);
+        engine.startView(view);
     }
 
     initScene() {

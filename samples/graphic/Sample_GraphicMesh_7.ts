@@ -23,7 +23,7 @@ export class Sample_GraphicMesh_7 {
         Matrix4.maxCount = 500000;
         Matrix4.allocCount = 500000;
 
-        await Engine3D.init();
+        const engine = await Engine3D.create();
 
         Engine3D.setting.render.debug = true;
         Engine3D.setting.shadow.shadowBound = 5;
@@ -37,7 +37,7 @@ export class Sample_GraphicMesh_7 {
         let sky = this.scene.addComponent(AtmosphericComponent);
         sky.enable = false;
         let camera = CameraUtil.createCamera3DObject(this.scene);
-        camera.perspective(60, Engine3D.aspect, 1, 5000.0);
+        camera.perspective(60, engine.aspect, 1, 5000.0);
 
         camera.object3D.addComponent(HoverCameraController).setCamera(30, 0, 120);
 
@@ -48,7 +48,7 @@ export class Sample_GraphicMesh_7 {
         this.graphic3D = new Graphic3D();
         this.scene.addChild(this.graphic3D);
 
-        Engine3D.startRenderView(this.view);
+        engine.startView(this.view);
 
         GUIUtil.renderDebug();
 

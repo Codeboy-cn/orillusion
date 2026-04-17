@@ -9,7 +9,7 @@ class Sample_ShootTheBox {
     async run() {
         //init Physics System
         await Physics.init();
-        await Engine3D.init({
+        const engine = await Engine3D.create({
             //make Physics System continuously effective
             renderLoop: () => {
                 if (Physics.isInited) {
@@ -24,7 +24,7 @@ class Sample_ShootTheBox {
         Engine3D.setting.shadow.shadowBias = 0.005;
 
         //add mouse event listener
-        Engine3D.inputSystem.addEventListener(PointerEvent3D.POINTER_DOWN, this.MouseDown, this);
+        engine.inputSystem.addEventListener(PointerEvent3D.POINTER_DOWN, this.MouseDown, this);
 
         //create scene,add sky and FPS
         let scene = new Scene3D();
@@ -34,7 +34,7 @@ class Sample_ShootTheBox {
         //create camera
         let camera = CameraUtil.createCamera3DObject(scene);
         // camera.enableCSM = true;
-        camera.perspective(60, Engine3D.aspect, 1, 5000);
+        camera.perspective(60, engine.aspect, 1, 5000);
         let controller = camera.object3D.addComponent(HoverCameraController);
         //disable controller move
         controller.mouseRightFactor = 0;
@@ -116,7 +116,7 @@ class Sample_ShootTheBox {
         this.view = new View3D();
         this.view.scene = scene;
         this.view.camera = camera;
-        Engine3D.startRenderView(this.view);
+        engine.startView(this.view);
     }
 
     private MouseDown(e: PointerEvent3D) {

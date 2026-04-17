@@ -12,7 +12,7 @@ class Sample_ReplaceGeometry {
         let param = createSceneParam();
         param.light.intensity = 1;
         param.camera.distance = 40;
-        await Engine3D.init();
+        const engine = await Engine3D.create();
         let exampleScene = createExampleScene(param);
 
         Engine3D.setting.shadow.shadowBound = 100;
@@ -21,7 +21,7 @@ class Sample_ReplaceGeometry {
 
         this.scene = exampleScene.scene;
 
-        Engine3D.startRenderView(exampleScene.view);
+        engine.startView(exampleScene.view);
 
 
         GUIHelp.init();

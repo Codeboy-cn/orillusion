@@ -17,7 +17,7 @@ export class Sample_TAA {
 		Engine3D.setting.shadow.shadowBound = 40;
 		Engine3D.setting.shadow.shadowBias = 0.005;
 
-		await Engine3D.init();
+		const engine = await Engine3D.create();
 
 		this.scene = new Scene3D();
 		let sky = this.scene.addComponent(AtmosphericComponent);
@@ -34,7 +34,7 @@ export class Sample_TAA {
 		let view = new View3D();
 		view.scene = this.scene;
 		view.camera = mainCamera;
-		Engine3D.startRenderView(view);
+		engine.startView(view);
 
 		let postProcessing = this.scene.addComponent(PostProcessingComponent);
 		let taa = postProcessing.addPost(TAAPost);

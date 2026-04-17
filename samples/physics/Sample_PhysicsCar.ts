@@ -19,7 +19,7 @@ class Sample_PhysicsCar {
         Engine3D.setting.shadow.shadowBound = 150;
 
         await Physics.init();
-        await Engine3D.init({ renderLoop: () => this.loop() });
+        const engine = await Engine3D.create({ renderLoop: () => this.loop() });
 
         let sceneParam = createSceneParam();
         let exampleScene = createExampleScene(sceneParam);
@@ -27,7 +27,7 @@ class Sample_PhysicsCar {
         this.scene = exampleScene.scene;
         await this.initScene(this.scene);
 
-        Engine3D.startRenderView(exampleScene.view);
+        engine.startView(exampleScene.view);
         
         GUIHelp.init();
         GUIHelp.open();
@@ -227,13 +227,18 @@ class VehicleKeyboardController extends ComponentBase {
         addWheel(false, -x, -y, -z, r);
         addWheel(false, x, -y, -z, r);
     }
+    private _inputSystem() {
+        return (this.transform as any)?.view3D?.engine3D?.inputSystem ?? Engine3D.inputSystem;
+    }
     onEnable() {
-        Engine3D.inputSystem.addEventListener(KeyEvent.KEY_UP, this.onKeyUp, this);
-        Engine3D.inputSystem.addEventListener(KeyEvent.KEY_DOWN, this.onKeyDown, this);
+        const input = this._inputSystem();
+        input.addEventListener(KeyEvent.KEY_UP, this.onKeyUp, this);
+        input.addEventListener(KeyEvent.KEY_DOWN, this.onKeyDown, this);
     }
     onDisable() {
-        Engine3D.inputSystem.addEventListener(KeyEvent.KEY_UP, this.onKeyUp, this);
-        Engine3D.inputSystem.addEventListener(KeyEvent.KEY_DOWN, this.onKeyDown, this);
+        const input = this._inputSystem();
+        input.addEventListener(KeyEvent.KEY_UP, this.onKeyUp, this);
+        input.addEventListener(KeyEvent.KEY_DOWN, this.onKeyDown, this);
     }
     // onUpdate() {
     onLateUpdate() {

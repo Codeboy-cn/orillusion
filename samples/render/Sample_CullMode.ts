@@ -3,14 +3,14 @@ import { Engine3D, Scene3D, AtmosphericComponent, Object3D, Camera3D, OrbitContr
 
 class Sample_CullMode {
     async run() {
-        await Engine3D.init();
+        const engine = await Engine3D.create();
         GUIHelp.init();
 
         let scene = new Scene3D();
         let sky = scene.addComponent(AtmosphericComponent);
 
         let camera = CameraUtil.createCamera3DObject(scene);
-        camera.perspective(60, Engine3D.aspect, 0.01, 10000.0);
+        camera.perspective(60, engine.aspect, 0.01, 10000.0);
         camera.object3D.z = 3;
 
         let oribit = camera.object3D.addComponent(OrbitController);
@@ -21,7 +21,7 @@ class Sample_CullMode {
         view.scene = scene;
         view.camera = camera;
 
-        Engine3D.startRenderView(view);
+        engine.startView(view);
 
         // add direct light
         let lightObj = new Object3D();

@@ -21,7 +21,7 @@ export class Static_Audio {
         Engine3D.setting.shadow.shadowBound = 200;
         Engine3D.setting.shadow.shadowBias = 0.002;
 
-        await Engine3D.init({
+        const engine = await Engine3D.create({
             renderLoop: this.loop.bind(this)
         });
         this.scene = new Scene3D();
@@ -32,7 +32,7 @@ export class Static_Audio {
         let mainCamera = this.camera.addComponent(Camera3D)
         this.scene.addChild(this.camera)
 
-        mainCamera.perspective(60, Engine3D.aspect, 0.1, 20000.0);
+        mainCamera.perspective(60, engine.aspect, 0.1, 20000.0);
         let orbit = this.camera.addComponent(OrbitController)
         orbit.target = new Vector3(0, 4, 0)
         orbit.minDistance = 10
@@ -42,7 +42,7 @@ export class Static_Audio {
         view.scene = this.scene;
         view.camera = mainCamera;
 
-        Engine3D.startRenderView(view);
+        engine.startView(view);
         await this.initScene();
     }
 

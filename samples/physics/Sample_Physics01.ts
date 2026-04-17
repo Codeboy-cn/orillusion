@@ -16,7 +16,7 @@ class SamplePhysics01 {
         Engine3D.setting.shadow.shadowBound = 150;
 
         await Physics.init();
-        await Engine3D.init({ renderLoop: () => this.loop() });
+        const engine = await Engine3D.create({ renderLoop: () => this.loop() });
 
         let sceneParam = createSceneParam();
         sceneParam.camera.distance = 50;
@@ -28,7 +28,7 @@ class SamplePhysics01 {
         this.scene = exampleScene.scene;
         await this.initScene(this.scene);
 
-        Engine3D.startRenderView(exampleScene.view);
+        engine.startView(exampleScene.view);
     }
 
     async initScene(scene: Scene3D) {

@@ -14,7 +14,7 @@ class Sample_PropertyAnimation {
         Engine3D.setting.shadow.shadowSize = 2048;
         Engine3D.setting.shadow.shadowBias = 0.05;
 
-        await Engine3D.init();
+        const engine = await Engine3D.create();
         GUIHelp.init();
         let param = createSceneParam();
         param.camera.distance = 16;
@@ -26,7 +26,7 @@ class Sample_PropertyAnimation {
         // exampleScene.camera.enableCSM = true;
         await this.initScene(this.scene);
 
-        Engine3D.startRenderView(exampleScene.view);
+        engine.startView(exampleScene.view);
 
         let postCom = this.scene.addComponent(PostProcessingComponent);
         postCom.addPost(FXAAPost);

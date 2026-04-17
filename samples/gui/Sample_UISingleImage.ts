@@ -9,9 +9,9 @@ export class Sample_UISingleImage {
 
         GUIHelp.init();
 
-        await Engine3D.init();
+        const engine = await Engine3D.create();
         let exampleScene = createExampleScene();
-        Engine3D.startRenderView(exampleScene.view);
+        engine.startView(exampleScene.view);
 
         // create floor
         let floor = Object3DUtil.GetSingleCube(100, 2, 50, 0.5, 0.5, 0.5);

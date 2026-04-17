@@ -11,7 +11,7 @@ class Sample_ShadowToggle {
         Engine3D.setting.shadow.shadowSize = 2048;
         Engine3D.setting.shadow.shadowBound = 200;
         Engine3D.setting.shadow.shadowBias = 0.02;
-        await Engine3D.init({});
+        const engine = await Engine3D.create({});
 
         GUIHelp.init();
 
@@ -21,7 +21,7 @@ class Sample_ShadowToggle {
         // init camera3D
         let mainCamera = CameraUtil.createCamera3D(null, this.scene);
         // mainCamera.enableCSM = true;
-        mainCamera.perspective(60, Engine3D.aspect, 1, 5000.0);
+        mainCamera.perspective(60, engine.aspect, 1, 5000.0);
         //set camera data
         mainCamera.object3D.z = -15;
         mainCamera.object3D.addComponent(HoverCameraController).setCamera(-15, -35, 200);
@@ -33,7 +33,7 @@ class Sample_ShadowToggle {
         view.scene = this.scene;
         view.camera = mainCamera;
 
-        Engine3D.startRenderView(view);
+        engine.startView(view);
     }
 
     // create direction light

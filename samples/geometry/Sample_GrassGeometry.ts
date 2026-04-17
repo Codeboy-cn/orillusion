@@ -18,7 +18,7 @@ export class Sample_Grass {
 
         GUIHelp.init();
 
-        await Engine3D.init();
+        const engine = await Engine3D.create();
         this.view = new View3D();
         this.view.scene = new Scene3D();
         this.view.scene.addComponent(AtmosphericComponent);
@@ -30,7 +30,7 @@ export class Sample_Grass {
         this.view.camera.object3D.z = -15;
         this.view.camera.object3D.addComponent(HoverCameraController).setCamera(35, -20, 500);
 
-        Engine3D.startRenderView(this.view);
+        engine.startView(this.view);
 
         // this.post = this.view.scene.addComponent(PostProcessingComponent);
         // let fxaa = this.post.addPost(FXAAPost);

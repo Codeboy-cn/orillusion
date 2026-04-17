@@ -12,7 +12,7 @@ export class Sample_MorphTarget {
         Engine3D.setting.shadow.shadowBound = 100;
         Engine3D.setting.shadow.shadowBias = 0.05;
 
-        await Engine3D.init();
+        const engine = await Engine3D.create();
         GUIHelp.init();
 
         this.scene = new Scene3D();
@@ -31,7 +31,7 @@ export class Sample_MorphTarget {
         sky.relativeTransform = this.lightObj3D.transform;
         await this.initMorphModel();
 
-        Engine3D.startRenderView(view);
+        engine.startView(view);
 
         let postCom = this.scene.addComponent(PostProcessingComponent);
         postCom.addPost(FXAAPost);

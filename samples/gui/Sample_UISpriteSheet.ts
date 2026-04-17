@@ -12,9 +12,9 @@ export class Sample_UISpriteSheet {
 
         GUIHelp.init();
 
-        await Engine3D.init({ renderLoop: () => { this.renderUpdate(); } });
+        const engine = await Engine3D.create({ renderLoop: () => { this.renderUpdate(); } });
         let exampleScene = createExampleScene();
-        Engine3D.startRenderView(exampleScene.view);
+        engine.startView(exampleScene.view);
         await Engine3D.res.loadAtlas('atlas/Sheet_atlas.json');
 
         // enable ui canvas at index 0

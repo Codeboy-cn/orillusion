@@ -21,7 +21,7 @@ class Sample_POI {
         Engine3D.setting.shadow.shadowBias = 0.005;
         Engine3D.setting.shadow.csmScatteringExp = 1;
 
-        await Engine3D.init({ renderLoop: () => { this.loop(); } });
+        const engine = await Engine3D.create({ renderLoop: () => { this.loop(); } });
         let param = createSceneParam();
         param.light.intensity = 5;
         param.camera.distance = 30;
@@ -31,7 +31,7 @@ class Sample_POI {
 
         this.scene = exampleScene.scene;
 
-        Engine3D.startRenderView(exampleScene.view);
+        engine.startView(exampleScene.view);
         let postCom = this.scene.addComponent(PostProcessingComponent);
         let bloom = postCom.addPost(BloomPost);
 

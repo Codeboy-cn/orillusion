@@ -12,14 +12,14 @@ class Sample_ClearCoat {
         Engine3D.setting.render.debug = true;
         GUIHelp.init();
 
-        await Engine3D.init();
+        const engine = await Engine3D.create();
 
         //config settings
         Engine3D.setting.shadow.shadowBound = 300;
 
         this.scene = new Scene3D();
         let camera = CameraUtil.createCamera3DObject(this.scene);
-        camera.perspective(60, Engine3D.aspect, 1, 5000.0);
+        camera.perspective(60, engine.aspect, 1, 5000.0);
 
 
         camera.object3D.addComponent(HoverCameraController).setCamera(-25, -5, 300);
@@ -28,7 +28,7 @@ class Sample_ClearCoat {
         view.scene = this.scene;
         view.camera = camera;
 
-        Engine3D.startRenderView(view);
+        engine.startView(view);
         await this.initScene();
 
     }

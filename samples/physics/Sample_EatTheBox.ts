@@ -17,7 +17,7 @@ class Sample_EatTheBox {
     async run() {
         //init physics and engine
         await Physics.init();
-        await Engine3D.init({
+        const engine = await Engine3D.create({
             renderLoop: () => this.loop()
         });
 
@@ -38,7 +38,7 @@ class Sample_EatTheBox {
         let cameraObj = new Object3D();
         let camera = cameraObj.addComponent(Camera3D);
         // camera.enableCSM = true;
-        camera.perspective(60, Engine3D.aspect, 1, 5000);
+        camera.perspective(60, engine.aspect, 1, 5000);
         camera.lookAt(new Vector3(0, 40, 35), new Vector3());
         scene.addChild(cameraObj);
 
@@ -65,7 +65,7 @@ class Sample_EatTheBox {
         //create player(ball)
         this.createBall();
         //start render
-        Engine3D.startRenderView(this.view);
+        engine.startView(this.view);
 
         //add debug UI
         const gui = new dat.GUI();
@@ -215,8 +215,9 @@ class MoveScript extends ComponentBase {
     y: number = 0;
     direction: Vector3 = new Vector3();
     init(): void {
-        Engine3D.inputSystem.addEventListener(KeyEvent.KEY_DOWN, this.keyDown, this);
-        Engine3D.inputSystem.addEventListener(KeyEvent.KEY_UP, this.keyUp, this);
+        const input = (this.transform as any)?.view3D?.engine3D?.inputSystem ?? Engine3D.inputSystem;
+        input.addEventListener(KeyEvent.KEY_DOWN, this.keyDown, this);
+        input.addEventListener(KeyEvent.KEY_UP, this.keyUp, this);
     }
     private keyDown(e: KeyEvent) {
         if (e.keyCode == KeyCode.Key_A) {

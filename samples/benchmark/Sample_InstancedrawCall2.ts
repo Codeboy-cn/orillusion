@@ -10,7 +10,7 @@ class Sample_SphereDraw {
     async run() {
         // init engine
         Engine3D.setting.pick.enable = false;
-        await Engine3D.init({ renderLoop: () => this.renderLoop() });
+        const engine = await Engine3D.create({ renderLoop: () => this.renderLoop() });
         // create new Scene
         this.scene = new Scene3D();
 
@@ -23,7 +23,7 @@ class Sample_SphereDraw {
 
         // init camera3D
         let mainCamera = CameraUtil.createCamera3D(null, this.scene);
-        mainCamera.perspective(60, Engine3D.aspect, 1, 2000.0);
+        mainCamera.perspective(60, engine.aspect, 1, 2000.0);
 
         // add a basic camera controller
         let hoverCameraController = mainCamera.object3D.addComponent(HoverCameraController);
@@ -47,7 +47,7 @@ class Sample_SphereDraw {
         view.camera = mainCamera;
 
         // start render
-        Engine3D.startRenderView(view);
+        engine.startView(view);
 
         GUIHelp.init();
         GUIHelp.open();

@@ -11,7 +11,7 @@ class Sample_InternalGeometry {
         Engine3D.setting.shadow.shadowSize = 2048;
         GUIHelp.init();
 
-        await Engine3D.init();
+        const engine = await Engine3D.create();
         let view = new View3D();
         view.scene = new Scene3D();
         let sky = view.scene.addComponent(AtmosphericComponent);
@@ -21,7 +21,7 @@ class Sample_InternalGeometry {
         view.camera.object3D.z = -15;
         view.camera.object3D.addComponent(HoverCameraController).setCamera(35, -20, 150);
 
-        Engine3D.startRenderView(view);
+        engine.startView(view);
 
         await this.createScene(view.scene);
         sky.relativeTransform = this.lightObj.transform;

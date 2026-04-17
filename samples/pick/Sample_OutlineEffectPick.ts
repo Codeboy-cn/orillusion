@@ -27,7 +27,7 @@ export class Sample_OutlineEffectPick {
         Engine3D.setting.render.postProcessing.outline.strength = 1;
 
         // init Engine3D
-        await Engine3D.init({});
+        const engine = await Engine3D.create({});
 
         let exampleScene = createExampleScene();
         this.scene = exampleScene.scene;
@@ -35,7 +35,7 @@ export class Sample_OutlineEffectPick {
         GUIHelp.init();
         GUIUtil.renderDirLight(exampleScene.light, false);
 
-        let job = Engine3D.startRenderView(exampleScene.view);
+        let job = engine.startView(exampleScene.view);
         job.addPost(new OutlinePost());
 
         this.initPickObject(this.scene);
@@ -62,7 +62,7 @@ export class Sample_OutlineEffectPick {
             obj.addComponent(ColliderComponent);
         }
 
-        let pickFire = Engine3D.views[0].pickFire;
+        let pickFire = scene.view.pickFire;
         // register event
         pickFire.addEventListener(PointerEvent3D.PICK_UP, this.onMouseUp, this);
         pickFire.addEventListener(PointerEvent3D.PICK_DOWN, this.onMouseDown, this);

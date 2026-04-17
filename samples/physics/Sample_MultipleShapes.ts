@@ -13,7 +13,7 @@ class Sample_MultipleShapes {
     async run() {
         // init physics and engine
         await Physics.init();
-        await Engine3D.init({
+        const engine = await Engine3D.create({
             renderLoop: () => Physics.update()
         });
 
@@ -39,7 +39,7 @@ class Sample_MultipleShapes {
 
         // Setup camera
         let camera = CameraUtil.createCamera3DObject(this.scene);
-        camera.perspective(60, Engine3D.aspect, 0.1, 800.0);
+        camera.perspective(60, engine.aspect, 0.1, 800.0);
         camera.enableCSM = true;
 
         let hoverCtrl = camera.object3D.addComponent(HoverCameraController);
@@ -65,7 +65,7 @@ class Sample_MultipleShapes {
         view.camera = camera;
         view.scene = this.scene;
 
-        Engine3D.startRenderView(view);
+        engine.startView(view);
 
         this.setupPhysicsGUI();
 

@@ -19,7 +19,7 @@ class Sample_AddRemove {
 
         Engine3D.setting.render.hdrExposure = 1.0;
         // init engine
-        await Engine3D.init();
+        const engine = await Engine3D.create();
         // create new Scene
         let scene = new Scene3D();
         // add atmospheric sky
@@ -28,7 +28,7 @@ class Sample_AddRemove {
 
         // init camera3D
         let mainCamera = CameraUtil.createCamera3D(null, scene);
-        mainCamera.perspective(60, Engine3D.aspect, 1, 2000.0);
+        mainCamera.perspective(60, engine.aspect, 1, 2000.0);
         let hoverCameraController = mainCamera.object3D.addComponent(HoverCameraController);
         hoverCameraController.setCamera(15, -30, 300);
 
@@ -53,7 +53,7 @@ class Sample_AddRemove {
         this.view.camera = mainCamera;
 
         // start render
-        Engine3D.startRenderView(this.view);
+        engine.startView(this.view);
 
         // let postProcessing = scene.addComponent(PostProcessingComponent);
         // postProcessing.addPost(FXAAPost);

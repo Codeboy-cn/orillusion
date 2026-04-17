@@ -17,7 +17,7 @@ class Sample_DirectLightShadow {
         Engine3D.setting.shadow.shadowBias = 0.02;
 
         Engine3D.setting.occlusionQuery.octree = { width: 1000, height: 1000, depth: 1000, x: 0, y: 0, z: 0 }
-        await Engine3D.init({});
+        const engine = await Engine3D.create({});
 
         GUIHelp.init();
 
@@ -27,7 +27,7 @@ class Sample_DirectLightShadow {
         // init camera3D
         let mainCamera = CameraUtil.createCamera3D(null, this.scene);
         // mainCamera.enableCSM = true;
-        mainCamera.perspective(60, Engine3D.aspect, 1, 5000.0);
+        mainCamera.perspective(60, engine.aspect, 1, 5000.0);
         //set camera data
         mainCamera.object3D.z = -15;
         mainCamera.object3D.addComponent(HoverCameraController).setCamera(-15, -35, 200);
@@ -39,7 +39,7 @@ class Sample_DirectLightShadow {
         view.scene = this.scene;
         view.camera = mainCamera;
 
-        Engine3D.startRenderView(view);
+        engine.startView(view);
         GUIUtil.renderDebug();
     }
 

@@ -13,7 +13,7 @@ class Sample_Skeleton3 {
         Engine3D.setting.shadow.autoUpdate = true;
         Engine3D.setting.shadow.updateFrameRate = 1;
         Engine3D.setting.shadow.shadowBound = 100;
-        await Engine3D.init({
+        const engine = await Engine3D.create({
             renderLoop: () => this.onRenderLoop(),
         });
 
@@ -35,7 +35,7 @@ class Sample_Skeleton3 {
         this.view.scene = this.scene;
         this.view.camera = mainCamera;
 
-        Engine3D.startRenderView(this.view);
+        engine.startView(this.view);
     }
 
     async initScene(scene: Scene3D) {

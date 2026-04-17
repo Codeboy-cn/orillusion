@@ -11,7 +11,7 @@ export class Demo_Cloth {
         Engine3D.setting.shadow.shadowSize = 2048;
         Engine3D.setting.shadow.shadowBias = 0.0002;
 
-        await Engine3D.init({});
+        const engine = await Engine3D.create({});
 
         GUIHelp.init();
 
@@ -29,7 +29,7 @@ export class Demo_Cloth {
         view.scene = scene;
         view.camera = camera;
 
-        Engine3D.startRenderView(view);
+        engine.startView(view);
     }
 
     async initScene(scene: Scene3D) {

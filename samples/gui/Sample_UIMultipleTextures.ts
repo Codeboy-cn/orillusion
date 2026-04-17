@@ -3,7 +3,7 @@ import { Engine3D, Scene3D, Object3D, Camera3D, View3D, UIImage, HoverCameraCont
 class Sample_UIMultipleTextures {
     async run() {
         // initializa engine
-        await Engine3D.init()
+        const engine = await Engine3D.create()
         // create new scene as root node
         let scene3D: Scene3D = new Scene3D()
         scene3D.addComponent(AtmosphericComponent)
@@ -11,7 +11,7 @@ class Sample_UIMultipleTextures {
         let cameraObj: Object3D = new Object3D()
         let camera = cameraObj.addComponent(Camera3D)
         // adjust camera view
-        camera.perspective(60, Engine3D.aspect, 1, 5000.0)
+        camera.perspective(60, engine.aspect, 1, 5000.0)
         // set camera controller
         let controller = cameraObj.addComponent(HoverCameraController)
         controller.setCamera(15, 10, 80)
@@ -20,7 +20,7 @@ class Sample_UIMultipleTextures {
         let view = new View3D()
         view.scene = scene3D
         view.camera = camera
-        Engine3D.startRenderView(view)
+        engine.startView(view)
         // create panel root
         let panelRoot: Object3D = new Object3D()
         let panel: UIPanel = panelRoot.addComponent(WorldPanel)

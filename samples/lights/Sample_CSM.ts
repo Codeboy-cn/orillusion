@@ -15,7 +15,7 @@ class Sample_CSM {
         Engine3D.setting.shadow.autoUpdate = true;
         Engine3D.setting.shadow.shadowSize = 2048;
         Engine3D.setting.shadow.shadowBound = 512;
-        await Engine3D.init({ renderLoop: () => { this.loop(); } });
+        const engine = await Engine3D.create({ renderLoop: () => { this.loop(); } });
 
         GUIHelp.init();
 
@@ -24,7 +24,7 @@ class Sample_CSM {
 
         // init camera3D
         let mainCamera = CameraUtil.createCamera3D(null, this.scene);
-        mainCamera.perspective(60, Engine3D.aspect, 1, 5000.0);
+        mainCamera.perspective(60, engine.aspect, 1, 5000.0);
         //set camera data
         mainCamera.object3D.z = -15;
         mainCamera.object3D.addComponent(HoverCameraController).setCamera(-15, -35, 200);
@@ -50,7 +50,7 @@ class Sample_CSM {
         GUIHelp.add(Engine3D.setting.shadow, 'csmAreaScale', 0.1, 1, 0.01);
         GUIHelp.open();
         GUIHelp.endFolder();
-        Engine3D.startRenderView(view);
+        engine.startView(view);
     }
 
     // create direction light

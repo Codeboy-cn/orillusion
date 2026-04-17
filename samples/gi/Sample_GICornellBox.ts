@@ -39,7 +39,7 @@ class Sample_GICornellBox {
 
         Engine3D.setting.render.debug = true;
 
-        await Engine3D.init({
+        const engine = await Engine3D.create({
             renderLoop: () => {
                 if (this.giComponent?.isStart) {
                     GUIUtil.renderGIComponent(this.giComponent);
@@ -55,7 +55,7 @@ class Sample_GICornellBox {
         // exampleScene.camera.enableCSM = true;
         this.scene = exampleScene.scene;
         this.addGIProbes(this.scene.view);
-        Engine3D.startRenderViews([exampleScene.view]);
+        engine.startViews([exampleScene.view]);
 
         let postProcessing = this.scene.addComponent(PostProcessingComponent);
         postProcessing.addPost(BloomPost);

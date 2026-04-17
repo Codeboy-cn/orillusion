@@ -17,7 +17,7 @@ export class Sample_GTAO {
 		Engine3D.setting.shadow.shadowBias = 0.05;
 		Engine3D.setting.render.debug = true;
 
-		await Engine3D.init();
+		const engine = await Engine3D.create();
 		GUIHelp.init();
 
 		this.scene = new Scene3D();
@@ -34,7 +34,7 @@ export class Sample_GTAO {
 		let view = new View3D();
 		view.scene = this.scene;
 		view.camera = mainCamera;
-		Engine3D.startRenderView(view);
+		engine.startView(view);
 
 		this.lightObj = new Object3D();
 		this.lightObj.rotationX = 15;

@@ -16,7 +16,7 @@ class Sample_Bloom {
 		Engine3D.setting.shadow.shadowSize = 2048
 		Engine3D.setting.shadow.shadowBound = 500;
 
-		await Engine3D.init();
+		const engine = await Engine3D.create();
 
 		this.scene = new Scene3D();
 		let sky = this.scene.addComponent(AtmosphericComponent);
@@ -33,7 +33,7 @@ class Sample_Bloom {
 		let view = new View3D();
 		view.scene = this.scene;
 		view.camera = mainCamera;
-		Engine3D.startRenderView(view);
+		engine.startView(view);
 
 		let postProcessing = this.scene.addComponent(PostProcessingComponent);
 		let post = postProcessing.addPost(BloomPost);

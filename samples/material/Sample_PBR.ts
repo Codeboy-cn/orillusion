@@ -9,7 +9,7 @@ class Sample_PBR {
     constructor() { }
 
     async run() {
-        await Engine3D.init({});
+        const engine = await Engine3D.create({});
 
         Engine3D.setting.render.debug = true;
         Engine3D.setting.shadow.shadowBound = 5;
@@ -19,7 +19,7 @@ class Sample_PBR {
         this.scene = new Scene3D();
         let sky = this.scene.addComponent(AtmosphericComponent);
         let camera = CameraUtil.createCamera3DObject(this.scene);
-        camera.perspective(60, Engine3D.aspect, 1, 5000.0);
+        camera.perspective(60, engine.aspect, 1, 5000.0);
 
         camera.object3D.addComponent(HoverCameraController).setCamera(30, 0, 120);
 
@@ -27,7 +27,7 @@ class Sample_PBR {
         view.scene = this.scene;
         view.camera = camera;
 
-        Engine3D.startRenderView(view);
+        engine.startView(view);
 
         GUIUtil.renderDebug();
 

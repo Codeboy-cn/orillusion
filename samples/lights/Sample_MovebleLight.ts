@@ -11,7 +11,7 @@ class Sample_MovebleLight {
         Engine3D.setting.pick.mode = "pixel";
 
         //Engine init
-        await Engine3D.init();
+        const engine = await Engine3D.create();
 
         //create scene and add FPS
         let scene = new Scene3D();
@@ -20,7 +20,7 @@ class Sample_MovebleLight {
         //create camera
         let cameraObj = new Object3D();
         let camera = cameraObj.addComponent(Camera3D);
-        camera.perspective(60, Engine3D.aspect, 1, 5000);
+        camera.perspective(60, engine.aspect, 1, 5000);
         camera.lookAt(new Vector3(0, 0, 30), new Vector3(0, 0, 0));
         scene.addChild(cameraObj);
 
@@ -93,7 +93,7 @@ class Sample_MovebleLight {
         let view = new View3D();
         view.scene = scene;
         view.camera = camera;
-        Engine3D.startRenderView(view);
+        engine.startView(view);
     }
     private onMove(e: PointerEvent3D) {
         //set pick position as light position

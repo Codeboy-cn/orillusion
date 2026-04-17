@@ -11,12 +11,12 @@ class Sample_PixelPick {
         Engine3D.setting.pick.enable = true;
         Engine3D.setting.pick.mode = `pixel`;
         // init Engine3D
-        await Engine3D.init({});
+        const engine = await Engine3D.create({});
 
         let exampleScene = createExampleScene();
         this.scene = exampleScene.scene;
 
-        Engine3D.startRenderView(exampleScene.view);
+        engine.startView(exampleScene.view);
 
         let postProcessing = this.scene.getOrAddComponent(PostProcessingComponent);
         let bloomPost = postProcessing.addPost(BloomPost);

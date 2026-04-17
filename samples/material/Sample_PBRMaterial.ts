@@ -12,13 +12,13 @@ class Sample_PBRMaterial {
         Engine3D.setting.render.debug = true;
         Engine3D.setting.shadow.shadowBound = 50;
         Engine3D.setting.shadow.shadowBias = 0.02;
-        await Engine3D.init({ canvasConfig: { alpha: true, zIndex: 11, backgroundImage: '/logo/bg.webp' } });
+        const engine = await Engine3D.create({ canvasConfig: { alpha: true, zIndex: 11, backgroundImage: '/logo/bg.webp' } });
 
         GUIHelp.init(999);
 
         this.scene = new Scene3D();
         let camera = CameraUtil.createCamera3DObject(this.scene);
-        camera.perspective(60, Engine3D.aspect, 0.01, 5000.0);
+        camera.perspective(60, engine.aspect, 0.01, 5000.0);
 
         camera.object3D.addComponent(HoverCameraController).setCamera(-25, -5, 30);
 
@@ -26,7 +26,7 @@ class Sample_PBRMaterial {
         view.scene = this.scene;
         view.camera = camera;
 
-        Engine3D.startRenderView(view);
+        engine.startView(view);
         await this.initScene();
 
         GUIUtil.renderDebug();

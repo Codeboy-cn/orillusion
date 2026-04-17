@@ -15,7 +15,7 @@ class Sample_PhysicsBox {
         Engine3D.setting.shadow.shadowBound = 150;
 
         await Physics.init();
-        await Engine3D.init({ renderLoop: () => this.loop() });
+        const engine = await Engine3D.create({ renderLoop: () => this.loop() });
 
         let sceneParam = createSceneParam();
         sceneParam.camera.distance = 50;
@@ -27,7 +27,7 @@ class Sample_PhysicsBox {
 
         await this.initScene(this.scene);
         GUIHelp.addButton('Make Ball', () => { this.createSphere(); })
-        Engine3D.startRenderView(exampleScene.view);
+        engine.startView(exampleScene.view);
     }
 
     initMaterials() {

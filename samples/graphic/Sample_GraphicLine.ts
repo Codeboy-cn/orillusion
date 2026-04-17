@@ -12,7 +12,7 @@ class Sample_GraphicLine {
         Engine3D.setting.material.materialChannelDebug = true;
         Engine3D.setting.material.materialDebug = false;
 
-        await Engine3D.init({});
+        const engine = await Engine3D.create({});
         GUIHelp.init();
         let param = createSceneParam();
         param.camera.distance = 200;
@@ -24,8 +24,8 @@ class Sample_GraphicLine {
         this.graphic3D = new Graphic3D();
         this.scene.addChild(this.graphic3D);
 
-        Engine3D.startRenderViews([exampleScene.view]);
-        let job = Engine3D.getRenderJob(exampleScene.view);
+        engine.startViews([exampleScene.view]);
+        let job = engine.renderJobs.get(exampleScene.view);
         await this.initScene();
     }
 

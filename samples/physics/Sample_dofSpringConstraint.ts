@@ -11,7 +11,7 @@ class Sample_dofSpringConstraint {
     async run() {
         // Initialize physics and engine
         await Physics.init({ useDrag: true });
-        await Engine3D.init({ renderLoop: () => Physics.update() });
+        const engine = await Engine3D.create({ renderLoop: () => Physics.update() });
 
         let scene = this.scene = new Scene3D();
         scene.addComponent(Stats);
@@ -31,7 +31,7 @@ class Sample_dofSpringConstraint {
         f.open();
 
         let camera = CameraUtil.createCamera3DObject(scene);
-        camera.perspective(60, Engine3D.aspect, 0.1, 800.0);
+        camera.perspective(60, engine.aspect, 0.1, 800.0);
         camera.object3D.addComponent(HoverCameraController).setCamera(140, -25, 20, new Vector3(8, 4, 0));
 
         // Create directional light
@@ -47,7 +47,7 @@ class Sample_dofSpringConstraint {
         view.camera = camera;
         view.scene = scene;
 
-        Engine3D.startRenderView(view);
+        engine.startView(view);
 
         // Create ground, bridge, and ball
         this.createGround();

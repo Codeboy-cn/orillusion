@@ -12,12 +12,12 @@ class Sample_UIPanelScissor {
 
         GUIHelp.init();
 
-        await Engine3D.init({ renderLoop: () => { this.loop(); } });
+        const engine = await Engine3D.create({ renderLoop: () => { this.loop(); } });
 
         let param = createSceneParam();
         param.camera.distance = 50;
         let exampleScene = createExampleScene(param);
-        Engine3D.startRenderView(exampleScene.view);
+        engine.startView(exampleScene.view);
 
         // create floor
         let floor = Object3DUtil.GetSingleCube(100, 2, 50, 0.5, 0.5, 0.5);

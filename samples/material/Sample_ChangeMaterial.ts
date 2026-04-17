@@ -8,7 +8,7 @@ class Sample_ChangeMaterial {
     scene: Scene3D;
     lightObj: Object3D;
     async run() {
-        await Engine3D.init();
+        const engine = await Engine3D.create();
 
         Engine3D.setting.material.materialChannelDebug = true;
         Engine3D.setting.shadow.shadowBound = 5;
@@ -16,7 +16,7 @@ class Sample_ChangeMaterial {
         let sky = this.scene.addComponent(AtmosphericComponent);
 
         let camera = CameraUtil.createCamera3DObject(this.scene);
-        camera.perspective(60, Engine3D.aspect, 0.01, 5000.0);
+        camera.perspective(60, engine.aspect, 0.01, 5000.0);
 
         camera.object3D.addComponent(HoverCameraController).setCamera(25, -25, 200);
 
@@ -24,7 +24,7 @@ class Sample_ChangeMaterial {
         view.scene = this.scene;
         view.camera = camera;
 
-        Engine3D.startRenderView(view);
+        engine.startView(view);
 
         await this.initScene();
         sky.relativeTransform = this.lightObj.transform;

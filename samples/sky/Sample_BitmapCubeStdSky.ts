@@ -5,7 +5,7 @@ import { Engine3D, Scene3D, SkyRenderer, Object3DUtil } from "@orillusion/core";
 class Sample_BitmapCubeStdSky {
     async run() {
         // init engine
-        await Engine3D.init({});
+        const engine = await Engine3D.create({});
         // init scene
         let scene: Scene3D = createExampleScene().scene;
         let sky = scene.getOrAddComponent(SkyRenderer);
@@ -15,7 +15,7 @@ class Sample_BitmapCubeStdSky {
         scene.addChild(Object3DUtil.GetSingleCube(10, 10, 10, 0.6, 0.6, 0.6));
 
         // start renderer
-        Engine3D.startRenderView(scene.view);
+        engine.startView(scene.view);
     }
 }
 

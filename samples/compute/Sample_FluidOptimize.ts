@@ -18,7 +18,7 @@ export class Demo_FluidOptimize {
         Engine3D.setting.render.postProcessing.gtao.usePosFloat32 = false;
         Engine3D.setting.render.postProcessing.gtao.maxDistance = 0.65;
         Engine3D.setting.render.postProcessing.gtao.maxPixel = 10;
-        await Engine3D.init({});
+        const engine = await Engine3D.create({});
 
         GUIHelp.init();
 
@@ -35,7 +35,7 @@ export class Demo_FluidOptimize {
         view.scene = scene;
         view.camera = camera;
 
-        Engine3D.startRenderView(view);
+        engine.startView(view);
         await this.initScene(scene);
     }
 
@@ -59,7 +59,7 @@ export class Demo_FluidOptimize {
                         point.subtract(this.mLastPoint, this.mVelocity);
                         this.mLastPoint.copy(point);
                         let r = scene.view.camera;
-                        let ray = r.screenPointToRay(Engine3D.inputSystem.mouseX, Engine3D.inputSystem.mouseY);
+                        let ray = r.screenPointToRay(scene.view.engine3D.inputSystem.mouseX, scene.view.engine3D.inputSystem.mouseY);
                         emulation.updateInputInfo(scene.view.camera.transform.localPosition, ray.direction, this.mVelocity);
                     }
                     catch (e) {

@@ -23,7 +23,7 @@ export class Sample_Shape3D {
         Matrix4.maxCount = 10000;
         Matrix4.allocCount = 10000;
 
-        await Engine3D.init({ beforeRender: () => this.update() });
+        const engine = await Engine3D.create({ beforeRender: () => this.update() });
 
         Engine3D.setting.render.debug = true;
         Engine3D.setting.shadow.shadowBound = 5;
@@ -34,7 +34,7 @@ export class Sample_Shape3D {
         this.scene.addComponent(Stats);
         let sky = this.scene.addComponent(AtmosphericComponent);
         let camera = CameraUtil.createCamera3DObject(this.scene);
-        camera.perspective(60, Engine3D.aspect, 1, 5000.0);
+        camera.perspective(60, engine.aspect, 1, 5000.0);
 
         camera.object3D.addComponent(HoverCameraController).setCamera(0, -40, 40);
 
@@ -45,7 +45,7 @@ export class Sample_Shape3D {
         this.graphic3D = new Graphic3D();
         this.scene.addChild(this.graphic3D);
 
-        Engine3D.startRenderView(this.view);
+        engine.startView(this.view);
 
         await this.initScene();
 

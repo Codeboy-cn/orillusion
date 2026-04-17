@@ -5,12 +5,12 @@ class Sample_ChangeTexture {
 
     scene: Scene3D;
     async run() {
-        await Engine3D.init();
+        const engine = await Engine3D.create();
 
         let exampleScene = createExampleScene();
         this.scene = exampleScene.scene;
         await this.initScene();
-        Engine3D.startRenderView(exampleScene.view);
+        engine.startView(exampleScene.view);
 
     }
 

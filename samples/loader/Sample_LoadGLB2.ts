@@ -13,7 +13,7 @@ export class Sample_LoadGLB2 {
         Engine3D.setting.shadow.autoUpdate = true;
         Engine3D.setting.shadow.shadowBound = 10;
         Engine3D.setting.shadow.shadowBias = 0.005;
-        await Engine3D.init();
+        const engine = await Engine3D.create();
         let exampleScene = createExampleScene();
         exampleScene.atmosphericSky.displaySun = false;
         exampleScene.atmosphericSky.sunRadiance = 1;
@@ -21,7 +21,7 @@ export class Sample_LoadGLB2 {
 
         exampleScene.hoverCtrl.setCamera(-45, -20, 16);
         exampleScene.light.intensity = 5;
-        Engine3D.startRenderView(exampleScene.view);
+        engine.startView(exampleScene.view);
         await this.initScene();
 
         GUIHelp.init();

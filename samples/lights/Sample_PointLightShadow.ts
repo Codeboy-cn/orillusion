@@ -15,14 +15,14 @@ export class Sample_PointLightShadow {
         Engine3D.setting.material.materialChannelDebug = true;
         Engine3D.setting.material.materialDebug = true;
 
-        await Engine3D.init({});
+        const engine = await Engine3D.create({});
 
         this.scene = new Scene3D();
         let sky = this.scene.addComponent(AtmosphericComponent);
 
         // init camera3D
         let mainCamera = CameraUtil.createCamera3D(null, this.scene);
-        mainCamera.perspective(60, Engine3D.aspect, 1, 2000.0);
+        mainCamera.perspective(60, engine.aspect, 1, 2000.0);
         //set camera data
         mainCamera.object3D.addComponent(HoverCameraController).setCamera(0, -45, 500);
 
@@ -33,7 +33,7 @@ export class Sample_PointLightShadow {
         view.scene = this.scene;
         view.camera = mainCamera;
 
-        Engine3D.startRenderView(view);
+        engine.startView(view);
 
         let post = this.scene.addComponent(PostProcessingComponent);
         post.addPost(FXAAPost);

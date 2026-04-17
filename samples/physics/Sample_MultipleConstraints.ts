@@ -14,7 +14,7 @@ class Sample_MultipleConstraints {
     async run() {
         // init physics and engine
         await Physics.init({ useSoftBody: true, useDrag: true });
-        await Engine3D.init({ renderLoop: () => Physics.update() });
+        const engine = await Engine3D.create({ renderLoop: () => Physics.update() });
 
         this.gui = new dat.GUI();
 
@@ -30,7 +30,7 @@ class Sample_MultipleConstraints {
         })
 
         let camera = CameraUtil.createCamera3DObject(this.scene);
-        camera.perspective(60, Engine3D.aspect, 0.1, 800.0);
+        camera.perspective(60, engine.aspect, 0.1, 800.0);
         camera.object3D.addComponent(HoverCameraController).setCamera(60, -25, 50);
 
         // create directional light
@@ -50,7 +50,7 @@ class Sample_MultipleConstraints {
 
         this.physicsDebug();
 
-        Engine3D.startRenderView(view);
+        engine.startView(view);
 
         // Create ground, turntable, and chains
         this.createGround();

@@ -15,7 +15,7 @@ export class Sample_Outline {
         Engine3D.setting.shadow.shadowBound = 50;
         Engine3D.setting.shadow.shadowBias = 0.05;
 
-        await Engine3D.init({
+        const engine = await Engine3D.create({
             canvasConfig: {
                 devicePixelRatio: 1
             },
@@ -34,7 +34,7 @@ export class Sample_Outline {
         let view = new View3D()
         view.scene = this.scene
         view.camera = mainCamera
-        Engine3D.startRenderView(view)
+        engine.startView(view)
 
         let postProcessing = this.scene.addComponent(PostProcessingComponent)
         postProcessing.addPost(FXAAPost)

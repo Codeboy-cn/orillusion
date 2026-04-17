@@ -10,7 +10,7 @@ class Sample_MeshColliderPick {
         Engine3D.setting.pick.mode = `bound`;
 
         // init Engine3D
-        await Engine3D.init({});
+        const engine = await Engine3D.create({});
 
         let exampleScene = createExampleScene();
         this.scene = exampleScene.scene;
@@ -18,7 +18,7 @@ class Sample_MeshColliderPick {
         GUIHelp.init();
 
         GUIUtil.renderDirLight(exampleScene.light, false);
-        Engine3D.startRenderView(exampleScene.view);
+        engine.startView(exampleScene.view);
 
         this.initPickObject(this.scene);
     }
@@ -49,7 +49,7 @@ class Sample_MeshColliderPick {
             let collider = obj.addComponent(ColliderComponent);
             collider.shape = meshShape;
         }
-        let pickFire = Engine3D.views[0].pickFire;
+        let pickFire = scene.view.pickFire;
         // register event
         pickFire.addEventListener(PointerEvent3D.PICK_CLICK, this.onMousePick, this);
     }

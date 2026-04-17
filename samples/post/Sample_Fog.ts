@@ -11,7 +11,7 @@ class Sample_Fog {
         Engine3D.setting.shadow.shadowSize = 2048
         Engine3D.setting.shadow.shadowBound = 1000;
 
-        await Engine3D.init();
+        const engine = await Engine3D.create();
 
         this.scene = new Scene3D();
         let sky = this.scene.addComponent(AtmosphericComponent);
@@ -25,7 +25,7 @@ class Sample_Fog {
         let view = new View3D();
         view.scene = this.scene;
         view.camera = mainCamera;
-        Engine3D.startRenderView(view);
+        engine.startView(view);
 
         GUIHelp.init();
         GUIUtil.renderAtmosphericSky(sky, false);
