@@ -145,14 +145,6 @@ export function setActiveContext3D(ctx: Context3D): void {
 }
 
 /**
- * @deprecated Migration shim. Prefer explicit ctx threading.
- * @internal
- */
-export function getActiveContext3D(): Context3D {
-    return webGPUContext;
-}
-
-/**
  * @deprecated Migration shim. Old per-context cache helper.
  * In Plan-B, each GPU-bearing object has a single-field GPU resource
  * tied to its `_boundCtx`; this factory is no longer needed.
@@ -194,14 +186,3 @@ export function bindCtx(owner: { _boundCtx: Context3D | null }, ctx: Context3D):
     return ctx;
 }
 
-/**
- * @deprecated Migration shim. Old static facade for shared GPU access.
- * Use `engine.context3D` / `this._boundCtx` instead.
- * @internal
- */
-export class SharedGPU {
-    public static get adapter(): GPUAdapter { return webGPUContext.adapter; }
-    public static get device(): GPUDevice { return webGPUContext.device; }
-    public static get presentationFormat(): GPUTextureFormat { return webGPUContext.presentationFormat; }
-    public static async init(): Promise<void> { /* no-op */ }
-}

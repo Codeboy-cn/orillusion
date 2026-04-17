@@ -1,7 +1,7 @@
 import { RTFrame } from '../../../renderJob/frame/RTFrame';
 import { RTResourceConfig } from '../../../renderJob/config/RTResourceConfig';
 import { GPUTextureFormat } from '../WebGPUConst';
-import { webGPUContext } from '../Context3D';
+import { Context3D, webGPUContext } from '../Context3D';
 import { RendererPassState } from '../../../renderJob/passRenderer/state/RendererPassState';
 import { CResizeEvent } from '../../../../event/CResizeEvent';
 import { GBufferFrame } from '../../../renderJob/frame/GBufferFrame';
@@ -11,9 +11,21 @@ import { GBufferFrame } from '../../../renderJob/frame/GBufferFrame';
  */
 export class WebGPUDescriptorCreator {
 
-    private static rendererPassState: Map<RTFrame, RendererPassState> = new Map<RTFrame, RendererPassState>();
+    /** Per-Context3D cache of RTFrame→RendererPassState so descriptors built
+     *  against one device are not reused for another. */
+    private static _perContextPassState: WeakMap<Context3D, Map<RTFrame, RendererPassState>> = new WeakMap();
+    private static _passStateMap(): Map<RTFrame, RendererPassState> {
+        let m = this._perContextPassState.get(webGPUContext);
+        if (!m) {
+            m = new Map<RTFrame, RendererPassState>();
+            this._perContextPassState.set(webGPUContext, m);
+        }
+        return m;
+    }
+
     public static createRendererPassState(rtFrame: RTFrame, loadOp: GPULoadOp = null) {
-        let rps: RendererPassState = WebGPUDescriptorCreator.rendererPassState.get(rtFrame);
+        const passMap = WebGPUDescriptorCreator._passStateMap();
+        let rps: RendererPassState = passMap.get(rtFrame);
         if (!rps) {
             rps = new RendererPassState();
             rps.label = rtFrame.label;
@@ -25,7 +37,7 @@ export class WebGPUDescriptorCreator {
             rps.isOutTarget = rtFrame.isOutTarget;
             rps.depthCleanValue = rtFrame.depthCleanValue;
             rps.depthLoadOp = rtFrame.depthLoadOp;
-            WebGPUDescriptorCreator.rendererPassState.set(rtFrame, rps);
+            passMap.set(rtFrame, rps);
         }
 
         if (rtFrame && rtFrame.renderTargets.length > 0) {

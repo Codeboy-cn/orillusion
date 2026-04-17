@@ -10,65 +10,71 @@ import { Texture } from '../gfx/graphics/webGpu/core/texture/Texture';
 import { Vector3 } from '../math/Vector3';
 import { BlendMode } from '../materials/BlendMode';
 import { Material } from '../materials/Material';
+import { perContextResource } from '../gfx/graphics/webGpu/Context3D';
+
+type Object3DUtilHeap = {
+    boxGeo: BoxGeometry | null;
+    planeGeo: PlaneGeometry | null;
+    sphere: SphereGeometry | null;
+    material: LitMaterial | null;
+    materialMap: Map<Texture, LitMaterial> | null;
+};
 
 export class Object3DUtil {
-    private static boxGeo: BoxGeometry;
-    private static planeGeo: PlaneGeometry;
-    private static sphere: SphereGeometry;
-    private static material: LitMaterial;
+    // Cached geometries/materials are GPU-bearing; keep one heap per Context3D
+    // so samples that run under multiple engines don't cross-bind resources.
+    private static _heap = perContextResource<Object3DUtilHeap>();
 
-    private static materialMap: Map<Texture, LitMaterial>;
-
-    private static initHeap() {
-        if (!this.boxGeo)
-            this.boxGeo = new BoxGeometry();
-        if (!this.planeGeo)
-            this.planeGeo = new PlaneGeometry(1, 1, 1, 1, Vector3.UP);
-        if (!this.sphere)
-            this.sphere = new SphereGeometry(1, 35, 35);
-        if (!this.material) {
-            this.material = new LitMaterial();
-        }
-        if (!this.materialMap) {
-            this.materialMap = new Map<Texture, LitMaterial>();
-        }
+    private static _getHeap(): Object3DUtilHeap {
+        let h = this._heap(() => ({
+            boxGeo: null,
+            planeGeo: null,
+            sphere: null,
+            material: null,
+            materialMap: null,
+        }));
+        if (!h.boxGeo) h.boxGeo = new BoxGeometry();
+        if (!h.planeGeo) h.planeGeo = new PlaneGeometry(1, 1, 1, 1, Vector3.UP);
+        if (!h.sphere) h.sphere = new SphereGeometry(1, 35, 35);
+        if (!h.material) h.material = new LitMaterial();
+        if (!h.materialMap) h.materialMap = new Map<Texture, LitMaterial>();
+        return h;
     }
 
     public static get CubeMesh() {
-        this.initHeap();
-        return this.boxGeo;
+        return this._getHeap().boxGeo;
     }
 
     public static get SphereMesh() {
-        this.initHeap();
-        return this.sphere;
+        return this._getHeap().sphere;
     }
 
     public static GetCube() {
-        this.initHeap();
+        const h = this._getHeap();
         let obj = new Object3D();
         let renderer = obj.addComponent(MeshRenderer);
-        renderer.geometry = this.boxGeo;
-        renderer.material = this.material.clone();
+        renderer.geometry = h.boxGeo;
+        renderer.material = h.material.clone();
         renderer.castShadow = true;
         return obj;
     }
 
     public static GetMaterial(tex: Texture) {
-        let mat = this.materialMap.get(tex);
+        const h = this._getHeap();
+        let mat = h.materialMap.get(tex);
         if (!mat) {
             mat = new LitMaterial();
             mat.baseMap = tex;
-            this.materialMap.set(tex, mat);
+            h.materialMap.set(tex, mat);
         }
         return mat.clone();
     }
 
     public static GetPlane(tex: Texture) {
-        this.initHeap();
+        const h = this._getHeap();
         let obj = new Object3D();
         let renderer = obj.addComponent(MeshRenderer);
-        renderer.geometry = this.planeGeo;
+        renderer.geometry = h.planeGeo;
         let cloneMat = this.GetMaterial(tex);
         cloneMat.blendMode = BlendMode.ADD;
         cloneMat.castShadow = false;
@@ -79,8 +85,6 @@ export class Object3DUtil {
     }
 
     public static GetSingleCube(sizeX: number, sizeY: number, sizeZ: number, r: number, g: number, b: number) {
-        this.initHeap();
-
         let mat = new LitMaterial();
         mat.roughness = 0.5;
         mat.metallic = 0.1;
@@ -95,8 +99,6 @@ export class Object3DUtil {
     }
 
     public static GetSingleSphere(radius: number, r: number, g: number, b: number) {
-        this.initHeap();
-
         let mat = new LitMaterial();
         mat.baseColor = new Color(r, g, b, 1);
 
@@ -109,18 +111,15 @@ export class Object3DUtil {
     }
 
     public static get Sphere() {
-        this.initHeap();
-
+        const h = this._getHeap();
         let obj = new Object3D();
         let renderer = obj.addComponent(MeshRenderer);
-        renderer.geometry = this.sphere;
-        renderer.material = this.material;
+        renderer.geometry = h.sphere;
+        renderer.material = h.material;
         return obj;
     }
 
     public static GetSingleCube2(mat: Material, size: number = 10) {
-        this.initHeap();
-
         let obj = new Object3D();
         let renderer = obj.addComponent(MeshRenderer);
         renderer.castShadow = false;

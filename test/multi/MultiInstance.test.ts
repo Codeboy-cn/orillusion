@@ -247,8 +247,11 @@ await test('Plan B: bindCtx throws when the same GPU resource is used by two eng
 
 await test('Plan B: each engine with its own independent scene graph renders fine', async () => {
     // Under Plan B, users create per-engine Geometry/Material/Texture and
-    // render them independently. This test proves both engines keep
-    // advancing frames when fed their own scene-graph objects.
+    // render them independently. Built-in materials (LitMaterial via
+    // StandShader) read `Engine3D.res.<defaultTexture>` eagerly at
+    // construction, so the caller MUST switch the active context via
+    // `engine.use()` before `new LitMaterial()` to target the right device.
+    engineA.use();
     const hostA2 = new Object3D();
     hostA2.name = 'planBHostA';
     hostA2.transform.y = 25;
@@ -259,6 +262,7 @@ await test('Plan B: each engine with its own independent scene graph renders fin
     mrA2.material = matA2;
     viewA.scene.addChild(hostA2);
 
+    engineB.use();
     const hostB2 = new Object3D();
     hostB2.name = 'planBHostB';
     hostB2.transform.y = -25;
