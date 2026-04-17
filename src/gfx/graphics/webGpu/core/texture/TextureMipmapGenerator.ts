@@ -39,7 +39,8 @@ export class TextureMipmapGenerator {
     }
 
     public static getMipmapPipeline(texture: Texture) {
-        let gpuDevice = webGPUContext.device;
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
+        let gpuDevice = (texture._boundCtx ?? webGPUContext).device;
         let cache = TextureMipmapGenerator.pipelineCache;
         let pipeline: GPURenderPipeline = cache[texture.format];
         if (!pipeline) {
@@ -69,7 +70,7 @@ export class TextureMipmapGenerator {
 
             // Need a separate bind group for each level to ensurev
             // we're only sampling from the previous level.
-            let layouts = webGPUContext.device.createPipelineLayout({
+            let layouts = gpuDevice.createPipelineLayout({
                 bindGroupLayouts: [textureLayout],
             });
 
@@ -101,7 +102,8 @@ export class TextureMipmapGenerator {
     // TextureDescriptor should be the descriptor that the texture was created with.
     // This version only works for basic 2D textures.
     public static webGPUGenerateMipmap(texture: Texture) {
-        let gpuDevice = webGPUContext.device;
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
+        let gpuDevice = (texture._boundCtx ?? webGPUContext).device;
         let textureDescriptor = texture.textureDescriptor;
         // let pipeline = TextureMipmapGenerator.pipeline;
         let pipeline = TextureMipmapGenerator.getMipmapPipeline(texture);

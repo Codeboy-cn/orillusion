@@ -2,7 +2,7 @@ import { MeshRenderer } from '../components/renderer/MeshRenderer';
 import { Texture } from '../gfx/graphics/webGpu/core/texture/Texture';
 import { UniformNode } from '../gfx/graphics/webGpu/core/uniforms/UniformNode';
 import { WebGPUDescriptorCreator } from '../gfx/graphics/webGpu/descriptor/WebGPUDescriptorCreator';
-import { webGPUContext } from '../gfx/graphics/webGpu/Context3D';
+import { bindCtx, webGPUContext } from '../gfx/graphics/webGpu/Context3D';
 import { RTFrame } from '../gfx/renderJob/frame/RTFrame';
 import { PlaneGeometry } from '../shape/PlaneGeometry';
 import { Object3D } from './entities/Object3D';
@@ -25,6 +25,7 @@ export class ViewQuad extends Object3D {
     // uniforms: { [key: string]: UniformNode };
     rendererPassState: RendererPassState;
     quadShader: QuadShader;
+    public _boundCtx: import('../gfx/graphics/webGpu/Context3D').Context3D | null = null;
 
     constructor(vs: string = 'QuadGlsl_vs', fs: string = 'QuadGlsl_fs', rtFrame: RTFrame, multisample: number = 0, f: boolean = false) {
         super();
@@ -49,31 +50,34 @@ export class ViewQuad extends Object3D {
         this.quadRenderer[`onEnable`]();
         // this.createRendererPassState(renderTargets, depth);
         // this.rendererPassState = WebGPUDescriptorPool.createRendererPassState(renderTargets, shaderState.multisample>0 ? false : true);
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
+        bindCtx(this, webGPUContext);
+        let ctx = this._boundCtx!;
         this.rendererPassState = WebGPUDescriptorCreator.createRendererPassState(rtFrame, `load`);
         if (multisample > 0) {
             this.rendererPassState.multisample = this.quadShader.getDefaultColorShader().shaderState.multisample;
-            this.rendererPassState.multiTexture = webGPUContext.device.createTexture({
+            this.rendererPassState.multiTexture = ctx.device.createTexture({
                 size: {
-                    width: webGPUContext.presentationSize[0],
-                    height: webGPUContext.presentationSize[1],
+                    width: ctx.presentationSize[0],
+                    height: ctx.presentationSize[1],
                 },
                 sampleCount: multisample,
-                format: renderTexture.length > 0 ? renderTexture[0].format : webGPUContext.presentationFormat,
+                format: renderTexture.length > 0 ? renderTexture[0].format : ctx.presentationFormat,
                 usage: GPUTextureUsage.RENDER_ATTACHMENT,
             })
         }
 
-        webGPUContext.addEventListener(CResizeEvent.RESIZE, (e) => {
+        ctx.addEventListener(CResizeEvent.RESIZE, (e) => {
             this.rendererPassState = WebGPUDescriptorCreator.createRendererPassState(rtFrame, `load`);
             if (multisample > 0) {
                 this.rendererPassState.multisample = this.quadShader.getDefaultColorShader().shaderState.multisample;
-                this.rendererPassState.multiTexture = webGPUContext.device.createTexture({
+                this.rendererPassState.multiTexture = ctx.device.createTexture({
                     size: {
-                        width: webGPUContext.presentationSize[0],
-                        height: webGPUContext.presentationSize[1],
+                        width: ctx.presentationSize[0],
+                        height: ctx.presentationSize[1],
                     },
                     sampleCount: multisample,
-                    format: renderTexture.length > 0 ? renderTexture[0].format : webGPUContext.presentationFormat,
+                    format: renderTexture.length > 0 ? renderTexture[0].format : ctx.presentationFormat,
                     usage: GPUTextureUsage.RENDER_ATTACHMENT,
                 })
             }

@@ -57,9 +57,11 @@ export class TextureMipmapCompute {
 
     private static _pipelines = perContextResource<{ max: GPUComputePipeline; min: GPUComputePipeline }>();
 
-    private static _getPipelines() {
+    private static _getPipelines(ctx?: import('../../Context3D').Context3D) {
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
         return this._pipelines(() => {
-            const device = webGPUContext.device;
+            // eslint-disable-next-line @typescript-eslint/no-deprecated
+            const device = (ctx ?? webGPUContext).device;
             return {
                 max: device.createComputePipeline({
                     layout: `auto`,
@@ -80,7 +82,7 @@ export class TextureMipmapCompute {
     }
 
     public static createMipmap(texture: Texture, mipmapCount: number): void {
-        const pipelines = this._getPipelines();
+        const pipelines = this._getPipelines(texture._boundCtx ?? undefined);
 
         let dstWidth = Math.ceil(texture.width * 0.5);
         let dstHeight = Math.ceil(texture.height * 0.5);
@@ -101,8 +103,9 @@ export class TextureMipmapCompute {
     }
 
     private static mipmap(computePipeline: GPUComputePipeline, data: MipMapData): void {
-        const device = webGPUContext.device;
-        const pipelines = this._getPipelines();
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
+        const device = (data.texture._boundCtx ?? webGPUContext).device;
+        const pipelines = this._getPipelines(data.texture._boundCtx ?? undefined);
         const commandEncoder = GPUContext.beginCommandEncoder();
         let isCurrentMax = computePipeline == pipelines.max;
         let dstView: GPUTextureView;
