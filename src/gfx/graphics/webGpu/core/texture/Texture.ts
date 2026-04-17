@@ -1,17 +1,22 @@
 import { GPUAddressMode, GPUFilterMode } from '../../WebGPUConst';
 import { TextureMipmapGenerator } from './TextureMipmapGenerator';
-import { Context3D, webGPUContext, perContextResource } from '../../Context3D';
+import { Context3D, webGPUContext, perContextResource, bindCtx } from '../../Context3D';
 
 /**
- * Texture — CPU-authoritative scene-graph object. GPU resources
- * (`gpuTexture`, `view`, `gpuSampler`, `gpuSampler_comparison`) are
- * context-local: writes land on the currently-active `Context3D`'s slot,
- * reads return the slot for the active context. This lets the same
- * Texture instance participate in multiple Engine3D instances with each
- * engine owning its own device-local GPU copy.
+ * Texture — CPU-authoritative scene-graph object (Plan B).
+ *
+ * `gpuTexture`, `view`, `gpuSampler`, `gpuSampler_comparison` are
+ * single-slot fields materialized lazily on first access. The first
+ * access binds this Texture to exactly one `Context3D` via `bindCtx()`;
+ * subsequent use from a different engine throws. To share the CPU
+ * descriptor across engines, clone the Texture.
+ *
  * @group Texture
  */
 export class Texture implements GPUSamplerDescriptor {
+
+    /** The Context3D this texture is bound to. Set on first GPU use. */
+    public _boundCtx: Context3D | null = null;
 
     /**
      * name of texture
@@ -24,24 +29,25 @@ export class Texture implements GPUSamplerDescriptor {
     public url: string;
 
     /**
-     * gpu texture (per-Context3D). Reads auto-materialize against the
-     * currently-active Context3D if a descriptor is set: the first access
-     * from a new context creates the GPUTexture and replays the source
-     * image upload (if any) so the texture is usable immediately.
+     * Single GPU texture slot. Reads auto-materialize on first access
+     * when a descriptor is set: creates the GPUTexture on `_boundCtx` and
+     * replays the cached source image upload (if any). Bound to one
+     * Context3D for the lifetime of the texture.
      */
-    private _gpuTextures: Map<Context3D, GPUTexture> = new Map();
+    private _gpuTexture: GPUTexture | null = null;
     protected get gpuTexture(): GPUTexture {
-        let t = this._gpuTextures.get(webGPUContext);
-        if (!t && this.textureDescriptor) {
-            t = webGPUContext.device.createTexture(this.textureDescriptor);
-            this._gpuTextures.set(webGPUContext, t);
-            this._uploadSourceImage(t);
+        if (!this._gpuTexture && this.textureDescriptor) {
+            if (!this._boundCtx) {
+                // eslint-disable-next-line @typescript-eslint/no-deprecated
+                bindCtx(this, webGPUContext);
+            }
+            this._gpuTexture = this._boundCtx!.device.createTexture(this.textureDescriptor);
+            this._uploadSourceImage(this._gpuTexture);
         }
-        return t;
+        return this._gpuTexture;
     }
     protected set gpuTexture(v: GPUTexture) {
-        if (v == null) this._gpuTextures.delete(webGPUContext);
-        else this._gpuTextures.set(webGPUContext, v);
+        this._gpuTexture = v ?? null;
     }
 
     /**
@@ -50,66 +56,63 @@ export class Texture implements GPUSamplerDescriptor {
     public pid: number;
 
     /**
-     * GPUTextureView (per-Context3D). Reads auto-materialize from
-     * `viewDescriptor` against the currently-active context when the
-     * underlying gpuTexture is a real GPUTexture (not an external one).
+     * Single GPU texture view slot. Auto-materializes from `viewDescriptor`
+     * on first access when `gpuTexture` is a real GPUTexture.
      */
-    private _views: Map<Context3D, GPUTextureView | GPUExternalTexture> = new Map();
+    private _view: GPUTextureView | GPUExternalTexture | null = null;
     public get view(): GPUTextureView | GPUExternalTexture {
-        let v = this._views.get(webGPUContext);
-        if (!v && this.viewDescriptor) {
+        if (!this._view && this.viewDescriptor) {
             const t = this.gpuTexture;
             if (t instanceof GPUTexture) {
-                v = t.createView(this.viewDescriptor);
-                if (this.name) (v as GPUTextureView).label = this.name;
-                this._views.set(webGPUContext, v);
+                this._view = t.createView(this.viewDescriptor);
+                if (this.name) (this._view as GPUTextureView).label = this.name;
             }
         }
-        return v;
+        return this._view;
     }
     public set view(v: GPUTextureView | GPUExternalTexture) {
-        if (v == null) this._views.delete(webGPUContext);
-        else this._views.set(webGPUContext, v);
+        this._view = v ?? null;
     }
 
     /**
-     * GPUSampler (per-Context3D). Auto-materializes using this Texture as
-     * its own GPUSamplerDescriptor the first time each context asks.
+     * Single GPU sampler slot. Auto-materializes using this Texture as its
+     * own GPUSamplerDescriptor on first access.
      */
-    private _gpuSamplers: Map<Context3D, GPUSampler> = new Map();
+    private _gpuSampler: GPUSampler | null = null;
     public get gpuSampler(): GPUSampler {
-        let s = this._gpuSamplers.get(webGPUContext);
-        if (!s) {
-            s = webGPUContext.device.createSampler(this);
-            this._gpuSamplers.set(webGPUContext, s);
+        if (!this._gpuSampler) {
+            if (!this._boundCtx) {
+                // eslint-disable-next-line @typescript-eslint/no-deprecated
+                bindCtx(this, webGPUContext);
+            }
+            this._gpuSampler = this._boundCtx!.device.createSampler(this);
         }
-        return s;
+        return this._gpuSampler;
     }
     public set gpuSampler(v: GPUSampler) {
-        if (v == null) this._gpuSamplers.delete(webGPUContext);
-        else this._gpuSamplers.set(webGPUContext, v);
+        this._gpuSampler = v ?? null;
     }
 
     /**
-     * GPUSampler for comparison (per-Context3D). Auto-materializes with
-     * `compare: 'less'` when the format/binding requests a comparison
-     * sampler (depth textures) and no explicit sampler has been set.
+     * Single GPU comparison sampler slot. Auto-materializes with
+     * `compare: 'less'` (or `_compare`) on first access.
      */
-    private _gpuSamplers_cmp: Map<Context3D, GPUSampler> = new Map();
+    private _gpuSampler_cmp: GPUSampler | null = null;
     public get gpuSampler_comparison(): GPUSampler {
-        let s = this._gpuSamplers_cmp.get(webGPUContext);
-        if (!s) {
-            s = webGPUContext.device.createSampler({
+        if (!this._gpuSampler_cmp) {
+            if (!this._boundCtx) {
+                // eslint-disable-next-line @typescript-eslint/no-deprecated
+                bindCtx(this, webGPUContext);
+            }
+            this._gpuSampler_cmp = this._boundCtx!.device.createSampler({
                 compare: this._compare || 'less',
                 label: 'sampler_comparison',
             });
-            this._gpuSamplers_cmp.set(webGPUContext, s);
         }
-        return s;
+        return this._gpuSampler_cmp;
     }
     public set gpuSampler_comparison(v: GPUSampler) {
-        if (v == null) this._gpuSamplers_cmp.delete(webGPUContext);
-        else this._gpuSamplers_cmp.set(webGPUContext, v);
+        this._gpuSampler_cmp = v ?? null;
     }
 
     /**
@@ -377,12 +380,16 @@ export class Texture implements GPUSamplerDescriptor {
 
     /**
      * Upload the cached source image (if any) into the given GPU texture.
-     * Called from the gpuTexture getter when materializing a fresh slot on
-     * a new Context3D so multi-engine users don't have to re-issue loads.
+     * Called from the gpuTexture getter when materializing the GPU texture
+     * on first access.
      */
     private _uploadSourceImage(tex: GPUTexture) {
         if (!this._sourceImageData) return;
-        webGPUContext.device.queue.copyExternalImageToTexture(
+        if (!this._boundCtx) {
+            // eslint-disable-next-line @typescript-eslint/no-deprecated
+            bindCtx(this, webGPUContext);
+        }
+        this._boundCtx!.device.queue.copyExternalImageToTexture(
             { source: this._sourceImageData },
             { texture: tex },
             [this.width, this.height],
@@ -445,19 +452,16 @@ export class Texture implements GPUSamplerDescriptor {
     }
 
     protected updateGPUTexture() {
-        // Descriptor changed: destroy the GPU texture on every context this
-        // Texture has been materialized on and invalidate all views/samplers.
-        // The next access on each context re-materializes lazily from the
-        // current descriptor via the gpuTexture/view/gpuSampler getters.
-        for (const t of this._gpuTextures.values()) {
-            if (t instanceof GPUTexture) {
-                try { t.destroy(); } catch { /* ignore */ }
-            }
+        // Descriptor changed: destroy the materialized GPU texture and
+        // invalidate the view/samplers. Next access re-materializes lazily
+        // from the current descriptor via the getters.
+        if (this._gpuTexture instanceof GPUTexture) {
+            try { this._gpuTexture.destroy(); } catch { /* ignore */ }
         }
-        this._gpuTextures.clear();
-        this._views.clear();
-        this._gpuSamplers.clear();
-        this._gpuSamplers_cmp.clear();
+        this._gpuTexture = null;
+        this._view = null;
+        this._gpuSampler = null;
+        this._gpuSampler_cmp = null;
     }
 
     /**
@@ -487,29 +491,28 @@ export class Texture implements GPUSamplerDescriptor {
     }
 
     protected noticeChange() {
-        // Descriptor-affecting change: drop every context's cached sampler
-        // so the next access rebuilds from the updated GPUSamplerDescriptor.
-        this._gpuSamplers.clear();
-        this._gpuSamplers_cmp.clear();
+        // Descriptor-affecting change: drop cached samplers so the next
+        // access rebuilds from the updated GPUSamplerDescriptor.
+        this._gpuSampler = null;
+        this._gpuSampler_cmp = null;
         this._stateChangeRef.forEach((v) => {
             v();
         });
     }
 
     /**
-     * release the texture on every context it's materialized on
+     * release the materialized texture and all GPU slots
      */
     public destroy(force?: boolean) {
         if (force) {
-            for (const t of this._gpuTextures.values()) {
-                if (t instanceof GPUTexture) {
-                    try { t.destroy(); } catch { /* ignore */ }
-                }
+            if (this._gpuTexture instanceof GPUTexture) {
+                try { this._gpuTexture.destroy(); } catch { /* ignore */ }
             }
-            this._gpuTextures.clear();
-            this._views.clear();
-            this._gpuSamplers.clear();
-            this._gpuSamplers_cmp.clear();
+            this._gpuTexture = null;
+            this._view = null;
+            this._gpuSampler = null;
+            this._gpuSampler_cmp = null;
+            this._boundCtx = null;
             this.textureBindingLayout = null;
             this.textureDescriptor = null;
         }

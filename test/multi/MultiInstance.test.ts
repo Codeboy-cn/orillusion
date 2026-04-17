@@ -218,114 +218,55 @@ await test('both engines advance their render loops', async () => {
     expect(deltaB > 5).toEqual(true);
 });
 
-await test('share one Geometry + Material + Texture across both engines', async () => {
-    // Build *one* shared JS-side scene-graph object set and attach it to
-    // Object3Ds in both engines. The per-context GPU resource Maps should
-    // let each engine upload its own device copy transparently.
-    const sharedGeo = new BoxGeometry(20, 20, 20);
+await test('Plan B: bindCtx throws when the same GPU resource is used by two engines', async () => {
+    // Plan B contract: a GPU-bearing resource (Texture / Material / Geometry /
+    // GPUBuffer / Shader) may only be bound to one Context3D. Attempting to
+    // use it with a different engine must throw.
+    const { bindCtx } = await import('../../src/gfx/graphics/webGpu/Context3D');
 
-    // Build a tiny CPU-side image and feed it through BitmapTexture2D so
-    // the Texture has a concrete `_sourceImageData` for auto-re-upload.
-    // BitmapTexture2D only generates from HTMLCanvasElement / ImageBitmap,
-    // so we draw into a DOM <canvas> here.
-    const cvs = document.createElement('canvas');
-    cvs.width = 32; cvs.height = 32;
-    const g = cvs.getContext('2d')!;
-    g.fillStyle = '#ff00ff';
-    g.fillRect(0, 0, 32, 32);
-    g.fillStyle = '#00ffff';
-    g.fillRect(0, 0, 16, 16);
-    g.fillRect(16, 16, 16, 16);
-    const { BitmapTexture2D, GPUTextureFormat } = await import('@orillusion/core');
-    const sharedTex = new BitmapTexture2D(false);
-    sharedTex.format = GPUTextureFormat.rgba8unorm;
-    (sharedTex as any).source = cvs;
-    // Give the generator a chance to finish its uploads.
-    for (let i = 0; i < 10; i++) await delay(20);
+    // A minimal GPU-bearing object: any object with a `_boundCtx` field.
+    const fakeResource: { _boundCtx: any } = { _boundCtx: null };
 
-    const sharedMat = new LitMaterial();
-    sharedMat.baseColor = new Color(1, 1, 1, 1);
-    sharedMat.baseMap = sharedTex;
+    // First bind: succeeds and sets _boundCtx to engine A's context.
+    bindCtx(fakeResource, engineA.context3D);
+    expect(fakeResource._boundCtx === engineA.context3D).toEqual(true);
 
-    // Attach the same geometry/material to a new Object3D in each scene.
-    engineA.use();
-    const hostA = new Object3D();
-    hostA.name = 'sharedHostA';
-    hostA.transform.x = -30;
-    const mrSA = hostA.addComponent(MeshRenderer);
-    mrSA.geometry = sharedGeo;
-    mrSA.material = sharedMat;
-    viewA.scene.addChild(hostA);
+    // Second bind to the same ctx: idempotent (no throw).
+    bindCtx(fakeResource, engineA.context3D);
+    expect(fakeResource._boundCtx === engineA.context3D).toEqual(true);
 
-    engineB.use();
-    const hostB = new Object3D();
-    hostB.name = 'sharedHostB';
-    hostB.transform.x = 30;
-    const mrSB = hostB.addComponent(MeshRenderer);
-    mrSB.geometry = sharedGeo;
-    mrSB.material = sharedMat;
-    viewB.scene.addChild(hostB);
-
-    // Let both engines advance a few frames so each device materializes
-    // its own GPU resources for the shared objects.
-    const startA = engineA.frameCount;
-    const startB = engineB.frameCount;
-    for (let i = 0; i < 20; i++) await delay(50);
-
-    const deltaA = engineA.frameCount - startA;
-    const deltaB = engineB.frameCount - startB;
-
-    // Introspect the shared texture: it should be materialized on both
-    // contexts (one GPUTexture per device).
-    const texCtxCount = (sharedTex as any)._gpuTextures?.size ?? -1;
-    console.log('[multi] shared texture materialized on', texCtxCount, 'contexts');
-    console.log('[multi] engineA advanced', deltaA, 'frames, engineB advanced', deltaB, 'frames');
-
-    expect(deltaA > 5).toEqual(true);
-    expect(deltaB > 5).toEqual(true);
-    expect(texCtxCount >= 2).toEqual(true);
+    // Third bind to a DIFFERENT ctx: throws.
+    let threw = false;
+    try {
+        bindCtx(fakeResource, engineB.context3D);
+    } catch (e) {
+        threw = true;
+    }
+    expect(threw).toEqual(true);
 });
 
-await test('build & render a shared scene graph WITHOUT calling engine.use()', async () => {
-    // Build geometry/material/texture with the currently-active context
-    // being whatever was left by the previous test, then attach to both
-    // engines' scenes. We never call engine.use() here — phase 2/3 lazy
-    // per-context materialization should cover us at render time.
-    const { BitmapTexture2D, GPUTextureFormat } = await import('@orillusion/core');
-
-    const cvs = document.createElement('canvas');
-    cvs.width = 32; cvs.height = 32;
-    const g = cvs.getContext('2d')!;
-    g.fillStyle = '#ffaa00';
-    g.fillRect(0, 0, 32, 32);
-    g.fillStyle = '#0044ff';
-    g.fillRect(8, 8, 16, 16);
-
-    const sharedTex2 = new BitmapTexture2D(false);
-    sharedTex2.format = GPUTextureFormat.rgba8unorm;
-    (sharedTex2 as any).source = cvs;
-    for (let i = 0; i < 10; i++) await delay(20);
-
-    const sharedGeo2 = new SphereGeometry(10, 16, 16);
-    const sharedMat2 = new LitMaterial();
-    sharedMat2.baseColor = new Color(1, 1, 1, 1);
-    sharedMat2.baseMap = sharedTex2;
-
-    // No engineA.use() / engineB.use() anywhere in this test.
+await test('Plan B: each engine with its own independent scene graph renders fine', async () => {
+    // Under Plan B, users create per-engine Geometry/Material/Texture and
+    // render them independently. This test proves both engines keep
+    // advancing frames when fed their own scene-graph objects.
     const hostA2 = new Object3D();
-    hostA2.name = 'noUseHostA';
+    hostA2.name = 'planBHostA';
     hostA2.transform.y = 25;
     const mrA2 = hostA2.addComponent(MeshRenderer);
-    mrA2.geometry = sharedGeo2;
-    mrA2.material = sharedMat2;
+    mrA2.geometry = new SphereGeometry(10, 16, 16);
+    const matA2 = new LitMaterial();
+    matA2.baseColor = new Color(1, 0.6, 0.2, 1);
+    mrA2.material = matA2;
     viewA.scene.addChild(hostA2);
 
     const hostB2 = new Object3D();
-    hostB2.name = 'noUseHostB';
+    hostB2.name = 'planBHostB';
     hostB2.transform.y = -25;
     const mrB2 = hostB2.addComponent(MeshRenderer);
-    mrB2.geometry = sharedGeo2;
-    mrB2.material = sharedMat2;
+    mrB2.geometry = new SphereGeometry(10, 16, 16);
+    const matB2 = new LitMaterial();
+    matB2.baseColor = new Color(0.2, 0.4, 1, 1);
+    mrB2.material = matB2;
     viewB.scene.addChild(hostB2);
 
     const startA = engineA.frameCount;
@@ -334,13 +275,10 @@ await test('build & render a shared scene graph WITHOUT calling engine.use()', a
     const deltaA = engineA.frameCount - startA;
     const deltaB = engineB.frameCount - startB;
 
-    const texCtx = (sharedTex2 as any)._gpuTextures?.size ?? -1;
-    console.log('[multi] (no-use) texture materialized on', texCtx, 'contexts');
-    console.log('[multi] (no-use) engineA advanced', deltaA, 'engineB advanced', deltaB);
+    console.log('[multi] Plan B engineA advanced', deltaA, 'engineB advanced', deltaB);
 
     expect(deltaA > 5).toEqual(true);
     expect(deltaB > 5).toEqual(true);
-    expect(texCtx >= 2).toEqual(true);
 });
 
 setTimeout(end, 500);
