@@ -151,6 +151,11 @@ export class GPUContextInstance {
         firstIndex?: GPUSize32,
         baseVertex?: GPUSignedOffset32,
         firstInstance?: GPUSize32) {
+        // Dynamic geometry (Graphic3D, debug boxes, physics bodies, trails)
+        // starts with empty index/instance buffers before any shapes are added,
+        // and WebGPU correctly flags drawIndexed(0,...) / drawIndexed(_,0)
+        // as "unusual". Nothing to draw is not a draw — skip the call.
+        if (!indexCount || (instanceCount !== undefined && !instanceCount)) return;
         encoder.drawIndexed(indexCount, instanceCount, firstIndex, baseVertex, firstInstance);
         this.drawCount++;
     }
@@ -159,6 +164,7 @@ export class GPUContextInstance {
         instanceCount?: GPUSize32,
         firstVertex?: GPUSize32,
         firstInstance?: GPUSize32) {
+        if (!vertexCount || (instanceCount !== undefined && !instanceCount)) return;
         encoder.draw(vertexCount, instanceCount, firstVertex, firstInstance);
         this.drawCount++;
     }

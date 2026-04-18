@@ -319,8 +319,10 @@ export class Matrix4 {
     constructor(doMatrix: boolean = false) {
         // if (doMatrix) {
         if (Matrix4.useCount >= Matrix4.allocCount) {
-            let allocCount = Matrix4.allocCount + Matrix4.allocOnceCount;
-            import.meta.env.DEV && console.warn(`allocMatrix(${allocCount})`);
+            // Exponential (doubling) growth keeps total realloc+copy work O(n)
+            // amortized. Linear +1000 steps turned a 100k-matrix scene into
+            // 100 reallocs and flooded the console with "allocMatrix(N)" warns.
+            let allocCount = Math.max(Matrix4.allocCount * 2, Matrix4.allocCount + Matrix4.allocOnceCount);
             WasmMatrix.allocMatrix(allocCount);
         }
 

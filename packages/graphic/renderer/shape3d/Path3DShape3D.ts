@@ -29,15 +29,15 @@ export class Path3DShape3D extends LineShape3D {
         return this._lineJoin;
     }
     public set lineJoin(value: LineJoin) {
-        console.warn('Not Supported');
+        if (value !== this._lineJoin) console.warn('Path3DShape3D: lineJoin changes are not supported');
     }
 
     public get isClosed(): boolean {
         return this._isClosed;
     }
     public set isClosed(value: boolean) {
+        if (value) console.warn('Path3DShape3D: isClosed=true is not supported');
         this._isClosed = false;
-        console.warn('Not Supported');
     }
 
     public reset() {

@@ -114,8 +114,11 @@ export class ShaderReflection {
                         console.warn(`shader reflection dataType not match! var dataType vs : ${aInfo.dataType} , fs : ${bInfo.dataType}`);
                     if (aInfo.dataIsBuiltinType != bInfo.dataIsBuiltinType)
                         console.error(`shader reflection dataIsBuiltinType not match! var dataIsBuiltinType vs : ${aInfo.dataIsBuiltinType} , fs : ${bInfo.dataType}`);
-                    if (!aInfo.dataFields || !bInfo.dataFields) {
-                        console.warn(`shader reflection dataFields is empty! var dataFields vs : ${aInfo.dataFields} , fs : ${bInfo.dataFields}`);
+                    // Samplers and textures legitimately have null dataFields;
+                    // only warn when one side has fields and the other doesn't
+                    // (that's a real VS/FS struct-layout mismatch).
+                    if (!!aInfo.dataFields !== !!bInfo.dataFields) {
+                        console.warn(`shader reflection dataFields mismatch! vs : ${aInfo.dataFields} , fs : ${bInfo.dataFields}`);
                     }
                 }
                 // if (aInfo.dataFields.length != bInfo.dataFields.length)

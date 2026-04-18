@@ -145,7 +145,7 @@ const flatName = (s) => s.replace(/[\/\\]/g, '__').replace(/\.ts$/, '.png');
 
 async function probeSample(page, sample) {
     const state = {
-        consoleErrors: [], pageErrors: [],
+        consoleErrors: [], consoleWarnings: [], pageErrors: [],
         compile: false, variance: 0,
         status: 'UNKNOWN', detail: '',
     };
@@ -155,6 +155,7 @@ async function probeSample(page, sample) {
         const text = m.text();
         if (isBenign(text)) return;
         if (m.type() === 'error') state.consoleErrors.push(text);
+        else if (m.type() === 'warning') state.consoleWarnings.push(text);
         if (isCompileError(text)) state.compile = true;
     };
     const onPageErr = (err) => {

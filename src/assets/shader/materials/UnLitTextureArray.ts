@@ -11,7 +11,6 @@ export let UnLitTextureArray: string = /*wgsl*/ `
     #include "VertexAttributeIndexShader"
     #include "GlobalUniform"
     #include "Inline_vert"
-    #include "EnvMap_frag"
     #include "ColorUtil_frag"
 
     const DEGREES_TO_RADIANS : f32 = 3.1415926 / 180.0 ;
