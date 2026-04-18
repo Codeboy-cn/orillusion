@@ -76,8 +76,6 @@ export class PointLightShadowRenderer extends RendererBase {
                 rtFrame.customSize = true;
 
                 renderContext[i] = this.getRenderContext(view.engine3D.context3D, rtFrame);
-
-                // Engine3D.getRenderJob(view).postRenderer?.setDebugTexture([depthTexture]);
             }
             cubeShadowMapInfo = {
                 cubeCamera: camera as any as CubeCamera,

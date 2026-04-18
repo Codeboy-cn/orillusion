@@ -1,4 +1,3 @@
-import { Engine3D } from "../../Engine3D";
 import { ColliderComponent } from "../../components/ColliderComponent";
 import { ComponentBase } from "../../components/ComponentBase";
 import { MeshRenderer } from "../../components/renderer/MeshRenderer";
@@ -96,20 +95,12 @@ export class TransformControllerBaseComponent extends ComponentBase {
     }
 
     public onEnable(view?: View3D) {
-        // console.warn('onEnable');
         this.object3D.addChild(this.mContainer);
-        // Engine3D.inputSystem.addEventListener(PointerEvent3D.POINTER_DOWN, this.onMouseDown, this, null, 99999);
-        // Engine3D.inputSystem.addEventListener(PointerEvent3D.POINTER_MOVE, this.onMouseMove, this, null, 99999);
-        // Engine3D.inputSystem.addEventListener(PointerEvent3D.POINTER_UP, this.onMouseUp, this, null, 99999);
         this.reset();
     }
 
     public onDisable(view?: View3D) {
-        // console.warn('onDisable');
         this.object3D.removeChild(this.mContainer);
-        // Engine3D.inputSystem.removeEventListener(PointerEvent3D.POINTER_DOWN, this.onMouseDown, this);
-        // Engine3D.inputSystem.removeEventListener(PointerEvent3D.POINTER_MOVE, this.onMouseMove, this);
-        // Engine3D.inputSystem.removeEventListener(PointerEvent3D.POINTER_UP, this.onMouseUp, this);
     }
 
     public reset() {

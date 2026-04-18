@@ -121,7 +121,6 @@ export class PhysicsDebugDrawer {
 
         const name = `AmmoLine_${this.lineCount}`;
         this.lineNameList.push(name);
-        // Engine3D.views[this.viewIndex].graphic3D.drawLines(name, [p0, p1], lineColor);
         this.graphic3D.drawLines(name, [p0, p1], lineColor);
 
     }
@@ -143,13 +142,7 @@ export class PhysicsDebugDrawer {
         const name = `AmmoContactPoint_${GetCountInstanceID()}`;
         this.lineNameList.push(name);
 
-        // Engine3D.views[this.viewIndex].graphic3D.drawLines(name, [p0, p1], lineColor);
         this.graphic3D.drawLines(name, [p0, p1], lineColor);
-
-        // 在接触点生命周期结束后进行清理
-        // setTimeout(() => {
-        //     Engine3D.views[this.viewIndex].graphic3D.Clear(name)
-        // }, lifeTime * 1000);
     }
 
     private reportErrorWarning(warningString: string): void {
@@ -161,8 +154,6 @@ export class PhysicsDebugDrawer {
     }
 
     private clearLines(): void {
-        // let view = Engine3D.views[this.viewIndex];
-        // this.lineNameList.forEach(name => view.graphic3D.Clear(name));
         this.lineNameList.forEach(name => this.graphic3D.Clear(name));
         this.lineNameList.length = 0;
     }
