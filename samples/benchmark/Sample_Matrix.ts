@@ -1,4 +1,4 @@
-import { WasmMatrix } from "@orillusion/wasm-matrix/WasmMatrix";
+import { WasmMatrix } from "../../src/components/matrix/WasmMatrix";
 import { Engine3D, Matrix4, Quaternion, Transform, Vector3, append, makeMatrix44 } from "../../src"
 
 class Sample_Matrix {

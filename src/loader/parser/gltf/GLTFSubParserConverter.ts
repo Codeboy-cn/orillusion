@@ -88,7 +88,7 @@ export class GLTFSubParserConverter {
 
     private convertSkeletonAnim(node: Object3D, skeletonInfo: any) {
         let avatarData = this.subParser.parseSkeleton(skeletonInfo.skeleton);
-        Engine3D.res.addObj(avatarData.name, avatarData);
+        Engine3D.resFor(this.subParser.ctx).addObj(avatarData.name, avatarData);
 
         let clips: PropertyAnimationClip[] = [];
         for (let i = 0; i < this.gltf.animations.length; i++) {
@@ -266,7 +266,7 @@ export class GLTFSubParserConverter {
 
                     if (emissiveFactor && (emissiveFactor[0] > 0 || emissiveFactor[1] > 0 || emissiveFactor[2] > 0)) {
                         if (!physicMaterial.shader.getTexture("emissiveMap")) {
-                            physicMaterial.shader.setTexture("emissiveMap", Engine3D.res.whiteTexture);
+                            physicMaterial.shader.setTexture("emissiveMap", Engine3D.resFor(this.subParser.ctx).whiteTexture);
                         }
                         physicMaterial.shader.setDefine('USE_EMISSIVEMAP', true);
                         physicMaterial.setUniformColor("emissiveColor", new Color(emissiveFactor[0], emissiveFactor[1], emissiveFactor[2], emissiveFactor[3]));
@@ -522,7 +522,7 @@ export class GLTFSubParserConverter {
         if (dmaterial.extensions) {
             KHR_materials_clearcoat.apply(this.gltf, dmaterial, mat);
             KHR_materials_unlit.apply(this.gltf, dmaterial, mat);
-            KHR_materials_emissive_strength.apply(this.gltf, dmaterial, mat);
+            KHR_materials_emissive_strength.apply(this.gltf, dmaterial, mat, this.subParser.ctx);
         }
         return mat;
     }

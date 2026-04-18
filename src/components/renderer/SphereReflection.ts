@@ -32,7 +32,7 @@ export class SphereReflection extends Reflection {
         this.object3D.bound = new BoundingSphere(Vector3.ZERO.clone(), this.radius);
     }
 
-    public debug(index: number, scale: number = 1): void {
+    public debug(index: number, view: View3D, scale: number = 1): void {
         let obj = new Object3D();
         let mr = obj.addComponent(MeshRenderer);
         mr.addMask(RendererMask.ReflectionDebug);
@@ -40,7 +40,7 @@ export class SphereReflection extends Reflection {
         // mr.material = new LitMaterial();
 
         let reflectionSetting = Engine3D.setting.reflectionSetting;
-        let reflectionsGBufferFrame = GBufferFrame.getGBufferFrame(GBufferFrame.reflections_GBuffer, reflectionSetting.width, reflectionSetting.height);
+        let reflectionsGBufferFrame = GBufferFrame.getGBufferFrame(GBufferFrame.reflections_GBuffer, view.engine3D.context3D, reflectionSetting.width, reflectionSetting.height);
         let mat = new ReflectionMaterial();
         mat.reflectionIndex = index;
         mat.baseMap = reflectionsGBufferFrame.getCompressGBufferTexture();

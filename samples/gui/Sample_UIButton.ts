@@ -3,6 +3,7 @@ import { createExampleScene } from "@samples/utils/ExampleScene";
 import { Engine3D, Object3DUtil, Object3D, GUISpace, WorldPanel, ViewPanel, UIButton, UITextField, Color, TextAnchor, UIImage, ImageType, ComponentBase, View3D, UITransform, UIPanel, UIInteractiveStyle, UIButtonTransition, PickGUIEvent3D } from "@orillusion/core";
 
 export class Sample_UIButton {
+    engine: Engine3D;
     button: UIButton;
     scaler: ScalerComponent;
 
@@ -12,7 +13,7 @@ export class Sample_UIButton {
 
         GUIHelp.init();
 
-        const engine = await Engine3D.create();
+        const engine = this.engine = await Engine3D.create();
         let exampleScene = createExampleScene(engine);
         engine.startRenderView(exampleScene.view);
 
@@ -27,8 +28,8 @@ export class Sample_UIButton {
         //create UI root
         let panelRoot: Object3D = new Object3D();
 
-        await Engine3D.res.loadFont('fnt/0.fnt');
-        await Engine3D.res.loadAtlas('atlas/UI_atlas.json');
+        await this.engine.res.loadFont('fnt/0.fnt');
+        await this.engine.res.loadAtlas('atlas/UI_atlas.json');
 
         let space: GUISpace = GUISpace.World; // View
         let panel: UIPanel;
@@ -46,10 +47,10 @@ export class Sample_UIButton {
             let quad = new Object3D();
             panelRoot.addChild(quad);
             let button: UIButton = quad.addComponent(UIButton);
-            button.normalSprite = Engine3D.res.getGUISprite('button-up');
-            button.downSprite = Engine3D.res.getGUISprite('button-down');
-            button.overSprite = Engine3D.res.getGUISprite('button-over');
-            button.disableSprite = Engine3D.res.getGUISprite('button-disable');
+            button.normalSprite = this.engine.res.getGUISprite('button-up');
+            button.downSprite = this.engine.res.getGUISprite('button-down');
+            button.overSprite = this.engine.res.getGUISprite('button-over');
+            button.disableSprite = this.engine.res.getGUISprite('button-disable');
 
 
             button.uiTransform.resize(200, 60);
@@ -74,7 +75,7 @@ export class Sample_UIButton {
             let quad = new Object3D();
             panelRoot.addChild(quad);
             let button: UIButton = quad.addComponent(UIButton);
-            button.normalSprite = Engine3D.res.getGUISprite('button-up');
+            button.normalSprite = this.engine.res.getGUISprite('button-up');
 
             button.uiTransform.resize(200, 60);
             button.uiTransform.y = 200;
@@ -97,7 +98,7 @@ export class Sample_UIButton {
             panelRoot.addChild(imageQuad);
             let img = imageQuad.addComponent(UIImage);
             img.imageType = ImageType.Sliced;
-            img.sprite = Engine3D.res.getGUISprite('button-up');
+            img.sprite = this.engine.res.getGUISprite('button-up');
             img.uiTransform.resize(400, 60);
             img.uiTransform.y = 32;
             this.scaler = imageQuad.addComponent(ScalerComponent);

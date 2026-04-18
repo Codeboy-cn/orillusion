@@ -3,7 +3,6 @@ import { RenderNode } from "../../../../components/renderer/RenderNode";
 import { View3D } from "../../../../core/View3D";
 import { ProfilerUtil } from "../../../../util/ProfilerUtil";
 import { GlobalBindGroup } from "../../../graphics/webGpu/core/bindGroups/GlobalBindGroup";
-import { GPUContext } from "../../GPUContext";
 import { EntityCollect } from "../../collect/EntityCollect";
 import { OcclusionSystem } from "../../occlusion/OcclusionSystem";
 import { RenderContext } from "../RenderContext";
@@ -25,6 +24,8 @@ export class ColorPassRenderer extends RendererBase {
     }
 
     public render(view: View3D, occlusionSystem: OcclusionSystem, clusterLightingBuffer?: ClusterLightingBuffer, maskTr: boolean = false) {
+        const gpu = view.engine3D.context3D.gpuContext;
+        this.renderContext.gpu = gpu;
         this.renderContext.clean();
 
 
@@ -65,7 +66,7 @@ export class ColorPassRenderer extends RendererBase {
 
             const sky = EntityCollect.instance.getSky(view.scene);
             if (!maskTr && sky) {
-                GPUContext.bindCamera(renderPassEncoder, camera);
+                gpu.bindCamera(renderPassEncoder, camera);
                 if (!sky.preInit(this._rendererType)) {
                     sky.nodeUpdate(view, this._rendererType, this.rendererPassState, clusterLightingBuffer);
                 }
@@ -73,7 +74,7 @@ export class ColorPassRenderer extends RendererBase {
             }
 
             if (collectInfo.opaqueList) {
-                GPUContext.bindCamera(renderPassEncoder, camera);
+                gpu.bindCamera(renderPassEncoder, camera);
                 this.drawNodes(view, this.renderContext, collectInfo.opaqueList, occlusionSystem, clusterLightingBuffer);
             }
             // this.renderContext.endRenderPass();
@@ -90,7 +91,7 @@ export class ColorPassRenderer extends RendererBase {
             }
 
             if (!maskTr && collectInfo.transparentList) {
-                GPUContext.bindCamera(renderPassEncoder, camera);
+                gpu.bindCamera(renderPassEncoder, camera);
                 this.drawNodes(view, this.renderContext, collectInfo.transparentList, occlusionSystem, clusterLightingBuffer);
             }
 

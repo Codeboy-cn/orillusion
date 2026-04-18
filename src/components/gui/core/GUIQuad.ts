@@ -2,7 +2,6 @@ import { UITransform } from "../uiComponents/UITransform";
 import { GUIGeometry } from "./GUIGeometry";
 import { GUISprite } from "./GUISprite";
 import { ImageType } from "../GUIConfig";
-import { Engine3D } from "../../../Engine3D";
 import { Matrix3 } from "../../../math/Matrix3";
 import { Color } from "../../../math/Color";
 import { PoolNode } from "../../../core/pool/ObjectPool";
@@ -30,7 +29,7 @@ export class GUIQuad {
     private _visible: boolean = true;
     private _offsetX: number = 0;
     private _offsetY: number = 0;
-    protected _sprite: GUISprite = Engine3D.res.defaultGUISprite;
+    protected _sprite: GUISprite = null;
     private _color: Color = new Color(1, 1, 1, 1);
     private _imageType: ImageType = ImageType.Simple;
     public dirtyAttributes: GUIQuadAttrEnum = GUIQuadAttrEnum.MAX;

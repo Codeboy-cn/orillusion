@@ -5,6 +5,7 @@ import { Scene3D, Object3D, LitMaterial, Engine3D, BoxGeometry, MeshRenderer, Co
 import { GUIUtil } from "@samples/utils/GUIUtil";
 
 class SamplePhysics01 {
+    engine: Engine3D;
     private scene: Scene3D;
     private materials: LitMaterial[];
     private boxGeometry: BoxGeometry;
@@ -16,7 +17,7 @@ class SamplePhysics01 {
         Engine3D.setting.shadow.shadowBound = 150;
 
         await Physics.init();
-        const engine = await Engine3D.create({ renderLoop: () => this.loop() });
+        const engine = this.engine = await Engine3D.create({ renderLoop: () => this.loop() });
 
         let sceneParam = createSceneParam();
         sceneParam.camera.distance = 50;
@@ -83,7 +84,7 @@ class SamplePhysics01 {
 
     private createGround() {
         let floorMat = new LitMaterial();
-        floorMat.baseMap = Engine3D.res.grayTexture;
+        floorMat.baseMap = this.engine.res.grayTexture;
         floorMat.roughness = 0.85;
         floorMat.metallic = 0.01;
         // floorMat.envIntensity = 0.01;

@@ -15,7 +15,6 @@ import { RTDescriptor } from '../../graphics/webGpu/descriptor/RTDescriptor';
 import { RTFrame } from '../frame/RTFrame';
 import { ComputeShader } from '../../graphics/webGpu/shader/ComputeShader';
 import { UniformGPUBuffer } from '../../graphics/webGpu/core/buffer/UniformGPUBuffer';
-import { GPUContext } from '../GPUContext';
 import { RendererPassState } from '../passRenderer/state/RendererPassState';
 import { WebGPUDescriptorCreator } from '../../graphics/webGpu/descriptor/WebGPUDescriptorCreator';
 import { GlobalBindGroup } from '../../graphics/webGpu/core/bindGroups/GlobalBindGroup';
@@ -44,14 +43,14 @@ export class GlobalFog extends PostBase {
         this.fogUniform = new UniformGPUBuffer(4 * 5); //vector4 * 5
         this.fogCompute.setUniformBuffer('fogUniform', this.fogUniform);
 
-        let rtFrame = GBufferFrame.getGBufferFrame(GBufferFrame.colorPass_GBuffer);
+        let rtFrame = GBufferFrame.getGBufferFrame(GBufferFrame.colorPass_GBuffer, view.engine3D.context3D);
         this.fogCompute.setSamplerTexture('gBufferTexture', rtFrame.getCompressGBufferTexture());
         this.fogCompute.setSamplerTexture('inTex', rtFrame.getColorTexture());
         this._lastSkyTexture = this.getSkyTexture();
         this.fogCompute.setSamplerTexture(`prefilterMap`, this._lastSkyTexture);
         this.fogCompute.setStorageTexture(`outTex`, this.fogOpTexture);
 
-        this.rendererPassState = WebGPUDescriptorCreator.createRendererPassState(this.rtFrame, null);
+        this.rendererPassState = WebGPUDescriptorCreator.createRendererPassState(view.engine3D.context3D, this.rtFrame, null);
         this.rendererPassState.label = "FOG";
 
         let lightUniformEntries = GlobalBindGroup.getLightEntries(view.scene);
@@ -90,7 +89,7 @@ export class GlobalFog extends PostBase {
 
     private _createFogTarget() {
         let [w, h] = this._boundCtx!.presentationSize;
-        this.fogOpTexture = new VirtualTexture(w, h, GPUTextureFormat.rgba16float, false, GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.COPY_SRC | GPUTextureUsage.TEXTURE_BINDING);
+        this.fogOpTexture = new VirtualTexture(w, h, GPUTextureFormat.rgba16float, false, GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.COPY_SRC | GPUTextureUsage.TEXTURE_BINDING, 1, 0, 1, this._boundCtx!);
         this.fogOpTexture.name = 'fogTex';
         let fogDesc = new RTDescriptor();
         fogDesc.loadOp = `load`;
@@ -215,7 +214,7 @@ export class GlobalFog extends PostBase {
 
     private _lastSkyTexture: Texture;
     private getSkyTexture(view?: View3D): Texture {
-        let texture = Engine3D.res.defaultSky as Texture;
+        let texture = Engine3D.resFor(view?.engine3D?.context3D).defaultSky as Texture;
         const sky = view ? EntityCollect.instance.getSky(view.scene) : undefined;
         if (sky instanceof SkyRenderer) {
             texture = sky.map;
@@ -245,8 +244,8 @@ export class GlobalFog extends PostBase {
         this.fogCompute.setUniformFloat('isSkyHDR', skyTexture.isHDRTexture ? 1 : 0);
 
         this.uploadSetting();
-        GPUContext.computeCommand(command, [this.fogCompute]);
-        GPUContext.lastRenderPassState = this.rendererPassState;
+        this._boundCtx!.gpuContext.computeCommand(command, [this.fogCompute]);
+        this._boundCtx!.gpuContext.lastRenderPassState = this.rendererPassState;
 
     }
 

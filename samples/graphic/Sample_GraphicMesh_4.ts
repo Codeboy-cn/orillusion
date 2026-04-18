@@ -5,6 +5,7 @@ import { Stats } from "@orillusion/stats";
 import { Graphic3D, Graphic3DMesh } from "@orillusion/graphic";
 
 export class Sample_GraphicMesh_4 {
+    engine: Engine3D;
     lightObj3D: Object3D;
     scene: Scene3D;
     parts: Object3D[];
@@ -21,7 +22,7 @@ export class Sample_GraphicMesh_4 {
         Matrix4.maxCount = 500000;
         Matrix4.allocCount = 500000;
 
-        const engine = await Engine3D.create({ beforeRender: () => this.update() });
+        const engine = this.engine = await Engine3D.create({ beforeRender: () => this.update() });
 
         Engine3D.setting.render.debug = true;
 
@@ -52,8 +53,8 @@ export class Sample_GraphicMesh_4 {
 
     async initScene() {
         let texts = [];
-        texts.push(await Engine3D.res.loadTexture("textures/128/star_0031.png") as BitmapTexture2D);
-        let bitmapTexture2DArray = new BitmapTexture2DArray(texts[0].width, texts[0].height, texts.length);
+        texts.push(await this.engine.res.loadTexture("textures/128/star_0031.png") as BitmapTexture2D);
+        let bitmapTexture2DArray = new BitmapTexture2DArray(texts[0].width, texts[0].height, texts.length, this.engine.context3D);
         bitmapTexture2DArray.setTextures(texts);
 
         GUIHelp.add(this, "cafe", 0.0, 100.0);

@@ -8,10 +8,12 @@ import { Graphic3D } from '@orillusion/graphic'
  * Sample class demonstrating the creation of a domino effect with physics interactions.
  */
 class Sample_Dominoes {
+    engine: Engine3D;
     async run() {
         // init physics and engine
         await Physics.init();
-        const engine = await Engine3D.create({ renderLoop: () => Physics.update() });
+        this.engine = await Engine3D.create({ renderLoop: () => Physics.update() });
+        const engine = this.engine;
 
         let scene = new Scene3D();
         scene.addComponent(Stats);
@@ -108,7 +110,7 @@ class Sample_Dominoes {
         material.baseColor = new Color(0, 1, 0.5, 1.0);
         material.transparent = true;
 
-        let texture = new BitmapTexture2D();
+        let texture = new BitmapTexture2D(true, this.engine.context3D);
         texture.addressModeU = 'repeat';
         texture.addressModeV = 'repeat';
         await texture.load('https://cdn.orillusion.com/textures/grid.webp');

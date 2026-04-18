@@ -2,7 +2,8 @@ import { ViewQuad } from '../../../core/ViewQuad';
 import { VirtualTexture } from '../../../textures/VirtualTexture';
 import { Texture } from '../../graphics/webGpu/core/texture/Texture';
 import { UniformNode } from '../../graphics/webGpu/core/uniforms/UniformNode';
-import { GPUContext } from '../GPUContext';
+import { RTDescriptor } from '../../graphics/webGpu/descriptor/RTDescriptor';
+import { RTFrame } from '../frame/RTFrame';
 import { RTResourceMap } from '../frame/RTResourceMap';
 import { ComputeShader } from '../../../gfx/graphics/webGpu/shader/ComputeShader';
 import { RTResourceConfig } from '../config/RTResourceConfig';
@@ -10,7 +11,7 @@ import { PostRenderer } from '../passRenderer/post/PostRenderer';
 import { View3D } from '../../../core/View3D';
 import { Reference } from '../../../util/Reference';
 import { CResizeEvent } from '../../../event/CResizeEvent';
-import { bindCtx, Context3D, webGPUContext } from '../../graphics/webGpu/Context3D';
+import { bindCtx, Context3D } from '../../graphics/webGpu/Context3D';
 import { RendererPassState } from '../passRenderer/state/RendererPassState';
 /**
  * @internal
@@ -32,8 +33,7 @@ export class PostBase {
     }
 
     protected bindView(view: View3D) {
-        // eslint-disable-next-line @typescript-eslint/no-deprecated
-        let ctx = view?.engine3D?.context3D ?? webGPUContext;
+        let ctx = view.engine3D.context3D;
         bindCtx(this, ctx);
         ctx.addEventListener(CResizeEvent.RESIZE, this.onResize, this);
         if (!this._resourceCreated) {
@@ -45,7 +45,7 @@ export class PostBase {
     protected createResource(view: View3D) { }
 
     protected createRTTexture(name: string, rtWidth: number, rtHeight: number, format: GPUTextureFormat, useMipmap: boolean = false, sampleCount: number = 0) {
-        let rt = RTResourceMap.createRTTexture(name, rtWidth, rtHeight, format, useMipmap, sampleCount);
+        let rt = RTResourceMap.createRTTexture(this._boundCtx!, name, rtWidth, rtHeight, format, useMipmap, sampleCount);
         rt.name = name;
         this.virtualTexture.set(name, rt);
         Reference.getInstance().attached(rt, this);
@@ -53,18 +53,19 @@ export class PostBase {
     }
 
     protected createViewQuad(name: string, shaderName: string, outRtTexture: VirtualTexture, msaa: number = 0) {
-        let viewQuad = RTResourceMap.createViewQuad(name, 'Quad_vert_wgsl', shaderName, outRtTexture, msaa);
+        let rtFrame = new RTFrame([outRtTexture], [new RTDescriptor()]);
+        let viewQuad = new ViewQuad(this._boundCtx!, 'Quad_vert_wgsl', shaderName, rtFrame, msaa);
         this.rtViewQuad.set(name, viewQuad);
         return viewQuad;
     }
 
     protected getLastRenderTexture(): Texture {
         let colorTexture: Texture;
-        let renderTargets = GPUContext.lastRenderPassState.renderTargets;
+        let renderTargets = this._boundCtx!.gpuContext.lastRenderPassState.renderTargets;
         if (renderTargets.length > 0) {
             colorTexture = renderTargets[0];
         } else {
-            colorTexture = RTResourceMap.getTexture(RTResourceConfig.colorBufferTex_NAME);
+            colorTexture = RTResourceMap.getTexture(this._boundCtx!, RTResourceConfig.colorBufferTex_NAME);
         }
         return colorTexture;
     }

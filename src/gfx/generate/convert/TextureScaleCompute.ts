@@ -1,4 +1,4 @@
-import { ComputeShader, GPUContext, textureCompress } from "../../..";
+import { ComputeShader, textureCompress } from "../../..";
 import { Texture } from "../../graphics/webGpu/core/texture/Texture";
 
 export class TextureScaleCompute {

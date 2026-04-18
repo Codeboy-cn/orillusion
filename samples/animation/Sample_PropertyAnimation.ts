@@ -4,6 +4,7 @@ import { GUIUtil } from "@samples/utils/GUIUtil";
 import { Scene3D, PropertyAnimation, Engine3D, Object3D, Object3DUtil, PropertyAnimClip, WrapMode, PostProcessingComponent, FXAAPost, GBufferPost } from "@orillusion/core";
 
 class Sample_PropertyAnimation {
+    engine: Engine3D;
     scene: Scene3D;
     animation: PropertyAnimation;
 
@@ -14,7 +15,7 @@ class Sample_PropertyAnimation {
         Engine3D.setting.shadow.shadowSize = 2048;
         Engine3D.setting.shadow.shadowBias = 0.05;
 
-        const engine = await Engine3D.create();
+        const engine = this.engine = await Engine3D.create();
         GUIHelp.init();
         let param = createSceneParam();
         param.camera.distance = 16;
@@ -43,7 +44,7 @@ class Sample_PropertyAnimation {
         scene.addChild(floor);
 
         // load external model
-        let model = await Engine3D.res.loadGltf('PBR/Duck/Duck.gltf') as Object3D;
+        let model = await this.engine.res.loadGltf('PBR/Duck/Duck.gltf') as Object3D;
         let container = new Object3D();
         container.addChild(model);
         model.rotationY = 180;
@@ -61,7 +62,7 @@ class Sample_PropertyAnimation {
         let animation = owner.addComponent(PropertyAnimation);
 
         //load a animation clip
-        let json: any = await Engine3D.res.loadJSON('json/anim_0.json');
+        let json: any = await this.engine.res.loadJSON('json/anim_0.json');
         let animClip = new PropertyAnimClip();
         animClip.parse(json);
         animClip.wrapMode = WrapMode.Loop;

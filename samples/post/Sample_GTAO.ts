@@ -2,12 +2,13 @@ import {
 	View3D, DirectLight, Engine3D,
 	PostProcessingComponent, LitMaterial, HoverCameraController,
 	KelvinUtil, MeshRenderer, Object3D, PlaneGeometry, Scene3D, SphereGeometry,
-	CameraUtil, webGPUContext, BoxGeometry, AtmosphericComponent, GTAOPost, Color, FXAAPost, GBufferPost
+	CameraUtil, BoxGeometry, AtmosphericComponent, GTAOPost, Color, FXAAPost, GBufferPost
 } from '@orillusion/core';
 import { GUIHelp } from '@orillusion/debug/GUIHelp';
 import { GUIUtil } from '@samples/utils/GUIUtil';
 
 export class Sample_GTAO {
+    engine: Engine3D;
 	lightObj: Object3D;
 	scene: Scene3D;
 
@@ -17,7 +18,7 @@ export class Sample_GTAO {
 		Engine3D.setting.shadow.shadowBias = 0.05;
 		Engine3D.setting.render.debug = true;
 
-		const engine = await Engine3D.create();
+		const engine = this.engine = await Engine3D.create();
 		GUIHelp.init();
 
 		this.scene = new Scene3D();
@@ -25,7 +26,7 @@ export class Sample_GTAO {
 		sky.sunY = 0.6;
 
 		let mainCamera = CameraUtil.createCamera3DObject(this.scene, 'camera');
-		mainCamera.perspective(60, webGPUContext.aspect, 1, 5000.0);
+		mainCamera.perspective(60, engine.context3D.aspect, 1, 5000.0);
 		let ctrl = mainCamera.object3D.addComponent(HoverCameraController);
 		ctrl.setCamera(0, -15, 500);
 		await this.initScene();
@@ -98,10 +99,10 @@ export class Sample_GTAO {
 
 		{
 			let mat = new LitMaterial();
-			mat.baseMap = Engine3D.res.whiteTexture;
+			mat.baseMap = this.engine.res.whiteTexture;
 			mat.baseColor = new Color(1.0, 0.464, 0.0);
-			mat.normalMap = Engine3D.res.normalTexture;
-			mat.aoMap = Engine3D.res.whiteTexture;
+			mat.normalMap = this.engine.res.normalTexture;
+			mat.aoMap = this.engine.res.whiteTexture;
 			mat.roughness = 1.0;
 			mat.metallic = 0.0;
 

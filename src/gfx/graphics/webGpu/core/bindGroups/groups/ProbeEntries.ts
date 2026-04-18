@@ -1,7 +1,7 @@
 import { MemoryDO } from '../../../../../../core/pool/memory/MemoryDO';
 import { MemoryInfo } from '../../../../../../core/pool/memory/MemoryInfo';
 import { Probe } from '../../../../../renderJob/passRenderer/ddgi/Probe';
-import { bindCtx, Context3D, webGPUContext } from '../../../Context3D';
+import { bindCtx, Context3D } from '../../../Context3D';
 /**
  * @internal
  * @group GFX
@@ -13,9 +13,8 @@ export class ProbeEntries {
     private _probeInfoList: MemoryInfo[];
     public _boundCtx: Context3D | null = null;
 
-    public initDataUniform(probes: Probe[]) {
-        // eslint-disable-next-line @typescript-eslint/no-deprecated
-        bindCtx(this, webGPUContext);
+    public initDataUniform(ctx: Context3D, probes: Probe[]) {
+        bindCtx(this, ctx);
         let device = this._boundCtx!.device;
         this.memoryDo = new MemoryDO();
         this.probes = probes;
@@ -45,8 +44,7 @@ export class ProbeEntries {
     }
 
     private updateGPUBuffer() {
-        // eslint-disable-next-line @typescript-eslint/no-deprecated
-        let device = (this._boundCtx ?? webGPUContext).device;
+        let device = this._boundCtx!.device;
         const bufferData = this.memoryDo.shareDataBuffer;
         let totalBytes = this.memoryDo.shareDataBuffer.byteLength;
         let offsetBytes = 0;//this.memoryDo.shareDataBuffer.byteOffset;

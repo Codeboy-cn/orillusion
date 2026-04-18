@@ -14,9 +14,12 @@ class Sample_AtmosphericSky {
         engine.startRenderView(scene.view);
         // add atmospheric sky
         let sky = scene.getComponent(AtmosphericComponent);
+        // The scattering sky is materialized on first render; force it here so we can sample
+        // its 2D face texture synchronously.
+        (sky as any)._ensureSky(engine.context3D);
 
         let texture = sky['_atmosphericScatteringSky'];
-        let ulitMaterial = new UnLitMaterial();
+        let ulitMaterial = new UnLitMaterial(engine.context3D);
         ulitMaterial.baseMap = texture.texture2D;
         ulitMaterial.cullMode = GPUCullMode.none;
         let obj = new Object3D();

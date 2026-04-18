@@ -3,10 +3,9 @@ import { RenderNode } from "../../../../components/renderer/RenderNode";
 import { View3D } from "../../../../core/View3D";
 import { VirtualTexture } from "../../../../textures/VirtualTexture";
 import { ProfilerUtil } from "../../../../util/ProfilerUtil";
-import { webGPUContext } from "../../../graphics/webGpu/Context3D";
+import { Context3D } from "../../../graphics/webGpu/Context3D";
 import { GPUTextureFormat } from "../../../graphics/webGpu/WebGPUConst";
 import { RTDescriptor } from "../../../graphics/webGpu/descriptor/RTDescriptor";
-import { GPUContext } from "../../GPUContext";
 import { EntityCollect } from "../../collect/EntityCollect";
 import { RTResourceConfig } from "../../config/RTResourceConfig";
 import { RTFrame } from "../../frame/RTFrame";
@@ -26,14 +25,13 @@ export class PreDepthPassRenderer extends RendererBase {
     public useRenderBundle: boolean = false;
     shadowPassCount: number;
     zCullingCompute: ZCullingCompute;
-    constructor() {
+    constructor(ctx: Context3D) {
         super();
         this.passType = PassType.DEPTH;
 
-        // eslint-disable-next-line @typescript-eslint/no-deprecated
-        let size = webGPUContext.presentationSize;
+        let size = ctx.presentationSize;
         let scale = 1;
-        this.zBufferTexture = RTResourceMap.createRTTexture(RTResourceConfig.zBufferTexture_NAME, Math.floor(size[0] * scale), Math.floor(size[1] * scale), GPUTextureFormat.rgba16float, false);
+        this.zBufferTexture = RTResourceMap.createRTTexture(ctx, RTResourceConfig.zBufferTexture_NAME, Math.floor(size[0] * scale), Math.floor(size[1] * scale), GPUTextureFormat.rgba16float, false);
         let rtDec = new RTDescriptor()
         rtDec.clearValue = [0, 0, 0, 0];
         rtDec.loadOp = `clear`;
@@ -41,17 +39,18 @@ export class PreDepthPassRenderer extends RendererBase {
         ], [
             // new RTDescriptor()
         ],
-            RTResourceMap.createRTTexture(RTResourceConfig.zPreDepthTexture_NAME, Math.floor(size[0]), Math.floor(size[1]), GPUTextureFormat.depth32float, false),
+            RTResourceMap.createRTTexture(ctx, RTResourceConfig.zPreDepthTexture_NAME, Math.floor(size[0]), Math.floor(size[1]), GPUTextureFormat.depth32float, false),
             null,
             false
         );
-        this.setRenderStates(rtFrame);
+        this.setRenderStates(ctx, rtFrame);
     }
 
     render(view: View3D, occlusionSystem: OcclusionSystem) {
+        const gpu = view.engine3D.context3D.gpuContext;
         let camera = view.camera;
         let scene = view.scene;
-        GPUContext.cleanCache();
+        gpu.cleanCache();
 
         ProfilerUtil.start("DepthPass Renderer");
 
@@ -64,8 +63,8 @@ export class PreDepthPassRenderer extends RendererBase {
         let op_bundleList = this.renderBundleOp(view, collectInfo, occlusionSystem);
         let tr_bundleList = true ? [] : this.renderBundleTr(view, collectInfo, occlusionSystem);
 
-        let command = GPUContext.beginCommandEncoder();
-        let encoder = GPUContext.beginRenderPass(command, this.rendererPassState);
+        let command = gpu.beginCommandEncoder();
+        let encoder = gpu.beginRenderPass(command, this.rendererPassState);
 
         if (op_bundleList.length > 0) {
             encoder.executeBundles(op_bundleList);
@@ -94,15 +93,15 @@ export class PreDepthPassRenderer extends RendererBase {
         }
 
 
-        GPUContext.endPass(encoder);
-        GPUContext.endCommandEncoder(command);
+        gpu.endPass(encoder);
+        gpu.endCommandEncoder(command);
 
         ProfilerUtil.end("DepthPass Renderer");
         // ProfilerUtil.print( "DepthPass Renderer" );
     }
 
     protected drawRenderNodes(view: View3D, encoder: GPURenderPassEncoder, command: GPUCommandEncoder, nodes: RenderNode[], occlusionSystem: OcclusionSystem, clusterLightingBuffer?: ClusterLightingBuffer) {
-        GPUContext.bindCamera(encoder, view.camera);
+        view.engine3D.context3D.gpuContext.bindCamera(encoder, view.camera);
         for (let i = Engine3D.setting.render.drawOpMin; i < Math.min(nodes.length, Engine3D.setting.render.drawOpMax); ++i) {
             let renderNode = nodes[i];
             // if (!occlusionSystem.renderCommitTesting(view.camera, renderNode))

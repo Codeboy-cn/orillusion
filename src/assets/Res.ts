@@ -28,6 +28,7 @@ import { Ctor, Parser } from '../util/Global';
 import { ParserBase } from '../loader/parser/ParserBase';
 import { GeometryBase } from '../core/geometry/GeometryBase';
 import { LitMaterial } from '../materials/LitMaterial';
+import { Context3D } from '../gfx/graphics/webGpu/Context3D';
 
 /**
  * Resource management classes for textures, materials, models, and preset bodies.
@@ -43,11 +44,16 @@ export class Res {
     private _geometryPool: Map<string, GeometryBase>;
     private _atlasList: Map<string, GUIAtlasTexture>;
     private _obj: Map<string, any>;
+    /** Context this Res instance is bound to. Parsers launched via this Res
+     *  thread this ctx through so their default-texture lookups resolve
+     *  against the same device. */
+    public readonly _ctx: Context3D | undefined;
 
     /**
      * @constructor
      */
-    constructor() {
+    constructor(ctx?: Context3D) {
+        this._ctx = ctx;
         this._texturePool = new Map<string, Texture>();
         this._materialPool = new Map<string, Material>();
         this._prefabPool = new Map<string, Object3D>();
@@ -163,7 +169,7 @@ export class Res {
     }
 
     public async load<T extends ParserBase>(url: string, c: Parser<T>, loaderFunctions?: LoaderFunctions) {
-        let loader = new FileLoader();
+        let loader = new FileLoader(this._ctx);
         let parser = await loader.load(url, c, loaderFunctions);
         let ret = parser.data as T["data"];
         return ret;
@@ -182,7 +188,7 @@ export class Res {
 
         let parser;
         let ext = url.substring(url.lastIndexOf('.')).toLowerCase();
-        let loader = new FileLoader();
+        let loader = new FileLoader(this._ctx);
         if (ext == '.gltf') {
             parser = await loader.load(url, GLTFParser, loaderFunctions);
 
@@ -209,7 +215,7 @@ export class Res {
 
         let parser;
         let ext = url.substring(url.lastIndexOf('.')).toLowerCase();
-        let loader = new FileLoader();
+        let loader = new FileLoader(this._ctx);
         if (ext == ".obj") {
             parser = await loader.load(url, OBJParser, loaderFunctions);
         }
@@ -229,7 +235,7 @@ export class Res {
         if (this._prefabPool.has(url)) {
             return this._prefabPool.get(url) as Object3D;
         }
-        let loader = new FileLoader();
+        let loader = new FileLoader(this._ctx);
         let parser = await loader.load(url, B3DMParser, loaderFunctions, userData);
         let obj = parser.data;
         this._prefabPool.set(url, obj);
@@ -246,7 +252,7 @@ export class Res {
         if (this._prefabPool.has(url)) {
             return this._prefabPool.get(url) as Object3D;
         }
-        let loader = new FileLoader();
+        let loader = new FileLoader(this._ctx);
         let parser = await loader.load(url, I3DMParser, loaderFunctions, userData);
         let obj = parser.data;
         this._prefabPool.set(url, obj);
@@ -264,7 +270,7 @@ export class Res {
         if (this._texturePool.has(url)) {
             return this._texturePool.get(url);
         }
-        let texture = new BitmapTexture2D();
+        let texture = new BitmapTexture2D(true, this._ctx);
         texture.flipY = flipY;
         await texture.load(url, loaderFunctions);
         this._texturePool.set(url, texture);
@@ -316,7 +322,7 @@ export class Res {
         }
 
         let hdrTexture = new HDRTexture();
-        hdrTexture = await hdrTexture.load(url, loaderFunctions);
+        hdrTexture = await hdrTexture.load(url, loaderFunctions, this._ctx);
         this._texturePool.set(url, hdrTexture);
         return hdrTexture;
     }
@@ -333,7 +339,7 @@ export class Res {
             return this._texturePool.get(url);
         }
         let hdrTexture = new HDRTextureCube();
-        hdrTexture = await hdrTexture.load(url, loaderFunctions);
+        hdrTexture = await hdrTexture.load(url, loaderFunctions, this._ctx);
         this._texturePool.set(url, hdrTexture);
         return hdrTexture;
     }
@@ -349,7 +355,7 @@ export class Res {
             return this._texturePool.get(url);
         }
         let ldrTextureCube = new LDRTextureCube();
-        ldrTextureCube = await ldrTextureCube.load(url, loaderFunctions);
+        ldrTextureCube = await ldrTextureCube.load(url, loaderFunctions, this._ctx);
         this._texturePool.set(url, ldrTextureCube);
         return ldrTextureCube;
     }
@@ -367,7 +373,7 @@ export class Res {
         }
 
         let textureCube = new BitmapTextureCube();
-        await textureCube.load(urls);
+        await textureCube.load(urls, this._ctx);
         this._texturePool.set(urls[0], textureCube);
         return textureCube;
     }
@@ -383,7 +389,7 @@ export class Res {
         }
 
         let cubeMap = new BitmapTextureCube();
-        await cubeMap.loadStd(url);
+        await cubeMap.loadStd(url, this._ctx);
         return cubeMap;
     }
 
@@ -392,7 +398,7 @@ export class Res {
      * @param url the path of image
      */
     public async loadJSON(url: string, loaderFunctions?: LoaderFunctions) {
-        return await new FileLoader()
+        return await new FileLoader(this._ctx)
             .loadJson(url, loaderFunctions)
             .then(async (ret) => {
                 return ret;
@@ -410,7 +416,7 @@ export class Res {
      * @returns
      */
     public async loadFont(url: string, loaderFunctions?: LoaderFunctions, userData?: any): Promise<FontInfo> {
-        let loader = new FileLoader();
+        let loader = new FileLoader(this._ctx);
         let parser = await loader.load(url, FontParser, loaderFunctions, userData);
         let data = parser.data as FontInfo;
         fonts.addFontData(data.face, data.size, data)
@@ -424,7 +430,7 @@ export class Res {
      * @returns
      */
     public async loadAtlas(url: string, loaderFunctions?: LoaderFunctions): Promise<FontInfo> {
-        let loader = new FileLoader();
+        let loader = new FileLoader(this._ctx);
         let parser = await loader.load(url, AtlasParser, loaderFunctions, url);
         return parser.data;
     }
@@ -466,7 +472,7 @@ export class Res {
         this.fillColor(textureData, width, height, r, g, b, a);
         let texture = new Uint8ArrayTexture();
         texture.name = name;
-        texture.create(16, 16, textureData, true);
+        texture.create(16, 16, textureData, true, this._ctx);
         if (name) {
             this.addTexture(name, texture);
         }
@@ -484,6 +490,11 @@ export class Res {
      * @param a component-alpha（0 for transparent，1 for opaque）
      */
     public fillColor(array: any, w: number, h: number, r: number, g: number, b: number, a: number) {
+        Res.fillColor(array, w, h, r, g, b, a);
+    }
+
+    /** Pure data fill — no GPU state, safe to call without a Res instance. */
+    public static fillColor(array: any, w: number, h: number, r: number, g: number, b: number, a: number) {
         for (let i = 0; i < w; i++) {
             for (let j = 0; j < h; j++) {
                 let pixelIndex = j * w + i;
@@ -497,8 +508,10 @@ export class Res {
 
     /**
      * Initialize a common texture object. Provide a universal solid color texture object.
+     * @param ctx Optional Context3D — when provided, default materials bind to it
+     *            so the caller doesn't need `engine.use()`.
      */
-    public initDefault() {
+    public initDefault(ctx?: import('../gfx/graphics/webGpu/Context3D').Context3D) {
         this.normalTexture = this.createTexture(32, 32, 255 * 0.5, 255 * 0.5, 255.0, 255.0, 'default-normalTexture');
         this.maskTexture = this.createTexture(32, 32, 255, 255 * 0.5, 255.0, 255.0, 'default-maskTexture');
         this.whiteTexture = this.createTexture(32, 32, 255, 255, 255, 255, 'default-whiteTexture');
@@ -509,13 +522,14 @@ export class Res {
         this.yellowTexture = this.createTexture(32, 32, 0, 255, 255, 255.0, 'default-yellowTexture');
         this.grayTexture = this.createTexture(32, 32, 128, 128, 128, 255.0, 'default-grayTexture');
 
+        const boundCtx = ctx ?? this._ctx;
         let brdf = new BRDFLUTGenerate();
-        let brdf_texture = brdf.generateBRDFLUTTexture();
+        let brdf_texture = brdf.generateBRDFLUTTexture(boundCtx);
         let BRDFLUT = brdf_texture.name = 'BRDFLUT';
         this.addTexture(BRDFLUT, brdf_texture);
 
         this.defaultSky = new HDRTextureCube();
-        this.defaultSky.createFromTexture(128, this.blackTexture);
+        this.defaultSky.createFromTexture(128, this.blackTexture, boundCtx);
 
         Reference.getInstance().attached(this.defaultSky, this);
         Reference.getInstance().attached(brdf_texture, this);
@@ -529,10 +543,10 @@ export class Res {
         Reference.getInstance().attached(this.greenTexture, this);
         Reference.getInstance().attached(this.yellowTexture, this);
         Reference.getInstance().attached(this.grayTexture, this);
-        this.defaultGUITexture = new GUITexture(this.whiteTexture);
-        this.defaultGUISprite = new GUISprite(this.defaultGUITexture);
+        this.defaultGUITexture = new GUITexture(this.whiteTexture, ctx);
+        this.defaultGUISprite = new GUISprite(this.defaultGUITexture, ctx);
         this.defaultGUISprite.trimSize.set(4, 4)
 
-        this.defaultMaterial = new LitMaterial();
+        this.defaultMaterial = new LitMaterial(ctx);
     }
 }

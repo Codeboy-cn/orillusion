@@ -1,6 +1,6 @@
 import { Camera3D } from "../../../../../core/Camera3D";
 import { Scene3D } from "../../../../../core/Scene3D";
-import { perContextResource } from "../../Context3D";
+import { Context3D } from "../../Context3D";
 import { GlobalUniformGroup } from "./GlobalUniformGroup";
 import { LightEntries } from "./groups/LightEntries";
 import { ReflectionEntries } from "./groups/ReflectionEntries";
@@ -22,15 +22,13 @@ export class GlobalBindGroup {
     private static _lightEntriesMap: Map<Scene3D, LightEntries> = new Map<Scene3D, LightEntries>();
     private static _reflectionEntriesMap: Map<Scene3D, ReflectionEntries> = new Map<Scene3D, ReflectionEntries>();
 
-    private static _modelMatrixStore = perContextResource<MatrixBindGroup>();
-
-    public static get modelMatrixBindGroup(): MatrixBindGroup {
-        return this._modelMatrixStore(() => new MatrixBindGroup());
+    public static getModelMatrixBindGroup(ctx: Context3D): MatrixBindGroup {
+        return ctx.cache(GlobalBindGroup, () => new MatrixBindGroup(ctx));
     }
 
-    public static init() {
-        // Pre-warm for active context.
-        void this.modelMatrixBindGroup;
+    public static init(ctx: Context3D) {
+        // Pre-warm for this context.
+        this.getModelMatrixBindGroup(ctx);
     }
 
     public static getAllCameraGroup() {
@@ -40,7 +38,8 @@ export class GlobalBindGroup {
     public static getCameraGroup(camera: Camera3D) {
         let cameraBindGroup = this._cameraBindGroups.get(camera);
         if (!cameraBindGroup) {
-            cameraBindGroup = new GlobalUniformGroup(this.modelMatrixBindGroup);
+            const ctx = this._ctxFromCamera(camera);
+            cameraBindGroup = new GlobalUniformGroup(ctx, this.getModelMatrixBindGroup(ctx));
             this._cameraBindGroups.set(camera, cameraBindGroup);
         }
         if (camera.isShadowCamera) {
@@ -54,7 +53,8 @@ export class GlobalBindGroup {
     public static updateCameraGroup(camera: Camera3D) {
         let cameraBindGroup = this._cameraBindGroups.get(camera);
         if (!cameraBindGroup) {
-            cameraBindGroup = new GlobalUniformGroup(this.modelMatrixBindGroup);
+            const ctx = this._ctxFromCamera(camera);
+            cameraBindGroup = new GlobalUniformGroup(ctx, this.getModelMatrixBindGroup(ctx));
             this._cameraBindGroups.set(camera, cameraBindGroup);
         }
         if (camera.isShadowCamera) {
@@ -88,5 +88,15 @@ export class GlobalBindGroup {
             this._reflectionEntriesMap.set(scene, reflectionEntries);
         }
         return this._reflectionEntriesMap.get(scene);
+    }
+
+    private static _ctxFromCamera(camera: Camera3D): Context3D {
+        const ctx = camera._boundCtx
+            ?? (camera.transform as any)?.view3D?.engine3D?.context3D
+            ?? null;
+        if (!ctx) {
+            throw new Error(`Camera3D has no bound Context3D — attach camera to a scene/view before use.`);
+        }
+        return ctx;
     }
 }

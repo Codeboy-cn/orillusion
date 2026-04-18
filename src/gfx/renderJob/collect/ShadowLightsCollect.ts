@@ -109,6 +109,15 @@ export class ShadowLightsCollect {
                 let shadowBound = -1000;
                 light.shadowCamera.orthoOffCenter(shadowBound, -shadowBound, shadowBound, -shadowBound, 1, 10000);
             }
+            // Shadow cameras are not added to the scene graph, so their
+            // transform.view3D is always null. Bind directly to the light's
+            // engine context so GlobalBindGroup can find its device.
+            // Re-resolve on every call so a light that gained view3D after
+            // first creation still gets bound.
+            if (!light.shadowCamera._boundCtx) {
+                const lightCtx = light.transform.view3D?.engine3D?.context3D;
+                if (lightCtx) (light.shadowCamera as any)._boundCtx = lightCtx;
+            }
             if (list.indexOf(light) == -1) {
                 list.push(light);
             }

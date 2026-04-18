@@ -1,4 +1,5 @@
 import { Engine3D } from '../Engine3D';
+import { Context3D } from '../gfx/graphics/webGpu/Context3D';
 import { BitmapTexture2D } from '../textures/BitmapTexture2D';
 import { StringUtil } from '../util/StringUtil';
 import { LoaderFunctions } from './LoaderFunctions';
@@ -10,9 +11,11 @@ import { LoaderFunctions } from './LoaderFunctions';
 export class LoaderBase {
     public baseUrl: string = '';
     public initUrl: string;
+    public ctx?: Context3D;
     private _progress: number = 0;
 
-    constructor() {
+    constructor(ctx?: Context3D) {
+        this.ctx = ctx;
     }
 
     /**
@@ -52,11 +55,11 @@ export class LoaderBase {
     public async loadAsyncBitmapTexture(url: string, loaderFunctions?: LoaderFunctions) {
         this.baseUrl = StringUtil.getPath(url);
         this.initUrl = url;
-        let bitmapTexture = new BitmapTexture2D();
+        let bitmapTexture = new BitmapTexture2D(true, this.ctx);
         bitmapTexture.url = url;
         bitmapTexture.name = StringUtil.getURLName(url);
         await bitmapTexture.load(url, loaderFunctions);
-        Engine3D.res.addTexture(url, bitmapTexture);
+        Engine3D.resFor(this.ctx).addTexture(url, bitmapTexture);
         return bitmapTexture;
     }
 

@@ -1,4 +1,4 @@
-import { ComputeGPUBuffer, webGPUContext } from '@orillusion/core';
+import { ComputeGPUBuffer } from '@orillusion/core';
 import { FlameSimulatorConfig } from './FlameSimulatorConfig';
 
 export class FlameSimulatorBuffer {
@@ -17,8 +17,6 @@ export class FlameSimulatorBuffer {
     }
 
     protected initGPUBuffer(config: FlameSimulatorConfig) {
-        let device = webGPUContext.device;
-
         const { NUM, SPAWN_RADIUS, BASE_LIFETIME, MAX_ADDITIONAL_LIFETIME, NUMBER_OF_BONES } = config;
 
         const position = new Float32Array(4 * NUM);

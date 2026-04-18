@@ -89,9 +89,8 @@ let viewB!: View3D;
 await test('create two Engine3D instances with isolated GPU devices', async () => {
     // Build each engine's scene while that engine's Context3D is active so
     // all GPU resources (buffers, samplers, default textures) are created
-    // on that engine's device. The pattern is create → (use →) build → startView.
+    // on that engine's device. The pattern is create → build → startView.
     engineA = await Engine3D.create({ canvasConfig: { canvas: canvasA, devicePixelRatio: 1 } });
-    engineA.use();
     {
         // ----- Scene A: red box + direct light -----
         const sceneA = new Scene3D();
@@ -113,7 +112,7 @@ await test('create two Engine3D instances with isolated GPU devices', async () =
         boxA.name = 'redBox';
         const mrA = boxA.addComponent(MeshRenderer);
         mrA.geometry = new BoxGeometry(40, 40, 40);
-        const matA = new LitMaterial();
+        const matA = new LitMaterial(engineA.context3D);
         matA.baseColor = new Color(1, 0.15, 0.15, 1);
         mrA.material = matA;
         sceneA.addChild(boxA);
@@ -124,7 +123,6 @@ await test('create two Engine3D instances with isolated GPU devices', async () =
     }
 
     engineB = await Engine3D.create({ canvasConfig: { canvas: canvasB, devicePixelRatio: 1 } });
-    engineB.use();
     {
         // ----- Scene B: blue sphere + point light -----
         const sceneB = new Scene3D();
@@ -148,7 +146,7 @@ await test('create two Engine3D instances with isolated GPU devices', async () =
         sphB.name = 'blueSphere';
         const mrB = sphB.addComponent(MeshRenderer);
         mrB.geometry = new SphereGeometry(25, 32, 32);
-        const matB = new LitMaterial();
+        const matB = new LitMaterial(engineB.context3D);
         matB.baseColor = new Color(0.1, 0.4, 1.0, 1);
         mrB.material = matB;
         sceneB.addChild(sphB);
@@ -178,9 +176,7 @@ await test('create two Engine3D instances with isolated GPU devices', async () =
 });
 
 await test('start two render loops on isolated scenes', async () => {
-    engineA.use();
     engineA.startRenderView(viewA);
-    engineB.use();
     engineB.startRenderView(viewB);
 
     // log initial state
@@ -247,28 +243,25 @@ await test('Plan B: bindCtx throws when the same GPU resource is used by two eng
 
 await test('Plan B: each engine with its own independent scene graph renders fine', async () => {
     // Under Plan B, users create per-engine Geometry/Material/Texture and
-    // render them independently. Built-in materials (LitMaterial via
-    // StandShader) read `Engine3D.res.<defaultTexture>` eagerly at
-    // construction, so the caller MUST switch the active context via
-    // `engine.use()` before `new LitMaterial()` to target the right device.
-    engineA.use();
+    // render them independently. Built-in materials accept an optional
+    // `Context3D` arg so default-textures bind to the right device. Geometry
+    // buffers bind to their engine's Context3D at first render.
     const hostA2 = new Object3D();
     hostA2.name = 'planBHostA';
     hostA2.transform.y = 25;
     const mrA2 = hostA2.addComponent(MeshRenderer);
     mrA2.geometry = new SphereGeometry(10, 16, 16);
-    const matA2 = new LitMaterial();
+    const matA2 = new LitMaterial(engineA.context3D);
     matA2.baseColor = new Color(1, 0.6, 0.2, 1);
     mrA2.material = matA2;
     viewA.scene.addChild(hostA2);
 
-    engineB.use();
     const hostB2 = new Object3D();
     hostB2.name = 'planBHostB';
     hostB2.transform.y = -25;
     const mrB2 = hostB2.addComponent(MeshRenderer);
     mrB2.geometry = new SphereGeometry(10, 16, 16);
-    const matB2 = new LitMaterial();
+    const matB2 = new LitMaterial(engineB.context3D);
     matB2.baseColor = new Color(0.2, 0.4, 1, 1);
     mrB2.material = matB2;
     viewB.scene.addChild(hostB2);

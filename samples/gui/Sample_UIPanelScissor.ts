@@ -5,6 +5,7 @@ import { GUIUtil } from "@samples/utils/GUIUtil";
 import { VideoTexture } from "@orillusion/media-extention";
 
 class Sample_UIPanelScissor {
+    engine: Engine3D;
 
     videoTexture: VideoTexture;
     async run() {
@@ -12,7 +13,7 @@ class Sample_UIPanelScissor {
 
         GUIHelp.init();
 
-        const engine = await Engine3D.create({ renderLoop: () => { this.loop(); } });
+        const engine = this.engine = await Engine3D.create({ renderLoop: () => { this.loop(); } });
 
         let param = createSceneParam();
         param.camera.distance = 50;
@@ -29,10 +30,10 @@ class Sample_UIPanelScissor {
         //create UI root
         let panelRoot: Object3D = new Object3D();
         panelRoot.scaleX = panelRoot.scaleY = panelRoot.scaleZ = 0.1;
-        this.videoTexture = new VideoTexture();
+        this.videoTexture = new VideoTexture(engine.context3D);
         await this.videoTexture.load('/video/dt.mp4');
 
-        await Engine3D.res.loadFont('fnt/0.fnt');
+        await this.engine.res.loadFont('fnt/0.fnt');
 
         this.createPanel(panelRoot, canvas, new Color(1, 1, 1, 1));
     }

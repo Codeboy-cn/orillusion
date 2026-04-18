@@ -1,4 +1,4 @@
-import { Texture, webGPUContext } from "@orillusion/core";
+import { Context3D, Texture } from "@orillusion/core";
 
 
 interface VideoFrame {
@@ -17,11 +17,12 @@ export class VideoTexture extends Texture {
     public media: HTMLVideoElement;
     private external: boolean = false;
     private _des: GPUExternalTextureDescriptor;
-    constructor() {
+    constructor(ctx?: Context3D) {
         super();
         this.useMipmap = false;
         this.isVideoTexture = true;
         this.samplerBindingLayout = null;
+        if (ctx) this._ensureBound(ctx);
     }
 
     /**
@@ -74,14 +75,19 @@ export class VideoTexture extends Texture {
             videoFrame.close()
         }
         // import video current frame
-        this.videoTexture = webGPUContext.device.importExternalTexture(this._des)
+        const ctx = this._ensureBound();
+        this.videoTexture = ctx.device.importExternalTexture(this._des)
         this.noticeChange()
         return this.videoTexture
     }
 
     protected noticeChange() {
-        if(!this.gpuSampler)
-            this.gpuSampler = webGPUContext.device.createSampler(this);
+        // Sampler materialization is deferred until a ctx has been bound —
+        // during base-class construction (setter chain) _boundCtx is still null,
+        // and eager creation would blow up with `used before bindCtx`.
+        if (this._boundCtx && !this.gpuSampler) {
+            this.gpuSampler = this._boundCtx.device.createSampler(this);
+        }
         this._stateChangeRef.forEach(v=>v());
     }
 

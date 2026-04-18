@@ -1,4 +1,3 @@
-import { GPUContext } from "../../gfx/renderJob/GPUContext";
 import { RTResourceMap } from "../../gfx/renderJob/frame/RTResourceMap";
 import { RenderContext } from "../../gfx/renderJob/passRenderer/RenderContext";
 import { MeshRenderer } from "./MeshRenderer";
@@ -101,6 +100,7 @@ export class InstanceDrawComponent extends RenderNode {
     }
 
     public renderItem(view: View3D, passType: PassType, renderNode: RenderNode, renderContext: RenderContext) {
+        const gpu = view.engine3D.context3D.gpuContext;
         let worldMatrix = renderNode.transform._worldMatrix;
 
         for (let i = 0; i < renderNode.materials.length; i++) {
@@ -113,17 +113,17 @@ export class InstanceDrawComponent extends RenderNode {
             for (let j = 0; j < passes.length; j++) {
                 let matPass = passes[j];
 
-                GPUContext.bindGeometryBuffer(renderContext.encoder, renderNode.geometry);
+                gpu.bindGeometryBuffer(renderContext.encoder, renderNode.geometry);
                 const renderShader = matPass;
                 if (renderShader.shaderState.splitTexture) {
                     renderContext.endRenderPass();
-                    RTResourceMap.WriteSplitColorTexture(renderNode.instanceID);
+                    RTResourceMap.WriteSplitColorTexture(view.engine3D.context3D, renderNode.instanceID);
                     renderContext.beginOpaqueRenderPass();
 
-                    GPUContext.bindCamera(renderContext.encoder, view.camera);
-                    GPUContext.bindGeometryBuffer(renderContext.encoder, renderNode.geometry);
+                    gpu.bindCamera(renderContext.encoder, view.camera);
+                    gpu.bindGeometryBuffer(renderContext.encoder, renderNode.geometry);
                 }
-                GPUContext.bindPipeline(renderContext.encoder, renderShader);
+                gpu.bindPipeline(renderContext.encoder, renderShader);
                 let subGeometries = renderNode.geometry.subGeometries;
 
                 const subGeometry = subGeometries[i];
@@ -131,9 +131,9 @@ export class InstanceDrawComponent extends RenderNode {
                 let lodInfo = lodInfos[renderNode.lodLevel];
 
                 if (renderNode.instanceCount > 0) {
-                    GPUContext.drawIndexed(renderContext.encoder, lodInfo.indexCount, renderNode.instanceCount, lodInfo.indexStart, 0, 0);
+                    gpu.drawIndexed(renderContext.encoder, lodInfo.indexCount, renderNode.instanceCount, lodInfo.indexStart, 0, 0);
                 } else {
-                    GPUContext.drawIndexed(renderContext.encoder, lodInfo.indexCount, 1, lodInfo.indexStart, 0, worldMatrix.index);
+                    gpu.drawIndexed(renderContext.encoder, lodInfo.indexCount, 1, lodInfo.indexStart, 0, worldMatrix.index);
                 }
             }
         }

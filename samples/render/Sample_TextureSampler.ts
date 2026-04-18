@@ -4,11 +4,12 @@ import { GUIUtil } from "@samples/utils/GUIUtil";
 import { UVMoveComponent } from "@samples/material/script/UVMoveComponent";
 
 class Sample_TextureSample {
+    engine: Engine3D;
     lightObj3D: Object3D;
     scene: Scene3D;
 
     async run() {
-        const engine = await Engine3D.create();
+        const engine = this.engine = await Engine3D.create();
         Engine3D.setting.shadow.shadowBias = 0.01;
 
         this.scene = new Scene3D();
@@ -50,7 +51,7 @@ class Sample_TextureSample {
 
         {
             // load texture
-            let texture = await Engine3D.res.loadTexture("textures/diffuse.jpg");
+            let texture = await this.engine.res.loadTexture("textures/diffuse.jpg");
             let material = new LitMaterial();
             material.baseMap = texture;
 

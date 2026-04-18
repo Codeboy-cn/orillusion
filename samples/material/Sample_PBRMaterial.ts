@@ -3,6 +3,7 @@ import { Object3D, Scene3D, Engine3D, CameraUtil, HoverCameraController, View3D,
 import { GUIUtil } from "@samples/utils/GUIUtil";
 
 class Sample_PBRMaterial {
+    engine: Engine3D;
     lightObj3D: Object3D;
     scene: Scene3D;
 
@@ -12,7 +13,7 @@ class Sample_PBRMaterial {
         Engine3D.setting.render.debug = true;
         Engine3D.setting.shadow.shadowBound = 50;
         Engine3D.setting.shadow.shadowBias = 0.02;
-        const engine = await Engine3D.create({ canvasConfig: { alpha: true, zIndex: 11, backgroundImage: '/logo/bg.webp' } });
+        const engine = this.engine = await Engine3D.create({ canvasConfig: { alpha: true, zIndex: 11, backgroundImage: '/logo/bg.webp' } });
 
         GUIHelp.init(999);
 
@@ -56,7 +57,7 @@ class Sample_PBRMaterial {
         }
 
         {
-            let model = (await Engine3D.res.loadGltf('gltfs/wukong/wukong.gltf', {})) as Object3D;
+            let model = (await this.engine.res.loadGltf('gltfs/wukong/wukong.gltf', {})) as Object3D;
             let renderList = model.getComponentsInChild(MeshRenderer);
             for (const item of renderList) {
                 let material = item.material;

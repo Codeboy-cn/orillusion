@@ -1,8 +1,7 @@
+import { Context3D } from '../gfx/graphics/webGpu/Context3D';
 import { Texture } from '../gfx/graphics/webGpu/core/texture/Texture';
 import { TextureMipmapGenerator } from '../gfx/graphics/webGpu/core/texture/TextureMipmapGenerator';
 import { GPUTextureFormat } from '../gfx/graphics/webGpu/WebGPUConst';
-import { bindCtx, webGPUContext } from '../gfx/graphics/webGpu/Context3D';
-import { GPUContext } from '../gfx/renderJob/GPUContext';
 
 /**
  * create texture by number array, which format is uint8
@@ -19,9 +18,8 @@ export class Uint8ArrayTexture extends Texture {
      * @param useMipmap whether or not gen mipmap
      * @returns
      */
-    public create(width: number, height: number, data: Uint8Array, useMipmap: boolean = false): this {
-        // eslint-disable-next-line @typescript-eslint/no-deprecated
-        bindCtx(this, webGPUContext);
+    public create(width: number, height: number, data: Uint8Array, useMipmap: boolean = false, ctx?: Context3D): this {
+        this._ensureBound(ctx);
         let device = this._boundCtx!.device;
         const bytesPerRow = Math.ceil((width * 4) / 256) * 256;
 
@@ -35,7 +33,7 @@ export class Uint8ArrayTexture extends Texture {
         }));
 
         device.queue.writeBuffer(textureDataBuffer, 0, data as BufferSource);
-        const commandEncoder = GPUContext.beginCommandEncoder();
+        const commandEncoder = this._boundCtx!.gpuContext.beginCommandEncoder();
         commandEncoder.copyBufferToTexture(
             {
                 buffer: textureDataBuffer,
@@ -51,7 +49,7 @@ export class Uint8ArrayTexture extends Texture {
             },
         );
 
-        GPUContext.endCommandEncoder(commandEncoder);
+        this._boundCtx!.gpuContext.endCommandEncoder(commandEncoder);
 
         if (useMipmap) {
             TextureMipmapGenerator.webGPUGenerateMipmap(this);
@@ -63,8 +61,6 @@ export class Uint8ArrayTexture extends Texture {
      * validate the change of this texture
      */
     public updateTexture(width: number, height: number, data: Uint8Array) {
-        // eslint-disable-next-line @typescript-eslint/no-deprecated
-        bindCtx(this, webGPUContext);
         let device = this._boundCtx!.device;
         const bytesPerRow = Math.ceil((width * 4) / 256) * 256;
         this.mipmapCount = Math.floor(true ? Math.log2(width) : 1);
@@ -77,7 +73,7 @@ export class Uint8ArrayTexture extends Texture {
         }));
 
         device.queue.writeBuffer(textureDataBuffer, 0, data as BufferSource);
-        const commandEncoder = GPUContext.beginCommandEncoder();
+        const commandEncoder = this._boundCtx!.gpuContext.beginCommandEncoder();
         commandEncoder.copyBufferToTexture(
             {
                 buffer: textureDataBuffer,
@@ -93,7 +89,7 @@ export class Uint8ArrayTexture extends Texture {
             },
         );
 
-        GPUContext.endCommandEncoder(commandEncoder);
+        this._boundCtx!.gpuContext.endCommandEncoder(commandEncoder);
         this.gpuSampler = device.createSampler(this);
 
         if (this.mipmapCount > 1) {

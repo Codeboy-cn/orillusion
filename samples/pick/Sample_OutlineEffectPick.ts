@@ -4,6 +4,7 @@ import { createExampleScene } from "@samples/utils/ExampleScene";
 import { Object3D, Scene3D, Color, Engine3D, OutlinePost, SphereGeometry, LitMaterial, MeshRenderer, ColliderComponent, PointerEvent3D, outlinePostManager, FXAAPost } from "@orillusion/core";
 
 export class Sample_OutlineEffectPick {
+    engine: Engine3D;
     lightObj: Object3D;
     scene: Scene3D;
     selectColor: Color;
@@ -27,7 +28,7 @@ export class Sample_OutlineEffectPick {
         Engine3D.setting.render.postProcessing.outline.strength = 1;
 
         // init Engine3D
-        const engine = await Engine3D.create({});
+        const engine = this.engine = await Engine3D.create({});
 
         let exampleScene = createExampleScene(engine);
         this.scene = exampleScene.scene;
@@ -51,7 +52,7 @@ export class Sample_OutlineEffectPick {
             obj.x = (i - 5) * 10;
 
             let mat = new LitMaterial();
-            mat.emissiveMap = Engine3D.res.grayTexture;
+            mat.emissiveMap = this.engine.res.grayTexture;
             mat.emissiveIntensity = 0.0;
 
             let renderer = obj.addComponent(MeshRenderer);

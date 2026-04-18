@@ -142,7 +142,7 @@ export class PrefabMeshParser extends ParserBase {
             }
 
             geometry.name = prefabMesh.meshName;
-            Engine3D.res.addGeometry(prefabMesh.meshID, geometry);
+            Engine3D.resFor(prefabParser.ctx).addGeometry(prefabMesh.meshID, geometry);
         }
     }
 

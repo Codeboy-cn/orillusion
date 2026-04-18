@@ -4,13 +4,14 @@ import { GUIUtil } from "@samples/utils/GUIUtil";
 
 // sample of SpotLight
 class Sample_SpotLight {
+    engine: Engine3D;
     scene: Scene3D;
 
     async run() {
         Engine3D.setting.occlusionQuery.enable = false;
         Engine3D.setting.shadow.enable = true;
         Engine3D.setting.shadow.pointShadowBias = 0.002;
-        const engine = await Engine3D.create({});
+        const engine = this.engine = await Engine3D.create({});
 
         GUIHelp.init();
 
@@ -69,7 +70,7 @@ class Sample_SpotLight {
     // Build a slightly complex scene
     private buildScene(): void {
         let mat = new LitMaterial();
-        mat.baseMap = Engine3D.res.grayTexture;
+        mat.baseMap = this.engine.res.grayTexture;
 
         let floor = new Object3D();
         let mr = floor.addComponent(MeshRenderer);

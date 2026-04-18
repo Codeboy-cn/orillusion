@@ -1,7 +1,8 @@
-import { DepthOfFieldPost, DirectLight, Engine3D, PostProcessingComponent, View3D, LitMaterial, HoverCameraController, KelvinUtil, MeshRenderer, Object3D, PlaneGeometry, Scene3D, SphereGeometry, SSR_IS_Kernel, CameraUtil, webGPUContext, AtmosphericComponent } from '@orillusion/core'
+import { DepthOfFieldPost, DirectLight, Engine3D, PostProcessingComponent, View3D, LitMaterial, HoverCameraController, KelvinUtil, MeshRenderer, Object3D, PlaneGeometry, Scene3D, SphereGeometry, SSR_IS_Kernel, CameraUtil, AtmosphericComponent } from '@orillusion/core'
 import * as dat from '@orillusion/debug/dat.gui.module'
 
 class Sample_DepthOfView {
+    engine: Engine3D;
     lightObj: Object3D
     scene: Scene3D
     constructor() { }
@@ -9,7 +10,7 @@ class Sample_DepthOfView {
     async run() {
         Engine3D.setting.shadow.enable = true
         Engine3D.setting.shadow.shadowBound = 100
-        const engine = await Engine3D.create({
+        const engine = this.engine = await Engine3D.create({
             canvasConfig: {
                 devicePixelRatio: 1
             }
@@ -19,7 +20,7 @@ class Sample_DepthOfView {
         this.scene.addComponent(AtmosphericComponent).sunY = 0.6
 
         let camera = CameraUtil.createCamera3DObject(this.scene)
-        camera.perspective(60, webGPUContext.aspect, 1, 5000.0)
+        camera.perspective(60, engine.context3D.aspect, 1, 5000.0)
         let ctrl = camera.object3D.addComponent(HoverCameraController)
         ctrl.setCamera(100, -15, 150)
 
@@ -60,7 +61,7 @@ class Sample_DepthOfView {
         }
 
         // load a test gltf model
-        let minimalObj = await Engine3D.res.loadGltf('/PBR/ToyCar/ToyCar.gltf')
+        let minimalObj = await this.engine.res.loadGltf('/PBR/ToyCar/ToyCar.gltf')
         minimalObj.scaleX = minimalObj.scaleY = minimalObj.scaleZ = 800
         scene.addChild(minimalObj)
 

@@ -1,11 +1,16 @@
 import { Camera3D } from '../core/Camera3D';
 import { Object3D } from '../core/entities/Object3D';
-import { webGPUContext } from '../gfx/graphics/webGpu/Context3D';
+import { Context3D } from '../gfx/graphics/webGpu/Context3D';
 import { Matrix4 } from '../math/Matrix4';
 import { Vector3 } from '../math/Vector3';
 
-// eslint-disable-next-line @typescript-eslint/no-deprecated
-const ctxOf = (camera?: Camera3D) => camera?._boundCtx ?? webGPUContext;
+const ctxOf = (camera?: Camera3D): Context3D => {
+    const ctx = camera?._boundCtx ?? camera?.transform?.view3D?.engine3D?.context3D;
+    if (!ctx) {
+        throw new Error(`CameraUtil: camera has no bound Context3D. Attach the camera to a scene/view before projecting.`);
+    }
+    return ctx;
+};
 
 /**
  * Camera3D tool class

@@ -1,18 +1,19 @@
-import { Engine3D, Scene3D, CameraUtil, HoverCameraController, Object3D, View3D, Color, Camera3D, ViewPanel, UITextField, TextAnchor, ComponentBase, AtmosphericComponent, webGPUContext, CResizeEvent } from "@orillusion/core";
+import { Engine3D, Scene3D, CameraUtil, HoverCameraController, Object3D, View3D, Color, Camera3D, ViewPanel, UITextField, TextAnchor, ComponentBase, AtmosphericComponent, CResizeEvent } from "@orillusion/core";
 
 class Sample_TextBarrage {
+    engine: Engine3D;
     private scene: Scene3D;
     private camera: Camera3D;
 
     async run() {
         // init engine
-        const engine = await Engine3D.create();
+        const engine = this.engine = await Engine3D.create();
         // create new Scene
         let scene = new Scene3D();
         this.scene = scene;
 
         // load base font
-        await Engine3D.res.loadFont("https://cdn.orillusion.com/fnt/0.fnt");
+        await this.engine.res.loadFont("https://cdn.orillusion.com/fnt/0.fnt");
 
         // add an Atmospheric sky enviroment
         let sky = scene.addComponent(AtmosphericComponent);
@@ -36,7 +37,7 @@ class Sample_TextBarrage {
         let panelRoot: Object3D = new Object3D();
         const panel = panelRoot.addComponent(ViewPanel);
         // resize panel radio
-        webGPUContext.addEventListener(CResizeEvent.RESIZE, () => panel.uiTransform.resize(engine.width, engine.height), this);
+        engine.context3D.addEventListener(CResizeEvent.RESIZE, () => panel.uiTransform.resize(engine.width, engine.height), this);
 
         // add to UIcanvas
         let canvas = view.enableUICanvas();

@@ -3,10 +3,11 @@ import { createExampleScene, createSceneParam } from "@samples/utils/ExampleScen
 
 // Sample to load json file
 export class Sample_LoadJson {
+    engine: Engine3D;
     scene: Scene3D;
 
     async run() {
-        const engine = await Engine3D.create();
+        const engine = this.engine = await Engine3D.create();
         let param = createSceneParam();
         param.camera.distance = 10;
         let exampleScene = createExampleScene(engine, param);
@@ -14,7 +15,7 @@ export class Sample_LoadJson {
         this.scene = exampleScene.scene;
         engine.startRenderView(exampleScene.view);
 
-        let json = await Engine3D.res.loadJSON('json/anim_0.json', { onProgress: this.onLoadProgress, onComplete: this.onComplete });
+        let json = await this.engine.res.loadJSON('json/anim_0.json', { onProgress: this.onLoadProgress, onComplete: this.onComplete });
         console.log('[loaded]', json);
 
         let box = new Object3D()

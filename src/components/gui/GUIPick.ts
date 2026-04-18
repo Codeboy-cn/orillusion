@@ -1,7 +1,6 @@
 ﻿import { Engine3D } from '../../Engine3D';
 import { PickGUIEvent3D, PointerEvent3D } from '../../event/eventConst/PointerEvent3D';
 import { MouseCode } from '../../event/MouseCode';
-import { webGPUContext } from '../../gfx/graphics/webGpu/Context3D';
 import { Ray } from '../../math/Ray';
 import { Vector2 } from '../../math/Vector2';
 import { Time } from '../../util/Time';
@@ -203,8 +202,7 @@ export class GUIPick {
         const input = this._input();
         this._ray = this._view.camera.screenPointToRay(input.mouseX, input.mouseY);
         let screenPos = new Vector2(input.mouseX, input.mouseY);
-        // eslint-disable-next-line @typescript-eslint/no-deprecated
-        let ctx = this._view.engine3D?.context3D ?? webGPUContext;
+        let ctx = this._view.engine3D.context3D;
         let screenSize = new Vector2(ctx.canvas.clientWidth, ctx.canvas.clientHeight);
 
         let hitInfo: GUIHitInfo;

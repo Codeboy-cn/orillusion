@@ -5,12 +5,13 @@ import dat from "dat.gui";
 import { Graphic3D } from "@orillusion/graphic";
 
 class Sample_dofSpringConstraint {
+    engine: Engine3D;
     scene: Scene3D;
     gui: dat.GUI;
 
     async run() {
         await Physics.init();
-        const engine = await Engine3D.create({ renderLoop: () => Physics.update() });
+        const engine = this.engine = await Engine3D.create({ renderLoop: () => Physics.update() });
 
         let scene = this.scene = new Scene3D();
         scene.addComponent(Stats);
@@ -58,7 +59,7 @@ class Sample_dofSpringConstraint {
 
     //Create the ground plane.
     private async createGround() {
-        let ground = Object3DUtil.GetPlane(Engine3D.res.whiteTexture);
+        let ground = Object3DUtil.GetPlane(this.engine.context3D, this.engine.res.whiteTexture);
         ground.scaleX = 50;
         ground.scaleZ = 50;
         this.scene.addChild(ground);

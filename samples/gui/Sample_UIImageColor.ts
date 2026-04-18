@@ -3,6 +3,7 @@ import { createExampleScene } from "@samples/utils/ExampleScene";
 import { Engine3D, Object3DUtil, Object3D, UIImage, ImageType, Camera3D, Color, WorldPanel } from "@orillusion/core";
 
 export class Sample_UIImageColor {
+    engine: Engine3D;
 
     camera: Camera3D;
     img: UIImage;
@@ -13,7 +14,7 @@ export class Sample_UIImageColor {
 
         GUIHelp.init();
 
-        const engine = await Engine3D.create({ renderLoop: () => { this.renderUpdate(); } });
+        const engine = this.engine = await Engine3D.create({ renderLoop: () => { this.renderUpdate(); } });
 
         let exampleScene = createExampleScene(engine);
         engine.startRenderView(exampleScene.view);
@@ -32,7 +33,7 @@ export class Sample_UIImageColor {
 
         this.camera = exampleScene.camera;
 
-        await Engine3D.res.loadAtlas('atlas/UI_atlas.json');
+        await this.engine.res.loadAtlas('atlas/UI_atlas.json');
 
         let panel = panelRoot.addComponent(WorldPanel);
         canvas.addChild(panel.object3D);
@@ -41,7 +42,7 @@ export class Sample_UIImageColor {
         let imageQuad = new Object3D();
         panelRoot.addChild(imageQuad);
         this.img = imageQuad.addComponent(UIImage);
-        this.img.sprite = Engine3D.res.getGUISprite('button-over');
+        this.img.sprite = this.engine.res.getGUISprite('button-over');
         this.img.imageType = ImageType.Sliced;
         this.img.uiTransform.resize(400, 300);
         this.img.color = new Color(1.0, 0.5, 1.0, 0.6);

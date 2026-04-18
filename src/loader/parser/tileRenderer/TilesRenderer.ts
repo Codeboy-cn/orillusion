@@ -5,22 +5,26 @@ import { Orientation3D } from "../../../math/Orientation3D";
 import { Object3D } from "../../../core/entities/Object3D";
 import { TileSet } from "../../../loader/parser/tileRenderer/TileSet";
 import { Engine3D } from "../../../Engine3D";
+import { Context3D } from "../../../gfx/graphics/webGpu/Context3D";
 
 export class TilesRenderer {
     public readonly group: Object3D;
     private _modelList: Object3D[];
     private _tileSet: TileSet;
     private _rootPath: string;
+    private _ctx?: Context3D;
 
-    constructor() {
+    constructor(ctx?: Context3D) {
         this.group = new Object3D();
+        this._ctx = ctx;
     }
 
     public async loadTileSet(rootPath: string, file: string) {
         this._modelList = [];
         this._rootPath = rootPath;
         let combinePath = rootPath + '/' + file;
-        this._tileSet = (await Engine3D.res.loadJSON(combinePath)) as TileSet;
+        const res = Engine3D.resFor(this._ctx);
+        this._tileSet = (await res.loadJSON(combinePath)) as TileSet;
         if (this._tileSet.root.transform) {
             let rootMatrix = new Matrix4();
             for (let i = 0; i < 16; i++) {
@@ -68,17 +72,17 @@ export class TilesRenderer {
                 };
                 let tileObject3D: Object3D;
                 if (url.endsWith('.glb')) {
-                    tileObject3D = (await Engine3D.res.loadGltf(url, functions)) as Object3D;
+                    tileObject3D = (await res.loadGltf(url, functions)) as Object3D;
                     this.applyTransform(tileObject3D.transform, adjustmentTransform)
                 } else if (url.endsWith('tileset.json')) {
                     let childTilesetUrl = url.replace('/tileset.json', '');
-                    let tilesRenderer = new TilesRenderer();
+                    let tilesRenderer = new TilesRenderer(this._ctx);
                     await tilesRenderer.loadTileSet(childTilesetUrl, 'tileset.json');
                     tileObject3D = tilesRenderer.group;
                 } else if (url.endsWith('.i3dm')) {
-                    tileObject3D = (await Engine3D.res.loadI3DM(url, functions, adjustmentTransform)) as Object3D;
+                    tileObject3D = (await res.loadI3DM(url, functions, adjustmentTransform)) as Object3D;
                 } else if (url.endsWith('.b3dm')) {
-                    tileObject3D = (await Engine3D.res.loadB3DM(url, functions, adjustmentTransform)) as Object3D;
+                    tileObject3D = (await res.loadB3DM(url, functions, adjustmentTransform)) as Object3D;
                 }
 
                 if (tileObject3D) {

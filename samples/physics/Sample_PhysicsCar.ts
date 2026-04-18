@@ -4,6 +4,7 @@ import { createExampleScene, createSceneParam } from "@samples/utils/ExampleScen
 import { Scene3D, Object3D, Engine3D, ColliderComponent, BoxColliderShape, Vector3, ComponentBase, KeyCode, KeyEvent, Quaternion, BoundUtil, Camera3D, Vector3Ex, MeshRenderer, LitMaterial, Color, BoxGeometry } from "@orillusion/core";
 
 class Sample_PhysicsCar {
+    engine: Engine3D;
     private scene: Scene3D;
     private car: Object3D;
     private boxes: Object3D[];
@@ -19,7 +20,7 @@ class Sample_PhysicsCar {
         Engine3D.setting.shadow.shadowBound = 150;
 
         await Physics.init();
-        const engine = await Engine3D.create({ renderLoop: () => this.loop() });
+        const engine = this.engine = await Engine3D.create({ renderLoop: () => this.loop() });
 
         let sceneParam = createSceneParam();
         let exampleScene = createExampleScene(engine, sceneParam);
@@ -41,7 +42,7 @@ class Sample_PhysicsCar {
     async initScene(scene: Scene3D) {
         // load a car model
         {
-            this.car = await Engine3D.res.loadGltf(
+            this.car = await this.engine.res.loadGltf(
                 "https://cdn.orillusion.com/gltfs/glb/vevhicle.glb"
             );
             this.car.y = 2
@@ -66,7 +67,7 @@ class Sample_PhysicsCar {
             let mat = (mr.material = new LitMaterial());
             mat.roughness = 1;
             mat.metallic = 0;
-            mat.baseMap = await Engine3D.res.loadTexture("data:image/webp;base64,UklGRqAAAABXRUJQVlA4TJMAAAAvV8INER8gEEhxXGstIEmxu7qVgCTF7upWAgFCiv8qJwJXoF8wimQrDiiLCnCG0KzXL4DlRKoj+j8BtSxpW5XY2teypI3/+I//+I//+I//+I//+I//+I//+I//+I//+G8vkFO/Yzuj24P/flBy6nds0+Q//uM//uM//uM//uM//uM//uM//uM//uM//gOwL9Z0FwUA");
+            mat.baseMap = await this.engine.res.loadTexture("data:image/webp;base64,UklGRqAAAABXRUJQVlA4TJMAAAAvV8INER8gEEhxXGstIEmxu7qVgCTF7upWAgFCiv8qJwJXoF8wimQrDiiLCnCG0KzXL4DlRKoj+j8BtSxpW5XY2teypI3/+I//+I//+I//+I//+I//+I//+I//+I//+G8vkFO/Yzuj24P/flBy6nds0+Q//uM//uM//uM//uM//uM//uM//uM//uM//gOwL9Z0FwUA");
             let collider = this.road.addComponent(ColliderComponent);
             collider.shape = new BoxColliderShape();
             collider.shape.size = BoundUtil.genMeshBounds(

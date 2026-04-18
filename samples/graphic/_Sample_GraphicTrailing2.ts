@@ -5,6 +5,7 @@ import { Stats } from "@orillusion/stats";
 import { Graphic3D, Graphic3DMesh } from "@orillusion/graphic";
 
 export class Sample_GraphicMesh_Trailing2 {
+    engine: Engine3D;
     lightObj3D: Object3D;
     scene: Scene3D;
     parts: Object3D[];
@@ -24,7 +25,7 @@ export class Sample_GraphicMesh_Trailing2 {
         Matrix4.maxCount = 500000;
         Matrix4.allocCount = 500000;
 
-        const engine = await Engine3D.create({ beforeRender: () => this.update() });
+        const engine = this.engine = await Engine3D.create({ beforeRender: () => this.update() });
 
         Engine3D.setting.render.debug = true;
         Engine3D.setting.shadow.shadowBound = 5;
@@ -78,13 +79,13 @@ export class Sample_GraphicMesh_Trailing2 {
 
         let texts = [];
 
-        // texts.push(await Engine3D.res.loadTexture("particle/fx_a_fragment_003.png") as BitmapTexture2D);
-        // texts.push(await Engine3D.res.loadTexture("textures/grid.jpg") as BitmapTexture2D);
-        // texts.push(await Engine3D.res.loadTexture("textures/frame.png") as BitmapTexture2D);
-        // texts.push(await Engine3D.res.loadTexture("textures/128/line_0010.png") as BitmapTexture2D);
-        texts.push(await Engine3D.res.loadTexture("textures/128/line_0001.PNG") as BitmapTexture2D);
-        texts.push(await Engine3D.res.loadTexture("textures/128/line_0013.png") as BitmapTexture2D);
-        texts.push(await Engine3D.res.loadTexture("textures/128/line_0017.png") as BitmapTexture2D);
+        // texts.push(await this.engine.res.loadTexture("particle/fx_a_fragment_003.png") as BitmapTexture2D);
+        // texts.push(await this.engine.res.loadTexture("textures/grid.jpg") as BitmapTexture2D);
+        // texts.push(await this.engine.res.loadTexture("textures/frame.png") as BitmapTexture2D);
+        // texts.push(await this.engine.res.loadTexture("textures/128/line_0010.png") as BitmapTexture2D);
+        texts.push(await this.engine.res.loadTexture("textures/128/line_0001.PNG") as BitmapTexture2D);
+        texts.push(await this.engine.res.loadTexture("textures/128/line_0013.png") as BitmapTexture2D);
+        texts.push(await this.engine.res.loadTexture("textures/128/line_0017.png") as BitmapTexture2D);
 
         let bitmapTexture2DArray = new BitmapTexture2DArray(texts[0].width, texts[0].height, texts.length);
         bitmapTexture2DArray.setTextures(texts);

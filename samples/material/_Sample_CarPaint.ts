@@ -2,12 +2,13 @@ import {
 	View3D, DirectLight, Engine3D,
 	PostProcessingComponent, LitMaterial, HoverCameraController,
 	KelvinUtil, MeshRenderer, Object3D, PlaneGeometry, Scene3D, SphereGeometry,
-	CameraUtil, webGPUContext, BoxGeometry, TAAPost, AtmosphericComponent, GTAOPost, Color, BloomPost, SSRPost, SSGIPost, GBufferPost, FXAAPost, SkyRenderer, Reflection, SphereReflection, GBufferFrame, ProfilerUtil, Time, SpotLight, Object3DUtil, Object3DTransformTools, PointLight, DepthOfFieldPost, OutlinePost, Material, Vector3
+	CameraUtil, BoxGeometry, TAAPost, AtmosphericComponent, GTAOPost, Color, BloomPost, SSRPost, SSGIPost, GBufferPost, FXAAPost, SkyRenderer, Reflection, SphereReflection, GBufferFrame, ProfilerUtil, Time, SpotLight, Object3DUtil, Object3DTransformTools, PointLight, DepthOfFieldPost, OutlinePost, Material, Vector3
 } from '@orillusion/core';
 import { GUIHelp } from '@orillusion/debug/GUIHelp';
 import { GUIUtil } from '@samples/utils/GUIUtil';
 
 export class Sample_CarPaint {
+    engine: Engine3D;
 	lightObj: Object3D;
 	scene: Scene3D;
 	view: View3D;
@@ -28,17 +29,17 @@ export class Sample_CarPaint {
 		Engine3D.setting.render.hdrExposure = 1.0;
 
 		GUIHelp.init();
-		const engine = await Engine3D.create();
+		const engine = this.engine = await Engine3D.create();
 
 		this.scene = new Scene3D();
 		let sky = this.scene.getOrAddComponent(SkyRenderer);
-		sky.map = await Engine3D.res.loadTextureCubeStd('sky/LDR_sky.jpg');
+		sky.map = await this.engine.res.loadTextureCubeStd('sky/LDR_sky.jpg');
 		sky.exposure = 1.0;
 		sky.useSkyReflection();
 		// sky.enable = false;
 
 		let mainCamera = CameraUtil.createCamera3DObject(this.scene, 'camera');
-		mainCamera.perspective(60, webGPUContext.aspect, 1, 8000.0);
+		mainCamera.perspective(60, engine.context3D.aspect, 1, 8000.0);
 		let ctrl = mainCamera.object3D.addComponent(HoverCameraController);
 		ctrl.setCamera(-90, -25, 1200);
 		this.view = new View3D();
@@ -131,10 +132,10 @@ export class Sample_CarPaint {
 			GUIUtil.showPointLightGUI(pl);
 		}
 
-		// let giScene = await Engine3D.res.loadGltf("gltfs/pbrCar/car.gltf");
-		let giScene = await Engine3D.res.loadGltf("gltfs/scene/ue5_006.glb");
-		// let giScene = await Engine3D.res.loadGltf("gltfs/scene/测试汽车1.gltf");
-		// let giScene = await Engine3D.res.loadGltf("gltfs/scene/测试汽车.glb");
+		// let giScene = await this.engine.res.loadGltf("gltfs/pbrCar/car.gltf");
+		let giScene = await this.engine.res.loadGltf("gltfs/scene/ue5_006.glb");
+		// let giScene = await this.engine.res.loadGltf("gltfs/scene/测试汽车1.gltf");
+		// let giScene = await this.engine.res.loadGltf("gltfs/scene/测试汽车.glb");
 
 		let i = 0;
 		let cacheMat = new Map<string, Material>();

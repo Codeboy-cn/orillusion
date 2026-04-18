@@ -3,6 +3,7 @@ import { GUIHelp } from "@orillusion/debug/GUIHelp";
 import { GUIUtil } from "@samples/utils/GUIUtil";
 
 export class Sample_AnimCurve {
+    engine: Engine3D;
     lightObj3D: Object3D;
     scene: Scene3D;
     Duck: Object3D;
@@ -19,7 +20,7 @@ export class Sample_AnimCurve {
         Engine3D.setting.shadow.shadowBias = 0.02;
 
         GUIHelp.init();
-        const engine = await Engine3D.create({ renderLoop: () => { this.renderUpdate() } });
+        const engine = this.engine = await Engine3D.create({ renderLoop: () => { this.renderUpdate() } });
 
         this.scene = new Scene3D();
         let sky = this.scene.addComponent(AtmosphericComponent);
@@ -94,7 +95,7 @@ export class Sample_AnimCurve {
 
         this.scene.addChild(Object3DUtil.GetSingleCube(300, 5, 300, 1, 1, 1));
         // load a gltf model
-        this.Duck = (await Engine3D.res.loadGltf('PBR/Duck/Duck.gltf')) as Object3D;
+        this.Duck = (await this.engine.res.loadGltf('PBR/Duck/Duck.gltf')) as Object3D;
         this.Duck.scaleX = this.Duck.scaleY = this.Duck.scaleZ = 0.3;
         this.Duck.name = "Duck"
         this.scene.addChild(this.Duck);

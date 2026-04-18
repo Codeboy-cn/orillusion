@@ -5,13 +5,14 @@ import { createExampleScene } from "@samples/utils/ExampleScene";
 import { Scene3D, Engine3D, MeshRenderer, ColliderComponent, PointerEvent3D, SphereGeometry, Object3D, LitMaterial, Color, FXAAPost, PostProcessingComponent, BloomPost } from "@orillusion/core";
 
 class Sample_PixelPick {
+    engine: Engine3D;
     scene: Scene3D;
 
     async run() {
         Engine3D.setting.pick.enable = true;
         Engine3D.setting.pick.mode = `pixel`;
         // init Engine3D
-        const engine = await Engine3D.create({});
+        const engine = this.engine = await Engine3D.create({});
 
         let exampleScene = createExampleScene(engine);
         this.scene = exampleScene.scene;
@@ -41,7 +42,7 @@ class Sample_PixelPick {
 
     private async initPickObject(scene: Scene3D) {
         //load model
-        let wukong = await Engine3D.res.loadGltf('gltfs/wukong/wukong.gltf');
+        let wukong = await this.engine.res.loadGltf('gltfs/wukong/wukong.gltf');
         this.scene.addChild(wukong);
 
         wukong.transform.x = 50;

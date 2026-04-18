@@ -46,7 +46,7 @@ export class FlameSimulator extends MeshRenderer {
         if (this.mFlameComputePipeline) {
             this.mFlameComputePipeline.updateInput(Time.time / 1000.0, Time.delta / 1000.0);
             this.mFlameComputePipeline.updateInputData();
-            this.mFlameComputePipeline.compute(command);
+            this.mFlameComputePipeline.compute(view, command);
         }
     }
 
@@ -55,7 +55,7 @@ export class FlameSimulator extends MeshRenderer {
             let animatorComponent = this.object3D.getComponentsInChild(AnimatorComponent)[0];
             let skinnedMeshRenderer = this.object3D.getComponentsInChild(SkinnedMeshRenderer2)[0];
             let attributeArrays = skinnedMeshRenderer.geometry.vertexAttributeMap;
-            this.mFlameComputePipeline = new FlameSimulatorPipeline(this.mConfig, animatorComponent, skinnedMeshRenderer);
+            this.mFlameComputePipeline = new FlameSimulatorPipeline(this.mConfig, animatorComponent, skinnedMeshRenderer, view.engine3D.context3D);
             this.mFlameComputePipeline.initParticle(attributeArrays);
 
             let material = this.materials[0];

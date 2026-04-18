@@ -2,7 +2,6 @@ import { UniformGPUBuffer } from '../../graphics/webGpu/core/buffer/UniformGPUBu
 import { WebGPUDescriptorCreator } from '../../graphics/webGpu/descriptor/WebGPUDescriptorCreator';
 import { ComputeShader } from '../../graphics/webGpu/shader/ComputeShader';
 import { GPUTextureFormat } from '../../graphics/webGpu/WebGPUConst';
-import { GPUContext } from '../GPUContext';
 import { RendererPassState } from '../passRenderer/state/RendererPassState';
 import { PostBase } from './PostBase';
 import { Engine3D } from '../../../Engine3D';
@@ -211,7 +210,7 @@ export class BloomPost extends PostBase {
         let [screenWidth, screenHeight] = this._boundCtx!.presentationSize;
         let usage = GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.COPY_SRC | GPUTextureUsage.TEXTURE_BINDING;
 
-        this.RT_threshold = new VirtualTexture(screenWidth, screenHeight, GPUTextureFormat.rgba16float, false, usage);
+        this.RT_threshold = new VirtualTexture(screenWidth, screenHeight, GPUTextureFormat.rgba16float, false, usage, 1, 0, 1, this._boundCtx!);
 
         const N = setting.downSampleStep;
         {
@@ -219,7 +218,7 @@ export class BloomPost extends PostBase {
             let w = Math.ceil(screenWidth / 4);
             let h = Math.ceil(screenHeight / 4);
             for (let i = 0; i < N; i++) {
-                this.RT_BloomDown[i] = new VirtualTexture(w, h, GPUTextureFormat.rgba16float, false, usage);
+                this.RT_BloomDown[i] = new VirtualTexture(w, h, GPUTextureFormat.rgba16float, false, usage, 1, 0, 1, this._boundCtx!);
                 w = Math.ceil(w / 2);
                 h = Math.ceil(h / 2);
             }
@@ -230,7 +229,7 @@ export class BloomPost extends PostBase {
             for (let i = 0; i < N - 1; i++) {
                 let w = this.RT_BloomDown[N - 2 - i].width;
                 let h = this.RT_BloomDown[N - 2 - i].height;
-                this.RT_BloomUp[i] = new VirtualTexture(w, h, GPUTextureFormat.rgba16float, false, usage);
+                this.RT_BloomUp[i] = new VirtualTexture(w, h, GPUTextureFormat.rgba16float, false, usage, 1, 0, 1, this._boundCtx!);
             }
         }
 
@@ -252,7 +251,7 @@ export class BloomPost extends PostBase {
             this.createUpSampleComputes();
             this.createPostCompute();
 
-            this.rendererPassState = WebGPUDescriptorCreator.createRendererPassState(this.rtFrame, null);
+            this.rendererPassState = WebGPUDescriptorCreator.createRendererPassState(view.engine3D.context3D, this.rtFrame, null);
             this.rendererPassState.label = "Bloom";
         }
         let cfg = Engine3D.setting.render.postProcessing.bloom;
@@ -268,8 +267,8 @@ export class BloomPost extends PostBase {
 
         this.bloomSetting.apply();
 
-        GPUContext.computeCommand(command, [this.thresholdCompute, ...this.downSampleComputes, ...this.upSampleComputes, this.postCompute]);
-        GPUContext.lastRenderPassState = this.rendererPassState;
+        this._boundCtx!.gpuContext.computeCommand(command, [this.thresholdCompute, ...this.downSampleComputes, ...this.upSampleComputes, this.postCompute]);
+        this._boundCtx!.gpuContext.lastRenderPassState = this.rendererPassState;
     }
 
     public onResize() {

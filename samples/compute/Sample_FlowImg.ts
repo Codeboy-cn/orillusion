@@ -1,5 +1,5 @@
 import { GUIHelp } from '@orillusion/debug/GUIHelp';
-import { CameraUtil, Engine3D, HoverCameraController, Object3D, Scene3D, webGPUContext, AtmosphericComponent, View3D } from '@orillusion/core';
+import { CameraUtil, Engine3D, HoverCameraController, Object3D, Scene3D, AtmosphericComponent, View3D } from '@orillusion/core';
 import { FlowImgSimulator } from "./flowImg/FlowImgSimulator";
 
 export class Demo_FlowImg {
@@ -13,7 +13,7 @@ export class Demo_FlowImg {
 
         let camera = CameraUtil.createCamera3DObject(scene);
         
-        camera.perspective(60, webGPUContext.aspect, 0.01, 10000.0);
+        camera.perspective(60, engine.context3D.aspect, 0.01, 10000.0);
         let ctl = camera.object3D.addComponent(HoverCameraController);
         ctl.distance = 3;
 
@@ -39,7 +39,7 @@ export class Demo_FlowImg {
         input.style.position = 'fixed'
         document.body.appendChild(input)
         input.onchange= async (e)=>{
-            let url = URL.createObjectURL(e.target.files[0])
+            let url = URL.createObjectURL((e.target as HTMLInputElement).files[0])
             let image = await this.imageloader(url)
             simulator.setImageData(image);
             simulator.reset()

@@ -7,13 +7,14 @@ import { GUIUtil } from "@samples/utils/GUIUtil";
 export class Sample_UIImageGroup {
     scene: Scene3D;
     imageGroup: UIImageGroup;
+    engine: Engine3D;
 
     async run() {
         Engine3D.setting.shadow.autoUpdate = true;
 
         GUIHelp.init();
 
-        const engine = await Engine3D.create();
+        const engine = this.engine = await Engine3D.create();
         let exampleScene = createExampleScene(engine);
         this.scene = exampleScene.scene;
         this.scene.addComponent(Stats);
@@ -35,7 +36,7 @@ export class Sample_UIImageGroup {
         let panel = panelRoot.addComponent(ViewPanel);
         canvas.addChild(panel.object3D);
 
-        let bitmapTexture2D = new BitmapTexture2D();
+        let bitmapTexture2D = new BitmapTexture2D(true, this.engine.context3D);
         bitmapTexture2D.flipY = true;
         await bitmapTexture2D.load('png/logo.png');
 

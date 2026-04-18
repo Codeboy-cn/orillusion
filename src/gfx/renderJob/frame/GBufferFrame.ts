@@ -1,6 +1,6 @@
 
 import { RenderTexture } from "../../../textures/RenderTexture";
-import { webGPUContext, Context3D } from "../../graphics/webGpu/Context3D";
+import { Context3D } from "../../graphics/webGpu/Context3D";
 import { GPUTextureFormat } from "../../graphics/webGpu/WebGPUConst";
 import { RTDescriptor } from "../../graphics/webGpu/descriptor/RTDescriptor";
 import { RTResourceConfig } from "../config/RTResourceConfig";
@@ -31,24 +31,24 @@ export class GBufferFrame extends RTFrame {
         super([], []);
     }
 
-    createGBuffer(key: string, rtWidth: number, rtHeight: number, autoResize: boolean = true, outColor: boolean = true, depthTexture?: RenderTexture) {
+    createGBuffer(ctx: Context3D, key: string, rtWidth: number, rtHeight: number, autoResize: boolean = true, outColor: boolean = true, depthTexture?: RenderTexture) {
         let attachments = this.renderTargets;
         let reDescriptors = this.rtDescriptors;
         if (outColor) {
             let colorDec = new RTDescriptor();
             colorDec.loadOp = 'clear';
-            this._colorBufferTex = RTResourceMap.createRTTexture(key + RTResourceConfig.colorBufferTex_NAME, rtWidth, rtHeight, GPUTextureFormat.rgba16float, true);
+            this._colorBufferTex = RTResourceMap.createRTTexture(ctx, key + RTResourceConfig.colorBufferTex_NAME, rtWidth, rtHeight, GPUTextureFormat.rgba16float, true);
             attachments.push(this._colorBufferTex);
             reDescriptors.push(colorDec);
         }
 
-        this._compressGBufferTex = new RenderTexture(rtWidth, rtHeight, GPUTextureFormat.rgba32float, false, undefined, 1, 0, true, true);
+        this._compressGBufferTex = new RenderTexture(rtWidth, rtHeight, GPUTextureFormat.rgba32float, false, undefined, 1, 0, true, true, ctx);
         attachments.push(this._compressGBufferTex);
 
         if (depthTexture) {
             this.depthTexture = depthTexture;
         } else {
-            this.depthTexture = new RenderTexture(rtWidth, rtHeight, GPUTextureFormat.depth32float, false, undefined, 1, 0, true, true);
+            this.depthTexture = new RenderTexture(rtWidth, rtHeight, GPUTextureFormat.depth32float, false, undefined, 1, 0, true, true, ctx);
             this.depthTexture.name = key + `_depthTexture`;
         }
 
@@ -77,16 +77,15 @@ export class GBufferFrame extends RTFrame {
     /**
      * @internal
      */
-    public static getGBufferFrame(key: string, fixedWidth: number = 0, fixedHeight: number = 0, outColor: boolean = true, depthTexture?: RenderTexture, ctx?: Context3D): GBufferFrame {
-        // eslint-disable-next-line @typescript-eslint/no-deprecated
-        let resolved = ctx ?? webGPUContext;
-        let map = GBufferFrame._mapFor(resolved);
+    public static getGBufferFrame(key: string, ctx: Context3D, fixedWidth: number = 0, fixedHeight: number = 0, outColor: boolean = true, depthTexture?: RenderTexture): GBufferFrame {
+        let map = GBufferFrame._mapFor(ctx);
         GBufferFrame.gBufferMap = map;
         let gBuffer: GBufferFrame;
         if (!map.has(key)) {
             gBuffer = new GBufferFrame();
-            let size = resolved.presentationSize;
+            let size = ctx.presentationSize;
             gBuffer.createGBuffer(
+                ctx,
                 key,
                 fixedWidth == 0 ? size[0] : fixedWidth,
                 fixedHeight == 0 ? size[1] : fixedHeight,
@@ -102,9 +101,9 @@ export class GBufferFrame extends RTFrame {
     }
 
 
-    public static getGUIBufferFrame() {
-        let colorRTFrame = this.getGBufferFrame(this.colorPass_GBuffer);
-        let rtFrame = GBufferFrame.getGBufferFrame(GBufferFrame.gui_GBuffer, 0, 0, true, colorRTFrame.depthTexture);
+    public static getGUIBufferFrame(ctx: Context3D) {
+        let colorRTFrame = this.getGBufferFrame(this.colorPass_GBuffer, ctx);
+        let rtFrame = GBufferFrame.getGBufferFrame(GBufferFrame.gui_GBuffer, ctx, 0, 0, true, colorRTFrame.depthTexture);
         return rtFrame;
     }
 

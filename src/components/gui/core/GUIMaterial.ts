@@ -1,5 +1,6 @@
 import { Engine3D } from "../../../Engine3D";
 import { ShaderLib } from "../../../assets/shader/ShaderLib";
+import { Context3D } from "../../../gfx/graphics/webGpu/Context3D";
 import { GPUCompareFunction, GPUCullMode } from "../../../gfx/graphics/webGpu/WebGPUConst";
 import { Texture } from "../../../gfx/graphics/webGpu/core/texture/Texture";
 import { RenderShaderPass } from "../../../gfx/graphics/webGpu/shader/RenderShaderPass";
@@ -21,8 +22,10 @@ export class GUIMaterial extends Material {
     private _scissorRect: Vector4;
     private _screenSize: Vector2 = new Vector2(1024, 768);
     private _scissorEnable: boolean = false;
-    constructor(space: GUISpace) {
+    private _ctx?: Context3D;
+    constructor(space: GUISpace, ctx?: Context3D) {
         super();
+        this._ctx = ctx;
 
         ShaderLib.register('GUI_shader_view', GUIShader.GUI_shader_view);
         ShaderLib.register('GUI_shader_world', GUIShader.GUI_shader_world);
@@ -101,8 +104,9 @@ export class GUIMaterial extends Material {
      * Update texture used in GUI
      */
     public setTextures(list: Texture[]) {
+        const res = Engine3D.resFor(this._ctx);
         for (let i = 0; i < 7; i++) {
-            let texture = list[i] || Engine3D.res.whiteTexture;
+            let texture = list[i] || res.whiteTexture;
             this.shader.setTexture(`tex_${i}`, texture);
             this.setVideoTextureDefine(i, texture.isVideoTexture);
         }

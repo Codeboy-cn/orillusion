@@ -1,28 +1,31 @@
-import { ProfilerUtil } from "../../..";
+import { Context3D } from "../../graphics/webGpu/Context3D";
 import { WebGPUDescriptorCreator } from "../../graphics/webGpu/descriptor/WebGPUDescriptorCreator";
-import { GPUContext } from "../GPUContext";
+import { GPUContextInstance } from "../GPUContext";
 import { RTFrame } from "../frame/RTFrame";
 import { RendererPassState } from "./state/RendererPassState";
 
 export class RenderContext {
     public command: GPUCommandEncoder;
     public encoder: GPURenderPassEncoder;
+    public gpu: GPUContextInstance;
+    private ctx: Context3D;
     private rendererPassStates: RendererPassState[];
     private rtFrame: RTFrame;
 
-    constructor(rtFrame: RTFrame) {
+    constructor(ctx: Context3D, rtFrame: RTFrame) {
+        this.ctx = ctx;
         this.rtFrame = rtFrame;
         this.rendererPassStates = [];
     }
 
     public clean() {
         this.rendererPassStates.length = 0;
-        GPUContext.cleanCache();
+        this.gpu.cleanCache();
     }
 
     /**
      * continue renderer pass state
-     * @returns 
+     * @returns
      */
     public beginContinueRendererPassState(color_loadOp: GPULoadOp = 'load', depth_loadOp: GPULoadOp = 'load') {
         if (this.rendererPassStates.length > 0) {
@@ -31,12 +34,12 @@ export class RenderContext {
                 iterator.loadOp = `load`;
             }
             splitRtFrame.depthLoadOp = depth_loadOp;
-            let splitRendererPassState = WebGPUDescriptorCreator.createRendererPassState(splitRtFrame, color_loadOp);
+            let splitRendererPassState = WebGPUDescriptorCreator.createRendererPassState(this.ctx, splitRtFrame, color_loadOp);
             this.rendererPassStates.push(splitRendererPassState);
             return splitRendererPassState;
         } else {
             this.rtFrame.depthLoadOp = depth_loadOp;
-            let splitRendererPassState = WebGPUDescriptorCreator.createRendererPassState(this.rtFrame, color_loadOp);
+            let splitRendererPassState = WebGPUDescriptorCreator.createRendererPassState(this.ctx, this.rtFrame, color_loadOp);
             this.rendererPassStates.push(splitRendererPassState);
             return splitRendererPassState;
         }
@@ -70,22 +73,22 @@ export class RenderContext {
     }
 
     public begineNewCommand(): GPUCommandEncoder {
-        this.command = GPUContext.beginCommandEncoder();
+        this.command = this.gpu.beginCommandEncoder();
         return this.command;
     }
 
     public endCommand() {
-        GPUContext.endCommandEncoder(this.command);
+        this.gpu.endCommandEncoder(this.command);
         this.command = null;
     }
 
     public beginNewEncoder() {
-        this.encoder = GPUContext.beginRenderPass(this.command, this.rendererPassState);
+        this.encoder = this.gpu.beginRenderPass(this.command, this.rendererPassState);
         return this.encoder;
     }
 
     public endEncoder() {
-        GPUContext.endPass(this.encoder);
+        this.gpu.endPass(this.encoder);
         this.encoder = null;
     }
 

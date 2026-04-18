@@ -5,7 +5,6 @@ import { GeometryBase } from "../../core/geometry/GeometryBase";
 import { PassGenerate } from "../../gfx/generate/PassGenerate";
 import { GlobalBindGroup } from "../../gfx/graphics/webGpu/core/bindGroups/GlobalBindGroup";
 import { ShaderReflection } from "../../gfx/graphics/webGpu/shader/value/ShaderReflectionInfo";
-import { GPUContext } from "../../gfx/renderJob/GPUContext";
 import { EntityCollect } from "../../gfx/renderJob/collect/EntityCollect";
 import { RTResourceMap } from "../../gfx/renderJob/frame/RTResourceMap";
 import { RenderContext } from "../../gfx/renderJob/passRenderer/RenderContext";
@@ -372,9 +371,10 @@ export class RenderNode extends ComponentBase {
             return;
         let renderNode = this;
         let worldMatrix = renderNode.transform._worldMatrix;
+        const gpu = view.engine3D.context3D.gpuContext;
 
         const nCount = Math.max(renderNode.materials.length, renderNode._geometry.subGeometries.length);
-        
+
         for (let i = 0; i < nCount; i++) {
             const material = i >= renderNode.materials.length ? renderNode.materials[0] : renderNode.materials[i];
             if (!material || !material.enable)
@@ -385,7 +385,7 @@ export class RenderNode extends ComponentBase {
             if (!passes || passes.length == 0)
                 continue;
 
-            GPUContext.bindGeometryBuffer(renderContext.encoder, renderNode._geometry);
+            gpu.bindGeometryBuffer(renderContext.encoder, renderNode._geometry);
             ProfilerUtil.viewCount_vertex(view, PassType[passType], renderNode._geometry.vertexCount);
 
             for (let j = 0; j < passes.length; j++) {
@@ -401,14 +401,14 @@ export class RenderNode extends ComponentBase {
                 if (renderShader.pipeline) {
                     if (renderShader.shaderState.splitTexture) {
                         renderContext.endRenderPass();
-                        RTResourceMap.WriteSplitColorTexture(renderNode.instanceID);
+                        RTResourceMap.WriteSplitColorTexture(view.engine3D.context3D, renderNode.instanceID);
                         renderContext.beginOpaqueRenderPass();
 
-                        GPUContext.bindCamera(renderContext.encoder, view.camera);
-                        GPUContext.bindGeometryBuffer(renderContext.encoder, renderNode._geometry);
+                        gpu.bindCamera(renderContext.encoder, view.camera);
+                        gpu.bindGeometryBuffer(renderContext.encoder, renderNode._geometry);
                     }
 
-                    let noneShare = GPUContext.bindPipeline(renderContext.encoder, renderShader);
+                    let noneShare = gpu.bindPipeline(renderContext.encoder, renderShader);
                     if (noneShare) {
                         ProfilerUtil.viewCount_pipeline(view, PassType[passType]);
                     }
@@ -420,11 +420,11 @@ export class RenderNode extends ComponentBase {
                         ProfilerUtil.viewCount_instance(view, PassType[passType], renderNode.instanceCount);
                         ProfilerUtil.viewCount_indices(view, PassType[passType], lodInfo.indexCount);
                         ProfilerUtil.viewCount_tri(view, PassType[passType], lodInfo.indexCount / 3 * renderNode.instanceCount);
-                        GPUContext.drawIndexed(renderContext.encoder, lodInfo.indexCount, renderNode.instanceCount, lodInfo.indexStart, 0, 0);
+                        gpu.drawIndexed(renderContext.encoder, lodInfo.indexCount, renderNode.instanceCount, lodInfo.indexStart, 0, 0);
                     } else {
                         ProfilerUtil.viewCount_indices(view, PassType[passType], lodInfo.indexCount);
                         ProfilerUtil.viewCount_tri(view, PassType[passType], lodInfo.indexCount / 3);
-                        GPUContext.drawIndexed(renderContext.encoder, lodInfo.indexCount, 1, lodInfo.indexStart, 0, worldMatrix.index);
+                        gpu.drawIndexed(renderContext.encoder, lodInfo.indexCount, 1, lodInfo.indexStart, 0, worldMatrix.index);
                     }
                     ProfilerUtil.viewCount_draw(view, PassType[passType],);
                 }
@@ -447,6 +447,7 @@ export class RenderNode extends ComponentBase {
 
         let node = this;
         let worldMatrix = node.object3D.transform._worldMatrix;
+        const gpu = view.engine3D.context3D.gpuContext;
         for (let i = 0; i < this.materials.length; i++) {
             const material = this.materials[i];
             if (!material.castShadow && passType == PassType.SHADOW)
@@ -461,22 +462,22 @@ export class RenderNode extends ComponentBase {
                     // if (!matPass.enable)
                     //     continue;
                     if (matPass.pipeline) {
-                        GPUContext.bindPipeline(encoder, matPass);
-                        GPUContext.draw(encoder, 6, 1, 0, worldMatrix.index);
+                        gpu.bindPipeline(encoder, matPass);
+                        gpu.draw(encoder, 6, 1, 0, worldMatrix.index);
                     }
                 }
             } else {
-                GPUContext.bindGeometryBuffer(encoder, node._geometry);
+                gpu.bindGeometryBuffer(encoder, node._geometry);
                 for (let matPass of passes) {
                     // if (!matPass.enable)
                     //     continue;
                     if (matPass.pipeline) {
-                        GPUContext.bindPipeline(encoder, matPass);
+                        gpu.bindPipeline(encoder, matPass);
                         let subGeometries = node._geometry.subGeometries;
                         const subGeometry = subGeometries[i];
                         let lodInfos = subGeometry.lodLevels;
                         let lodInfo = lodInfos[node.lodLevel];
-                        GPUContext.drawIndexed(encoder, lodInfo.indexCount, 1, lodInfo.indexStart, 0, worldMatrix.index);
+                        gpu.drawIndexed(encoder, lodInfo.indexCount, 1, lodInfo.indexStart, 0, worldMatrix.index);
                     }
                 }
             }
@@ -491,6 +492,7 @@ export class RenderNode extends ComponentBase {
         // this.nodeUpdate(view, passType, rendererPassState, clusterLightingBuffer);
 
         let node = this;
+        const gpu = view.engine3D.context3D.gpuContext;
         for (let i = 0; i < this.materials.length; i++) {
             let material = this.materials[i];
 
@@ -500,12 +502,12 @@ export class RenderNode extends ComponentBase {
             let worldMatrix = node.object3D.transform._worldMatrix;
             for (let j = 0; j < passes.length; j++) {
                 const renderShader = passes[j];
-                GPUContext.bindPipeline(encoder, renderShader);
+                gpu.bindPipeline(encoder, renderShader);
                 let subGeometries = node._geometry.subGeometries;
                 const subGeometry = subGeometries[i];
                 let lodInfos = subGeometry.lodLevels;
                 let lodInfo = lodInfos[node.lodLevel];
-                GPUContext.drawIndexed(encoder, lodInfo.indexCount, 1, lodInfo.indexStart, 0, worldMatrix.index);
+                gpu.drawIndexed(encoder, lodInfo.indexCount, 1, lodInfo.indexStart, 0, worldMatrix.index);
             }
         }
     }
@@ -536,7 +538,7 @@ export class RenderNode extends ComponentBase {
                     const renderShader = pass;
 
                     if (renderShader.shaderState.splitTexture) {
-                        let splitTexture = RTResourceMap.CreateSplitTexture(node.instanceID);
+                        let splitTexture = RTResourceMap.CreateSplitTexture(view.engine3D.context3D, node.instanceID);
                         renderShader.setTexture("splitTexture_Map", splitTexture);
                     }
 
@@ -557,11 +559,11 @@ export class RenderNode extends ComponentBase {
                     }
 
                     if (renderShader.pipeline) {
-                        renderShader.apply(node._geometry, renderPassState, () => node.noticeShaderChange());
+                        renderShader.apply(view.engine3D.context3D, node._geometry, renderPassState, () => node.noticeShaderChange());
                         continue;
                     }
 
-                    let bdrflutTex = Engine3D.res.getTexture(`BRDFLUT`);
+                    let bdrflutTex = Engine3D.resFor(view.engine3D?.context3D).getTexture(`BRDFLUT`);
                     renderShader.setTexture(`brdflutMap`, bdrflutTex);
 
                     let renderJob = view.engine3D.renderJobs.get(view);
@@ -602,7 +604,7 @@ export class RenderNode extends ComponentBase {
                         renderShader.setStorageBuffer(`clusterBuffer`, clusterLightingBuffer.clusterBuffer);
                     }
 
-                    renderShader.apply(node._geometry, renderPassState);
+                    renderShader.apply(view.engine3D.context3D, node._geometry, renderPassState);
 
                     this._passInit.set(passType, true);
                 }

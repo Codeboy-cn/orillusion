@@ -1,10 +1,9 @@
 import { BlurTexture2DBufferCreator } from '../gfx/generate/convert/BlurEffectCreator';
 import { TextureCube } from '../gfx/graphics/webGpu/core/texture/TextureCube';
 import { GPUTextureFormat } from '../gfx/graphics/webGpu/WebGPUConst';
-import { bindCtx, webGPUContext } from '../gfx/graphics/webGpu/Context3D';
 import { TextureCubeStdCreator } from "../gfx/generate/convert/TextureCubeStdCreator";
 import { Texture } from '../gfx/graphics/webGpu/core/texture/Texture';
-import { GPUContext } from '../gfx/renderJob/GPUContext';
+import { Context3D } from '../gfx/graphics/webGpu/Context3D';
 import { StringUtil } from '../util/StringUtil';
 import { BitmapTexture2D } from './BitmapTexture2D';
 import { VirtualTexture } from './VirtualTexture';
@@ -22,9 +21,8 @@ export class BitmapTextureCube extends TextureCube {
         this.useMipmap = true;
     }
 
-    protected generateImages(images: HTMLCanvasElement[] | ImageBitmap[] | OffscreenCanvas[] | Texture[]) {
-        // eslint-disable-next-line @typescript-eslint/no-deprecated
-        bindCtx(this, webGPUContext);
+    protected generateImages(images: HTMLCanvasElement[] | ImageBitmap[] | OffscreenCanvas[] | Texture[], ctx?: Context3D) {
+        this._ensureBound(ctx);
         let device = this._boundCtx!.device;
         this.width = this.height = 32;
         if ('width' in images[0]) {
@@ -60,7 +58,7 @@ export class BitmapTextureCube extends TextureCube {
         } else {
             this.uploadBaseImages(this.width, images as any);
             for (let i = 0; i < 6; i++) {
-                let t = new BitmapTexture2D(false);
+                let t = new BitmapTexture2D(false, this._boundCtx!);
                 t.format = this.format;
                 t.source = images[i] as any;
                 faceTextures[i] = t.getGPUTexture();
@@ -75,18 +73,17 @@ export class BitmapTextureCube extends TextureCube {
             mipHeight = mipHeight / 2;
             for (let faceId = 0; faceId < 6; faceId++) {
                 dstBuffer.gpuTexture = lastFaceTextures[faceId];
-                faceTextures[faceId] = BlurTexture2DBufferCreator.blurImageFromTexture(dstBuffer, mipWidth, mipHeight, false, this._boundCtx ?? undefined);
+                faceTextures[faceId] = BlurTexture2DBufferCreator.blurImageFromTexture(dstBuffer, mipWidth, mipHeight, false, this._boundCtx!);
             }
             this.uploadMipmapGPUTexture(i, mipWidth, mipHeight, faceTextures);
         }
         this.gpuSampler = device.createSampler(this);
     }
 
-    private uploadBaseImages(size: number, textures: HTMLCanvasElement[] | ImageBitmap[] | OffscreenCanvas[]) {
-        // eslint-disable-next-line @typescript-eslint/no-deprecated
-        bindCtx(this, webGPUContext);
+    private uploadBaseImages(size: number, textures: HTMLCanvasElement[] | ImageBitmap[] | OffscreenCanvas[], ctx?: Context3D) {
+        this._ensureBound(ctx);
         let device = this._boundCtx!.device;
-        const commandEncoder = GPUContext.beginCommandEncoder();
+        const commandEncoder = this._boundCtx!.gpuContext.beginCommandEncoder();
 
         for (let i = 0; i < 6; i++) {
             device.queue.copyExternalImageToTexture(
@@ -100,11 +97,11 @@ export class BitmapTextureCube extends TextureCube {
             );
         }
 
-        GPUContext.endCommandEncoder(commandEncoder);
+        this._boundCtx!.gpuContext.endCommandEncoder(commandEncoder);
     }
 
     private uploadMipmapGPUTexture(mip: number, width: number, height: number, textures: GPUTexture[]) {
-        const commandEncoder = GPUContext.beginCommandEncoder();
+        const commandEncoder = this._boundCtx!.gpuContext.beginCommandEncoder();
 
         for (let i = 0; i < 6; i++) {
             commandEncoder.copyTextureToTexture(
@@ -126,7 +123,7 @@ export class BitmapTextureCube extends TextureCube {
             );
         }
 
-        GPUContext.endCommandEncoder(commandEncoder);
+        this._boundCtx!.gpuContext.endCommandEncoder(commandEncoder);
     }
 
     /**
@@ -174,8 +171,9 @@ export class BitmapTextureCube extends TextureCube {
      * and the order is: [+X, -X, +Y, -Y, +Z, -Z]
      * @param urls array of image url
      */
-    public async load(urls: string[]) {
+    public async load(urls: string[], ctx?: Context3D) {
         this._url = urls;
+        if (ctx) this._ensureBound(ctx);
         let remain: number = 6;
         let bitmaps: ImageBitmap[] = [];
         this.format = GPUTextureFormat.rgba8unorm;
@@ -205,15 +203,16 @@ export class BitmapTextureCube extends TextureCube {
       * the image is assembled from six images into cross shaped image.
       * @param url the path of image
       */
-    public async loadStd(url: string) {
+    public async loadStd(url: string, ctx?: Context3D) {
         this._url = url;
         this.format = GPUTextureFormat.rgba8unorm;
+        if (ctx) this._ensureBound(ctx);
 
         const img = document.createElement('img');
         img.src = url;
         img.setAttribute('crossOrigin', '');
         await img.decode();
-        let srcTexture = new BitmapTexture2D(false);
+        let srcTexture = new BitmapTexture2D(false, this._boundCtx);
         srcTexture.name = StringUtil.getURLName(url);
         srcTexture.format = 'rgba8unorm';
         srcTexture.source = await createImageBitmap(img);
@@ -225,7 +224,7 @@ export class BitmapTextureCube extends TextureCube {
         let textureList: VirtualTexture[] = [];
         for (let i = 0; i < 6; i++) {
             let item = new VirtualTexture(cubeSize, cubeSize, this.format, false,
-                GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.COPY_SRC | GPUTextureUsage.TEXTURE_BINDING);
+                GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.COPY_SRC | GPUTextureUsage.TEXTURE_BINDING, 1, 0, 1, this._boundCtx);
             item.name = 'face ' + i;
             textureList.push(item);
             TextureCubeStdCreator.createFace(i, this.width, srcTexture, item);

@@ -3,6 +3,7 @@ import { LoaderBase } from '../loader/LoaderBase';
 import { LoaderFunctions } from '../loader/LoaderFunctions';
 import { StringUtil } from '../util/StringUtil';
 import { Texture } from '../gfx/graphics/webGpu/core/texture/Texture';
+import { Context3D, bindCtx } from '../gfx/graphics/webGpu/Context3D';
 
 /**
  * bitmap texture
@@ -15,13 +16,17 @@ export class BitmapTexture2D extends Texture {
     /**
      * @constructor
      * @param useMipmap Set whether to use mipmap
+     * @param ctx Optional Context3D — binds the texture to this engine's device
+     *            so GPU materialization has a target. Required whenever the caller
+     *            already knows which engine owns the texture (loaders, Res, GLTF).
      */
-    constructor(useMipmap: boolean = true) {
+    constructor(useMipmap: boolean = true, ctx?: Context3D) {
         super();
         this.useMipmap = useMipmap;
 
         this.lodMinClamp = 0;
         this.lodMaxClamp = 4;
+        if (ctx) bindCtx(this, ctx);
 
         // this.visibility = GPUShaderStage.COMPUTE | GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT;
     }

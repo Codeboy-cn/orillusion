@@ -3,13 +3,14 @@ import { Object3D, Scene3D, HoverCameraController, Engine3D, CameraUtil, View3D,
 import { GUIUtil as GUIUtil } from "@samples/utils/GUIUtil";
 
 class Sample_FlightHelmet {
+    engine: Engine3D;
     lightObj3D: Object3D;
     scene: Scene3D;
     autoRotate: boolean = false;
     flightHelmetObj: Object3D;
 
     async run() {
-        const engine = await Engine3D.create({
+        const engine = this.engine = await Engine3D.create({
             canvasConfig: {
                 alpha: true,
                 zIndex: 0,
@@ -74,7 +75,7 @@ class Sample_FlightHelmet {
 
         /******** load model *******/
         {
-            let model = (await Engine3D.res.loadGltf('PBR/FlightHelmet/FlightHelmet.gltf', {})) as Object3D;
+            let model = (await this.engine.res.loadGltf('PBR/FlightHelmet/FlightHelmet.gltf', {})) as Object3D;
             model.transform.scaleX = 10;
             model.transform.scaleY = 10;
             model.transform.scaleZ = 10;

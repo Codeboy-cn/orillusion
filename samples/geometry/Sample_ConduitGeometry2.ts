@@ -6,6 +6,7 @@ import { GUIUtil } from "@samples/utils/GUIUtil";
 
 // An sample to use ExtrudeGeometry and make uv move animation
 class Sample_ConduitGeometry2 {
+    engine: Engine3D;
 
     scene: Scene3D;
     material: LitMaterial;
@@ -21,7 +22,7 @@ class Sample_ConduitGeometry2 {
         Engine3D.setting.shadow.shadowBias = 0.01;
         let param = createSceneParam();
         param.camera.distance = 60;
-        const engine = await Engine3D.create();
+        const engine = this.engine = await Engine3D.create();
         let exampleScene = createExampleScene(engine, param);
         // exampleScene.camera.enableCSM = true;
         this.scene = exampleScene.scene;
@@ -57,7 +58,7 @@ class Sample_ConduitGeometry2 {
 
     async loadCurveData() {
         // load external curve data
-        let json: any = await Engine3D.res.loadJSON('json/anim_0.json');
+        let json: any = await this.engine.res.loadJSON('json/anim_0.json');
         this.animClip = new PropertyAnimClip();
         this.animClip.parse(json);
         this.animClip.wrapMode = WrapMode.Loop;
@@ -69,13 +70,13 @@ class Sample_ConduitGeometry2 {
     }
 
     async createMaterial() {
-        this.material = new LitMaterial();
+        this.material = new LitMaterial(this.engine.context3D);
         this.material.depthCompare = 'always';
         this.material.blendMode = BlendMode.ADD;
         this.material.baseColor = new Color(0, 1, 0.5, 1.0);
         this.material.transparent = true;
 
-        let texture = new BitmapTexture2D();
+        let texture = new BitmapTexture2D(true, this.engine.context3D);
         texture.addressModeU = "repeat";
         texture.addressModeV = "repeat";
         await texture.load('textures/grid.jpg');

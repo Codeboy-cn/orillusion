@@ -15,7 +15,8 @@ export class UIImage extends UIRenderAble {
     init(param?: any): void {
         super.init?.(param);
         this.attachQuad(GUIQuad.spawnQuad());
-        this.sprite = Engine3D.res.defaultGUISprite;
+        const ctx = this.transform?.view3D?.engine3D?.context3D ?? Engine3D._defaultContext();
+        this.sprite = Engine3D.resFor(ctx).defaultGUISprite;
     }
 
     public cloneTo(obj: Object3D) {
@@ -32,7 +33,10 @@ export class UIImage extends UIRenderAble {
     }
 
     public set sprite(value: GUISprite) {
-        value ||= Engine3D.res.defaultGUISprite;
+        if (!value) {
+            const ctx = this.transform?.view3D?.engine3D?.context3D ?? Engine3D._defaultContext();
+            value = Engine3D.resFor(ctx).defaultGUISprite;
+        }
         for (let quad of this._mainQuads) {
             quad.sprite = value;
             quad.setSize(this._uiTransform.width, this._uiTransform.height);

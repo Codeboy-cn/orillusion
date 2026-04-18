@@ -2,7 +2,6 @@ import { Engine3D } from "../../../../Engine3D";
 import { RenderNode } from "../../../../components/renderer/RenderNode";
 import { View3D } from "../../../../core/View3D";
 import { GlobalBindGroup } from "../../../graphics/webGpu/core/bindGroups/GlobalBindGroup";
-import { GPUContext } from "../../GPUContext";
 import { EntityCollect } from "../../collect/EntityCollect";
 import { GBufferFrame } from "../../frame/GBufferFrame";
 import { RTFrame } from "../../frame/RTFrame";
@@ -26,14 +25,17 @@ export class GUIPassRenderer extends RendererBase {
     }
 
     public compute(view: View3D, occlusionSystem: OcclusionSystem): void {
-        let command = GPUContext.beginCommandEncoder();
-        let src = GPUContext.lastRenderPassState.getLastRenderTexture();
-        let dest = GBufferFrame.getGUIBufferFrame().getColorTexture();
-        GPUContext.copyTexture(command, src, dest);
-        GPUContext.endCommandEncoder(command);
+        const gpu = view.engine3D.context3D.gpuContext;
+        let command = gpu.beginCommandEncoder();
+        let src = gpu.lastRenderPassState.getLastRenderTexture(view.engine3D.context3D);
+        let dest = GBufferFrame.getGUIBufferFrame(view.engine3D.context3D).getColorTexture();
+        gpu.copyTexture(command, src, dest);
+        gpu.endCommandEncoder(command);
     }
 
     public render(view: View3D, occlusionSystem: OcclusionSystem, clusterLightingBuffer?: ClusterLightingBuffer, maskTr: boolean = false) {
+        const gpu = view.engine3D.context3D.gpuContext;
+        this.renderContext.gpu = gpu;
         this.renderContext.clean();
 
 
@@ -53,7 +55,7 @@ export class GUIPassRenderer extends RendererBase {
 
 
             if (collectInfo.opaqueList) {
-                GPUContext.bindCamera(renderPassEncoder, camera);
+                gpu.bindCamera(renderPassEncoder, camera);
                 this.drawNodes(view, this.renderContext, collectInfo.opaqueList, occlusionSystem, clusterLightingBuffer);
             }
         }
@@ -64,7 +66,7 @@ export class GUIPassRenderer extends RendererBase {
 
 
             if (!maskTr && collectInfo.transparentList) {
-                GPUContext.bindCamera(renderPassEncoder, camera);
+                gpu.bindCamera(renderPassEncoder, camera);
                 this.drawNodes(view, this.renderContext, collectInfo.transparentList, occlusionSystem, clusterLightingBuffer);
             }
             this.renderContext.endRenderPass();

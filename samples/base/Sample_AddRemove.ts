@@ -3,6 +3,7 @@ import { GUIHelp } from "@orillusion/debug/GUIHelp";
 
 // sample use component
 class Sample_AddRemove {
+    engine: Engine3D;
     view: View3D;
     async run() {
         Engine3D.setting.shadow.shadowSize = 2048
@@ -19,7 +20,7 @@ class Sample_AddRemove {
 
         Engine3D.setting.render.hdrExposure = 1.0;
         // init engine
-        const engine = await Engine3D.create();
+        const engine = this.engine = await Engine3D.create();
         // create new Scene
         let scene = new Scene3D();
         // add atmospheric sky
@@ -63,7 +64,7 @@ class Sample_AddRemove {
 
     private async test() {
         let list: Object3D[] = [];
-        let player = await Engine3D.res.loadGltf('gltfs/anim/Minion_Lane_Super_Dawn/Minion_Lane_Super_Dawn.glb');
+        let player = await this.engine.res.loadGltf('gltfs/anim/Minion_Lane_Super_Dawn/Minion_Lane_Super_Dawn.glb');
         // gui
         GUIHelp.init();
         GUIHelp.addButton("add", async () => {

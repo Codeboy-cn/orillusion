@@ -4,6 +4,7 @@ import { GUIHelp } from "@orillusion/debug/GUIHelp";
 import { GUIUtil } from "@samples/utils/GUIUtil";
 
 class Sample_GICornellBox {
+    engine: Engine3D;
     scene: Scene3D;
     view: View3D;
     async run() {
@@ -40,7 +41,7 @@ class Sample_GICornellBox {
 
         Engine3D.setting.render.debug = true;
 
-        const engine = await Engine3D.create({
+        const engine = this.engine = await Engine3D.create({
             renderLoop: () => {
                 if (this.giComponent?.isStart) {
                     GUIUtil.renderGIComponent(this.giComponent, this.view);
@@ -74,7 +75,7 @@ class Sample_GICornellBox {
     }
 
     async initScene() {
-        let box = await Engine3D.res.loadGltf('gltfs/cornellBox/cornellBox.gltf') as Object3D;
+        let box = await this.engine.res.loadGltf('gltfs/cornellBox/cornellBox.gltf') as Object3D;
         box.localScale = new Vector3(10, 10, 10);
         this.scene.addChild(box);
     }

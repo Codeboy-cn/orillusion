@@ -1,4 +1,4 @@
-import { CylinderGeometry, Engine3D, Texture, KeyCode, KeyEvent, MeshRenderer, Object3D, RendererMask, RendererPassState, Time, Vector3, webGPUContext, View3D, ComputeGPUBuffer, ClusterLightingBuffer, PassType } from '@orillusion/core';
+import { CylinderGeometry, Texture, KeyCode, KeyEvent, MeshRenderer, Object3D, RendererMask, RendererPassState, Time, Vector3, View3D, ComputeGPUBuffer, ClusterLightingBuffer, PassType } from '@orillusion/core';
 import { HairSimulatorConfig } from "./HairSimulatorConfig";
 import { HairSimulatorMaterial } from "./HairSimulatorMaterial";
 import { HairSimulatorPipeline } from "./HairSimulatorPipeline";
@@ -60,7 +60,6 @@ export class HairSimulator extends MeshRenderer {
         this.geometry = new CylinderGeometry(0.001, 0.001, this.mConfig.LENGTHSEGMENT);
         this.material = new HairSimulatorMaterial();
         // this.material.baseMap = this.mHairTexture;
-        let device = webGPUContext.device;
         var globalArgsData = new Float32Array(4);
         this.mGlobalArgs = new ComputeGPUBuffer(globalArgsData.byteLength);
         globalArgsData[0] = this.transform.worldMatrix.index;

@@ -13,6 +13,7 @@ import { GLTFSubParserSkeleton } from './GLTFSubParserSkeleton';
 import { GLTFSubParserConverter } from './GLTFSubParserConverter';
 import { PrefabAvatarData } from '../prefab/prefabData/PrefabAvatarData';
 import { PropertyAnimationClip } from '../../../math/AnimationCurveClip';
+import { Context3D } from '../../../gfx/graphics/webGpu/Context3D';
 
 /**
  * @internal
@@ -21,6 +22,7 @@ export class GLTFSubParser {
     public currentSceneName: any;
     public gltf: GLTF_Info;
     public initUrl: string;
+    public ctx?: Context3D;
     private _generator: string;
     private _version: string;
     private _BASE64_MARKER = ';base64,';
@@ -31,7 +33,8 @@ export class GLTFSubParser {
     private _skeletonParser: GLTFSubParserSkeleton = null;
     private _converter: GLTFSubParserConverter = null;
 
-    constructor() {
+    constructor(ctx?: Context3D) {
+        this.ctx = ctx;
     }
 
     public get version() {
@@ -173,7 +176,7 @@ export class GLTFSubParser {
                     let bitmapTexture: BitmapTexture2D = this.gltf.resources[name];
                     if (!bitmapTexture) {
                         let buffer = this.parseBufferView(image.bufferView);
-                        bitmapTexture = new BitmapTexture2D();
+                        bitmapTexture = new BitmapTexture2D(true, this.ctx);
                         let img = new Blob([buffer], { type: image.mimeType });
                         await bitmapTexture.loadFromBlob(img);
                     }

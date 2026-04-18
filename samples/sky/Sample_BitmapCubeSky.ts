@@ -3,9 +3,10 @@ import { Engine3D, Scene3D, SkyRenderer, Object3DUtil } from "@orillusion/core";
 
 // sample to replace sky map. (witch contains 6 faces)
 class Sample_BitmapCubeSky {
+    engine: Engine3D;
     async run() {
         // init engine
-        const engine = await Engine3D.create({});
+        const engine = this.engine = await Engine3D.create({});
         // init scene
         let scene: Scene3D = createExampleScene(engine).scene;
         let sky = scene.getOrAddComponent(SkyRenderer);
@@ -18,7 +19,7 @@ class Sample_BitmapCubeSky {
         urls.push('textures/cubemap/skybox_nz.png');
         urls.push('textures/cubemap/skybox_pz.png');
 
-        sky.map = await Engine3D.res.loadTextureCubeMaps(urls);
+        sky.map = await this.engine.res.loadTextureCubeMaps(urls);
         // create a basic cube
         scene.addChild(Object3DUtil.GetSingleCube(10, 10, 10, 0.6, 0.6, 0.6));
 

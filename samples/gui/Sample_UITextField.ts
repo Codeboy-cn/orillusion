@@ -4,13 +4,14 @@ import { Object3D, Engine3D, GUISpace, WorldPanel, ViewPanel, UITextField, TextA
 import { GUIUtil } from "@samples/utils/GUIUtil";
 
 export class Sample_UITextField {
+    engine: Engine3D;
 
     async run() {
         Engine3D.setting.shadow.autoUpdate = true;
 
         GUIHelp.init();
 
-        const engine = await Engine3D.create();
+        const engine = this.engine = await Engine3D.create();
         let exampleScene = createExampleScene(engine);
         engine.startRenderView(exampleScene.view);
 
@@ -24,7 +25,7 @@ export class Sample_UITextField {
         //create UI root
         let panelRoot: Object3D = new Object3D();
 
-        await Engine3D.res.loadFont('fnt/0.fnt');
+        await this.engine.res.loadFont('fnt/0.fnt');
 
         let space: GUISpace = GUISpace.World; // View
         let panel: UIPanel;

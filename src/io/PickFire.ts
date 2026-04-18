@@ -89,7 +89,7 @@ export class PickFire extends CEventDispatcher {
 
         if (Engine3D.setting.pick.mode == `pixel`) {
             this._pickCompute = new PickCompute();
-            this._pickCompute.init();
+            this._pickCompute.init(this._view);
         }
     }
 

@@ -1,4 +1,4 @@
-import { Struct, MeshRenderer, BitmapTexture2DArray, StorageGPUBuffer, ComputeShader, StructStorageGPUBuffer, TriGeometry, UnLitTexArrayMaterial, Object3D, Color, Vector4, GlobalBindGroup, View3D, GPUContext } from "@orillusion/core";
+import { Struct, MeshRenderer, BitmapTexture2DArray, StorageGPUBuffer, ComputeShader, StructStorageGPUBuffer, TriGeometry, UnLitTexArrayMaterial, Object3D, Color, Vector4, GlobalBindGroup, View3D } from "@orillusion/core";
 import { ShapeInfo } from "./ShapeInfo";
 import { GraphicLineCompute } from "../../compute/graphic3d/GraphicLineCompute";
 
@@ -200,7 +200,7 @@ export class Graphic3DFaceRenderer extends MeshRenderer {
         this._computeGeoShader.workerSizeX = this.realDrawShape;
         this._computeGeoShader.workerSizeY = Math.floor(Graphic3DFaceRenderer.maxPathPointCount / 256 + 1);
         this._computeGeoShader.workerSizeZ = 1;
-        GPUContext.computeCommand(command, [this._computeGeoShader]);
+        view.engine3D.context3D.gpuContext.computeCommand(command, [this._computeGeoShader]);
     }
 
 }

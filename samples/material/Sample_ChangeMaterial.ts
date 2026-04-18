@@ -5,10 +5,11 @@ import { GUIUtil } from "@samples/utils/GUIUtil";
 
 
 class Sample_ChangeMaterial {
+    engine: Engine3D;
     scene: Scene3D;
     lightObj: Object3D;
     async run() {
-        const engine = await Engine3D.create();
+        const engine = this.engine = await Engine3D.create();
 
         Engine3D.setting.material.materialChannelDebug = true;
         Engine3D.setting.shadow.shadowBound = 5;
@@ -55,7 +56,7 @@ class Sample_ChangeMaterial {
             let floor = new Object3D();
             let material = new LitMaterial();
             material.doubleSide = true;
-            material.baseMap = await Engine3D.res.loadTexture("textures/diffuse.jpg");
+            material.baseMap = await this.engine.res.loadTexture("textures/diffuse.jpg");
 
             let renderer = floor.addComponent(MeshRenderer);
             renderer.material = material;
@@ -66,9 +67,9 @@ class Sample_ChangeMaterial {
         }
 
         {
-            let tex1 = await Engine3D.res.loadTexture("textures/cell.png");
-            let tex2 = await Engine3D.res.loadTexture("textures/grid.jpg");
-            let tex3 = await Engine3D.res.loadTexture("textures/KB3D_NTT_Ads_basecolor.png");
+            let tex1 = await this.engine.res.loadTexture("textures/cell.png");
+            let tex2 = await this.engine.res.loadTexture("textures/grid.jpg");
+            let tex3 = await this.engine.res.loadTexture("textures/KB3D_NTT_Ads_basecolor.png");
 
             let mat1 = new LitMaterial();
             let mat2 = new LitMaterial();

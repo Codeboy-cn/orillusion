@@ -1,9 +1,7 @@
 import { View3D } from '../../../../core/View3D';
 import { GlobalBindGroup } from '../../../graphics/webGpu/core/bindGroups/GlobalBindGroup';
 import { ComputeShader } from '../../../graphics/webGpu/shader/ComputeShader';
-import { webGPUContext } from '../../../graphics/webGpu/Context3D';
 import { EntityCollect } from '../../collect/EntityCollect';
-import { GPUContext } from '../../GPUContext';
 import { OcclusionSystem } from '../../occlusion/OcclusionSystem';
 import { RendererBase } from '../RendererBase';
 import { PassType } from '../state/PassType';
@@ -40,8 +38,7 @@ export class ClusterLightingRender extends RendererBase {
         this._clusterGenerateCompute = new ComputeShader(ClusterBoundsSource_cs);
         this._clusterLightingCompute = new ComputeShader(ClusterLighting_cs);
 
-        // eslint-disable-next-line @typescript-eslint/no-deprecated
-        let size = (view.engine3D?.context3D ?? webGPUContext).presentationSize;
+        let size = view.engine3D.context3D.presentationSize;
         let numClusters = ClusterConfig.clusterTileX * ClusterConfig.clusterTileY * ClusterConfig.clusterTileZ;
 
         let camera = view.camera;
@@ -58,7 +55,7 @@ export class ClusterLightingRender extends RendererBase {
         this._clusterGenerateCompute.setStorageBuffer(`clusterBuffer`, this.clusterLightingBuffer.clusterBuffer);
 
         let lightBuffer = GlobalBindGroup.getLightEntries(view.scene);
-        this._clusterLightingCompute.setStorageBuffer(`models`, GlobalBindGroup.modelMatrixBindGroup.matrixBufferDst);
+        this._clusterLightingCompute.setStorageBuffer(`models`, GlobalBindGroup.getModelMatrixBindGroup(view.engine3D.context3D).matrixBufferDst);
         this._clusterLightingCompute.setUniformBuffer(`clustersUniform`, this.clusterLightingBuffer.clustersUniformBuffer);
         this._clusterLightingCompute.setStorageBuffer(`clusterBuffer`, this.clusterLightingBuffer.clusterBuffer);
         this._clusterLightingCompute.setStorageBuffer(`lightBuffer`, lightBuffer.storageGPUBuffer);
@@ -124,8 +121,7 @@ export class ClusterLightingRender extends RendererBase {
             this._clusterLightingCompute.workerSizeX = ClusterConfig.clusterTileZ;
         }
 
-        // eslint-disable-next-line @typescript-eslint/no-deprecated
-        let size = (view.engine3D?.context3D ?? webGPUContext).presentationSize;
+        let size = view.engine3D.context3D.presentationSize;
         this.clusterLightingBuffer.update(
             size[0], size[1],
             this.clusterPix, ClusterConfig.clusterTileX, ClusterConfig.clusterTileY, ClusterConfig.clusterTileZ, lights.length, this.maxNumLightsPerCluster,
@@ -134,14 +130,10 @@ export class ClusterLightingRender extends RendererBase {
 
         // if (this.resize) {
         this.resize = false;
-        let command = GPUContext.beginCommandEncoder();
-        GPUContext.computeCommand(command, [this._clusterGenerateCompute, this._clusterLightingCompute]);
-        GPUContext.endCommandEncoder(command);
-        // } else {
-        //     let command = GPUContext.beginCommandEncoder();
-        //     GPUContext.computeCommand(command, [this._clusterLightingCompute]);
-        //     GPUContext.endCommandEncoder(command);
-        // }
+        const gpu = view.engine3D.context3D.gpuContext;
+        let command = gpu.beginCommandEncoder();
+        gpu.computeCommand(command, [this._clusterGenerateCompute, this._clusterLightingCompute]);
+        gpu.endCommandEncoder(command);
     }
 }
 

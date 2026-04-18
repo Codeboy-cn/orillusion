@@ -13,7 +13,7 @@ export class BunnyGeometry extends GeometryBase {
      * 深度，z轴方向的长度。
      */
     depth: number;
-    vertexCount: number;
+    declare vertexCount: number;
     /**
      *
      * 创建新的立方体对象。

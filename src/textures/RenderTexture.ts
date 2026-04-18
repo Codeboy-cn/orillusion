@@ -1,7 +1,6 @@
 import { Texture } from '../gfx/graphics/webGpu/core/texture/Texture';
 import { GPUAddressMode, GPUTextureFormat } from '../gfx/graphics/webGpu/WebGPUConst';
-import { bindCtx, webGPUContext } from '../gfx/graphics/webGpu/Context3D';
-import { GPUContext } from '../gfx/renderJob/GPUContext';
+import { Context3D } from '../gfx/graphics/webGpu/Context3D';
 import { UUID } from '../util/Global';
 import { CResizeEvent } from '..';
 /**
@@ -28,7 +27,8 @@ export class RenderTexture extends Texture {
         format: GPUTextureFormat = GPUTextureFormat.rgba8unorm,
         useMipMap: boolean = false, usage?: GPUFlagsConstant,
         numberLayer: number = 1, sampleCount: number = 0,
-        clear: boolean = true, autoResize: boolean = true) {
+        clear: boolean = true, autoResize: boolean = true,
+        ctx?: Context3D) {
 
         super(width, height, numberLayer);
         this.name = UUID();
@@ -46,11 +46,10 @@ export class RenderTexture extends Texture {
             this.usage = usage | GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_SRC | GPUTextureUsage.COPY_DST;
         }
 
-        this.resize(width, height);
+        this.resize(width, height, ctx);
 
         if (this.autoResize) {
-            // eslint-disable-next-line @typescript-eslint/no-deprecated
-            (this._boundCtx ?? webGPUContext).addEventListener(CResizeEvent.RESIZE, (e) => {
+            this._boundCtx!.addEventListener(CResizeEvent.RESIZE, (e) => {
                 let { width, height } = e.data;
                 this.resize(width, height);
                 this._textureChange = true;
@@ -58,12 +57,11 @@ export class RenderTexture extends Texture {
         }
     }
 
-    public resize(width, height) {
-        // eslint-disable-next-line @typescript-eslint/no-deprecated
-        bindCtx(this, webGPUContext);
+    public resize(width, height, ctx?: Context3D) {
+        this._ensureBound(ctx);
         let device = this._boundCtx!.device;
         if (this.gpuTexture) {
-            Texture.delayDestroyTexture(this.gpuTexture);
+            Texture.delayDestroyTexture(this._boundCtx!, this.gpuTexture);
             this.gpuTexture = null;
             this.view = null;
         }
@@ -134,8 +132,6 @@ export class RenderTexture extends Texture {
     * @returns
     */
     public create(width: number, height: number, useMiamp: boolean = true) {
-        // eslint-disable-next-line @typescript-eslint/no-deprecated
-        bindCtx(this, webGPUContext);
         let device = this._boundCtx!.device;
         const bytesPerRow = width * 4;
         let td = new Float32Array(width * height * 4);
@@ -146,7 +142,7 @@ export class RenderTexture extends Texture {
         });
 
         device.queue.writeBuffer(textureDataBuffer, 0, td);
-        const commandEncoder = GPUContext.beginCommandEncoder();
+        const commandEncoder = this._boundCtx!.gpuContext.beginCommandEncoder();
         commandEncoder.copyBufferToTexture(
             {
                 buffer: textureDataBuffer,
@@ -162,7 +158,7 @@ export class RenderTexture extends Texture {
             },
         );
 
-        GPUContext.endCommandEncoder(commandEncoder);
+        this._boundCtx!.gpuContext.endCommandEncoder(commandEncoder);
     }
 
     public clone() {
@@ -172,8 +168,7 @@ export class RenderTexture extends Texture {
     }
 
     public readTextureToImage() {
-        // eslint-disable-next-line @typescript-eslint/no-deprecated
-        const ctx = this._boundCtx ?? webGPUContext;
+        const ctx = this._boundCtx!;
         let device = ctx.device;
         let w = ctx.windowWidth;
         let h = ctx.windowHeight;
@@ -184,7 +179,7 @@ export class RenderTexture extends Texture {
             size: td.byteLength,
             usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC,
         });
-        const commandEncoder = GPUContext.beginCommandEncoder();
+        const commandEncoder = ctx.gpuContext.beginCommandEncoder();
         commandEncoder.copyTextureToBuffer(
             {
                 texture: this.getGPUTexture()

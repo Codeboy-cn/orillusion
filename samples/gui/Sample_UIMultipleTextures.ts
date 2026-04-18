@@ -30,7 +30,7 @@ class Sample_UIMultipleTextures {
         canvas.addChild(panelRoot)
 
         for (let i = 0; i < 10; i++) {
-            let bitmapTexture2D = new BitmapTexture2D()
+            let bitmapTexture2D = new BitmapTexture2D(true, engine.context3D)
             bitmapTexture2D.flipY = true
             await bitmapTexture2D.load('textures/digit/digit_' + i + '.png')
 

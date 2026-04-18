@@ -3,11 +3,12 @@ import { Scene3D, HoverCameraController, Engine3D, AtmosphericComponent, Object3
 
 //sample of direction light
 class Sample_DirectLight {
+    engine: Engine3D;
     scene: Scene3D;
     lightObj3D: any;
 
     async run() {
-        const engine = await Engine3D.create({});
+        const engine = this.engine = await Engine3D.create({});
 
         GUIHelp.init();
 
@@ -66,7 +67,7 @@ class Sample_DirectLight {
 
     initScene() {
         let mat = new LitMaterial();
-        mat.baseMap = Engine3D.res.grayTexture;
+        mat.baseMap = this.engine.res.grayTexture;
         mat.roughness = 0.4;
         mat.metallic = 0.6;
         let floor = new Object3D();

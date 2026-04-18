@@ -1,7 +1,6 @@
 import { ShaderLib } from "../../../../assets/shader/ShaderLib";
 import { Color } from "../../../../math/Color";
 import { VertexAttributeName } from "../../../../core/geometry/VertexAttributeName";
-import { GPUContext } from "../../../renderJob/GPUContext";
 import { BlendFactor, BlendMode } from "../../../../materials/BlendMode";
 import { IESProfiles } from "../../../../components/lights/IESProfiles";
 import { GeometryBase } from "../../../../core/geometry/GeometryBase";
@@ -10,7 +9,7 @@ import { GlobalBindGroupLayout } from "../core/bindGroups/GlobalBindGroupLayout"
 import { GPUBufferBase } from "../core/buffer/GPUBufferBase";
 import { UniformNode } from "../core/uniforms/UniformNode";
 import { Texture } from "../core/texture/Texture";
-import { bindCtx, webGPUContext } from "../Context3D";
+import { bindCtx, Context3D } from "../Context3D";
 import { ShaderConverter } from "./converter/ShaderConverter";
 import { ShaderPassBase } from "./ShaderPassBase";
 import { ShaderStage } from "./ShaderStage";
@@ -346,10 +345,9 @@ export class RenderShaderPass extends ShaderPassBase {
      * @param rendererPassState 
      * @param noticeFun 
      */
-    public apply(geometry: GeometryBase, rendererPassState: RendererPassState, noticeFun?: Function) {
-        // eslint-disable-next-line @typescript-eslint/no-deprecated
-        bindCtx(this, webGPUContext);
-        this.materialDataUniformBuffer.apply();
+    public apply(ctx: Context3D, geometry: GeometryBase, rendererPassState: RendererPassState, noticeFun?: Function) {
+        bindCtx(this, ctx);
+        this.materialDataUniformBuffer.apply(ctx);
 
         // Plan B: rebuild only when shader state changes or first time.
         if (this._valueChange || !this.pipeline) {
@@ -458,12 +456,12 @@ export class RenderShaderPass extends ShaderPassBase {
             key += `${k}=${this.defineValue[k]},`;
         }
 
-        let shaderModule = ShaderUtil.renderShaderModulePool.get(key);
+        const shaderModulePool = ShaderUtil.renderShaderModulePool(this._boundCtx!);
+        let shaderModule = shaderModulePool.get(key);
         if (!shaderModule) {
             shader = this.applyPostDefine(shader, renderPassState);
 
-            // eslint-disable-next-line @typescript-eslint/no-deprecated
-            const device = (this._boundCtx ?? webGPUContext).device;
+            const device = this._boundCtx!.device;
             shaderModule = device.createShaderModule({
                 label: stage == ShaderStage.vertex ? this.vsName : this.fsName,
                 code: shader,
@@ -475,7 +473,7 @@ export class RenderShaderPass extends ShaderPassBase {
                     console.log(e);
                 }
             });
-            ShaderUtil.renderShaderModulePool.set(key, shaderModule);
+            shaderModulePool.set(key, shaderModule);
         }
 
         switch (stage) {
@@ -531,7 +529,7 @@ export class RenderShaderPass extends ShaderPassBase {
                     case `sampler`:
                         {
                             let textureName = info.varName.replace(`Sampler`, ``);
-                            let texture = this.textures[textureName] ? this.textures[textureName] : Engine3D.res.redTexture;
+                            let texture = this.textures[textureName] ? this.textures[textureName] : Engine3D.resFor(this._boundCtx).redTexture;
                             let entry: GPUBindGroupLayoutEntry = {
                                 binding: info.binding,
                                 visibility: texture.visibility,
@@ -544,7 +542,7 @@ export class RenderShaderPass extends ShaderPassBase {
                     case `sampler_comparison`:
                         {
                             let textureName = info.varName.replace(`Sampler`, ``);
-                            let texture = this.textures[textureName] ? this.textures[textureName] : Engine3D.res.redTexture;
+                            let texture = this.textures[textureName] ? this.textures[textureName] : Engine3D.resFor(this._boundCtx).redTexture;
                             let entry: GPUBindGroupLayoutEntry = {
                                 binding: info.binding,
                                 visibility: texture.visibility,
@@ -562,7 +560,7 @@ export class RenderShaderPass extends ShaderPassBase {
                     case `texture_depth_cube`:
                     case `texture_depth_cube_array`:
                         {
-                            let texture = this.textures[info.varName] ? this.textures[info.varName] : Engine3D.res.redTexture;
+                            let texture = this.textures[info.varName] ? this.textures[info.varName] : Engine3D.resFor(this._boundCtx).redTexture;
                             let entry: GPUBindGroupLayoutEntry = {
                                 binding: info.binding,
                                 visibility: texture.visibility,
@@ -575,7 +573,7 @@ export class RenderShaderPass extends ShaderPassBase {
                         break;
                     case `texture_external`:
                         {
-                            let texture = this.textures[info.varName] ? this.textures[info.varName] : Engine3D.res.redTexture;
+                            let texture = this.textures[info.varName] ? this.textures[info.varName] : Engine3D.resFor(this._boundCtx).redTexture;
                             let entry: GPUBindGroupLayoutEntry = {
                                 binding: info.binding,
                                 visibility: texture.visibility,
@@ -588,7 +586,7 @@ export class RenderShaderPass extends ShaderPassBase {
                         break;
                     default:
                         {
-                            let texture = this.textures[info.varName] ? this.textures[info.varName] : Engine3D.res.redTexture;
+                            let texture = this.textures[info.varName] ? this.textures[info.varName] : Engine3D.resFor(this._boundCtx).redTexture;
                             let entry: GPUBindGroupLayoutEntry = {
                                 binding: info.binding,
                                 visibility: texture.visibility,
@@ -631,6 +629,7 @@ export class RenderShaderPass extends ShaderPassBase {
                             this.materialDataUniformBuffer.initDataUniform(uniforms);
                         }
 
+                        if (!buffer._boundCtx && this._boundCtx) bindCtx(buffer, this._boundCtx);
                         let entry: GPUBindGroupEntry = {
                             binding: refs.binding,
                             resource: {
@@ -649,6 +648,7 @@ export class RenderShaderPass extends ShaderPassBase {
                 } else if (refs.varType == `storage-read`) {
                     let buffer = this._bufferDic.get(refs.varName);
                     if (buffer) {
+                        if (!buffer._boundCtx && this._boundCtx) bindCtx(buffer, this._boundCtx);
                         let entry: GPUBindGroupEntry = {
                             binding: refs.binding,
                             resource: {
@@ -667,7 +667,7 @@ export class RenderShaderPass extends ShaderPassBase {
                         let textureName = refs.varName.replace(`Sampler`, ``);
                         let texture = this.textures[textureName];
                         if (!texture) {
-                            texture = Engine3D.res.blackTexture;
+                            texture = Engine3D.resFor(this._boundCtx).blackTexture;
                             this.setTexture(textureName, texture);
                         }
                         if (texture) {
@@ -694,7 +694,7 @@ export class RenderShaderPass extends ShaderPassBase {
                     } else {
                         let texture = this.textures[refs.varName];
                         if (!texture) {
-                            texture = Engine3D.res.whiteTexture;
+                            texture = Engine3D.resFor(this._boundCtx).whiteTexture;
                             this.setTexture(refs.varName, texture);
                         }
                         if (texture) {
@@ -710,8 +710,7 @@ export class RenderShaderPass extends ShaderPassBase {
                 }
             }
 
-            // eslint-disable-next-line @typescript-eslint/no-deprecated
-            const device = (this._boundCtx ?? webGPUContext).device;
+            const device = this._boundCtx!.device;
             let gpubindGroup = device.createBindGroup({
                 layout: this.bindGroupLayouts[groupIndex],
                 entries: entries
@@ -800,21 +799,21 @@ export class RenderShaderPass extends ShaderPassBase {
             }
         }
 
-        let pipeline = PipelinePool.getSharePipeline(this.shaderVariant);
+        const ctx = this._boundCtx!;
+        let pipeline = PipelinePool.getSharePipeline(ctx, this.shaderVariant);
         if (pipeline) {
             this.pipeline = pipeline;
         } else {
-            this.pipeline = GPUContext.createPipeline(renderPipelineDescriptor as GPURenderPipelineDescriptor);
-            PipelinePool.setSharePipeline(this.shaderVariant, this.pipeline);
+            this.pipeline = ctx.gpuContext.createPipeline(renderPipelineDescriptor as GPURenderPipelineDescriptor);
+            PipelinePool.setSharePipeline(ctx, this.shaderVariant, this.pipeline);
         }
     }
 
     private createGroupLayouts() {
         this._groupsShaderReflectionVarInfos = [];
         let shaderReflection = this.shaderReflection;
-        // eslint-disable-next-line @typescript-eslint/no-deprecated
-        const device = (this._boundCtx ?? webGPUContext).device;
-        this.bindGroupLayouts = [GlobalBindGroupLayout.getGlobalDataBindGroupLayout()];
+        const device = this._boundCtx!.device;
+        this.bindGroupLayouts = [GlobalBindGroupLayout.getGlobalDataBindGroupLayout(this._boundCtx!)];
 
         // Binding Group 1 is Global , skip
         for (let i = 1; i < shaderReflection.groups.length; i++) {
@@ -987,34 +986,38 @@ export class RenderShaderPass extends ShaderPassBase {
 
     /**
      * Destroy a RenderShader object
+     * @param ctx Context3D owning the shader cache
      * @param instanceID instance ID of the RenderShader
      */
-    public static destroyShader(instanceID: string) {
-        if (ShaderUtil.renderShader.has(instanceID)) {
-            let shader = ShaderUtil.renderShader.get(instanceID);
+    public static destroyShader(ctx: Context3D, instanceID: string) {
+        const registry = ShaderUtil.renderShader(ctx);
+        if (registry.has(instanceID)) {
+            let shader = registry.get(instanceID);
             shader.destroy();
-            ShaderUtil.renderShader.delete(instanceID)
+            registry.delete(instanceID);
         }
     }
 
     /**
      * Get the RenderShader object by specifying the RenderShader instance ID
+     * @param ctx Context3D owning the shader cache
      * @param instanceID instance ID of the RenderShader
      * @returns RenderShader object
      */
-    public static getShader(instanceID: string) {
-        return ShaderUtil.renderShader.get(instanceID);
+    public static getShader(ctx: Context3D, instanceID: string) {
+        return ShaderUtil.renderShader(ctx).get(instanceID);
     }
 
     /**
      * Create a RenderShader with vertex shaders and fragment shaders
+     * @param ctx Context3D owning the shader cache
      * @param vs Vertex shader name
      * @param fs Fragment shader name
      * @returns Returns the instance ID of the RenderShader
      */
-    public static createShader(vs: string, fs: string): string {
+    public static createShader(ctx: Context3D, vs: string, fs: string): string {
         let shader = new RenderShaderPass(vs, fs);
-        ShaderUtil.renderShader.set(shader.instanceID, shader);
+        ShaderUtil.renderShader(ctx).set(shader.instanceID, shader);
         return shader.instanceID;
     }
 

@@ -18,6 +18,7 @@ enum CameraModes {
 }
 
 class Sample_CameraPathAnimation {
+    engine: Engine3D;
     view: View3D;
     camera: Camera3D;
     graphic3D: Graphic3D;
@@ -55,7 +56,7 @@ class Sample_CameraPathAnimation {
         Engine3D.setting.pick.enable = true;
         Engine3D.setting.pick.mode = `pixel`;
 
-        const engine = await Engine3D.create({ renderLoop: () => this.loop() });
+        const engine = this.engine = await Engine3D.create({ renderLoop: () => this.loop() });
 
         let scene = new Scene3D();
         scene.addComponent(Stats);
@@ -132,7 +133,7 @@ class Sample_CameraPathAnimation {
 
         // 加载场景模型（渲染视图前加载会影响坐标轴组件的拾取精准度）
         // https://cdn.orillusion.com/gltfs/glb/BuildingWithCharacters/scene.glb
-        let model = await Engine3D.res.loadGltf('gltfs/glb/BuildingWithCharacters.glb');
+        let model = await this.engine.res.loadGltf('gltfs/glb/BuildingWithCharacters.glb');
         model.scaleX = model.scaleY = model.scaleZ = 0.3;
         scene.addChild(model);
 
@@ -453,7 +454,7 @@ class AxisController extends ComponentBase {
         Vector3.HELP_1.copyFrom(targetPos)[axis] += 10000;
 
         // const color = { 'x': Color.COLOR_RED, 'y': Color.COLOR_GREEN, 'z': Color.COLOR_BLUE }[axis]
-        this.view.graphic3D.drawLines('referenceLine', [Vector3.HELP_0, Vector3.HELP_1]); //  创建一条参考线
+        (this.view as any).graphic3D?.drawLines('referenceLine', [Vector3.HELP_0, Vector3.HELP_1]); //  创建一条参考线
 
         // 计算坐标轴对象当前的坐标与交点的偏移量，以便后续拖动时修正位置
         let intersection = this.calculateIntersectionPoint(this.view.camera, targetPos);
@@ -466,7 +467,7 @@ class AxisController extends ComponentBase {
         if (!this.selectedAxis || !this.selectedTarget || !this.enable) return;
         this.selectedAxis = null;
         this.cameraCtrl.enable = true;
-        this.view.graphic3D.Clear('referenceLine');
+        (this.view as any).graphic3D?.Clear('referenceLine');
     }
 
     private onPointerMove(e: PointerEvent3D) {

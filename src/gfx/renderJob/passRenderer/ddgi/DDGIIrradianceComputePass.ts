@@ -2,11 +2,11 @@ import { DDGIIrradiance_shader } from '../../../../assets/shader/compute/DDGIIrr
 import { View3D } from '../../../../core/View3D';
 import { Engine3D } from '../../../../Engine3D';
 import { RenderTexture } from '../../../../textures/RenderTexture';
+import { Context3D } from '../../../graphics/webGpu/Context3D';
 import { GlobalBindGroup } from '../../../graphics/webGpu/core/bindGroups/GlobalBindGroup';
 import { StorageGPUBuffer } from '../../../graphics/webGpu/core/buffer/StorageGPUBuffer';
 import { ComputeShader } from '../../../graphics/webGpu/shader/ComputeShader';
 import { EntityCollect } from '../../collect/EntityCollect';
-import { GPUContext } from '../../GPUContext';
 import { RendererPassState } from '../state/RendererPassState';
 import { DDGIIrradianceVolume } from './DDGIIrradianceVolume';
 
@@ -22,7 +22,10 @@ export class DDGIIrradianceComputePass {
     private volume: DDGIIrradianceVolume;
     private computeShader: ComputeShader;
     private depthRaysBuffer: StorageGPUBuffer;
-    constructor(volume: DDGIIrradianceVolume) {
+    private _ctx: Context3D;
+
+    constructor(ctx: Context3D, volume: DDGIIrradianceVolume) {
+        this._ctx = ctx;
         this.volume = volume;
         this.initPipeline();
     }
@@ -45,7 +48,7 @@ export class DDGIIrradianceComputePass {
         this.computeShader.setStorageBuffer(`probes`, this.volume.probesBuffer);
         this.computeShader.setUniformBuffer(`uniformData`, this.volume.irradianceVolumeBuffer);
 
-        this.computeShader.setStorageBuffer("models", GlobalBindGroup.modelMatrixBindGroup.matrixBufferDst);
+        this.computeShader.setStorageBuffer("models", GlobalBindGroup.getModelMatrixBindGroup(this._ctx).matrixBufferDst);
     }
 
     public setTextures(inputs: RenderTexture[], probeIrradianceMap: RenderTexture, probeDepthMap: RenderTexture) {
@@ -68,14 +71,15 @@ export class DDGIIrradianceComputePass {
     }
 
     public compute(view: View3D, renderPassState: RendererPassState) {
+        const gpu = view.engine3D.context3D.gpuContext;
         let setting = this.volume.setting;
-        let command = GPUContext.beginCommandEncoder();
+        let command = gpu.beginCommandEncoder();
         let probes = EntityCollect.instance.getProbes(view.scene);
 
         this.computeShader.workerSizeX = setting.octRTSideSize / 8;
         this.computeShader.workerSizeY = setting.octRTSideSize / 8;
         this.computeShader.workerSizeZ = probes.length;
-        GPUContext.computeCommand(command, [this.computeShader]);
-        GPUContext.endCommandEncoder(command);
+        gpu.computeCommand(command, [this.computeShader]);
+        gpu.endCommandEncoder(command);
     }
 }

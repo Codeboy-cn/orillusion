@@ -3,6 +3,7 @@ import { StaticAudio, AudioListener } from '@orillusion/media-extention'
 import { GUIHelp } from '@orillusion/debug/GUIHelp';
 
 export class Static_Audio {
+    engine: Engine3D;
     lightObj: Object3D;
     scene: Scene3D;
     camera: Object3D
@@ -18,7 +19,7 @@ export class Static_Audio {
         Engine3D.setting.shadow.shadowBound = 200;
         Engine3D.setting.shadow.shadowBias = 0.002;
 
-        const engine = await Engine3D.create();
+        const engine = this.engine = await Engine3D.create();
         this.scene = new Scene3D();
         this.scene.addComponent(AtmosphericComponent);
 
@@ -44,7 +45,7 @@ export class Static_Audio {
     async initScene() {
         {
             let group = new Object3D()
-            let speaker = await Engine3D.res.loadGltf('gltfs/speaker/scene.gltf')
+            let speaker = await this.engine.res.loadGltf('gltfs/speaker/scene.gltf')
             speaker.localScale.set(4, 4, 4)
             speaker.rotationX = -120
             //speaker.y = 1.5

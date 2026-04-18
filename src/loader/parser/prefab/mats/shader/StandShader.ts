@@ -1,4 +1,5 @@
 import { Engine3D, PassType } from "../../../../..";
+import { Context3D } from "../../../../../gfx/graphics/webGpu/Context3D";
 import { Texture } from "../../../../../gfx/graphics/webGpu/core/texture/Texture";
 import { RenderShaderPass } from "../../../../../gfx/graphics/webGpu/shader/RenderShaderPass";
 import { Color } from "../../../../../math/Color";
@@ -8,8 +9,11 @@ import { Shader } from "../../../../../gfx/graphics/webGpu/shader/Shader";
 
 export class StandShader extends Shader {
 
-    constructor() {
+    private _ctx: Context3D | undefined;
+
+    constructor(ctx?: Context3D) {
         super();
+        this._ctx = ctx;
 
         let colorShader = new RenderShaderPass('PBRLItShader', 'PBRLItShader');
         colorShader.setShaderEntry(`VertMain`, `FragMain`)
@@ -63,9 +67,10 @@ export class StandShader extends Shader {
         this.setUniformVector4(`metallicMapOffsetSize`, new Vector4(0, 0, 1, 1));
         this.setUniformVector4(`aoMapOffsetSize`, new Vector4(0, 0, 1, 1));
 
-        this.baseMap = Engine3D.res.whiteTexture;
-        this.normalMap = Engine3D.res.normalTexture;
-        this.maskMap = Engine3D.res.maskTexture;
+        const res = Engine3D.resFor(this._ctx);
+        this.baseMap = res.whiteTexture;
+        this.normalMap = res.normalTexture;
+        this.maskMap = res.maskTexture;
     }
 
     public get baseMap(): Texture {
@@ -334,7 +339,7 @@ export class StandShader extends Shader {
     public set aoMap(value: Texture) {
         if (!value) return;
         this.getDefaultColorShader().setTexture(`aoMap`, value);
-        if (value != Engine3D.res.whiteTexture) {
+        if (value != Engine3D.resFor(this._ctx).whiteTexture) {
             this.getDefaultColorShader().setDefine(`USE_AOTEX`, true);
         }
     }

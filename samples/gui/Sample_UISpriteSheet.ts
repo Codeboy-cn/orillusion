@@ -4,6 +4,7 @@ import { GUIHelp } from "@orillusion/debug/GUIHelp";
 import { createExampleScene } from "@samples/utils/ExampleScene";
 
 export class Sample_UISpriteSheet {
+    engine: Engine3D;
 
     img: UIImage;
 
@@ -12,10 +13,10 @@ export class Sample_UISpriteSheet {
 
         GUIHelp.init();
 
-        const engine = await Engine3D.create({ renderLoop: () => { this.renderUpdate(); } });
+        const engine = this.engine = await Engine3D.create({ renderLoop: () => { this.renderUpdate(); } });
         let exampleScene = createExampleScene(engine);
         engine.startRenderView(exampleScene.view);
-        await Engine3D.res.loadAtlas('atlas/Sheet_atlas.json');
+        await this.engine.res.loadAtlas('atlas/Sheet_atlas.json');
 
         // enable ui canvas at index 0
         let canvas = exampleScene.view.enableUICanvas();
@@ -33,7 +34,7 @@ export class Sample_UISpriteSheet {
         panelRoot.addChild(quad);
 
         this.img = quad.addComponent(UIImage);
-        this.img.sprite = Engine3D.res.getGUISprite('00065');
+        this.img.sprite = this.engine.res.getGUISprite('00065');
         this.img.uiTransform.resize(256, 256);
 
         // create floor
@@ -61,7 +62,7 @@ export class Sample_UISpriteSheet {
         if (newIndex != this.lastIndex) {
             this.lastIndex = newIndex;
             let frameKey = (this.lastIndex + this.frameStart).toString().padStart(5, '0');
-            this.img.sprite = Engine3D.res.getGUISprite(frameKey);
+            this.img.sprite = this.engine.res.getGUISprite(frameKey);
         }
     }
 }

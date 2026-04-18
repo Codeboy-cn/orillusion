@@ -14,7 +14,7 @@ export class AtlasParser extends ParserBase {
     public async parseString(data: string) {
         this._json = JSON.parse(data);
         let textureUrl = this.userData.replace('.json', '.png');
-        this._texture = await Engine3D.res.loadTexture(textureUrl, null, true);
+        this._texture = await Engine3D.resFor(this.ctx).loadTexture(textureUrl, null, true);
 
         this.data = { json: this._json, texture: this._texture };
         this.parseAtlas();
@@ -40,7 +40,7 @@ export class AtlasParser extends ParserBase {
         for (const key in atlasInfo) {
             atlas.setTexture(texture, key, atlasInfo[key]);
         }
-        Engine3D.res.addAtlas(this.baseUrl, atlas);
+        Engine3D.resFor(this.ctx).addAtlas(this.baseUrl, atlas);
         this.data = atlas;
     }
 }

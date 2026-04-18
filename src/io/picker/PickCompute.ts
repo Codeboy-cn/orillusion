@@ -3,7 +3,6 @@ import { View3D } from '../../core/View3D';
 import { GlobalBindGroup } from '../../gfx/graphics/webGpu/core/bindGroups/GlobalBindGroup';
 import { ComputeGPUBuffer } from '../../gfx/graphics/webGpu/core/buffer/ComputeGPUBuffer';
 import { ComputeShader } from '../../gfx/graphics/webGpu/shader/ComputeShader';
-import { GPUContext } from '../../gfx/renderJob/GPUContext';
 import { GBufferFrame } from '../../gfx/renderJob/frame/GBufferFrame';
 import { Vector2 } from '../../math/Vector2';
 import { Vector3 } from '../../math/Vector3';
@@ -16,8 +15,8 @@ export class PickCompute {
     private _outBuffer: ComputeGPUBuffer;
     constructor() { }
 
-    public init() {
-        let rtFrame = GBufferFrame.getGBufferFrame(GBufferFrame.colorPass_GBuffer);
+    public init(view: View3D) {
+        let rtFrame = GBufferFrame.getGBufferFrame(GBufferFrame.colorPass_GBuffer, view.engine3D.context3D);
         this._computeShader = new ComputeShader(Picker_cs);
 
         this._outBuffer = new ComputeGPUBuffer(32);
@@ -29,9 +28,10 @@ export class PickCompute {
         let stand = GlobalBindGroup.getCameraGroup(view.camera);
         this._computeShader.setStorageBuffer('globalUniform', stand.uniformGPUBuffer);
 
-        let command = GPUContext.beginCommandEncoder();
-        GPUContext.computeCommand(command, [this._computeShader]);
-        GPUContext.endCommandEncoder(command);
+        const gpu = view.engine3D.context3D.gpuContext;
+        let command = gpu.beginCommandEncoder();
+        gpu.computeCommand(command, [this._computeShader]);
+        gpu.endCommandEncoder(command);
         this._outBuffer.readBuffer();
     }
 

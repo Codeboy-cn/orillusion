@@ -1,5 +1,5 @@
 import { GUIHelp } from "@orillusion/debug/GUIHelp";
-import { Engine3D, Scene3D, AtmosphericComponent, Object3D, Camera3D, OrbitController, DirectLight, Color, View3D, BitmapTexture2D, UnLitMaterial, MeshRenderer, PlaneGeometry, Vector3, GPUCullMode, CameraUtil, webGPUContext } from "@orillusion/core";
+import { Engine3D, Scene3D, AtmosphericComponent, Object3D, Camera3D, OrbitController, DirectLight, Color, View3D, BitmapTexture2D, UnLitMaterial, MeshRenderer, PlaneGeometry, Vector3, GPUCullMode, CameraUtil } from "@orillusion/core";
 
 class Sample_CullMode {
     async run() {
@@ -34,9 +34,9 @@ class Sample_CullMode {
         sky.relativeTransform = light.transform;
 
         let planeObj: Object3D;
-        let texture = new BitmapTexture2D();
+        let texture = new BitmapTexture2D(true, engine.context3D);
         await texture.load('https://cdn.orillusion.com/gltfs/cube/material_02.png');
-        let material = new UnLitMaterial();
+        let material = new UnLitMaterial(engine.context3D);
         material.baseMap = texture;
         material.cullMode = GPUCullMode.none;
 

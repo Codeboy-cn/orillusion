@@ -149,7 +149,7 @@ export class ParticleSystem extends RenderNode {
             this._frame = Time.frame;
             this._time += this.preheatTime;
             this.particleSimulator.updateBuffer(this.preheatTime);
-            this.particleSimulator.compute(command);
+            this.particleSimulator.compute(view, command);
             return;
         }
 
@@ -159,7 +159,7 @@ export class ParticleSystem extends RenderNode {
             delta *= this.playSpeed;
             this._time += delta;
             this.particleSimulator.updateBuffer(delta);
-            this.particleSimulator.compute(command);
+            this.particleSimulator.compute(view, command);
         }
     }
 }

@@ -3,6 +3,7 @@ import { createExampleScene } from "@samples/utils/ExampleScene";
 import { Engine3D, Object3DUtil, Object3D, UIImage, ImageType, Camera3D, WorldPanel, UITransform } from "@orillusion/core";
 
 export class Sample_UIVisible {
+    engine: Engine3D;
     imageComponentList: UIImage[];
     uiTransform: UITransform;
     counter: number = 0;
@@ -12,7 +13,7 @@ export class Sample_UIVisible {
 
         GUIHelp.init();
 
-        const engine = await Engine3D.create({ renderLoop: () => { this.renderUpdate(); } });
+        const engine = this.engine = await Engine3D.create({ renderLoop: () => { this.renderUpdate(); } });
 
         let exampleScene = createExampleScene(engine);
         engine.startRenderView(exampleScene.view);
@@ -29,7 +30,7 @@ export class Sample_UIVisible {
         let panelRoot: Object3D = new Object3D();
         panelRoot.scaleX = panelRoot.scaleY = panelRoot.scaleZ = 0.2;
 
-        await Engine3D.res.loadAtlas('atlas/Sheet_atlas.json');
+        await this.engine.res.loadAtlas('atlas/Sheet_atlas.json');
 
         let panel = panelRoot.addComponent(WorldPanel);
         canvas.addChild(panel.object3D);
@@ -44,7 +45,7 @@ export class Sample_UIVisible {
             panelRoot.addChild(imageQuad);
             let img = imageQuad.addComponent(UIImage);
             let frameKey = (i + frameStart).toString().padStart(5, '0');
-            img.sprite = Engine3D.res.getGUISprite(frameKey);
+            img.sprite = this.engine.res.getGUISprite(frameKey);
             img.imageType = ImageType.Sliced;
             img.uiTransform.resize(200, 200);
             img.uiTransform.x = (i - (this.spriteCount - 1) * 0.5) * 50;

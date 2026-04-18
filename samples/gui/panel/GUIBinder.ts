@@ -1,4 +1,4 @@
-import { Object3D, CEvent, CEventDispatcher } from "@orillusion/core";
+import { Object3D, CEvent, CEventDispatcher, Engine3D } from "@orillusion/core";
 import { GUIPanelPOI } from "./GUIPanelPOI";
 
 export class GUIPanelBinder {
@@ -6,12 +6,12 @@ export class GUIPanelBinder {
     panel: GUIPanelPOI;
     ball: Object3D;
 
-    constructor(ball: Object3D, ui: Object3D, index: number) {
+    constructor(engine: Engine3D, ball: Object3D, ui: Object3D, index: number) {
         this.ball = ball;
         this.objUI = ui;
         this.objUI.name = 'panel ' + index;
         this.objUI.scaleX = this.objUI.scaleY = this.objUI.scaleZ = 0.1;
-        this.panel = new GUIPanelPOI(this.objUI, index);
+        this.panel = new GUIPanelPOI(engine, this.objUI, index);
     }
 
     update(delta: number) {

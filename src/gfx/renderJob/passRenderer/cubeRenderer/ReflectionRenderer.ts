@@ -2,7 +2,6 @@ import { Camera3D } from '../../../../core/Camera3D';
 import { CubeCamera } from '../../../../core/CubeCamera';
 import { Engine3D } from '../../../../Engine3D';
 import { EntityCollect } from '../../collect/EntityCollect';
-import { GPUContext } from '../../GPUContext';
 import { OcclusionSystem } from '../../occlusion/OcclusionSystem';
 import { RendererBase } from '../RendererBase';
 import { PassType } from '../state/PassType';
@@ -44,12 +43,13 @@ export class ReflectionRenderer extends RendererBase {
      * 
      * @param volume 
      */
-    constructor() {
+    constructor(view: View3D) {
         super();
 
         this.passType = PassType.REFLECTION;
 
         this.cubeCamera = new CubeCamera(0.01, 5000);
+        this.cubeCamera.bindCtx(view.engine3D.context3D);
         let mipmap = 1;// TextureMipmapGenerator.getMipmapCount(this.sizeW, this.sizeH);
 
         this.probeSize = Engine3D.setting.reflectionSetting.reflectionProbeSize;
@@ -57,10 +57,10 @@ export class ReflectionRenderer extends RendererBase {
         this.sizeW = Engine3D.setting.reflectionSetting.width;
         this.sizeH = Engine3D.setting.reflectionSetting.height;
 
-        this.gBuffer = GBufferFrame.getGBufferFrame(GBufferFrame.reflections_GBuffer, this.sizeW, this.sizeH, false);
-        this.setRenderStates(this.gBuffer);
+        this.gBuffer = GBufferFrame.getGBufferFrame(GBufferFrame.reflections_GBuffer, view.engine3D.context3D, this.sizeW, this.sizeH, false);
+        this.setRenderStates(view.engine3D.context3D, this.gBuffer);
 
-        this.outTexture = new VirtualTexture(this.probeSize * this.mipCount, this.sizeH, GPUTextureFormat.rgba16float, false, GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.COPY_SRC | GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING, 1, 0, mipmap);
+        this.outTexture = new VirtualTexture(this.probeSize * this.mipCount, this.sizeH, GPUTextureFormat.rgba16float, false, GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.COPY_SRC | GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING, 1, 0, mipmap, view.engine3D.context3D);
         this.outTexture.name = 'texture_AAA';
 
         this.preFilteredEnvironmentUniform = new UniformGPUBuffer(4 + this.probeCount * 4);
@@ -83,6 +83,7 @@ export class ReflectionRenderer extends RendererBase {
     public compute(view: View3D, occlusionSystem: OcclusionSystem): void {
         if (this.needUpdate) {
             this.needUpdate = false;
+            const gpu = view.engine3D.context3D.gpuContext;
             let reflectionEntries = GlobalBindGroup.getReflectionEntries(view.scene);
             reflectionEntries.reflectionMap = this.outTexture;
 
@@ -90,18 +91,19 @@ export class ReflectionRenderer extends RendererBase {
             this.preFilteredEnvironmentCompute.workerSizeY = Math.ceil(this.sizeH / 16);
             this.preFilteredEnvironmentCompute.workerSizeZ = this.mipCount * reflectionEntries.count;
 
-            let command = GPUContext.beginCommandEncoder();
-            GPUContext.computeCommand(
+            let command = gpu.beginCommandEncoder();
+            gpu.computeCommand(
                 command,
                 [
                     this.preFilteredEnvironmentCompute
                 ]
             );
-            GPUContext.endCommandEncoder(command);
+            gpu.endCommandEncoder(command);
         }
     }
 
     public render(view: View3D, occlusionSystem: OcclusionSystem, clusterLightingBuffer?: ClusterLightingBuffer, maskTr: boolean = false, hasPost: boolean = false): void {
+        this.renderContext.gpu = view.engine3D.context3D.gpuContext;
         this.renderContext.clean();
         let spaceX = this.probeSize;
         let spaceY = this.probeSize;
@@ -151,6 +153,7 @@ export class ReflectionRenderer extends RendererBase {
     }
 
     public renderOnce(view: View3D, camera: Camera3D, encoder, occlusionSystem: OcclusionSystem, clusterLightingBuffer?: ClusterLightingBuffer, maskTr: boolean = false) {
+        const gpu = view.engine3D.context3D.gpuContext;
         let scene = view.scene;
         camera.transform.scene3D = scene;
         this.rendererPassState.camera3D = camera;
@@ -161,7 +164,7 @@ export class ReflectionRenderer extends RendererBase {
 
             const sky = EntityCollect.instance.getSky(scene);
             if (!maskTr && sky) {
-                GPUContext.bindCamera(renderPassEncoder, camera);
+                gpu.bindCamera(renderPassEncoder, camera);
                 if (!sky.preInit(PassType.REFLECTION)) {
                     sky.nodeUpdate(view, PassType.REFLECTION, this.rendererPassState, clusterLightingBuffer);
                 }
@@ -169,12 +172,12 @@ export class ReflectionRenderer extends RendererBase {
             }
 
             if (collectInfo.opaqueList) {
-                GPUContext.bindCamera(renderPassEncoder, camera);
+                gpu.bindCamera(renderPassEncoder, camera);
                 this.drawNodes(view, this.renderContext, collectInfo.opaqueList, occlusionSystem, clusterLightingBuffer);
             }
 
             if (!maskTr && collectInfo.transparentList) {
-                GPUContext.bindCamera(renderPassEncoder, camera);
+                gpu.bindCamera(renderPassEncoder, camera);
                 this.drawNodes(view, this.renderContext, collectInfo.transparentList, occlusionSystem, clusterLightingBuffer);
             }
         }

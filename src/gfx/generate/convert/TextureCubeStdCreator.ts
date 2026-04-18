@@ -1,6 +1,4 @@
 import { Texture } from '../../graphics/webGpu/core/texture/Texture';
-import { webGPUContext, perContextResource } from '../../graphics/webGpu/Context3D';
-import { GPUContext } from '../../renderJob/GPUContext';
 import { RenderTexture } from '../../../textures/RenderTexture';
 
 /**
@@ -66,13 +64,15 @@ fn samplePixel(face:i32, uv01:vec2<f32>) -> vec4<f32> {
 }
 `;
 
-    private static _state = perContextResource<{ configBuffer: GPUBuffer; blurSettingBuffer: GPUBuffer; pipeline: GPUComputePipeline }>();
-
     static createFace(index: number, size: number, inTex: Texture, outTex: RenderTexture): void {
-        // eslint-disable-next-line @typescript-eslint/no-deprecated
-        const ctx = inTex._boundCtx ?? outTex._boundCtx ?? webGPUContext;
+        const ctx = inTex._boundCtx ?? outTex._boundCtx!;
         const device = ctx.device;
-        const state = this._state(() => ({ configBuffer: null, blurSettingBuffer: null, pipeline: null }), ctx);
+        const gpu = ctx.gpuContext;
+        const state = ctx.cache(TextureCubeStdCreator, () => ({
+            configBuffer: null as GPUBuffer,
+            blurSettingBuffer: null as GPUBuffer,
+            pipeline: null as GPUComputePipeline,
+        }));
         if (state.pipeline == null) {
             state.pipeline = device.createComputePipeline({
                 layout: `auto`,
@@ -126,13 +126,13 @@ fn samplePixel(face:i32, uv01:vec2<f32>) -> vec4<f32> {
             entries: entries0,
         });
 
-        const commandEncoder = GPUContext.beginCommandEncoder();
+        const commandEncoder = gpu.beginCommandEncoder();
         const computePass = commandEncoder.beginComputePass();
         computePass.setPipeline(computePipeline);
         computePass.setBindGroup(0, computeBindGroup0);
         computePass.dispatchWorkgroups(size / 8, size / 8);
 
         computePass.end();
-        GPUContext.endCommandEncoder(commandEncoder);
+        gpu.endCommandEncoder(commandEncoder);
     }
 }

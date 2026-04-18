@@ -3,6 +3,7 @@ import { sampleUIPanelClick, sampleUIPanelDispatcher } from "./GUIBinder";
 
 export class GUIPanelPOI {
     private readonly alpha = 0.8;
+    private engine: Engine3D;
     private objUI: Object3D;
     private index: number;
     private _originColor: Color = new Color();
@@ -10,7 +11,8 @@ export class GUIPanelPOI {
     private _backImage: UIImage;
     private _outColor = new Color(0, 0.5, 0.75, this.alpha);
 
-    constructor(obj, index: number) {
+    constructor(engine: Engine3D, obj, index: number) {
+        this.engine = engine;
         this.objUI = obj;
         this.index = index;
         this.displayUIDetail();
@@ -44,7 +46,7 @@ export class GUIPanelPOI {
         if (newIndex != this.lastIndex) {
             this.lastIndex = newIndex;
             let frameKey = (this.lastIndex + this.frameStart).toString().padStart(5, '0');
-            this._icon.sprite = Engine3D.res.getGUISprite(frameKey);
+            this._icon.sprite = this.engine.res.getGUISprite(frameKey);
         }
     }
 
@@ -128,7 +130,7 @@ export class GUIPanelPOI {
 
     private addImage(obj: Object3D, texture: string, w: number, h: number, r: number, g: number, b: number, a: number = 1): UIImage {
         let image = obj.addComponent(UIImage);
-        image.sprite = Engine3D.res.getGUISprite(texture);
+        image.sprite = this.engine.res.getGUISprite(texture);
         image.uiTransform.resize(w, h);
         image.imageType = ImageType.Sliced;
         image.color.setTo(r, g, b, a);

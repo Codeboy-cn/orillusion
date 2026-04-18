@@ -1,8 +1,9 @@
 import { GUIHelp } from "@orillusion/debug/GUIHelp";
-import { Object3D, Scene3D, Engine3D, AtmosphericComponent, CameraUtil, webGPUContext, HoverCameraController, View3D, LitMaterial, MeshRenderer, BoxGeometry, DirectLight, KelvinUtil, Object3DUtil, AnimatorComponent, PostProcessingComponent, FXAAPost } from "@orillusion/core";
+import { Object3D, Scene3D, Engine3D, AtmosphericComponent, CameraUtil, HoverCameraController, View3D, LitMaterial, MeshRenderer, BoxGeometry, DirectLight, KelvinUtil, Object3DUtil, AnimatorComponent, PostProcessingComponent, FXAAPost } from "@orillusion/core";
 import { GUIUtil } from "@samples/utils/GUIUtil";
 
 class Sample_Skeleton {
+    engine: Engine3D;
     lightObj3D: Object3D;
     scene: Scene3D;
     async run() {
@@ -12,7 +13,7 @@ class Sample_Skeleton {
         Engine3D.setting.shadow.shadowBound = 100;
         Engine3D.setting.shadow.shadowBias = 0.01;
 
-        const engine = await Engine3D.create();
+        const engine = this.engine = await Engine3D.create();
 
         this.scene = new Scene3D();
         let sky = this.scene.addComponent(AtmosphericComponent);
@@ -42,7 +43,7 @@ class Sample_Skeleton {
         GUIHelp.init();
         {
             // load model with skeleton animation
-            let man = await Engine3D.res.loadGltf('gltfs/CesiumMan/CesiumMan_compress.gltf');
+            let man = await this.engine.res.loadGltf('gltfs/CesiumMan/CesiumMan_compress.gltf');
             man.scaleX = 30;
             man.scaleY = 30;
             man.scaleZ = 30;

@@ -4,6 +4,7 @@ import { GUIPanelBinder, sampleUIPanelDispatcher, sampleUIPanelClick } from "./p
 import { Camera3D, Scene3D, View3D, Engine3D, Object3DUtil, Object3D, Vector3, WorldPanel, Time, zSorterUtil, BillboardType } from "@orillusion/core";
 
 export class Sample_UIMultiPanel {
+    engine: Engine3D;
     camera: Camera3D;
     scene: Scene3D;
     view: View3D;
@@ -13,7 +14,7 @@ export class Sample_UIMultiPanel {
 
         GUIHelp.init();
 
-        const engine = await Engine3D.create({ renderLoop: () => { this.renderUpdate(); } });
+        const engine = this.engine = await Engine3D.create({ renderLoop: () => { this.renderUpdate(); } });
 
         let sceneData = createSceneParam();
         sceneData.camera.distance = 160;
@@ -25,14 +26,14 @@ export class Sample_UIMultiPanel {
         // enable ui canvas at index 0
         let canvas = exampleScene.view.enableUICanvas();
 
-        let car = await Engine3D.res.loadGltf('gltfs/pbrCar/pbrCar.gltf');
+        let car = await this.engine.res.loadGltf('gltfs/pbrCar/pbrCar.gltf');
         car.localScale = new Vector3(1.5, 1.5, 1.5);
 
         this.scene.addChild(car);
         this.scene.addChild(Object3DUtil.GetSingleCube(400, 1, 400, 0.2, 0.2, 0.2));
 
-        await Engine3D.res.loadFont('fnt/0.fnt');
-        await Engine3D.res.loadAtlas('atlas/Sheet_atlas.json');
+        await this.engine.res.loadFont('fnt/0.fnt');
+        await this.engine.res.loadAtlas('atlas/Sheet_atlas.json');
 
         this.makeUIPanelList();
     }
@@ -64,7 +65,7 @@ export class Sample_UIMultiPanel {
             ball.localPosition = pos;
 
             //binder
-            let node = new GUIPanelBinder(ball, panelRoot, i);
+            let node = new GUIPanelBinder(this.engine, ball, panelRoot, i);
             this.nodeList.push(node);
         }
 

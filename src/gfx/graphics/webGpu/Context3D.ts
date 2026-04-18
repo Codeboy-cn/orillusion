@@ -32,6 +32,18 @@ export class Context3D extends CEventDispatcher {
     public device: GPUDevice;
     public presentationFormat: GPUTextureFormat;
 
+    /** Per-Context3D GPU command/pipeline state (lazy).
+     *  Factory is installed by GPUContext.ts at its module load to avoid a
+     *  circular ESM import at Context3D load time. */
+    private _gpuContext: import('../../renderJob/GPUContext').GPUContextInstance | null = null;
+    public get gpuContext(): import('../../renderJob/GPUContext').GPUContextInstance {
+        if (!this._gpuContext) {
+            if (!_gpuContextFactory) throw new Error('gpuContext factory not registered — import GPUContext before using gpuContext.');
+            this._gpuContext = _gpuContextFactory(this);
+        }
+        return this._gpuContext;
+    }
+
     public get pixelRatio() { return this._pixelRatio; }
 
     async init(canvasConfig?: CanvasConfig): Promise<boolean> {
@@ -97,7 +109,7 @@ export class Context3D extends CEventDispatcher {
         const resizeObserver = new ResizeObserver(async () => {
             this.updateSize();
             const { Texture } = await import('./core/texture/Texture');
-            Texture.destroyTexture();
+            Texture.destroyTexture(this);
         });
 
         resizeObserver.observe(this.canvas);
@@ -123,43 +135,31 @@ export class Context3D extends CEventDispatcher {
     }
 
     private static _nextLabel: number = 0;
-}
 
-/**
- * @deprecated Migration shim. Points at the most-recently-active Context3D.
- * In Plan-B, GPU-bearing objects should hold `_boundCtx` and use
- * `bindCtx(this, ctx)` instead of reading this global. This shim exists
- * only so that the file-by-file migration does not require a single
- * big-bang commit. DO NOT use in new code.
- * @internal
- */
-export let webGPUContext: Context3D = new Context3D();
-
-/**
- * @deprecated Migration shim. Use explicit `ctx` params threaded through
- * the render call chain; use `bindCtx(this, ctx)` on GPU-bearing objects.
- * @internal
- */
-export function setActiveContext3D(ctx: Context3D): void {
-    webGPUContext = ctx;
-}
-
-/**
- * @deprecated Migration shim. Old per-context cache helper.
- * In Plan-B, each GPU-bearing object has a single-field GPU resource
- * tied to its `_boundCtx`; this factory is no longer needed.
- * @internal
- */
-export function perContextResource<T>(): (factory: () => T, ctx?: Context3D) => T {
-    const store = new WeakMap<Context3D, T>();
-    return (factory: () => T, ctx: Context3D = webGPUContext): T => {
-        let v = store.get(ctx);
+    /**
+     * Per-Context3D lazy cache. Stores one value per `key` (typically the
+     * owning class) so GPU objects can be memoized against a specific device
+     * without leaking across Context3Ds.
+     *
+     * Usage: `ctx.cache(MyClass, () => new ExpensiveThing(ctx))`.
+     */
+    private _caches: Map<unknown, unknown> = new Map();
+    public cache<T>(key: unknown, factory: () => T): T {
+        let v = this._caches.get(key) as T | undefined;
         if (v === undefined) {
             v = factory();
-            store.set(ctx, v);
+            this._caches.set(key, v);
         }
         return v;
-    };
+    }
+}
+
+/** @internal Factory slot so GPUContext.ts can register its instance creator
+ *  without Context3D.ts statically importing it (would be a circular ESM
+ *  import otherwise). */
+let _gpuContextFactory: ((ctx: Context3D) => import('../../renderJob/GPUContext').GPUContextInstance) | null = null;
+export function _registerGpuContextFactory(f: (ctx: Context3D) => import('../../renderJob/GPUContext').GPUContextInstance): void {
+    _gpuContextFactory = f;
 }
 
 /**

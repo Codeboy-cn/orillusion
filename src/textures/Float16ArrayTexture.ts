@@ -1,9 +1,8 @@
 import { Texture } from '../gfx/graphics/webGpu/core/texture/Texture';
 import { TextureMipmapGenerator } from '../gfx/graphics/webGpu/core/texture/TextureMipmapGenerator';
 import { GPUTextureFormat } from '../gfx/graphics/webGpu/WebGPUConst';
-import { bindCtx, webGPUContext } from '../gfx/graphics/webGpu/Context3D';
+import { Context3D } from '../gfx/graphics/webGpu/Context3D';
 import { toHalfFloat } from '../util/Convert';
-import { GPUContext } from '../gfx/renderJob/GPUContext';
 /**
  * @internal
  * Float16Array texture
@@ -21,21 +20,21 @@ export class Float16ArrayTexture extends Texture {
      * @param useMipmap  whether or not gen mipmap
      * @returns
      */
-    public create(width: number, height: number, numbers: number[] = null, mipmap: boolean = true): this {
+    public create(width: number, height: number, numbers: number[] = null, mipmap: boolean = true, ctx?: Context3D): this {
         if (numbers == null) {
             numbers = [];
             for (let i = 0, c = width * height * 4; i < c; i++) {
                 numbers[i] = 0;
             }
         }
-        this.updateTexture(width, height, numbers, mipmap);
+        this.updateTexture(width, height, numbers, mipmap, ctx);
         return this;
     }
 
     /**
      * validate the change of this texture
      */
-    public updateTexture(width: number, height: number, numbers: number[], mipmap: boolean = true) {
+    public updateTexture(width: number, height: number, numbers: number[], mipmap: boolean = true, ctx?: Context3D) {
         if (width != this.width || height != this.height) {
             this._dataBuffer && this._dataBuffer.destroy();
             this._dataBuffer = null;
@@ -44,8 +43,7 @@ export class Float16ArrayTexture extends Texture {
         }
 
         this.floatArray = numbers;
-        // eslint-disable-next-line @typescript-eslint/no-deprecated
-        bindCtx(this, webGPUContext);
+        this._ensureBound(ctx);
         let device = this._boundCtx!.device;
         const bytesPerRow = width * 4 * 2;
         this.format = GPUTextureFormat.rgba16float;
@@ -65,7 +63,7 @@ export class Float16ArrayTexture extends Texture {
         }));
 
         device.queue.writeBuffer(textureDataBuffer, 0, uint16Array as BufferSource);
-        const commandEncoder = GPUContext.beginCommandEncoder();
+        const commandEncoder = this._boundCtx!.gpuContext.beginCommandEncoder();
         commandEncoder.copyBufferToTexture(
             {
                 buffer: textureDataBuffer,
@@ -84,7 +82,7 @@ export class Float16ArrayTexture extends Texture {
             this.samplerBindingLayout.type = `filtering`;
             this.textureBindingLayout.sampleType = `float`;
         }
-        GPUContext.endCommandEncoder(commandEncoder);
+        this._boundCtx!.gpuContext.endCommandEncoder(commandEncoder);
 
         // this.sampler.minFilter = `nearest`;
         // this.sampler.magFilter = `nearest`;

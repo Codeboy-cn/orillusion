@@ -3,6 +3,7 @@ import { GUIUtil } from "@samples/utils/GUIUtil";
 import { GUIHelp } from "@orillusion/debug/GUIHelp";
 
 class Sample_GI {
+    engine: Engine3D;
     lightObj3D: Object3D;
     scene: Scene3D;
     view: View3D;
@@ -37,7 +38,7 @@ class Sample_GI {
         Engine3D.setting.shadow.autoUpdate = true;
         Engine3D.setting.shadow.updateFrameRate = 1;
 
-        const engine = await Engine3D.create({
+        const engine = this.engine = await Engine3D.create({
             renderLoop: () => {
                 if (this.giComponent?.isStart) {
                     GUIUtil.renderGIComponent(this.giComponent, this.view);
@@ -117,7 +118,7 @@ class Sample_GI {
         }
 
         {
-            let chair = await Engine3D.res.loadGltf('PBR/SheenChair/SheenChair.gltf') as Object3D;
+            let chair = await this.engine.res.loadGltf('PBR/SheenChair/SheenChair.gltf') as Object3D;
             chair.scaleX = chair.scaleY = chair.scaleZ = 100;
             chair.rotationZ = chair.rotationX = 130;
             chair.z = -120;
@@ -125,7 +126,7 @@ class Sample_GI {
         }
 
         {
-            let Duck = await Engine3D.res.loadGltf('PBR/Duck/Duck.gltf') as Object3D;
+            let Duck = await this.engine.res.loadGltf('PBR/Duck/Duck.gltf') as Object3D;
             Duck.scaleX = Duck.scaleY = Duck.scaleZ = 0.3;
             Duck.transform.y = 0;
             Duck.transform.x = 0;
@@ -134,7 +135,7 @@ class Sample_GI {
         }
 
         {
-            let car = await Engine3D.res.loadGltf('gltfs/pbrCar/pbrCar.gltf');
+            let car = await this.engine.res.loadGltf('gltfs/pbrCar/pbrCar.gltf');
             car.scaleX = car.scaleY = car.scaleZ = 1.5;
             car.x = 20;
             obj3dList.push(car);

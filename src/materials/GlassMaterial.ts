@@ -5,6 +5,7 @@ import { Material } from './Material';
 import { Shader } from '../gfx/graphics/webGpu/shader/Shader';
 import { RenderShaderPass } from '../gfx/graphics/webGpu/shader/RenderShaderPass';
 import { PassType } from '../gfx/renderJob/passRenderer/state/PassType';
+import { Context3D } from '../gfx/graphics/webGpu/Context3D';
 
 /**
  * GlassMaterial
@@ -16,7 +17,7 @@ export class GlassMaterial extends Material {
     /**
      * @constructor
      */
-    constructor() {
+    constructor(ctx?: Context3D) {
         super();
         ShaderLib.register("GlassShader", GlassShader);
 
@@ -34,9 +35,10 @@ export class GlassMaterial extends Material {
         shaderState.acceptGI = true;
         shaderState.useLight = true;
 
-        this.shader.setTexture("baseMap", Engine3D.res.whiteTexture);
-        this.shader.setTexture("normalMap", Engine3D.res.normalTexture);
-        this.shader.setTexture("emissiveMap", Engine3D.res.blackTexture);
+        const res = Engine3D.resFor(ctx);
+        this.shader.setTexture("baseMap", res.whiteTexture);
+        this.shader.setTexture("normalMap", res.normalTexture);
+        this.shader.setTexture("emissiveMap", res.blackTexture);
     }
 
     // clone(): this {

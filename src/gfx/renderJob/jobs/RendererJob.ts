@@ -95,6 +95,7 @@ export class RendererJob {
      */
     constructor(view: View3D) {
         this._view = view;
+        const ctx = view.engine3D.context3D;
 
         this.rendererMap = new RendererMap();
 
@@ -105,12 +106,12 @@ export class RendererJob {
         this.reflectionRenderer = this.addRenderer(ReflectionRenderer, view);
 
         if (Engine3D.setting.render.zPrePass) {
-            this.depthPassRenderer = this.addRenderer(PreDepthPassRenderer);
+            this.depthPassRenderer = this.addRenderer(PreDepthPassRenderer, ctx);
         }
 
-        this.shadowMapPassRenderer = new ShadowMapPassRenderer();
+        this.shadowMapPassRenderer = new ShadowMapPassRenderer(ctx);
 
-        this.pointLightShadowRenderer = new PointLightShadowRenderer();
+        this.pointLightShadowRenderer = new PointLightShadowRenderer(ctx);
 
         this.addPost(new FXAAPost());
     }
@@ -173,9 +174,11 @@ export class RendererJob {
      */
     public addPost(post: PostBase): PostBase | PostBase[] {
         if (!this.postRenderer) {
-            let gbufferFrame = GBufferFrame.getGBufferFrame('ColorPassGBuffer');
+            const ctx = this._view.engine3D.context3D;
+            let gbufferFrame = GBufferFrame.getGBufferFrame('ColorPassGBuffer', ctx);
             this.postRenderer = this.addRenderer(PostRenderer);
-            this.postRenderer.setRenderStates(gbufferFrame);
+            this.postRenderer.initRenderer(ctx);
+            this.postRenderer.setRenderStates(ctx, gbufferFrame);
         }
 
         if (post instanceof PostBase) {
@@ -247,7 +250,7 @@ export class RendererJob {
         guiRenderer.render(view, this.occlusionSystem, this.clusterLightingRender.clusterLightingBuffer, false);
 
         //output
-        let lastTexture = GBufferFrame.getGUIBufferFrame().getColorTexture();
+        let lastTexture = GBufferFrame.getGUIBufferFrame(view.engine3D.context3D).getColorTexture();
         this.postRenderer.presentContent(view, lastTexture);
     }
 

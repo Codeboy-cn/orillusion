@@ -1,5 +1,6 @@
 import { Texture } from '../core/texture/Texture';
-import { bindCtx, webGPUContext } from '../Context3D';
+import { bindCtx } from '../Context3D';
+import { Engine3D } from '../../../../Engine3D';
 import { ShaderPassBase } from './ShaderPassBase';
 import { ShaderReflection, ShaderReflectionVarInfo } from './value/ShaderReflectionInfo';
 import { Preprocessor } from './util/Preprocessor';
@@ -81,8 +82,27 @@ export class ComputeShader extends ShaderPassBase {
      * @param computePass Compute pass encoder
      */
     public compute(computePass: GPUComputePassEncoder) {
-        // eslint-disable-next-line @typescript-eslint/no-deprecated
-        bindCtx(this, webGPUContext);
+        if (!this._boundCtx) {
+            // Derive ctx from any attached buffer or texture's bound context.
+            for (const buf of this._bufferDic.values()) {
+                if (buf._boundCtx) { bindCtx(this, buf._boundCtx); break; }
+            }
+            if (!this._boundCtx) {
+                for (const tex of this._storageTextureDic.values()) {
+                    if (tex._boundCtx) { bindCtx(this, tex._boundCtx); break; }
+                }
+            }
+            if (!this._boundCtx) {
+                for (const tex of this._sampleTextureDic.values()) {
+                    if (tex._boundCtx) { bindCtx(this, tex._boundCtx); break; }
+                }
+            }
+            // Fall back to the single-engine default when nothing attached has
+            // been materialized yet (common for compute samples where buffers
+            // are apply()'d with deferred upload).
+            if (!this._boundCtx) bindCtx(this, Engine3D._defaultContext());
+        }
+        if (this._boundCtx) this._propagateCtx(this._boundCtx);
         if (!this._computePipeline) {
             this.genComputePipeline();
         }
@@ -98,6 +118,22 @@ export class ComputeShader extends ShaderPassBase {
             computePass.dispatchWorkgroups(this.workerSizeX, this.workerSizeY);
         } else {
             computePass.dispatchWorkgroups(this.workerSizeX);
+        }
+    }
+
+    /**
+     * Bind all attached buffers/textures to the ComputeShader's Context3D so
+     * their `.buffer` / `.gpuTexture` getters materialize on the correct device.
+     */
+    private _propagateCtx(ctx: import('../Context3D').Context3D) {
+        for (const buf of this._bufferDic.values()) {
+            if (!buf._boundCtx) bindCtx(buf, ctx);
+        }
+        for (const tex of this._storageTextureDic.values()) {
+            if (!tex._boundCtx) bindCtx(tex, ctx);
+        }
+        for (const tex of this._sampleTextureDic.values()) {
+            if (!tex._boundCtx) bindCtx(tex, ctx);
         }
     }
 
@@ -202,8 +238,7 @@ export class ComputeShader extends ShaderPassBase {
                 }
             }
 
-            // eslint-disable-next-line @typescript-eslint/no-deprecated
-            const device = (this._boundCtx ?? webGPUContext).device;
+            const device = this._boundCtx!.device;
             let gpubindGroup = device.createBindGroup({
                 layout: this._computePipeline.getBindGroupLayout(groupIndex),
                 entries: entries
@@ -217,8 +252,7 @@ export class ComputeShader extends ShaderPassBase {
         this.preCompileShader(this._sourceCS);
         this.genReflection();
 
-        // eslint-disable-next-line @typescript-eslint/no-deprecated
-        const device = (this._boundCtx ?? webGPUContext).device;
+        const device = this._boundCtx!.device;
         this._computePipeline = device.createComputePipeline({
             layout: `auto`,
             compute: {
@@ -237,8 +271,7 @@ export class ComputeShader extends ShaderPassBase {
             this.genGroups(i, this._groupsShaderReflectionVarInfos);
         }
 
-        // eslint-disable-next-line @typescript-eslint/no-deprecated
-        (this._boundCtx ?? webGPUContext).addEventListener(CResizeEvent.RESIZE, (e) => {
+        this._boundCtx!.addEventListener(CResizeEvent.RESIZE, (e) => {
             for (let i = 0; i < shaderReflection.groups.length; ++i) {
                 let srvs = shaderReflection.groups[i];
                 this._groupsShaderReflectionVarInfos[i] = srvs;
@@ -258,8 +291,7 @@ export class ComputeShader extends ShaderPassBase {
     }
 
     protected compileShader(): GPUShaderModule {
-        // eslint-disable-next-line @typescript-eslint/no-deprecated
-        const device = (this._boundCtx ?? webGPUContext).device;
+        const device = this._boundCtx!.device;
         let shaderModule = device.createShaderModule({
             label: `ComputeShader(${this.instanceID})`,
             code: this._destCS,

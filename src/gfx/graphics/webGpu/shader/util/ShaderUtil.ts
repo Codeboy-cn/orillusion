@@ -1,4 +1,4 @@
-import { perContextResource, webGPUContext, Context3D } from "../../Context3D";
+import { Context3D } from "../../Context3D";
 import { RenderShaderPass } from "../RenderShaderPass";
 
 export type VertexPart = {
@@ -26,29 +26,26 @@ type ShaderUtilState = {
 };
 
 export class ShaderUtil {
-    private static _cache = perContextResource<ShaderUtilState>();
-
     /**
-     * Legacy static accessors proxy to the active Context3D's state.
-     * Device-bound GPU shader modules are keyed per-device; the RenderShaderPass
-     * cache is also per-device (since the passes internally hold device-bound
-     * pipelines).
+     * Per-Context3D shader state accessors. Device-bound GPU shader modules
+     * are keyed per-device; the RenderShaderPass cache is also per-device
+     * (since the passes internally hold device-bound pipelines).
      */
-    public static get renderShaderModulePool(): Map<string, GPUShaderModule> {
-        return this._state().renderShaderModulePool;
+    public static renderShaderModulePool(ctx: Context3D): Map<string, GPUShaderModule> {
+        return this._state(ctx).renderShaderModulePool;
     }
-    public static get renderShader(): Map<string, RenderShaderPass> {
-        return this._state().renderShader;
+    public static renderShader(ctx: Context3D): Map<string, RenderShaderPass> {
+        return this._state(ctx).renderShader;
     }
 
-    private static _state(ctx: Context3D = webGPUContext): ShaderUtilState {
-        return this._cache(() => ({
+    private static _state(ctx: Context3D): ShaderUtilState {
+        return ctx.cache(ShaderUtil, () => ({
             renderShaderModulePool: new Map<string, GPUShaderModule>(),
             renderShader: new Map<string, RenderShaderPass>(),
-        }), ctx);
+        }));
     }
 
-    public static init() {
-        this._state();
+    public static init(ctx: Context3D) {
+        this._state(ctx);
     }
 }

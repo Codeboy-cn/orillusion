@@ -57,6 +57,7 @@ class Sample_EatTheBox {
         this.view = new View3D();
         this.view.scene = scene;
         this.view.camera = camera;
+        this.view.engine3D = engine;
 
         //create floor and wall
         this.createFloor();
@@ -167,6 +168,8 @@ class Sample_EatTheBox {
         mr.material = mat;
         mat.baseColor = KelvinUtil.color_temperature_to_rgb(1325);
         sphereObj.y = 5;
+        // attach to scene first so MoveScript.init() can resolve engine.inputSystem via transform.view3D
+        this.view.scene.addChild(sphereObj);
         //add movescript
         this.moveScript = sphereObj.addComponent(MoveScript);
         this.moveScript.rigidbody = sphereObj.addComponent(Rigidbody);
@@ -174,7 +177,6 @@ class Sample_EatTheBox {
         this.moveScript.rigidbody.mass = 10;
         let collider = sphereObj.addComponent(ColliderComponent);
         collider.shape = new SphereColliderShape(1);
-        this.view.scene.addChild(sphereObj);
     }
     private loop() {
         if (Physics.isInited) {

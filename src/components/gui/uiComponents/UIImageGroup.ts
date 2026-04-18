@@ -46,7 +46,11 @@ export class UIImageGroup extends UIRenderAble {
     }
 
     public setSprite(index: number, value: GUISprite) {
-        this._mainQuads[index].sprite = value || Engine3D.res.defaultGUISprite;
+        if (!value) {
+            const ctx = this.transform?.view3D?.engine3D?.context3D ?? Engine3D._defaultContext();
+            value = Engine3D.resFor(ctx).defaultGUISprite;
+        }
+        this._mainQuads[index].sprite = value;
         this.setShadowDirty();
     }
 

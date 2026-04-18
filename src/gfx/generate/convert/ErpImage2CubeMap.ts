@@ -1,8 +1,6 @@
 import { VirtualTexture } from '../../../textures/VirtualTexture';
 import { Texture } from '../../graphics/webGpu/core/texture/Texture';
-import { webGPUContext, perContextResource } from '../../graphics/webGpu/Context3D';
 import { TextureCubeUtils } from './TextureCubeUtils';
-import { GPUContext } from '../../renderJob/GPUContext';
 import { ErpImage2CubeMapCreateCube_cs } from '../../../assets/shader/compute/ErpImage2CubeMapCreateCube_cs';
 import { ErpImage2CubeMapRgbe2rgba_cs } from '../../../assets/shader/compute/ErpImage2CubeMapRgbe2rgba_cs';
 /**
@@ -11,8 +9,9 @@ import { ErpImage2CubeMapRgbe2rgba_cs } from '../../../assets/shader/compute/Erp
  */
 export class ErpImage2CubeMap {
     public static convertRGBE2RGBA(image: VirtualTexture, data: Float32Array): void {
-        // eslint-disable-next-line @typescript-eslint/no-deprecated
-        const device = (image._boundCtx ?? webGPUContext).device;
+        const ctx = image._boundCtx!;
+        const device = ctx.device;
+        const gpu = ctx.gpuContext;
         const computePipeline = device.createComputePipeline({
             layout: `auto`,
             compute: {
@@ -64,7 +63,7 @@ export class ErpImage2CubeMap {
             entries: entries0,
         });
 
-        const commandEncoder = GPUContext.beginCommandEncoder();
+        const commandEncoder = gpu.beginCommandEncoder();
         const computePass = commandEncoder.beginComputePass();
         computePass.setPipeline(computePipeline);
         computePass.setBindGroup(0, computeBindGroup0);
@@ -72,19 +71,21 @@ export class ErpImage2CubeMap {
 
         computePass.end();
 
-        GPUContext.endCommandEncoder(commandEncoder);
+        gpu.endCommandEncoder(commandEncoder);
 
         configBuffer.destroy();
     }
 
-    private static _state = perContextResource<{ makeFaceTexturePipeline: GPUComputePipeline; configBuffer: GPUBuffer; quaternionBuffer: GPUBuffer }>();
-
     //Image is the float32 color value converted from rgbe to rgba
     public static makeTextureCube(image: Texture, dstSize: number, dstView: GPUTextureView): void {
-        // eslint-disable-next-line @typescript-eslint/no-deprecated
-        const ctx = image._boundCtx ?? webGPUContext;
+        const ctx = image._boundCtx!;
         const device = ctx.device;
-        const state = this._state(() => ({ makeFaceTexturePipeline: null, configBuffer: null, quaternionBuffer: null }), ctx);
+        const gpu = ctx.gpuContext;
+        const state = ctx.cache(ErpImage2CubeMap, () => ({
+            makeFaceTexturePipeline: null as GPUComputePipeline,
+            configBuffer: null as GPUBuffer,
+            quaternionBuffer: null as GPUBuffer,
+        }));
         state.makeFaceTexturePipeline ||= device.createComputePipeline({
             layout: `auto`,
             compute: {
@@ -166,7 +167,7 @@ export class ErpImage2CubeMap {
             entries: entries1,
         });
 
-        const commandEncoder = GPUContext.beginCommandEncoder();
+        const commandEncoder = gpu.beginCommandEncoder();
         const computePass = commandEncoder.beginComputePass();
         computePass.setPipeline(computePipeline);
         computePass.setBindGroup(0, computeBindGroup0);
@@ -175,6 +176,6 @@ export class ErpImage2CubeMap {
 
         computePass.end();
 
-        GPUContext.endCommandEncoder(commandEncoder);
+        gpu.endCommandEncoder(commandEncoder);
     }
 }

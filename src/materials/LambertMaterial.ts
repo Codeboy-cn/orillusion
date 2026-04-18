@@ -2,6 +2,7 @@
 import { Lambert_shader, Material, PassType, RenderShaderPass, Shader } from '..';
 import { ShaderLib } from '../assets/shader/ShaderLib';
 import { Engine3D } from '../Engine3D';
+import { Context3D } from '../gfx/graphics/webGpu/Context3D';
 import { Texture } from '../gfx/graphics/webGpu/core/texture/Texture';
 import { Color } from '../math/Color';
 import { Vector4 } from '../math/Vector4';
@@ -16,7 +17,7 @@ export class LambertMaterial extends Material {
     /**
      * @constructor
      */
-    constructor() {
+    constructor(ctx?: Context3D) {
         super();
         let colorPass = new RenderShaderPass(`LambertShader`, `LambertShader`);
         colorPass.setShaderEntry(`VertMain`, `FragMain`)
@@ -36,7 +37,7 @@ export class LambertMaterial extends Material {
         let newShader = new Shader();
         newShader.addRenderPass(colorPass);
         this.shader = newShader;
-        this.baseMap = Engine3D.res.grayTexture;
+        this.baseMap = Engine3D.resFor(ctx).grayTexture;
     }
 
     /**

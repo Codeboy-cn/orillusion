@@ -1,7 +1,6 @@
 import { BoundingBox, Vector3 } from "../../..";
 import { View3D } from "../../../core/View3D";
 import { Object3D } from "../../../core/entities/Object3D";
-import { webGPUContext } from "../../../gfx/graphics/webGpu/Context3D";
 import { BillboardComponent } from "../../BillboardComponent";
 import { BillboardType, GUIConfig, GUISpace } from "../GUIConfig";
 import { GUICanvas } from "../core/GUICanvas";
@@ -56,9 +55,10 @@ export class UIPanel extends UIImage {
 
     init(param?: any) {
         super.init(param);
-        // eslint-disable-next-line @typescript-eslint/no-deprecated
-        let ctx = webGPUContext;
-        this._uiTransform.resize(ctx.canvas.width, ctx.canvas.height);
+        let ctx = this.transform?.view3D?.engine3D?.context3D;
+        if (ctx) {
+            this._uiTransform.resize(ctx.canvas.width, ctx.canvas.height);
+        }
         this.create(this.space);
         this.visible = false;
     }
@@ -160,8 +160,7 @@ export class UIPanel extends UIImage {
         panel._uiRenderer.needSortOnCameraZ = panel.needSortOnCameraZ;
 
         //update material
-        // eslint-disable-next-line @typescript-eslint/no-deprecated
-        let ctx = view?.engine3D?.context3D ?? webGPUContext;
+        let ctx = view.engine3D.context3D;
         if (this.space == GUISpace.View) {
             let sW = ctx.canvas.clientWidth;
             let sH = ctx.canvas.clientHeight;

@@ -1,8 +1,9 @@
 import { GUIHelp } from "@orillusion/debug/GUIHelp";
-import { Object3D, Scene3D, Engine3D, AtmosphericComponent, CameraUtil, webGPUContext, HoverCameraController, View3D, LitMaterial, MeshRenderer, BoxGeometry, DirectLight, KelvinUtil, Object3DUtil, SkeletonAnimationComponent, AnimatorComponent } from "@orillusion/core";
+import { Object3D, Scene3D, Engine3D, AtmosphericComponent, CameraUtil, HoverCameraController, View3D, LitMaterial, MeshRenderer, BoxGeometry, DirectLight, KelvinUtil, Object3DUtil, SkeletonAnimationComponent, AnimatorComponent } from "@orillusion/core";
 import { GUIUtil } from "@samples/utils/GUIUtil";
 
 class Sample_Skeleton2 {
+    engine: Engine3D;
     lightObj3D: Object3D;
     scene: Scene3D;
 
@@ -12,7 +13,7 @@ class Sample_Skeleton2 {
         Engine3D.setting.shadow.updateFrameRate = 1;
         Engine3D.setting.shadow.shadowSize = 2048;
 
-        const engine = await Engine3D.create();
+        const engine = this.engine = await Engine3D.create();
 
         this.scene = new Scene3D();
         let sky = this.scene.addComponent(AtmosphericComponent);
@@ -20,7 +21,7 @@ class Sample_Skeleton2 {
 
         let mainCamera = CameraUtil.createCamera3DObject(this.scene);
         mainCamera.enableCSM = true;
-        mainCamera.perspective(60, webGPUContext.aspect, 1, 3000.0);
+        mainCamera.perspective(60, engine.context3D.aspect, 1, 3000.0);
 
         let hoverCameraController = mainCamera.object3D.addComponent(HoverCameraController);
         hoverCameraController.setCamera(45, -30, 300);
@@ -60,7 +61,7 @@ class Sample_Skeleton2 {
 
         {
             // load model with skeletion animation
-            let rootNode = await Engine3D.res.loadGltf('gltfs/glb/Soldier.glb');
+            let rootNode = await this.engine.res.loadGltf('gltfs/glb/Soldier.glb');
             let character = rootNode.getObjectByName('Character') as Object3D;
             character.scaleX = 0.3;
             character.scaleY = 0.3;

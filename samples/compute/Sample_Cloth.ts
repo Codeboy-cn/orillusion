@@ -1,8 +1,9 @@
 import { GUIHelp } from '@orillusion/debug/GUIHelp';
-import { AtmosphericComponent, BoxGeometry, CameraUtil, DirectLight, Engine3D, HoverCameraController, LitMaterial, MeshRenderer, Object3D, PlaneGeometry, Scene3D, SphereGeometry, View3D, webGPUContext } from '@orillusion/core';
+import { AtmosphericComponent, BoxGeometry, CameraUtil, DirectLight, Engine3D, HoverCameraController, LitMaterial, MeshRenderer, Object3D, PlaneGeometry, Scene3D, SphereGeometry, View3D } from '@orillusion/core';
 import { ClothSimulator } from "./cloth/ClothSimulator";
 
 export class Demo_Cloth {
+    engine: Engine3D;
     constructor() {
     }
 
@@ -11,7 +12,7 @@ export class Demo_Cloth {
         Engine3D.setting.shadow.shadowSize = 2048;
         Engine3D.setting.shadow.shadowBias = 0.0002;
 
-        const engine = await Engine3D.create({});
+        const engine = this.engine = await Engine3D.create({});
 
         GUIHelp.init();
 
@@ -21,7 +22,7 @@ export class Demo_Cloth {
 
         let camera = CameraUtil.createCamera3DObject(scene);
 
-        camera.perspective(60, webGPUContext.aspect, 0.01, 10000.0);
+        camera.perspective(60, engine.context3D.aspect, 0.01, 10000.0);
         let ctl = camera.object3D.addComponent(HoverCameraController);
         ctl.setCamera(30, -28, 2);
 
@@ -34,7 +35,7 @@ export class Demo_Cloth {
 
     async initScene(scene: Scene3D) {
         let mat = new LitMaterial();
-        mat.baseMap = Engine3D.res.grayTexture;
+        mat.baseMap = this.engine.res.grayTexture;
         mat.roughness = 0.8;
         mat.metallic = 0.1;
 
@@ -54,7 +55,7 @@ export class Demo_Cloth {
 
         {
             let mat = new LitMaterial();
-            mat.baseMap = Engine3D.res.grayTexture;
+            mat.baseMap = this.engine.res.grayTexture;
             mat.roughness = 0.8;
             let plane = new Object3D();
             plane.transform.y = -1;

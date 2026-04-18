@@ -1,9 +1,9 @@
 import { AtmosphericScatteringSky_shader } from '../assets/shader/sky/AtmosphericScatteringSky_shader';
+import { Context3D } from '../gfx/graphics/webGpu/Context3D';
 import { UniformGPUBuffer } from '../gfx/graphics/webGpu/core/buffer/UniformGPUBuffer';
 import { Texture } from '../gfx/graphics/webGpu/core/texture/Texture';
 import { ComputeShader } from '../gfx/graphics/webGpu/shader/ComputeShader';
 import { GPUTextureFormat } from '../gfx/graphics/webGpu/WebGPUConst';
-import { GPUContext } from '../gfx/renderJob/GPUContext';
 import { Color } from '../math/Color';
 import { LDRTextureCube } from './LDRTextureCube';
 import { VirtualTexture } from './VirtualTexture';
@@ -40,13 +40,13 @@ export class AtmosphericScatteringSky extends LDRTextureCube {
      * @param setting AtmosphericScatteringSkySetting
      * @returns
      */
-    constructor(setting: AtmosphericScatteringSkySetting) {
+    constructor(setting: AtmosphericScatteringSkySetting, ctx?: Context3D) {
         super();
         this.setting = setting;
         this._cubeSize = setting.defaultTextureCubeSize;
-        this._internalTexture = new AtmosphericTexture2D(setting.defaultTexture2DSize, setting.defaultTexture2DSize * 0.5);
+        this._internalTexture = new AtmosphericTexture2D(setting.defaultTexture2DSize, setting.defaultTexture2DSize * 0.5, ctx);
         this._internalTexture.update(this.setting);
-        this.createFromTexture(this._cubeSize, this._internalTexture);
+        this.createFromTexture(this._cubeSize, this._internalTexture, ctx);
 
         return this;
     }
@@ -73,8 +73,8 @@ class AtmosphericTexture2D extends VirtualTexture {
     private _computeShader: ComputeShader;
     private _uniformBuffer: UniformGPUBuffer;
 
-    constructor(width: number, height: number) {
-        super(width, height, GPUTextureFormat.rgba16float, false, GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.TEXTURE_BINDING);
+    constructor(width: number, height: number, ctx?: Context3D) {
+        super(width, height, GPUTextureFormat.rgba16float, false, GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.TEXTURE_BINDING, 1, 0, 1, ctx);
         this.initCompute(width, height);
     }
 
@@ -104,9 +104,9 @@ class AtmosphericTexture2D extends VirtualTexture {
         this._uniformBuffer.setColor('skyColor', setting.skyColor);
         this._uniformBuffer.apply();
 
-        let command = GPUContext.beginCommandEncoder();
-        GPUContext.computeCommand(command, [this._computeShader]);
-        GPUContext.endCommandEncoder(command);
+        let command = this._boundCtx!.gpuContext.beginCommandEncoder();
+        this._boundCtx!.gpuContext.computeCommand(command, [this._computeShader]);
+        this._boundCtx!.gpuContext.endCommandEncoder(command);
         return this;
     }
 }

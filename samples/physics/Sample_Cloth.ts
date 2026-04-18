@@ -1,18 +1,19 @@
-import { Engine3D, View3D, Scene3D, CameraUtil, AtmosphericComponent, webGPUContext, HoverCameraController, Object3D, DirectLight, LitMaterial, MeshRenderer, PlaneGeometry, Vector3, Object3DUtil } from "@orillusion/core";
+import { Engine3D, View3D, Scene3D, CameraUtil, AtmosphericComponent, HoverCameraController, Object3D, DirectLight, LitMaterial, MeshRenderer, PlaneGeometry, Vector3, Object3DUtil } from "@orillusion/core";
 import { Graphic3D } from "@orillusion/graphic";
 import { Physics, Rigidbody, ClothSoftbody } from "@orillusion/physics";
 import dat from "dat.gui";
 
 class Sample_Cloth {
+    engine: Engine3D;
     async run() {
         await Physics.init({ useSoftBody: true });
-        const engine = await Engine3D.create({ renderLoop: () => Physics.update() });
+        const engine = this.engine = await Engine3D.create({ renderLoop: () => Physics.update() });
         let view = new View3D();
         view.scene = new Scene3D();
         let sky = view.scene.addComponent(AtmosphericComponent);
 
         view.camera = CameraUtil.createCamera3DObject(view.scene);
-        view.camera.perspective(60, webGPUContext.aspect, 1, 1000.0);
+        view.camera.perspective(60, engine.context3D.aspect, 1, 1000.0);
         view.camera.object3D.addComponent(HoverCameraController).setCamera(0, -30, 20, new Vector3(0, 3, 0));
 
         let lightObj3D = new Object3D();
@@ -68,7 +69,7 @@ class Sample_Cloth {
         let meshRenderer = cloth.addComponent(MeshRenderer);
         meshRenderer.geometry = new PlaneGeometry(8, 8, 20, 20, Vector3.UP);
         let material = new LitMaterial();
-        material.baseMap = Engine3D.res.redTexture;
+        material.baseMap = this.engine.res.redTexture;
         material.cullMode = 'none';
         meshRenderer.material = material;
 

@@ -6,8 +6,7 @@ import { InputSystem } from './io/InputSystem';
 import { View3D } from './core/View3D';
 import { version } from '../package.json';
 
-import { Context3D, perContextResource, setActiveContext3D } from './gfx/graphics/webGpu/Context3D';
-import { RTResourceMap } from './gfx/renderJob/frame/RTResourceMap';
+import { Context3D } from './gfx/graphics/webGpu/Context3D';
 
 import { ForwardRenderJob } from './gfx/renderJob/jobs/ForwardRenderJob';
 import { GlobalBindGroup } from './gfx/graphics/webGpu/core/bindGroups/GlobalBindGroup';
@@ -124,21 +123,46 @@ export class Engine3D {
         reflectionSetting: { reflectionProbeMaxCount: 8, reflectionProbeSize: 256, width: 256 * 6, height: 8 * 256, enable: true }
     };
 
-    /** Per-instance resource manager (initialized lazily per-device).
-     *  The `Res` instance is cached in the store *before* `initDefault()`
-     *  runs, because `initDefault()` creates a `LitMaterial` whose default
-     *  shader recursively reads `Engine3D.res` — the re-entrant call must
-     *  see the same (partially-initialized) instance instead of looping
-     *  the factory.
+    /**
+     * Per-Context3D Res accessor. Pass the owning engine's `context3D`
+     * explicitly to target a specific device.
+     *
+     * When `ctx` is omitted AND exactly one Engine3D has been created,
+     * falls back to that engine's context — keeps the single-engine path
+     * (`new LitMaterial()`, etc.) ergonomic. For multi-engine apps the
+     * caller MUST pass `ctx`; otherwise this throws because picking one
+     * arbitrarily would silently bind resources to the wrong device.
+     *
+     * The `Res` instance is cached before `initDefault()` runs because
+     * `initDefault()` creates a `LitMaterial` whose default shader reads
+     * `engine.res` recursively — the re-entrant call must see the same
+     * (partially-initialized) instance instead of looping the factory.
      */
-    private static _resStore = perContextResource<Res>();
-    public static get res(): Res {
-        const r = this._resStore(() => new Res());
+    public static resFor(ctx?: Context3D): Res {
+        const useCtx = ctx ?? Engine3D._defaultContext();
+        const r = useCtx.cache(Engine3D, () => new Res(useCtx));
         if (!(r as any)._didInitDefault) {
             (r as any)._didInitDefault = true;
-            r.initDefault();
+            r.initDefault(useCtx);
         }
         return r;
+    }
+
+    /**
+     * Return a Context3D when the caller didn't thread one. Used for
+     * single-engine ergonomics (built-in material ctors with no arg).
+     * Throws when 0 or 2+ engines exist.
+     */
+    public static _defaultContext(): Context3D {
+        if (Engine3D._instances.size === 1) {
+            return Engine3D._instances.values().next().value!.context3D;
+        }
+        if (Engine3D._instances.size === 0) {
+            throw new Error(`Engine3D.resFor: no engine created yet — call Engine3D.create() first.`);
+        }
+        throw new Error(
+            `Engine3D.resFor: ${Engine3D._instances.size} engines exist — pass ctx explicitly so resources bind to the intended device.`
+        );
     }
 
     /** All registered engine instances (for the shared render loop). */
@@ -156,6 +180,15 @@ export class Engine3D {
     public renderJobs: Map<View3D, RendererJob> = new Map();
     public inputSystem: InputSystem;
     public running: boolean = false;
+
+    /**
+     * Per-engine resource manager. All GPU resources created through
+     * `engine.res` (shaders, textures, loaders) bind to this engine's
+     * Context3D.
+     */
+    public get res(): Res {
+        return Engine3D.resFor(this.context3D);
+    }
 
     private _frameRateValue: number = 0;
     private _frameRate: number = 360;
@@ -199,20 +232,19 @@ export class Engine3D {
     // -------- instance methods --------
 
     private async _initInstance(descriptor: { canvasConfig?: CanvasConfig; beforeRender?: Function; renderLoop?: Function; lateRender?: Function }) {
-        setActiveContext3D(this.context3D);
         await this.context3D.init(descriptor.canvasConfig);
 
         // Device-scoped subsystem init.
-        ShaderUtil.init();
-        GlobalBindGroup.init();
-        RTResourceMap.init();
+        ShaderUtil.init(this.context3D);
+        GlobalBindGroup.init(this.context3D);
 
         // Eagerly create this device's default textures / BRDF LUT /sky cube.
-        void Engine3D.res;
+        void Engine3D.resFor(this.context3D);
 
         // Pre-compute reflection GBuffer (scoped to this engine's context).
         GBufferFrame.getGBufferFrame(
             GBufferFrame.reflections_GBuffer,
+            this.context3D,
             Engine3D.setting.reflectionSetting.width,
             Engine3D.setting.reflectionSetting.height,
             false
@@ -239,24 +271,6 @@ export class Engine3D {
     public get width(): number { return this.context3D.windowWidth; }
     public get height(): number { return this.context3D.windowHeight; }
 
-    /**
-     * Set this engine's Context3D as the currently-active WebGPU context.
-     *
-     * **Normally not needed.** Scene-graph objects (Geometry, Material,
-     * Texture) materialize their GPU resources lazily per-context on first
-     * access during render, so building scenes in any order across
-     * multiple engines works without calling `use()`. This method remains
-     * as an escape hatch for code that performs eager GPU work at
-     * construction time (some advanced custom Material / custom Texture
-     * subclasses) and wants to pick which device that work targets.
-     *
-     * Returns the engine for fluent chaining.
-     */
-    public use(): this {
-        setActiveContext3D(this.context3D);
-        return this;
-    }
-
     public dispose() {
         Engine3D._instances.delete(this);
         this.views = [];
@@ -266,8 +280,21 @@ export class Engine3D {
     // -------- render view setup --------
 
     private _startRenderJob(view: View3D): RendererJob {
-        setActiveContext3D(this.context3D);
         view.engine3D = this;
+        // Bind camera to this engine's context so render-time lookups
+        // (`GlobalBindGroup._ctxFromCamera`, `CameraUtil` math helpers)
+        // don't have to walk the transform→view3D chain.
+        if (view.camera) {
+            (view.camera as any)._boundCtx ||= this.context3D;
+            // Propagate to CSM shadow cameras (created when enableCSM is set
+            // before startRenderView, so they miss the _bindToCtx path).
+            const csm = (view.camera as any).csm;
+            if (csm?.children) {
+                for (const child of csm.children) {
+                    (child.shadowCamera as any)._boundCtx ||= this.context3D;
+                }
+            }
+        }
         let renderJob = new ForwardRenderJob(view);
         this.renderJobs.set(view, renderJob);
 
@@ -352,7 +379,6 @@ export class Engine3D {
     }
 
     private async _renderOnce(_time: number) {
-        setActiveContext3D(this.context3D);
         this.frameCount++;
 
         let views = this.views;
@@ -404,7 +430,7 @@ export class Engine3D {
         if (this._renderLoop) await this._renderLoop();
 
         WasmMatrix.updateAllContinueTransform(0, Matrix4.useCount, 16);
-        let globalMatrixBindGroup = GlobalBindGroup.modelMatrixBindGroup;
+        let globalMatrixBindGroup = GlobalBindGroup.getModelMatrixBindGroup(this.context3D);
         globalMatrixBindGroup.writeBuffer(Matrix4.useCount * 16);
 
         this.renderJobs.forEach((v) => {

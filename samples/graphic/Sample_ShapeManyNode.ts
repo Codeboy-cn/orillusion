@@ -1,7 +1,7 @@
 import { GUIHelp } from "@orillusion/debug/GUIHelp";
-import { Object3D, Scene3D, Engine3D, AtmosphericComponent, CameraUtil, HoverCameraController, View3D, DirectLight, KelvinUtil, BitmapTexture2DArray, BitmapTexture2D, Graphic3DMesh, Matrix4, Color, Time, sin, MeshRenderer, Vector2, OrderMap, Vector3 } from "@orillusion/core";
+import { Object3D, Scene3D, Engine3D, AtmosphericComponent, CameraUtil, HoverCameraController, View3D, DirectLight, KelvinUtil, BitmapTexture2DArray, BitmapTexture2D, Matrix4, Color, Time, sin, MeshRenderer, Vector2, OrderMap, Vector3 } from "@orillusion/core";
 import { Stats } from "@orillusion/stats";
-import { Shape3DMaker, Shape3D } from "@orillusion/graphic";
+import { Shape3DMaker, Shape3D, Graphic3DMesh } from "@orillusion/graphic";
 import { GUIShape3D } from "@samples/utils/GUIShape3D";
 
 /**
@@ -11,6 +11,7 @@ import { GUIShape3D } from "@samples/utils/GUIShape3D";
  * @class Sample_ShapeManyNode
  */
 export class Sample_ShapeManyNode {
+    engine: Engine3D;
     lightObj3D: Object3D;
     scene: Scene3D;
     view: View3D;
@@ -21,7 +22,7 @@ export class Sample_ShapeManyNode {
         Matrix4.maxCount = 10000;
         Matrix4.allocCount = 10000;
 
-        const engine = await Engine3D.create({ beforeRender: () => this.update() });
+        const engine = this.engine = await Engine3D.create({ beforeRender: () => this.update() });
 
         Engine3D.setting.render.debug = true;
         Engine3D.setting.shadow.shadowBound = 5;
@@ -66,9 +67,9 @@ export class Sample_ShapeManyNode {
     private async addNode(grassGroup: number) {
         let texts = [];
 
-        texts.push(await Engine3D.res.loadTexture("textures/diffuse.jpg") as BitmapTexture2D);
+        texts.push(await this.engine.res.loadTexture("textures/diffuse.jpg") as BitmapTexture2D);
 
-        let bitmapTexture2DArray = new BitmapTexture2DArray(texts[0].width, texts[0].height, texts.length);
+        let bitmapTexture2DArray = new BitmapTexture2DArray(texts[0].width, texts[0].height, texts.length, this.engine.context3D);
         bitmapTexture2DArray.setTextures(texts);
 
         this.maker = Shape3DMaker.makeRenderer(`path_` + grassGroup, bitmapTexture2DArray, this.scene);

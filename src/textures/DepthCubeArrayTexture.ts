@@ -1,7 +1,7 @@
 import { GPUFilterMode, GPUTextureFormat } from '../gfx/graphics/webGpu/WebGPUConst';
-import { bindCtx, webGPUContext } from '../gfx/graphics/webGpu/Context3D';
 import { ITexture } from '../gfx/graphics/webGpu/core/texture/ITexture';
 import { Texture } from '../gfx/graphics/webGpu/core/texture/Texture';
+import { Context3D } from '../gfx/graphics/webGpu/Context3D';
 /**
  * depth cube array texture
  * @internal
@@ -12,7 +12,7 @@ export class DepthCubeArrayTexture extends Texture implements ITexture {
     /**
      * @constructor
      */
-    constructor(width: number, height: number, numberLayer: number) {
+    constructor(width: number, height: number, numberLayer: number, ctx?: Context3D) {
         super(width, height, numberLayer);
 
         // this.visibility = GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT | GPUShaderStage.COMPUTE;
@@ -21,6 +21,7 @@ export class DepthCubeArrayTexture extends Texture implements ITexture {
         this.format = GPUTextureFormat.depth32float;
         this.mipmapCount = 1;
 
+        this._ensureBound(ctx);
         this.init();
     }
 
@@ -38,7 +39,6 @@ export class DepthCubeArrayTexture extends Texture implements ITexture {
             dimension: '2d',
             usage: GPUTextureUsage.COPY_DST | GPUTextureUsage.TEXTURE_BINDING,
         }
-        // this.gpuTexture = webGPUContext.device.createTexture(this.textureDescriptor);
         this.gpuTexture = this.getGPUTexture();
     }
 
@@ -51,8 +51,7 @@ export class DepthCubeArrayTexture extends Texture implements ITexture {
     }
 
     internalCreateSampler() {
-        // eslint-disable-next-line @typescript-eslint/no-deprecated
-        bindCtx(this, webGPUContext);
+        this._ensureBound();
         const device = this._boundCtx!.device;
         this.gpuSampler = device.createSampler({
             minFilter: GPUFilterMode.linear,

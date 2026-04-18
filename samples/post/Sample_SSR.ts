@@ -1,8 +1,9 @@
-import { DirectLight, Engine3D, View3D, LitMaterial, HoverCameraController, KelvinUtil, MeshRenderer, Object3D, PlaneGeometry, Scene3D, SphereGeometry, SSRPost, Time, CameraUtil, webGPUContext, PostProcessingComponent, BloomPost, AtmosphericComponent } from '@orillusion/core'
+import { DirectLight, Engine3D, View3D, LitMaterial, HoverCameraController, KelvinUtil, MeshRenderer, Object3D, PlaneGeometry, Scene3D, SphereGeometry, SSRPost, Time, CameraUtil, PostProcessingComponent, BloomPost, AtmosphericComponent } from '@orillusion/core'
 import { GUIHelp } from '@orillusion/debug/GUIHelp'
 import { GUIUtil } from '@samples/utils/GUIUtil';
 
 export class Sample_SSR {
+    engine: Engine3D;
     lightObj: Object3D
     scene: Scene3D
 
@@ -13,7 +14,7 @@ export class Sample_SSR {
         Engine3D.setting.shadow.shadowBias = 0.05;
         GUIHelp.init();
 
-        const engine = await Engine3D.create({
+        const engine = this.engine = await Engine3D.create({
             canvasConfig: {
                 devicePixelRatio: 1
             },
@@ -24,7 +25,7 @@ export class Sample_SSR {
         this.scene.addComponent(AtmosphericComponent).sunY = 0.6
 
         let mainCamera = CameraUtil.createCamera3DObject(this.scene, 'camera')
-        mainCamera.perspective(60, webGPUContext.aspect, 1, 2000.0)
+        mainCamera.perspective(60, engine.context3D.aspect, 1, 2000.0)
         let ctrl = mainCamera.object3D.addComponent(HoverCameraController)
         ctrl.setCamera(-75, -20, 40)
         await this.initScene(this.scene)
@@ -55,7 +56,7 @@ export class Sample_SSR {
         }
 
         // load test model
-        let minimalObj = await Engine3D.res.loadGltf('/PBR/ToyCar/ToyCar.gltf')
+        let minimalObj = await this.engine.res.loadGltf('/PBR/ToyCar/ToyCar.gltf')
         minimalObj.scaleX = minimalObj.scaleY = minimalObj.scaleZ = 1000;
         minimalObj.y = -1.1;
         scene.addChild(minimalObj)

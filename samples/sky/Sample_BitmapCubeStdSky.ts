@@ -3,13 +3,14 @@ import { Engine3D, Scene3D, SkyRenderer, Object3DUtil } from "@orillusion/core";
 
 // sample to replace standard sky map
 class Sample_BitmapCubeStdSky {
+    engine: Engine3D;
     async run() {
         // init engine
-        const engine = await Engine3D.create({});
+        const engine = this.engine = await Engine3D.create({});
         // init scene
         let scene: Scene3D = createExampleScene(engine).scene;
         let sky = scene.getOrAddComponent(SkyRenderer);
-        sky.map = await Engine3D.res.loadTextureCubeStd('sky/StandardCubeMap-2.jpg');
+        sky.map = await this.engine.res.loadTextureCubeStd('sky/StandardCubeMap-2.jpg');
 
         // create a basic cube
         scene.addChild(Object3DUtil.GetSingleCube(10, 10, 10, 0.6, 0.6, 0.6));

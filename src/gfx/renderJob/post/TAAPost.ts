@@ -5,7 +5,6 @@ import { UniformGPUBuffer } from '../../graphics/webGpu/core/buffer/UniformGPUBu
 import { WebGPUDescriptorCreator } from '../../graphics/webGpu/descriptor/WebGPUDescriptorCreator';
 import { ComputeShader } from '../../graphics/webGpu/shader/ComputeShader';
 import { GPUTextureFormat } from '../../graphics/webGpu/WebGPUConst';
-import { GPUContext } from '../GPUContext';
 import { RendererPassState } from '../passRenderer/state/RendererPassState';
 import { PostBase } from './PostBase';
 import { Engine3D } from '../../../Engine3D';
@@ -153,7 +152,7 @@ export class TAAPost extends PostBase {
         computeShader.setUniformBuffer('taaData', taaSetting);
         computeShader.setStorageBuffer(`preColorBuffer`, this.preColorBuffer);
 
-        let rtFrame = GBufferFrame.getGBufferFrame(GBufferFrame.colorPass_GBuffer);
+        let rtFrame = GBufferFrame.getGBufferFrame(GBufferFrame.colorPass_GBuffer, this._boundCtx!);
         computeShader.setSamplerTexture(`preColorTex`, this.preColorTex);
         computeShader.setSamplerTexture(`gBufferTexture`, rtFrame.getCompressGBufferTexture());
         computeShader.setSamplerTexture('inTex', this.getLastRenderTexture());
@@ -192,19 +191,19 @@ export class TAAPost extends PostBase {
 
         this.preColorBuffer = new StorageGPUBuffer(w * h * 4, GPUBufferUsage.COPY_SRC);
 
-        this.preColorTex = new VirtualTexture(w, h, GPUTextureFormat.rgba16float, false, GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.COPY_SRC | GPUTextureUsage.TEXTURE_BINDING);
+        this.preColorTex = new VirtualTexture(w, h, GPUTextureFormat.rgba16float, false, GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.COPY_SRC | GPUTextureUsage.TEXTURE_BINDING, 1, 0, 1, this._boundCtx!);
         this.preColorTex.name = 'taaTex';
         let preColorDec = new RTDescriptor();
         preColorDec.clearValue = [0, 0, 0, 1];
         preColorDec.loadOp = `clear`;
 
-        this.taaTexture = new VirtualTexture(w, h, GPUTextureFormat.rgba16float, false, GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.COPY_SRC | GPUTextureUsage.TEXTURE_BINDING);
+        this.taaTexture = new VirtualTexture(w, h, GPUTextureFormat.rgba16float, false, GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.COPY_SRC | GPUTextureUsage.TEXTURE_BINDING, 1, 0, 1, this._boundCtx!);
         this.taaTexture.name = 'taaTex';
         let taaDec = new RTDescriptor();
         taaDec.clearValue = [0, 0, 0, 1];
         taaDec.loadOp = `clear`;
 
-        this.outTexture = new VirtualTexture(w, h, GPUTextureFormat.rgba16float, false, GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.COPY_SRC | GPUTextureUsage.TEXTURE_BINDING);
+        this.outTexture = new VirtualTexture(w, h, GPUTextureFormat.rgba16float, false, GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.COPY_SRC | GPUTextureUsage.TEXTURE_BINDING, 1, 0, 1, this._boundCtx!);
         this.outTexture.name = 'sharpTaaTex';
         let outDec = new RTDescriptor();
         outDec.clearValue = [0, 0, 0, 1];
@@ -227,7 +226,7 @@ export class TAAPost extends PostBase {
         if (!this.taaCompute) {
             this._createTaaResources();
             this.createCompute(view);
-            this.rendererPassState = WebGPUDescriptorCreator.createRendererPassState(this.rtFrame, null);
+            this.rendererPassState = WebGPUDescriptorCreator.createRendererPassState(view.engine3D.context3D, this.rtFrame, null);
         }
 
         let cfg = Engine3D.setting.render.postProcessing.taa;
@@ -241,8 +240,8 @@ export class TAAPost extends PostBase {
         this.taaSetting.setFloat('jitterY', view.camera.jitterY);
         this.taaSetting.apply();
 
-        GPUContext.computeCommand(command, [this.copyTexCompute, this.taaCompute, this.sharpCompute]);
-        GPUContext.lastRenderPassState = this.rendererPassState;
+        this._boundCtx!.gpuContext.computeCommand(command, [this.copyTexCompute, this.taaCompute, this.sharpCompute]);
+        this._boundCtx!.gpuContext.lastRenderPassState = this.rendererPassState;
         this.preProjMatrix.copyFrom(view.camera.projectionMatrix);
         this.preViewMatrix.copyFrom(view.camera.viewMatrix);
     }

@@ -1,4 +1,4 @@
-﻿import { BoundingBox, Color, Engine3D, GUIConfig, GUIQuad, Object3D, Scene3D, TextAnchor, UIImageGroup, UITextField, Vector2, Vector3, ViewPanel, clamp, webGPUContext } from "@orillusion/core";
+﻿import { BoundingBox, Color, Engine3D, GUIConfig, GUIQuad, Object3D, Scene3D, TextAnchor, UIImageGroup, UITextField, Vector2, Vector3, ViewPanel, clamp } from "@orillusion/core";
 import { GUIHelp } from "@orillusion/debug/GUIHelp";
 import { createExampleScene } from "@samples/utils/ExampleScene";
 import { Stats } from "@orillusion/stats";
@@ -7,6 +7,7 @@ class SpriteSheet {
     public static toggleMove: boolean = false;
     public static toggleAnim: boolean = true;
 
+    private engine: Engine3D;
     private imgGroup: UIImageGroup;
     private lastIndex: number = -1;
     private frame: number = 100 * Math.random();
@@ -18,7 +19,8 @@ class SpriteSheet {
     private index: number;
 
     private quad: GUIQuad;
-    constructor(img: UIImageGroup, index: number, keyFrames: string[], bound: BoundingBox) {
+    constructor(engine: Engine3D, img: UIImageGroup, index: number, keyFrames: string[], bound: BoundingBox) {
+        this.engine = engine;
         this.imgGroup = img;
         this.index = index;
         this.bound = bound;
@@ -33,7 +35,7 @@ class SpriteSheet {
             let newIndex = Math.floor(this.frame * 0.1) % this.frameCount;
             if (newIndex != this.lastIndex) {
                 this.lastIndex = newIndex;
-                this.imgGroup.setSprite(this.index, Engine3D.res.getGUISprite(this.keyFrames[newIndex]));
+                this.imgGroup.setSprite(this.index, this.engine.res.getGUISprite(this.keyFrames[newIndex]));
             }
         }
 
@@ -55,6 +57,7 @@ class SpriteSheet {
 }
 
 export class Sample_UIPerformance2 {
+    engine: Engine3D;
     text: UITextField;
     scene: Scene3D;
     keyFrames: string[];
@@ -73,13 +76,13 @@ export class Sample_UIPerformance2 {
             this.keyFrames.push((frameStart + i).toString().padStart(5, '0'));
         }
 
-        const engine = await Engine3D.create({ renderLoop: () => { this.renderUpdate(); } });
+        const engine = this.engine = await Engine3D.create({ renderLoop: () => { this.renderUpdate(); } });
         let exampleScene = createExampleScene(engine);
         this.scene = exampleScene.scene;
         this.scene.addComponent(Stats);
         engine.startRenderView(exampleScene.view);
-        await Engine3D.res.loadAtlas('atlas/Sheet_atlas.json');
-        await Engine3D.res.loadFont('fnt/0.fnt');
+        await this.engine.res.loadAtlas('atlas/Sheet_atlas.json');
+        await this.engine.res.loadFont('fnt/0.fnt');
 
         this.text = this.createText();
 
@@ -145,7 +148,7 @@ export class Sample_UIPerformance2 {
         color.g = clamp(color.g * 1.5, 0.5, 1);
         color.b = clamp(color.b * 1.5, 0.5, 1);
 
-        let sprite = Engine3D.res.getGUISprite('00065');
+        let sprite = this.engine.res.getGUISprite('00065');
 
         let size = 64;
         let halfSize = size * 0.5;
@@ -159,7 +162,7 @@ export class Sample_UIPerformance2 {
             imgGroup.setXY(i,
                 (Math.random() - 0.5) * (width - size * 0.5) - halfSize,
                 (Math.random() - 0.5) * (height - size * 0.5) - halfSize);
-            let sheet: SpriteSheet = new SpriteSheet(imgGroup, i, this.keyFrames, bound);
+            let sheet: SpriteSheet = new SpriteSheet(this.engine, imgGroup, i, this.keyFrames, bound);
             this.spriteSheets.push(sheet);
         }
 

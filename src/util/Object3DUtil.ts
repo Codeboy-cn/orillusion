@@ -10,7 +10,7 @@ import { Texture } from '../gfx/graphics/webGpu/core/texture/Texture';
 import { Vector3 } from '../math/Vector3';
 import { BlendMode } from '../materials/BlendMode';
 import { Material } from '../materials/Material';
-import { perContextResource } from '../gfx/graphics/webGpu/Context3D';
+import { Context3D } from '../gfx/graphics/webGpu/Context3D';
 
 type Object3DUtilHeap = {
     boxGeo: BoxGeometry | null;
@@ -23,16 +23,14 @@ type Object3DUtilHeap = {
 export class Object3DUtil {
     // Cached geometries/materials are GPU-bearing; keep one heap per Context3D
     // so samples that run under multiple engines don't cross-bind resources.
-    private static _heap = perContextResource<Object3DUtilHeap>();
-
-    private static _getHeap(): Object3DUtilHeap {
-        let h = this._heap(() => ({
+    private static _getHeap(ctx: Context3D): Object3DUtilHeap {
+        let h = ctx.cache(Object3DUtil, () => ({
             boxGeo: null,
             planeGeo: null,
             sphere: null,
             material: null,
             materialMap: null,
-        }));
+        } as Object3DUtilHeap));
         if (!h.boxGeo) h.boxGeo = new BoxGeometry();
         if (!h.planeGeo) h.planeGeo = new PlaneGeometry(1, 1, 1, 1, Vector3.UP);
         if (!h.sphere) h.sphere = new SphereGeometry(1, 35, 35);
@@ -41,16 +39,16 @@ export class Object3DUtil {
         return h;
     }
 
-    public static get CubeMesh() {
-        return this._getHeap().boxGeo;
+    public static CubeMesh(ctx: Context3D) {
+        return this._getHeap(ctx).boxGeo;
     }
 
-    public static get SphereMesh() {
-        return this._getHeap().sphere;
+    public static SphereMesh(ctx: Context3D) {
+        return this._getHeap(ctx).sphere;
     }
 
-    public static GetCube() {
-        const h = this._getHeap();
+    public static GetCube(ctx: Context3D) {
+        const h = this._getHeap(ctx);
         let obj = new Object3D();
         let renderer = obj.addComponent(MeshRenderer);
         renderer.geometry = h.boxGeo;
@@ -59,8 +57,8 @@ export class Object3DUtil {
         return obj;
     }
 
-    public static GetMaterial(tex: Texture) {
-        const h = this._getHeap();
+    public static GetMaterial(ctx: Context3D, tex: Texture) {
+        const h = this._getHeap(ctx);
         let mat = h.materialMap.get(tex);
         if (!mat) {
             mat = new LitMaterial();
@@ -70,12 +68,12 @@ export class Object3DUtil {
         return mat.clone();
     }
 
-    public static GetPlane(tex: Texture) {
-        const h = this._getHeap();
+    public static GetPlane(ctx: Context3D, tex: Texture) {
+        const h = this._getHeap(ctx);
         let obj = new Object3D();
         let renderer = obj.addComponent(MeshRenderer);
         renderer.geometry = h.planeGeo;
-        let cloneMat = this.GetMaterial(tex);
+        let cloneMat = this.GetMaterial(ctx, tex);
         cloneMat.blendMode = BlendMode.ADD;
         cloneMat.castShadow = false;
         renderer.material = cloneMat;
@@ -107,15 +105,6 @@ export class Object3DUtil {
         renderer.castGI = true;
         renderer.geometry = new SphereGeometry(radius, 20, 20);
         renderer.material = mat;
-        return obj;
-    }
-
-    public static get Sphere() {
-        const h = this._getHeap();
-        let obj = new Object3D();
-        let renderer = obj.addComponent(MeshRenderer);
-        renderer.geometry = h.sphere;
-        renderer.material = h.material;
         return obj;
     }
 

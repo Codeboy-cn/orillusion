@@ -2,6 +2,7 @@ import { Engine3D } from "../../../../Engine3D";
 import { Camera3D } from "../../../../core/Camera3D";
 
 import { RenderTexture } from "../../../../textures/RenderTexture";
+import { Context3D } from "../../../graphics/webGpu/Context3D";
 import { Texture } from "../../../graphics/webGpu/core/texture/Texture";
 import { RTDescriptor } from "../../../graphics/webGpu/descriptor/RTDescriptor";
 import { RTFrame } from "../../frame/RTFrame";
@@ -31,11 +32,11 @@ export class RendererPassState {
     public renderBundleEncoderDescriptor: GPURenderBundleEncoderDescriptor;
     public depthLoadOp: GPULoadOp;
 
-    getLastRenderTexture() {
+    getLastRenderTexture(ctx?: Context3D) {
         if (this.renderTargets) {
-            return this.renderTargets.length > 0 ? this.renderTargets[0] : Engine3D.res.redTexture;
+            return this.renderTargets.length > 0 ? this.renderTargets[0] : Engine3D.resFor(ctx).redTexture;
         } else {
-            return Engine3D.res.redTexture
+            return Engine3D.resFor(ctx).redTexture
         }
     }
 }

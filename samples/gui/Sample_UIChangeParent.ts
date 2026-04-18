@@ -34,7 +34,7 @@ export class Sample_UIChangeParent {
             panelRoot.addChild(logoObject);
 
             let image1: UIImage = logoObject.addComponent(UIImage);
-            let bitmapTexture2D = new BitmapTexture2D();
+            let bitmapTexture2D = new BitmapTexture2D(true, engine.context3D);
             bitmapTexture2D.flipY = true;
             await bitmapTexture2D.load('png/logo.png');
             image1.sprite = makeAloneSprite('logo', bitmapTexture2D);

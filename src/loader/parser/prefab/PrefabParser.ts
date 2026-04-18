@@ -19,6 +19,7 @@ import { LitSSSShader } from "./mats/shader/LitSSSShader";
 import { LitShader } from "./mats/shader/LitShader";
 import { PrefabAvatarData } from "./prefabData/PrefabAvatarData";
 import { PrefabNode } from "./prefabData/PrefabNode";
+import { ValueParser } from "./prefabData/ValueParser";
 
 LitShader;
 LitSSSShader;
@@ -30,19 +31,27 @@ export class PrefabParser extends ParserBase {
     public async parseBuffer(buffer: ArrayBuffer) {
         this.avatarDic = {};
 
-        let bytesStream = new BytesArray(buffer, 0);
+        // Stash ctx for deep-lookup helpers (ValueParser) that can't easily
+        // receive it as a parameter through recursive bytecode decoding.
+        const prevCtx = ValueParser._currentCtx;
+        ValueParser._currentCtx = this.ctx;
+        try {
+            let bytesStream = new BytesArray(buffer, 0);
 
-        await PrefabTextureParser.parserTexture(bytesStream, this, this.loaderFunctions);
+            await PrefabTextureParser.parserTexture(bytesStream, this, this.loaderFunctions);
 
-        PrefabAvatarParser.parser(bytesStream, this);
+            PrefabAvatarParser.parser(bytesStream, this);
 
-        PrefabMeshParser.parserMeshs(bytesStream, this);
+            PrefabMeshParser.parserMeshs(bytesStream, this);
 
-        PrefabMaterialParser.parserMaterial(bytesStream, this);
+            PrefabMaterialParser.parserMaterial(bytesStream, this);
 
-        this.nodeData = this.parserPrefabNode(bytesStream);
+            this.nodeData = this.parserPrefabNode(bytesStream);
 
-        this.data = this.data = this.parserNodeTree(this.nodeData);
+            this.data = this.data = this.parserNodeTree(this.nodeData);
+        } finally {
+            ValueParser._currentCtx = prevCtx;
+        }
     }
 
     private parserPrefabNode(bytesStream: BytesArray) {

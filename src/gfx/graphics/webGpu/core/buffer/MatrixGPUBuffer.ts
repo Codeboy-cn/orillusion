@@ -1,5 +1,4 @@
 import { FloatArray } from '../../../../../components/matrix/WasmMatrix';
-import { webGPUContext } from '../../Context3D';
 import { ArrayBufferData } from './ArrayBufferData';
 import { GPUBufferBase } from './GPUBufferBase';
 import { GPUBufferType } from './GPUBufferType';
@@ -30,8 +29,9 @@ export class MatrixGPUBuffer extends GPUBufferBase {
         }
         // Upload data using mapAsync and a queue of staging buffers.
         let bytesLen = len;
-        // eslint-disable-next-line @typescript-eslint/no-deprecated
-        let device = (this._boundCtx ?? webGPUContext).device;
+        // Touch .buffer to trigger lazy bind on first call
+        void this.buffer;
+        let device = this._boundCtx!.device;
         if (mapAsyncArray.length > 0) {
             let tBuffer: GPUBuffer = null;
             while (this.mapAsyncReady.length) {

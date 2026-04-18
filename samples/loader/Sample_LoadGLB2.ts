@@ -6,6 +6,7 @@ import { GUIUtil } from "@samples/utils/GUIUtil";
 
 // Sample to load glb file
 export class Sample_LoadGLB2 {
+    engine: Engine3D;
     scene: Scene3D;
 
     async run() {
@@ -13,7 +14,7 @@ export class Sample_LoadGLB2 {
         Engine3D.setting.shadow.autoUpdate = true;
         Engine3D.setting.shadow.shadowBound = 10;
         Engine3D.setting.shadow.shadowBias = 0.005;
-        const engine = await Engine3D.create();
+        const engine = this.engine = await Engine3D.create();
         let exampleScene = createExampleScene(engine);
         exampleScene.atmosphericSky.displaySun = false;
         exampleScene.atmosphericSky.sunRadiance = 1;
@@ -33,7 +34,7 @@ export class Sample_LoadGLB2 {
         /******** floor *******/
         // {
         //     let mat = new LitMaterial();
-        //     mat.baseMap = Engine3D.res.whiteTexture;
+        //     mat.baseMap = this.engine.res.whiteTexture;
         //     mat.roughness = 0.85;
         //     mat.metallic = 0.1;
         //     let floor = new Object3D();
@@ -44,7 +45,7 @@ export class Sample_LoadGLB2 {
         // }
 
         /******** load glb file *******/
-        let model = (await Engine3D.res.loadGltf('gltfs/glb/BuildingWithCharacters.glb', { onProgress: (e) => this.onLoadProgress(e), onComplete: (e) => this.onComplete(e) })) as Object3D;
+        let model = (await this.engine.res.loadGltf('gltfs/glb/BuildingWithCharacters.glb', { onProgress: (e) => this.onLoadProgress(e), onComplete: (e) => this.onComplete(e) })) as Object3D;
         this.scene.addChild(model);
         model.scaleX = model.scaleY = model.scaleZ = 0.01;
     }

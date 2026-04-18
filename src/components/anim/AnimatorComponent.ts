@@ -127,7 +127,8 @@ export class AnimatorComponent extends ComponentBase {
         this._avatarName = name;
         this.inverseBindMatrices = [];
 
-        this._avatar = Engine3D.res.getObj(name) as PrefabAvatarData;
+        const ctx = this.transform?.view3D?.engine3D?.context3D;
+        this._avatar = Engine3D.resFor(ctx).getObj(name) as PrefabAvatarData;
 
         let jointMapping = this.buildSkeletonPose();
         const jointMatrixIndexTable = new Float32Array(jointMapping);

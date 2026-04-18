@@ -1,10 +1,11 @@
 import { GUIHelp } from "@orillusion/debug/GUIHelp";
-import { Object3D, Scene3D, Engine3D, AtmosphericComponent, CameraUtil, HoverCameraController, View3D, DirectLight, KelvinUtil, UnLitTexArrayMaterial, BitmapTexture2DArray, BitmapTexture2D, PlaneGeometry, Vector3, Matrix4, Time, BlendMode, Color, PostProcessingComponent, BloomPost, Graphic3DMeshRenderer, UV } from "@orillusion/core";
+import { Object3D, Scene3D, Engine3D, AtmosphericComponent, CameraUtil, HoverCameraController, View3D, DirectLight, KelvinUtil, UnLitTexArrayMaterial, BitmapTexture2DArray, BitmapTexture2D, PlaneGeometry, Vector3, Matrix4, Time, BlendMode, Color, PostProcessingComponent, BloomPost, UV } from "@orillusion/core";
 import { GUIUtil } from "@samples/utils/GUIUtil";
 import { Stats } from "@orillusion/stats";
-import { Graphic3D, Graphic3DMesh } from "@orillusion/graphic";
+import { Graphic3D, Graphic3DMesh, Graphic3DMeshRenderer } from "@orillusion/graphic";
 
 export class Sample_GraphicMesh_SpriteSheet {
+    engine: Engine3D;
     private lightObj3D: Object3D;
     private scene: Scene3D;
     private parts: Object3D[];
@@ -28,7 +29,7 @@ export class Sample_GraphicMesh_SpriteSheet {
         Matrix4.maxCount = 500000;
         Matrix4.allocCount = 500000;
 
-        const engine = await Engine3D.create({ beforeRender: () => this.update() });
+        const engine = this.engine = await Engine3D.create({ beforeRender: () => this.update() });
 
         Engine3D.setting.render.debug = true;
         Engine3D.setting.shadow.shadowBound = 5;
@@ -62,12 +63,12 @@ export class Sample_GraphicMesh_SpriteSheet {
 
     async initScene() {
         let texts = [];
-        texts.push(await Engine3D.res.loadTexture("textures/spriteSheet/sequence_0040.png") as BitmapTexture2D);
+        texts.push(await this.engine.res.loadTexture("textures/spriteSheet/sequence_0040.png") as BitmapTexture2D);
 
-        let bitmapTexture2DArray = new BitmapTexture2DArray(texts[0].width, texts[0].height, texts.length);
+        let bitmapTexture2DArray = new BitmapTexture2DArray(texts[0].width, texts[0].height, texts.length, this.engine.context3D);
         bitmapTexture2DArray.setTextures(texts);
 
-        let mat = new UnLitTexArrayMaterial();
+        let mat = new UnLitTexArrayMaterial(this.engine.context3D);
         mat.baseMap = bitmapTexture2DArray;
         mat.name = "LitMaterial";
 

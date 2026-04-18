@@ -1,9 +1,10 @@
 import { Engine3D, Scene3D, AtmosphericComponent, View3D, CameraUtil, HoverCameraController, Object3D, MeshRenderer, SphereGeometry, UnLitMaterial, BoxGeometry, SkyRenderer, Color, Vector3 } from "@orillusion/core";
 
 export class Sample_LogDepth {
+    engine: Engine3D;
     async run() {
         Engine3D.setting.render.useLogDepth = true;
-        const engine = await Engine3D.create();
+        const engine = this.engine = await Engine3D.create();
 
         let scene = new Scene3D();
         let camera = CameraUtil.createCamera3DObject(scene);
@@ -29,7 +30,7 @@ export class Sample_LogDepth {
             let mr = obj.addComponent(MeshRenderer);
             mr.geometry = new SphereGeometry(600 * 10000.0, 128, 128);
             let mat = new UnLitMaterial();
-            mat.baseMap = await Engine3D.res.loadTexture('textures/earth/8k_earth_daymap.jpg');
+            mat.baseMap = await this.engine.res.loadTexture('textures/earth/8k_earth_daymap.jpg');
             mr.material = mat;
             scene.addChild(obj);
         }

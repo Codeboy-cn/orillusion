@@ -1,11 +1,9 @@
-import { Engine3D } from "../../../../Engine3D";
 import { ShaderLib } from "../../../../assets/shader/ShaderLib";
 import { FullQuad_vert_wgsl } from "../../../../assets/shader/quad/Quad_shader";
 import { View3D } from "../../../../core/View3D";
 import { ViewQuad } from "../../../../core/ViewQuad";
+import { Context3D } from "../../../graphics/webGpu/Context3D";
 import { Texture } from "../../../graphics/webGpu/core/texture/Texture";
-import { GPUContext } from "../../GPUContext";
-import { GBufferFrame } from "../../frame/GBufferFrame";
 import { RTFrame } from "../../frame/RTFrame";
 import { PostBase } from "../../post/PostBase";
 import { RendererBase } from "../RendererBase";
@@ -25,13 +23,11 @@ export class PostRenderer extends RendererBase {
         this._rendererType = PassType.POST;
 
         this.postList = new Map<string, PostBase>();
-
-        this.initRenderer();
     }
 
-    public initRenderer() {
+    public initRenderer(ctx: Context3D) {
         ShaderLib.register("FullQuad_vert_wgsl", FullQuad_vert_wgsl);
-        this.finalQuadView = new ViewQuad(`Quad_vert_wgsl`, `Quad_frag_wgsl`, new RTFrame([], []), 0, false);
+        this.finalQuadView = new ViewQuad(ctx, `Quad_vert_wgsl`, `Quad_frag_wgsl`, new RTFrame([], []), 0, false);
     }
 
     public attachPost(view: View3D, post: PostBase) {
@@ -57,6 +53,7 @@ export class PostRenderer extends RendererBase {
     }
 
     public render(view: View3D) {
+        const gpu = view.engine3D.context3D.gpuContext;
 
         this.postList.forEach((v) => {
             if (v.enable) {
@@ -64,22 +61,23 @@ export class PostRenderer extends RendererBase {
             }
         });
 
-        let command = GPUContext.beginCommandEncoder();
+        let command = gpu.beginCommandEncoder();
         this.postList.forEach((v) => {
             if (v.enable) {
                 v.render(view, command);
                 if (v.rendererPassState) {
-                    GPUContext.lastRenderPassState = v.rendererPassState;
+                    gpu.lastRenderPassState = v.rendererPassState;
                 }
             }
         });
-        GPUContext.endCommandEncoder(command);
+        gpu.endCommandEncoder(command);
     }
 
     public presentContent(view: View3D, texture: Texture) {
-        let command = GPUContext.beginCommandEncoder();
+        const gpu = view.engine3D.context3D.gpuContext;
+        let command = gpu.beginCommandEncoder();
         this.finalQuadView.renderToViewQuad(view, this.finalQuadView, command, texture);
-        GPUContext.endCommandEncoder(command);
+        gpu.endCommandEncoder(command);
     }
 
 }

@@ -5,7 +5,6 @@ import { UniformGPUBuffer } from '../../graphics/webGpu/core/buffer/UniformGPUBu
 import { WebGPUDescriptorCreator } from '../../graphics/webGpu/descriptor/WebGPUDescriptorCreator';
 import { ComputeShader } from '../../graphics/webGpu/shader/ComputeShader';
 import { GPUTextureFormat } from '../../graphics/webGpu/WebGPUConst';
-import { GPUContext } from '../GPUContext';
 import { RendererPassState } from '../passRenderer/state/RendererPassState';
 import { PostBase } from './PostBase';
 import { Engine3D } from '../../../Engine3D';
@@ -161,7 +160,7 @@ export class GTAOPost extends PostBase {
 
         this.aoBuffer = new StorageGPUBuffer(this.gtaoTexture.width * this.gtaoTexture.height);
         this.gtaoCompute.setStorageBuffer('aoBuffer', this.aoBuffer);
-        let rtFrame = GBufferFrame.getGBufferFrame(GBufferFrame.colorPass_GBuffer);
+        let rtFrame = GBufferFrame.getGBufferFrame(GBufferFrame.colorPass_GBuffer, this._boundCtx!);
         this.gtaoCompute.setSamplerTexture(`gBufferTexture`, rtFrame.getCompressGBufferTexture());
         this.gtaoCompute.setSamplerTexture('inTex', this.getLastRenderTexture());
         this.gtaoCompute.setStorageTexture(`outTex`, this.gtaoTexture);
@@ -171,7 +170,7 @@ export class GTAOPost extends PostBase {
 
     private _createGtaoResources() {
         let [w, h] = this._boundCtx!.presentationSize;
-        this.gtaoTexture = new VirtualTexture(w, h, GPUTextureFormat.rgba16float, false, GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.COPY_SRC | GPUTextureUsage.TEXTURE_BINDING);
+        this.gtaoTexture = new VirtualTexture(w, h, GPUTextureFormat.rgba16float, false, GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.COPY_SRC | GPUTextureUsage.TEXTURE_BINDING, 1, 0, 1, this._boundCtx!);
         this.gtaoTexture.name = 'gtaoTex';
         let gtaoDec = new RTDescriptor();
         gtaoDec.loadOp = `load`;
@@ -201,7 +200,7 @@ export class GTAOPost extends PostBase {
             this.createCompute();
             this.onResize();
 
-            this.rendererPassState = WebGPUDescriptorCreator.createRendererPassState(this.rtFrame, null);
+            this.rendererPassState = WebGPUDescriptorCreator.createRendererPassState(view.engine3D.context3D, this.rtFrame, null);
             this.rendererPassState.label = "GTAO";
 
             let globalUniform = GlobalBindGroup.getCameraGroup(view.camera);
@@ -227,8 +226,8 @@ export class GTAOPost extends PostBase {
 
         this.gtaoSetting.apply();
 
-        GPUContext.computeCommand(command, [this.gtaoCompute]);
-        GPUContext.lastRenderPassState = this.rendererPassState;
+        this._boundCtx!.gpuContext.computeCommand(command, [this.gtaoCompute]);
+        this._boundCtx!.gpuContext.lastRenderPassState = this.rendererPassState;
     }
 
     public onResize() {

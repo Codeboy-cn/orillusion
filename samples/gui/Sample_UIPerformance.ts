@@ -7,6 +7,7 @@ class SpriteSheet {
     public static toggleMove: boolean = false;
     public static toggleAnim: boolean = true;
 
+    private engine: Engine3D;
     private img: UIImage;
     private lastIndex: number = -1;
     private frame: number = 100 * Math.random();
@@ -15,7 +16,8 @@ class SpriteSheet {
     private keyFrames: string[];
     private moveSpeed: Vector2;
     private bound: BoundingBox;
-    constructor(img: UIImage, keyFrames: string[], bound: BoundingBox) {
+    constructor(engine: Engine3D, img: UIImage, keyFrames: string[], bound: BoundingBox) {
+        this.engine = engine;
         this.img = img;
         this.bound = bound;
         this.keyFrames = keyFrames;
@@ -28,7 +30,7 @@ class SpriteSheet {
             let newIndex = Math.floor(this.frame * 0.1) % this.frameCount;
             if (newIndex != this.lastIndex) {
                 this.lastIndex = newIndex;
-                this.img.sprite = Engine3D.res.getGUISprite(this.keyFrames[newIndex]);
+                this.img.sprite = this.engine.res.getGUISprite(this.keyFrames[newIndex]);
             }
         }
 
@@ -51,6 +53,7 @@ class SpriteSheet {
 }
 
 export class Sample_UISpriteSheet {
+    engine: Engine3D;
     text: UITextField;
     scene: Scene3D;
     keyFrames: string[];
@@ -69,13 +72,13 @@ export class Sample_UISpriteSheet {
             this.keyFrames.push((frameStart + i).toString().padStart(5, '0'));
         }
 
-        const engine = await Engine3D.create({ renderLoop: () => { this.renderUpdate(); } });
+        const engine = this.engine = await Engine3D.create({ renderLoop: () => { this.renderUpdate(); } });
         let exampleScene = createExampleScene(engine);
         this.scene = exampleScene.scene;
         this.scene.addComponent(Stats);
         engine.startRenderView(exampleScene.view);
-        await Engine3D.res.loadAtlas('atlas/Sheet_atlas.json');
-        await Engine3D.res.loadFont('fnt/0.fnt');
+        await this.engine.res.loadAtlas('atlas/Sheet_atlas.json');
+        await this.engine.res.loadFont('fnt/0.fnt');
 
         this.text = this.createText();
 
@@ -148,11 +151,11 @@ export class Sample_UISpriteSheet {
             //
             let img = quad.addComponent(UIImage);
             img.color = color;
-            img.sprite = Engine3D.res.getGUISprite('00065');
+            img.sprite = this.engine.res.getGUISprite('00065');
             img.uiTransform.resize(64, 64);
             img.uiTransform.x = (Math.random() - 0.5) * width * 0.7;
             img.uiTransform.y = (Math.random() - 0.5) * height * 0.7;
-            let sheet: SpriteSheet = new SpriteSheet(img, this.keyFrames, bound);
+            let sheet: SpriteSheet = new SpriteSheet(this.engine, img, this.keyFrames, bound);
             this.spriteSheets.push(sheet);
         }
 

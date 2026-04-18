@@ -1,4 +1,5 @@
 import { Color, Vector2, Vector3, Vector4 } from "../../../..";
+import { Context3D } from "../../../../gfx/graphics/webGpu/Context3D";
 import { Material } from "../../../../materials/Material";
 import { GetShader } from "../../../../util/SerializeDecoration";
 import { KV } from "../prefabData/KVData";
@@ -7,7 +8,7 @@ import { ValueEnumType } from "../prefabData/ValueType";
 
 export class MaterialUtilities {
 
-    public static GetMaterial(shaderName: string) {
+    public static GetMaterial(shaderName: string, ctx?: Context3D) {
         let name = shaderName;
         // let name = "UnLitShader";
         let list = name.split("/");
@@ -19,7 +20,7 @@ export class MaterialUtilities {
         let shader = GetShader(name);
         if (shader) {
             let material = new Material();
-            material.shader = new shader();
+            material.shader = new shader(ctx);
             return material;
         } else {
             throw new Error("not found shader, shader name is " + name);

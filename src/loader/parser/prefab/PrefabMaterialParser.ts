@@ -41,7 +41,7 @@ export class PrefabMaterialParser extends ParserBase {
                 let textureData = new PrefabTextureData();
                 textureData.property = texBytes.readUTF();
                 textureData.name = texBytes.readUTF();
-                textureData.texture = Engine3D.res.getTexture(textureData.name) as BitmapTexture2D;
+                textureData.texture = Engine3D.resFor(prefabParser.ctx).getTexture(textureData.name) as BitmapTexture2D;
                 textureData.texelSize = texBytes.readVector2();
                 textureData.wrapModeU = texBytes.readUnit32();
                 textureData.wrapModeV = texBytes.readUnit32();
@@ -53,7 +53,7 @@ export class PrefabMaterialParser extends ParserBase {
                 textures.push(textureData);
             }
 
-            let mat = MaterialUtilities.GetMaterial(shaderName);
+            let mat = MaterialUtilities.GetMaterial(shaderName, prefabParser.ctx);
             mat.name = matName;
             // mat.transformUV1 = transformUV1;
             // mat.uvTransform_2 = uvTransform_2;
@@ -80,7 +80,7 @@ export class PrefabMaterialParser extends ParserBase {
             //     // }
             // }
 
-            Engine3D.res.addMat(id, mat);
+            Engine3D.resFor(prefabParser.ctx).addMat(id, mat);
         }
     }
 

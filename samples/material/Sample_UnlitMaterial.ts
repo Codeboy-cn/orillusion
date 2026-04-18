@@ -4,9 +4,11 @@ import { GUIHelp } from "@orillusion/debug/GUIHelp";
 class Sample_UnlitMaterial {
     lightObj3D: Object3D;
     scene: Scene3D;
+    engine: Engine3D;
 
     async run() {
-        const engine = await Engine3D.create();
+        this.engine = await Engine3D.create();
+        const engine = this.engine;
 
         this.scene = new Scene3D();
         let sky = this.scene.addComponent(AtmosphericComponent);
@@ -43,9 +45,9 @@ class Sample_UnlitMaterial {
 
         // create a unlit plane
         {
-            let texture = new BitmapTexture2D();
+            let texture = new BitmapTexture2D(true, this.engine.context3D);
             await texture.load('textures/grid.jpg');
-            let mat = new UnLitMaterial();
+            let mat = new UnLitMaterial(this.engine.context3D);
             mat.baseMap = texture;
             mat.baseColor = new Color(1, 1, 1, 1);
 
@@ -62,7 +64,7 @@ class Sample_UnlitMaterial {
             let sphere = new Object3D();
             let renderer = sphere.addComponent(MeshRenderer);
             renderer.geometry = new SphereGeometry(1, 32, 32);
-            renderer.material = new UnLitMaterial()
+            renderer.material = new UnLitMaterial(this.engine.context3D)
             sphere.scaleX = 5;
             sphere.scaleY = 5;
             sphere.scaleZ = 5;

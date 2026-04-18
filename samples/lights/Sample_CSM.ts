@@ -5,6 +5,7 @@ import { Graphic3D } from "@orillusion/graphic";
 
 //sample of csm
 class Sample_CSM {
+    engine: Engine3D;
     scene: Scene3D;
     view: View3D;
     light: DirectLight;
@@ -15,7 +16,7 @@ class Sample_CSM {
         Engine3D.setting.shadow.autoUpdate = true;
         Engine3D.setting.shadow.shadowSize = 2048;
         Engine3D.setting.shadow.shadowBound = 512;
-        const engine = await Engine3D.create({ renderLoop: () => { this.loop(); } });
+        const engine = this.engine = await Engine3D.create({ renderLoop: () => { this.loop(); } });
 
         GUIHelp.init();
 
@@ -83,7 +84,7 @@ class Sample_CSM {
         this.createBox();
         {
             let mat = new LitMaterial();
-            mat.baseMap = Engine3D.res.grayTexture;
+            mat.baseMap = this.engine.res.grayTexture;
             let floor = new Object3D();
             let mr = floor.addComponent(MeshRenderer);
             mr.geometry = new BoxGeometry(10000, 1, 10000);

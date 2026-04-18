@@ -1,8 +1,7 @@
 import { Texture } from '../gfx/graphics/webGpu/core/texture/Texture';
 import { TextureMipmapGenerator } from '../gfx/graphics/webGpu/core/texture/TextureMipmapGenerator';
 import { GPUTextureFormat } from '../gfx/graphics/webGpu/WebGPUConst';
-import { bindCtx, webGPUContext } from '../gfx/graphics/webGpu/Context3D';
-import { GPUContext } from '../gfx/renderJob/GPUContext';
+import { Context3D } from '../gfx/graphics/webGpu/Context3D';
 /**
  * @internal
  * Uint16 texture
@@ -18,9 +17,8 @@ export class Uint16Texture extends Texture {
      * @param useMipmap whether or not gen mipmap
      * @returns
      */
-    public create(width: number, height: number, data: Float32Array, useMiamp: boolean = true) {
-        // eslint-disable-next-line @typescript-eslint/no-deprecated
-        bindCtx(this, webGPUContext);
+    public create(width: number, height: number, data: Float32Array, useMiamp: boolean = true, ctx?: Context3D) {
+        this._ensureBound(ctx);
         let device = this._boundCtx!.device;
         const bytesPerRow = width * 4 * 4;
         this.format = GPUTextureFormat.rgba16float;
@@ -34,7 +32,7 @@ export class Uint16Texture extends Texture {
         });
 
         device.queue.writeBuffer(textureDataBuffer, 0, data as BufferSource);
-        const commandEncoder = GPUContext.beginCommandEncoder();
+        const commandEncoder = this._boundCtx!.gpuContext.beginCommandEncoder();
         commandEncoder.copyBufferToTexture(
             {
                 buffer: textureDataBuffer,
@@ -50,7 +48,7 @@ export class Uint16Texture extends Texture {
             },
         );
 
-        GPUContext.endCommandEncoder(commandEncoder);
+        this._boundCtx!.gpuContext.endCommandEncoder(commandEncoder);
 
         this.minFilter = `nearest`;
         this.magFilter = `nearest`;

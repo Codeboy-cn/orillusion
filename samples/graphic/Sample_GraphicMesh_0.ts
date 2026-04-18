@@ -5,6 +5,7 @@ import { GUIHelp } from "@orillusion/debug/GUIHelp";
 import { GUIUtil } from "@samples/utils/GUIUtil";
 
 export class Sample_GraphicMesh_0 {
+    engine: Engine3D;
     lightObj3D: Object3D;
     scene: Scene3D;
     parts: Object3D[];
@@ -22,7 +23,7 @@ export class Sample_GraphicMesh_0 {
         Matrix4.maxCount = 500000;
         Matrix4.allocCount = 500000;
 
-        const engine = await Engine3D.create({ beforeRender: () => this.update() });
+        const engine = this.engine = await Engine3D.create({ beforeRender: () => this.update() });
 
         Engine3D.setting.render.debug = true;
         Engine3D.setting.shadow.shadowBound = 5;
@@ -53,11 +54,11 @@ export class Sample_GraphicMesh_0 {
 
     async initScene() {
         let texts = [];
-        texts.push(await Engine3D.res.loadTexture("textures/128/glow_0002.png") as BitmapTexture2D);
-        let bitmapTexture2DArray = new BitmapTexture2DArray(texts[0].width, texts[0].height, texts.length);
+        texts.push(await this.engine.res.loadTexture("textures/128/glow_0002.png") as BitmapTexture2D);
+        let bitmapTexture2DArray = new BitmapTexture2DArray(texts[0].width, texts[0].height, texts.length, this.engine.context3D);
         bitmapTexture2DArray.setTextures(texts);
 
-        let mat = new UnLitTexArrayMaterial();
+        let mat = new UnLitTexArrayMaterial(this.engine.context3D);
         mat.baseMap = bitmapTexture2DArray;
         mat.name = "LitMaterial";
 

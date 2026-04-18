@@ -5,7 +5,6 @@ import { UniformGPUBuffer } from '../../graphics/webGpu/core/buffer/UniformGPUBu
 import { WebGPUDescriptorCreator } from '../../graphics/webGpu/descriptor/WebGPUDescriptorCreator';
 import { ComputeShader } from '../../graphics/webGpu/shader/ComputeShader';
 import { GPUTextureFormat } from '../../graphics/webGpu/WebGPUConst';
-import { GPUContext } from '../GPUContext';
 import { RendererPassState } from '../passRenderer/state/RendererPassState';
 import { PostBase } from './PostBase';
 import { Engine3D } from '../../../Engine3D';
@@ -147,29 +146,29 @@ export class SSGIPost extends PostBase {
 
 
     private _createSsgiResources() {
-        let rtFrame = GBufferFrame.getGBufferFrame("ColorPassGBuffer");
+        let rtFrame = GBufferFrame.getGBufferFrame("ColorPassGBuffer", this._boundCtx!);
         this.gBufferTexture = rtFrame.getCompressGBufferTexture();
 
         let presentationSize = this._boundCtx!.presentationSize;
         let w = presentationSize[0];
         let h = presentationSize[1];
 
-        this.lastPosTexture = new VirtualTexture(w, h, GPUTextureFormat.rgba16float, false, GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.COPY_SRC | GPUTextureUsage.TEXTURE_BINDING);
+        this.lastPosTexture = new VirtualTexture(w, h, GPUTextureFormat.rgba16float, false, GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.COPY_SRC | GPUTextureUsage.TEXTURE_BINDING, 1, 0, 1, this._boundCtx!);
         this.lastPosTexture.name = 'lastPosTexture';
 
-        this.outTexture = new VirtualTexture(w, h, GPUTextureFormat.rgba16float, false, GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.COPY_SRC | GPUTextureUsage.TEXTURE_BINDING);
+        this.outTexture = new VirtualTexture(w, h, GPUTextureFormat.rgba16float, false, GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.COPY_SRC | GPUTextureUsage.TEXTURE_BINDING, 1, 0, 1, this._boundCtx!);
         this.outTexture.name = 'outTexture';
 
         let inW = Math.floor(w * this.downSampleCofe);
         let inH = Math.floor(h * this.downSampleCofe);
 
-        this.newTexture = new VirtualTexture(inW, inH, GPUTextureFormat.rgba16float, false, GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.COPY_SRC | GPUTextureUsage.TEXTURE_BINDING);
+        this.newTexture = new VirtualTexture(inW, inH, GPUTextureFormat.rgba16float, false, GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.COPY_SRC | GPUTextureUsage.TEXTURE_BINDING, 1, 0, 1, this._boundCtx!);
         this.newTexture.name = 'newTexture';
 
-        this.oldTexture = new VirtualTexture(inW, inH, GPUTextureFormat.rgba16float, false, GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.COPY_SRC | GPUTextureUsage.TEXTURE_BINDING);
+        this.oldTexture = new VirtualTexture(inW, inH, GPUTextureFormat.rgba16float, false, GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.COPY_SRC | GPUTextureUsage.TEXTURE_BINDING, 1, 0, 1, this._boundCtx!);
         this.oldTexture.name = 'oldTexture';
 
-        this.combineTexture = new VirtualTexture(inW, inH, GPUTextureFormat.rgba16float, false, GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.COPY_SRC | GPUTextureUsage.TEXTURE_BINDING);
+        this.combineTexture = new VirtualTexture(inW, inH, GPUTextureFormat.rgba16float, false, GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.COPY_SRC | GPUTextureUsage.TEXTURE_BINDING, 1, 0, 1, this._boundCtx!);
         this.combineTexture.name = 'combineTexture';
 
         let ssgiDec = new RTDescriptor();
@@ -237,44 +236,45 @@ export class SSGIPost extends PostBase {
             this.createCompute();
             this.onResize();
 
-            this.rendererPassState = WebGPUDescriptorCreator.createRendererPassState(this.rtFrame, null);
+            this.rendererPassState = WebGPUDescriptorCreator.createRendererPassState(view.engine3D.context3D, this.rtFrame, null);
             this.rendererPassState.label = "SSGI";
         }
 
         this.frameCount = this.frame;
         this.frame++;
 
-        let command = GPUContext.beginCommandEncoder();
-        // GPUContext.copyTexture(command, this.albedoTexture, this.outTexture);
+        const gpu = view.engine3D.context3D.gpuContext;
+        let command = gpu.beginCommandEncoder();
+        // gpu.copyTexture(command, this.albedoTexture, this.outTexture);
         switch (parseInt(this.debugChanal)) {
             case 0:
-                // GPUContext.copyTexture(command, this.oldTexture, this.combineTexture);
-                GPUContext.copyTexture(command, this.combineTexture, this.oldTexture);
-                // GPUContext.computeCommand(command, [this.ssgiCompute, this.delayCompute, this.textureScaleBigCompute.computeShader]);
-                GPUContext.computeCommand(command, [this.ssgiCompute, this.delayCompute, this.combineCompute]);
-                // GPUContext.copyTexture(command, this.posTexture, this.lastPosTexture);
+                // gpu.copyTexture(command, this.oldTexture, this.combineTexture);
+                gpu.copyTexture(command, this.combineTexture, this.oldTexture);
+                // gpu.computeCommand(command, [this.ssgiCompute, this.delayCompute, this.textureScaleBigCompute.computeShader]);
+                gpu.computeCommand(command, [this.ssgiCompute, this.delayCompute, this.combineCompute]);
+                // gpu.copyTexture(command, this.posTexture, this.lastPosTexture);
                 break;
             case 1:
-                GPUContext.copyTexture(command, this.posTexture, this.lastPosTexture);
-                GPUContext.copyTexture(command, this.lastPosTexture, this.outTexture);
+                gpu.copyTexture(command, this.posTexture, this.lastPosTexture);
+                gpu.copyTexture(command, this.lastPosTexture, this.outTexture);
                 break;
             case 2:
-                GPUContext.copyTexture(command, this.normalTexture, this.outTexture);
+                gpu.copyTexture(command, this.normalTexture, this.outTexture);
                 break;
             case 3:
-                GPUContext.copyTexture(command, this.posTexture, this.outTexture);
+                gpu.copyTexture(command, this.posTexture, this.outTexture);
                 break;
             case 4:
-                GPUContext.copyTexture(command, this.colorTexture, this.outTexture);
+                gpu.copyTexture(command, this.colorTexture, this.outTexture);
                 break;
             case 5:
-                GPUContext.copyTexture(command, this.gBufferTexture, this.outTexture);
+                gpu.copyTexture(command, this.gBufferTexture, this.outTexture);
                 break;
             default:
                 break;
         }
 
-        GPUContext.lastRenderPassState = this.rendererPassState;
+        gpu.lastRenderPassState = this.rendererPassState;
 
         this.updateBuffer.setFloat("delay", 0.01);
     }

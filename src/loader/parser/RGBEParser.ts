@@ -138,7 +138,7 @@ export class RGBEParser extends ParserBase {
             width: this._width,
             height: this._height,
             array: this._rgbeArray,
-        });
+        }, this.ctx);
         return cubeTexture;
     }
 

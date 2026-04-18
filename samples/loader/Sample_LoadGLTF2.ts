@@ -3,6 +3,7 @@ import { createExampleScene } from "@samples/utils/ExampleScene";
 
 //Samples to show models, they are using PBR material
 class Sample_LoadGLTF2 {
+    engine: Engine3D;
     lightObj3D: Object3D;
     scene: Scene3D;
     async run() {
@@ -11,7 +12,7 @@ class Sample_LoadGLTF2 {
         Engine3D.setting.shadow.shadowBound = 80;
 
         //init engine
-        const engine = await Engine3D.create();
+        const engine = this.engine = await Engine3D.create();
         let exampleScene = createExampleScene(engine);
         this.scene = exampleScene.scene;
         engine.startRenderView(exampleScene.view);
@@ -24,7 +25,7 @@ class Sample_LoadGLTF2 {
         floor.y = -10;
         this.scene.addChild(floor);
 
-        let chair = await Engine3D.res.loadGltf('PBR/SheenChair/SheenChair.gltf') as Object3D;
+        let chair = await this.engine.res.loadGltf('PBR/SheenChair/SheenChair.gltf') as Object3D;
         chair.scaleX = chair.scaleY = chair.scaleZ = 60;
         chair.rotationZ = chair.rotationX = 45;
         this.scene.addChild(chair);

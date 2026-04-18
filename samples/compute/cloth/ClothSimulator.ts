@@ -1,4 +1,4 @@
-import { Engine3D, LitMaterial, KeyCode, KeyEvent, MeshRenderer, Object3D, PlaneGeometry, Time, Vector3, VertexAttributeName, View3D } from '@orillusion/core';
+import { LitMaterial, KeyCode, KeyEvent, MeshRenderer, Object3D, PlaneGeometry, Time, Vector3, VertexAttributeName, View3D } from '@orillusion/core';
 import { ClothSimulatorConfig } from "./ClothSimulatorConfig";
 import { ClothSimulatorPipeline } from "./ClothSimulatorPipeline";
 
@@ -59,13 +59,14 @@ export class ClothSimulator extends MeshRenderer {
         this.geometry = this.mClothGeometry;
         var mat = new LitMaterial();
         mat.roughness = 0.8;
-        mat.baseMap = Engine3D.res.redTexture;
         mat.cullMode = 'none'
         this.material = mat;
     }
 
     public start() {
-        const input = (this.transform as any)?.view3D?.engine3D?.inputSystem;
+        const engine = (this.transform as any)?.view3D?.engine3D;
+        (this.material as LitMaterial).baseMap = engine.res.redTexture;
+        const input = engine?.inputSystem;
         input.addEventListener(KeyEvent.KEY_DOWN, (e: KeyEvent) => this.updateKeyState(e.keyCode, true), this);
         input.addEventListener(KeyEvent.KEY_UP, (e: KeyEvent) => this.updateKeyState(e.keyCode, false), this);
     }

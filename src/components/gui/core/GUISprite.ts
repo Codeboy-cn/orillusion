@@ -1,4 +1,5 @@
 import { Engine3D } from "../../../Engine3D";
+import { Context3D } from "../../../gfx/graphics/webGpu/Context3D";
 import { Vector2 } from "../../../math/Vector2";
 import { Vector4 } from "../../../math/Vector4";
 import { GUITexture } from "./GUITexture";
@@ -27,7 +28,7 @@ export class GUISprite {
     public xoffset: number = 0;
     public yoffset: number = 0;
 
-    constructor(texture?: GUITexture) {
-        this.guiTexture = texture || Engine3D.res.defaultGUITexture;
+    constructor(texture?: GUITexture, ctx?: Context3D) {
+        this.guiTexture = texture || Engine3D.resFor(ctx).defaultGUITexture;
     }
 }

@@ -1,3 +1,4 @@
+import { Context3D } from "../gfx/graphics/webGpu/Context3D";
 import { Texture } from "../gfx/graphics/webGpu/core/texture/Texture";
 import { StandShader } from "../loader/parser/prefab/mats/shader/StandShader";
 import { Color } from "../math/Color";
@@ -5,10 +6,10 @@ import { Material } from "./Material";
 
 export class LitMaterial extends Material {
 
-    constructor() {
+    constructor(ctx?: Context3D) {
         super();
 
-        let shader = new StandShader();
+        let shader = new StandShader(ctx);
         this.shader = shader;
     }
 

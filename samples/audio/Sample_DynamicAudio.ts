@@ -3,6 +3,7 @@ import { PositionAudio, AudioListener } from '@orillusion/media-extention'
 import { GUIHelp } from '@orillusion/debug/GUIHelp';
 
 export class Static_Audio {
+    engine: Engine3D;
     lightObj: Object3D;
     scene: Scene3D;
     camera: Object3D
@@ -21,7 +22,7 @@ export class Static_Audio {
         Engine3D.setting.shadow.shadowBound = 200;
         Engine3D.setting.shadow.shadowBias = 0.002;
 
-        const engine = await Engine3D.create({
+        const engine = this.engine = await Engine3D.create({
             renderLoop: this.loop.bind(this)
         });
         this.scene = new Scene3D();
@@ -49,8 +50,8 @@ export class Static_Audio {
     async initScene() {
         {
             let [speaker, man, music] = await Promise.all([
-                Engine3D.res.loadGltf('gltfs/speaker/scene.gltf'),
-                Engine3D.res.loadGltf('gltfs/glb/CesiumMan.glb'),
+                this.engine.res.loadGltf('gltfs/speaker/scene.gltf'),
+                this.engine.res.loadGltf('gltfs/glb/CesiumMan.glb'),
                 fetch('https://cdn.orillusion.com/audio.ogg').then(res => res.arrayBuffer())
             ])
             speaker.localScale.set(4, 4, 4)

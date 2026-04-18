@@ -5,7 +5,7 @@ const engine = await Engine3D.create();
 engine.frameRate = 10;
     
 await test('textue2D create Uint8Texture', async () => {
-    let texture2D = Engine3D.res.createTexture(32, 64, 255, 255, 0, 255, 'uint8Texture')
+    let texture2D = engine.res.createTexture(32, 64, 255, 255, 0, 255, 'uint8Texture')
     let success = (texture2D.gpuSampler && texture2D.getGPUTexture() && texture2D.getGPUView()) ? true : false;
     expect(success).toEqual(true);
 })

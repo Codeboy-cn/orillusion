@@ -6,6 +6,7 @@ import { GrassNodeStruct, GrassRenderer, Graphic3DMesh, Graphic3D } from "@orill
 
 
 export class Sample_GraphicGrass {
+    engine: Engine3D;
     lightObj3D: Object3D;
     scene: Scene3D;
     view: View3D;
@@ -18,7 +19,7 @@ export class Sample_GraphicGrass {
         Matrix4.maxCount = 10000;
         Matrix4.allocCount = 10000;
 
-        const engine = await Engine3D.create({ beforeRender: () => this.update() });
+        const engine = this.engine = await Engine3D.create({ beforeRender: () => this.update() });
 
         Engine3D.setting.render.debug = true;
         Engine3D.setting.shadow.shadowBound = 5;
@@ -70,8 +71,8 @@ export class Sample_GraphicGrass {
 
     private async addGrass(grassGroup: number) {
         let texts = [];
-        texts.push(await Engine3D.res.loadTexture("textures/line3.png") as BitmapTexture2D);
-        let bitmapTexture2DArray = new BitmapTexture2DArray(texts[0].width, texts[0].height, texts.length);
+        texts.push(await this.engine.res.loadTexture("textures/line3.png") as BitmapTexture2D);
+        let bitmapTexture2DArray = new BitmapTexture2DArray(texts[0].width, texts[0].height, texts.length, this.engine.context3D);
         bitmapTexture2DArray.setTextures(texts);
 
         {

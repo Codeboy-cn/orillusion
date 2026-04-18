@@ -7,7 +7,6 @@ import { View3D } from '../../../core/View3D';
 import { FXAAShader } from '../../../assets/shader/post/FXAAShader';
 import { ViewQuad } from '../../../core/ViewQuad';
 import { RenderTexture } from '../../../textures/RenderTexture';
-import { GPUContext } from '../GPUContext';
 /**
  * FXAA(fast approximate antialiasing)
  * A deformation anti-aliasing method that pays more attention to performance. 
@@ -54,7 +53,7 @@ export class FXAAPost extends PostBase {
     public render(view: View3D, command: GPUCommandEncoder) {
         this.compute(view);
         this.rtViewQuad.forEach((viewQuad, k) => {
-            let lastTexture = GPUContext.lastRenderPassState.getLastRenderTexture();
+            let lastTexture = this._boundCtx!.gpuContext.lastRenderPassState.getLastRenderTexture(this._boundCtx!);
             viewQuad.renderToViewQuad(view, viewQuad, command, lastTexture);
         });
     }

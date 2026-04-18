@@ -1,14 +1,12 @@
-import { perContextResource } from "./Context3D";
+import { Context3D } from "./Context3D";
 
 export class PipelinePool {
-    private static _mapStore = perContextResource<Map<string, GPURenderPipeline>>();
-
-    private static map() {
-        return this._mapStore(() => new Map<string, GPURenderPipeline>());
+    private static map(ctx: Context3D) {
+        return ctx.cache(PipelinePool, () => new Map<string, GPURenderPipeline>());
     }
 
-    public static getSharePipeline(shaderVariant: string) {
-        let pipeline = this.map().get(shaderVariant);
+    public static getSharePipeline(ctx: Context3D, shaderVariant: string) {
+        let pipeline = this.map(ctx).get(shaderVariant);
         if (pipeline) {
             return pipeline;
         } else {
@@ -16,7 +14,7 @@ export class PipelinePool {
         }
     }
 
-    public static setSharePipeline(shaderVariant: string, pipeline: GPURenderPipeline) {
-        this.map().set(shaderVariant, pipeline);
+    public static setSharePipeline(ctx: Context3D, shaderVariant: string, pipeline: GPURenderPipeline) {
+        this.map(ctx).set(shaderVariant, pipeline);
     }
 }

@@ -1,4 +1,5 @@
 import { Engine3D } from "../../../../..";
+import { Context3D } from "../../../../../gfx/graphics/webGpu/Context3D";
 import { GPUCullMode } from "../../../../../gfx/graphics/webGpu/WebGPUConst";
 import { Texture } from "../../../../../gfx/graphics/webGpu/core/texture/Texture";
 import { RenderShaderPass } from "../../../../../gfx/graphics/webGpu/shader/RenderShaderPass";
@@ -12,8 +13,11 @@ import { Shader } from "../../../../../gfx/graphics/webGpu/shader/Shader";
 @RegisterShader
 export class LitShader extends Shader {
 
-    constructor() {
+    private _ctx: Context3D | undefined;
+
+    constructor(ctx?: Context3D) {
         super();
+        this._ctx = ctx;
 
         let colorShader = new RenderShaderPass('PBRLItShader', 'PBRLItShader');
         colorShader.setShaderEntry(`VertMain`, `FragMain`)
@@ -59,9 +63,10 @@ export class LitShader extends Shader {
         this.setUniformColor(`clearcoatColor`, new Color(1, 1, 1));
         this.setUniformFloat(`clearcoatWeight`, 0.0);
 
-        this._MainTex = Engine3D.res.grayTexture;
-        this._BumpMap = Engine3D.res.normalTexture;
-        this._MaskTex = Engine3D.res.maskTexture;
+        const res = Engine3D.resFor(this._ctx);
+        this._MainTex = res.grayTexture;
+        this._BumpMap = res.normalTexture;
+        this._MaskTex = res.maskTexture;
     }
 
     public set _MainTex(value: Texture) {

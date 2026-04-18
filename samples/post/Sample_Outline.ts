@@ -1,4 +1,4 @@
-import { DirectLight, Engine3D, View3D, LitMaterial, HoverCameraController, KelvinUtil, MeshRenderer, Object3D, PlaneGeometry, Scene3D, SphereGeometry, PostProcessingComponent, CameraUtil, webGPUContext, OutlinePost, outlinePostManager, AtmosphericComponent, Color, FXAAPost } from '@orillusion/core'
+import { DirectLight, Engine3D, View3D, LitMaterial, HoverCameraController, KelvinUtil, MeshRenderer, Object3D, PlaneGeometry, Scene3D, SphereGeometry, PostProcessingComponent, CameraUtil, OutlinePost, outlinePostManager, AtmosphericComponent, Color, FXAAPost } from '@orillusion/core'
 import { GUIHelp } from '@orillusion/debug/GUIHelp';
 import * as dat from '@orillusion/debug/dat.gui.module'
 import { GUIUtil } from '@samples/utils/GUIUtil';
@@ -26,7 +26,7 @@ export class Sample_Outline {
         this.scene.addComponent(AtmosphericComponent).sunY = 0.6
 
         let mainCamera = CameraUtil.createCamera3DObject(this.scene, 'camera')
-        mainCamera.perspective(60, webGPUContext.aspect, 1, 2000.0)
+        mainCamera.perspective(60, engine.context3D.aspect, 1, 2000.0)
         let ctrl = mainCamera.object3D.addComponent(HoverCameraController)
         ctrl.setCamera(-75, -30, 20)
         await this.initScene(this.scene)

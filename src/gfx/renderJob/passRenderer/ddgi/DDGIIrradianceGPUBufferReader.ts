@@ -2,8 +2,7 @@
 import { CEvent } from "../../../../event/CEvent";
 import { CEventDispatcher } from "../../../../event/CEventDispatcher";
 import { RenderTexture } from "../../../../textures/RenderTexture";
-import { bindCtx, Context3D, webGPUContext } from "../../../graphics/webGpu/Context3D";
-import { GPUContext } from "../../GPUContext";
+import { bindCtx, Context3D } from "../../../graphics/webGpu/Context3D";
 import { DDGIProbeRenderer, GIRenderCompleteEvent, GIRenderStartEvent } from "./DDGIProbeRenderer";
 
 export let IrradianceDataReaderCompleteEvent: CEvent = new CEvent('IrradianceDataReaderCompleteEvent');
@@ -19,15 +18,14 @@ export class DDGIIrradianceGPUBufferReader extends CEventDispatcher {
     public opColorArray: Float32Array;
     public _boundCtx: Context3D | null = null;
 
-    public initReader(probeRender: DDGIProbeRenderer, colorMap: RenderTexture, depthMap: RenderTexture) {
+    public initReader(ctx: Context3D, probeRender: DDGIProbeRenderer, colorMap: RenderTexture, depthMap: RenderTexture) {
         this.probeRenderer = probeRender;
         this.srcColorMap = colorMap;
         this.srcDepthMap = depthMap;
         let giSetting = Engine3D.setting.gi;
         let pixelCount = giSetting.octRTMaxSize * giSetting.octRTMaxSize;
 
-        // eslint-disable-next-line @typescript-eslint/no-deprecated
-        bindCtx(this, webGPUContext);
+        bindCtx(this, ctx);
         let device = this._boundCtx!.device;
 
         this.opColorBuffer = device.createBuffer({
@@ -70,8 +68,8 @@ export class DDGIIrradianceGPUBufferReader extends CEventDispatcher {
             let startTime = Date.now();
             console.log('irradianceDataReader start reading ');
 
-            await DDGIIrradianceGPUBufferReader.read(this.srcColorMap.getGPUTexture(), this.opColorBuffer, this.opColorArray);
-            await DDGIIrradianceGPUBufferReader.read(this.srcDepthMap.getGPUTexture(), this.opDepthBuffer, this.opDepthArray);
+            await this.read(this.srcColorMap.getGPUTexture(), this.opColorBuffer, this.opColorArray);
+            await this.read(this.srcDepthMap.getGPUTexture(), this.opDepthBuffer, this.opDepthArray);
             this.readFlag = false;
             console.log('process time :', Date.now() - startTime);
             console.log('irradianceDataReader read complete');
@@ -81,10 +79,11 @@ export class DDGIIrradianceGPUBufferReader extends CEventDispatcher {
         }
     }
 
-    private static async read(srcTexture: GPUTexture, dstBuffer: GPUBuffer, output: Float32Array) {
-        let command = GPUContext.beginCommandEncoder();
+    private async read(srcTexture: GPUTexture, dstBuffer: GPUBuffer, output: Float32Array) {
+        const gpu = this._boundCtx!.gpuContext;
+        let command = gpu.beginCommandEncoder();
         command.copyTextureToBuffer({ texture: srcTexture }, { buffer: dstBuffer, bytesPerRow: srcTexture.width * 16 }, [srcTexture.width, srcTexture.height]);
-        GPUContext.endCommandEncoder(command);
+        gpu.endCommandEncoder(command);
 
         await dstBuffer.mapAsync(GPUMapMode.READ);
         const copyArrayBuffer = dstBuffer.getMappedRange();

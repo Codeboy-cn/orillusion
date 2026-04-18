@@ -2,11 +2,12 @@
 import { Engine3D, Object3DUtil, Object3D, UIImage, ImageType, Color, UIPanel, ViewPanel, Scene3D, Vector2, UITextField, UIShadow } from "@orillusion/core";
 
 class Sample_UIMultiCanvas {
+    engine: Engine3D;
     async run() {
         Engine3D.setting.shadow.autoUpdate = true;
 
-        const engine = await Engine3D.create();
-        await Engine3D.res.loadFont('fnt/0.fnt');
+        const engine = this.engine = await Engine3D.create();
+        await this.engine.res.loadFont('fnt/0.fnt');
 
         let exampleScene = createExampleScene(engine);
         engine.startRenderView(exampleScene.view);

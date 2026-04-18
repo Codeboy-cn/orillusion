@@ -7,7 +7,6 @@ import { VirtualTexture } from '../../../../textures/VirtualTexture';
 import { GPUTextureFormat } from '../../../graphics/webGpu/WebGPUConst';
 import { CollectInfo } from '../../collect/CollectInfo';
 import { EntityCollect } from '../../collect/EntityCollect';
-import { GPUContext } from '../../GPUContext';
 import { RTFrame } from '../../frame/RTFrame';
 import { OcclusionSystem } from '../../occlusion/OcclusionSystem';
 import { RendererBase } from '../RendererBase';
@@ -17,14 +16,13 @@ import { View3D } from '../../../../core/View3D';
 import { DepthCubeArrayTexture } from '../../../../textures/DepthCubeArrayTexture';
 import { Time } from '../../../../util/Time';
 import { RTDescriptor } from '../../../graphics/webGpu/descriptor/RTDescriptor';
-import { WebGPUDescriptorCreator } from '../../../graphics/webGpu/descriptor/WebGPUDescriptorCreator';
-import { RendererPassState } from '../state/RendererPassState';
 import { PassType } from '../state/PassType';
 import { ILight } from '../../../../components/lights/ILight';
 import { Reference } from '../../../../util/Reference';
 import { GlobalBindGroup } from '../../../graphics/webGpu/core/bindGroups/GlobalBindGroup';
 import { RenderContext } from '../RenderContext';
 import { ClusterLightingBuffer } from '../cluster/ClusterLightingBuffer';
+import { Context3D } from '../../../graphics/webGpu/Context3D';
 
 type CubeShadowMapInfo = {
     cubeCamera: CubeCamera,
@@ -44,14 +42,14 @@ export class PointLightShadowRenderer extends RendererBase {
     public cubeArrayTexture: DepthCubeArrayTexture;
     public colorTexture: VirtualTexture;
     public shadowSize: number = 1024;
-    constructor() {
+    constructor(ctx?: Context3D) {
         super();
         this.passType = PassType.POINT_SHADOW;
 
         // this.shadowSize = Engine3D.setting.shadow.pointShadowSize;
         this._shadowCameraDic = new Map<ILight, CubeShadowMapInfo>();
-        this.cubeArrayTexture = new DepthCubeArrayTexture(this.shadowSize, this.shadowSize, 8);
-        this.colorTexture = new VirtualTexture(this.shadowSize, this.shadowSize, GPUTextureFormat.bgra8unorm, false);
+        this.cubeArrayTexture = new DepthCubeArrayTexture(this.shadowSize, this.shadowSize, 8, ctx);
+        this.colorTexture = new VirtualTexture(this.shadowSize, this.shadowSize, GPUTextureFormat.bgra8unorm, false, undefined, 1, 0, 1, ctx);
 
         Reference.getInstance().attached(this.cubeArrayTexture, this);
     }
@@ -62,12 +60,13 @@ export class PointLightShadowRenderer extends RendererBase {
             cubeShadowMapInfo = this._shadowCameraDic.get(lightBase);
         } else {
             let camera = new PointShadowCubeCamera(view.camera.near, view.camera.far, 90, true);
+            camera.bindCtx(view.engine3D.context3D);
             camera.label = lightBase.name;
             let depths: VirtualTexture[] = [];
             let renderContext: RenderContext[] = [];
             for (let i = 0; i < 6; i++) {
 
-                let depthTexture = new VirtualTexture(this.shadowSize, this.shadowSize, this.cubeArrayTexture.format, false);
+                let depthTexture = new VirtualTexture(this.shadowSize, this.shadowSize, this.cubeArrayTexture.format, false, undefined, 1, 0, 1, view.engine3D.context3D);
                 let rtFrame = new RTFrame([this.colorTexture], [new RTDescriptor()]);
                 depthTexture.name = `shadowDepthTexture_` + lightBase.name + i + "_face";
                 depths[i] = depthTexture;
@@ -76,7 +75,7 @@ export class PointLightShadowRenderer extends RendererBase {
                 rtFrame.label = "shadowRender"
                 rtFrame.customSize = true;
 
-                renderContext[i] = this.getRenderContext(rtFrame);
+                renderContext[i] = this.getRenderContext(view.engine3D.context3D, rtFrame);
 
                 // Engine3D.getRenderJob(view).postRenderer?.setDebugTexture([depthTexture]);
             }
@@ -94,6 +93,7 @@ export class PointLightShadowRenderer extends RendererBase {
         // return ;
         if (!Engine3D.setting.shadow.enable)
             return;
+        const gpu = view.engine3D.context3D.gpuContext;
         // return ;
         this.shadowPassCount = 0;
 
@@ -152,7 +152,7 @@ export class PointLightShadowRenderer extends RendererBase {
                     collectInfo = EntityCollect.instance.getRenderNodes(scene, cubeShadowMapInfo.cubeCamera.back_camera);
                     this.renderSceneOnce(5, cubeShadowMapInfo, view, cubeShadowMapInfo.cubeCamera.back_camera, collectInfo, occlusionSystem);
                 }
-                let qCommand = GPUContext.beginCommandEncoder();
+                let qCommand = gpu.beginCommandEncoder();
                 for (let i = 0; i < 6; i++) {
                     qCommand.copyTextureToTexture(
                         {
@@ -172,7 +172,7 @@ export class PointLightShadowRenderer extends RendererBase {
                         },
                     );
                 }
-                GPUContext.endCommandEncoder(qCommand);
+                gpu.endCommandEncoder(qCommand);
                 li++;
             }
         }
@@ -182,6 +182,7 @@ export class PointLightShadowRenderer extends RendererBase {
 
     private renderSceneOnce(face: number, cubeShadowMapInfo: CubeShadowMapInfo, view: View3D, shadowCamera: Camera3D, collectInfo: CollectInfo, occlusionSystem: OcclusionSystem) {
         let renderContext = cubeShadowMapInfo.renderContext[face];
+        renderContext.gpu = view.engine3D.context3D.gpuContext;
         renderContext.clean();
         renderContext.beginOpaqueRenderPass();
 
@@ -207,7 +208,7 @@ export class PointLightShadowRenderer extends RendererBase {
 
     protected drawShadowRenderNodes(view: View3D, shadowCamera: Camera3D, renderContext: RenderContext, nodes: RenderNode[], occlusionSystem: OcclusionSystem) {
         GlobalBindGroup.updateCameraGroup(shadowCamera);
-        GPUContext.bindCamera(renderContext.encoder, shadowCamera);
+        view.engine3D.context3D.gpuContext.bindCamera(renderContext.encoder, shadowCamera);
 
         let scene = view.scene;
         let camera = view.camera;

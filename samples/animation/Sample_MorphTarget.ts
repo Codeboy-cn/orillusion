@@ -1,9 +1,10 @@
 import { GUIHelp } from "@orillusion/debug/GUIHelp";
-import { Object3D, Scene3D, Engine3D, AtmosphericComponent, webGPUContext, HoverCameraController, View3D, DirectLight, KelvinUtil, Vector3, MorphTargetBlender, Entity, CameraUtil, AnimatorComponent, PostProcessingComponent, FXAAPost } from "@orillusion/core";
+import { Object3D, Scene3D, Engine3D, AtmosphericComponent, HoverCameraController, View3D, DirectLight, KelvinUtil, Vector3, MorphTargetBlender, Entity, CameraUtil, AnimatorComponent, PostProcessingComponent, FXAAPost } from "@orillusion/core";
 import { GUIUtil } from "@samples/utils/GUIUtil";
 
 // Sample of how to control the morphtarget animation
 export class Sample_MorphTarget {
+    engine: Engine3D;
     lightObj3D: Object3D;
     scene: Scene3D;
     influenceData: { [key: string]: number } = {};
@@ -12,14 +13,14 @@ export class Sample_MorphTarget {
         Engine3D.setting.shadow.shadowBound = 100;
         Engine3D.setting.shadow.shadowBias = 0.05;
 
-        const engine = await Engine3D.create();
+        const engine = this.engine = await Engine3D.create();
         GUIHelp.init();
 
         this.scene = new Scene3D();
         let sky = this.scene.addComponent(AtmosphericComponent);
 
         let camera = CameraUtil.createCamera3DObject(this.scene);
-        camera.perspective(60, webGPUContext.aspect, 1, 5000.0);
+        camera.perspective(60, engine.context3D.aspect, 1, 5000.0);
         camera.object3D.addComponent(HoverCameraController).setCamera(0, 0, 150);
 
         let view = new View3D();
@@ -55,7 +56,7 @@ export class Sample_MorphTarget {
     private async initMorphModel() {
 
         // load lion model
-        let model = await Engine3D.res.loadGltf('gltfs/glb/lion.glb');
+        let model = await this.engine.res.loadGltf('gltfs/glb/lion.glb');
         model.y = -80.0;
         model.x = -30.0;
         this.scene.addChild(model);

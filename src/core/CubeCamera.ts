@@ -3,6 +3,7 @@ import { CameraUtil } from '../util/CameraUtil';
 import { Camera3D } from './Camera3D';
 import { CameraType } from './CameraType';
 import { Object3D } from './entities/Object3D';
+import { Context3D } from '../gfx/graphics/webGpu/Context3D';
 
 /**
  * A cube camera containing 6 perspective cameras.
@@ -45,7 +46,7 @@ export class CubeCamera extends Object3D {
         this.front_camera.isShadowCamera = isShadow;
         this.back_camera.isShadowCamera = isShadow;
 
-        let aspect = 1.0; // webGPUContext.aspect;
+        let aspect = 1.0;
         this.up_camera.perspective(fov, aspect, near, far);
         this.up_camera.lookAt(Vector3.ZERO, Vector3.UP, Vector3.DOWN);
 
@@ -99,5 +100,19 @@ export class CubeCamera extends Object3D {
 
     public get far() {
         return this._far;
+    }
+
+    /** Bind all 6 face cameras to a specific Context3D. Needed when the
+     *  CubeCamera is used by a renderer/probe that never adds it to a
+     *  scene graph — without this, `GlobalBindGroup._ctxFromCamera` has
+     *  no ancestor chain to walk. */
+    public bindCtx(ctx: Context3D): this {
+        this.up_camera._boundCtx ||= ctx;
+        this.down_camera._boundCtx ||= ctx;
+        this.left_camera._boundCtx ||= ctx;
+        this.right_camera._boundCtx ||= ctx;
+        this.front_camera._boundCtx ||= ctx;
+        this.back_camera._boundCtx ||= ctx;
+        return this;
     }
 }

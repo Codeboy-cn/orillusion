@@ -11,7 +11,7 @@ import { CameraUtil } from '../util/CameraUtil';
 import { Frustum } from './bound/Frustum';
 import { CameraType } from './CameraType';
 import { CubeCamera } from './CubeCamera';
-import { Context3D, webGPUContext } from '../gfx/graphics/webGpu/Context3D';
+import { Context3D } from '../gfx/graphics/webGpu/Context3D';
 import { FrustumCSM } from './csm/FrustumCSM';
 import { CSM } from './csm/CSM';
 import { CResizeEvent } from '../event/CResizeEvent';
@@ -151,6 +151,11 @@ export class Camera3D extends ComponentBase {
     public set enableCSM(value: boolean) {
         if (value && !this.csm) {
             this.csm = new FrustumCSM(CSM.Cascades);
+            if (this._boundCtx) {
+                for (const child of this.csm.children) {
+                    (child.shadowCamera as any)._boundCtx ||= this._boundCtx;
+                }
+            }
         }
         this._enableCSM = value;
     }
@@ -164,22 +169,41 @@ export class Camera3D extends ComponentBase {
         this.frustum = new Frustum();
         this.lookTarget = new Vector3(0, 0, 0);
 
-        // TODO: set viewport based on View3D size
-        // eslint-disable-next-line @typescript-eslint/no-deprecated
-        let ctx = this._boundCtx ?? webGPUContext;
+        let ctx = this._deriveCtx();
+        if (ctx) {
+            this._bindToCtx(ctx);
+        }
+        this.updateProjection();
+    }
+
+    private _deriveCtx(): Context3D | null {
+        return this._boundCtx ?? this.transform?.view3D?.engine3D?.context3D ?? null;
+    }
+
+    private _resizeListenerAttached: boolean = false;
+    private _bindToCtx(ctx: Context3D) {
+        this._boundCtx = ctx;
         this.viewPort.x = 0;
         this.viewPort.y = 0;
         this.viewPort.w = ctx.presentationSize[0];
         this.viewPort.h = ctx.presentationSize[1];
-
-        this.updateProjection();
-        ctx.addEventListener(CResizeEvent.RESIZE, this.updateProjection, this)
+        if (!this._resizeListenerAttached) {
+            ctx.addEventListener(CResizeEvent.RESIZE, this.updateProjection, this);
+            this._resizeListenerAttached = true;
+        }
+        if (this.csm) {
+            for (const child of this.csm.children) {
+                (child.shadowCamera as any)._boundCtx ||= ctx;
+            }
+        }
     }
 
     public updateProjection() {
-        // eslint-disable-next-line @typescript-eslint/no-deprecated
-        let ctx = this._boundCtx ?? webGPUContext;
-        this.aspect = ctx.aspect;
+        let ctx = this._deriveCtx();
+        if (ctx) {
+            if (!this._resizeListenerAttached) this._bindToCtx(ctx);
+            this.aspect = ctx.aspect;
+        }
         if (this.type == CameraType.perspective) {
             this.perspective(this.fov, this.aspect, this.near, this.far);
         }else if(this.type == CameraType.ortho) {

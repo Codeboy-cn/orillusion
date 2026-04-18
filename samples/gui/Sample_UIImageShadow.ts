@@ -32,7 +32,7 @@ class Sample_UIImageShadow {
         let imageQuad = new Object3D();
         panelRoot.addChild(imageQuad);
         this.img = imageQuad.addComponent(UIImage);
-        let bitmapTexture2D = new BitmapTexture2D();
+        let bitmapTexture2D = new BitmapTexture2D(true, engine.context3D);
         bitmapTexture2D.flipY = true;
         await bitmapTexture2D.load('png/logo.png');
 

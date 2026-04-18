@@ -1,7 +1,6 @@
 import { Texture } from '../gfx/graphics/webGpu/core/texture/Texture';
 import { GPUAddressMode, GPUTextureFormat } from '../gfx/graphics/webGpu/WebGPUConst';
-import { bindCtx, webGPUContext } from '../gfx/graphics/webGpu/Context3D';
-import { GPUContext } from '../gfx/renderJob/GPUContext';
+import { Context3D } from '../gfx/graphics/webGpu/Context3D';
 import { UUID } from '../util/Global';
 /**
  * @internal
@@ -30,10 +29,9 @@ export class VirtualTexture extends Texture {
      * @param useMipmap whether or not gen mipmap
      * @returns
      */
-    constructor(width: number, height: number, format: GPUTextureFormat = GPUTextureFormat.rgba8unorm, useMipMap: boolean = false, usage?: GPUFlagsConstant, numberLayer: number = 1, sampleCount: number = 0, mipmapCount: number = 1) {
+    constructor(width: number, height: number, format: GPUTextureFormat = GPUTextureFormat.rgba8unorm, useMipMap: boolean = false, usage?: GPUFlagsConstant, numberLayer: number = 1, sampleCount: number = 0, mipmapCount: number = 1, ctx?: Context3D) {
         super(width, height, numberLayer);
-        // eslint-disable-next-line @typescript-eslint/no-deprecated
-        bindCtx(this, webGPUContext);
+        this._ensureBound(ctx);
         this.name = UUID();
 
         this.useMipmap = useMipMap;
@@ -52,11 +50,9 @@ export class VirtualTexture extends Texture {
     }
 
     public resize(width, height) {
-        // eslint-disable-next-line @typescript-eslint/no-deprecated
-        bindCtx(this, webGPUContext);
         let device = this._boundCtx!.device;
         if (this.gpuTexture) {
-            Texture.delayDestroyTexture(this.gpuTexture);
+            Texture.delayDestroyTexture(this._boundCtx!, this.gpuTexture);
             this.gpuTexture = null;
             this.view = null;
         }
@@ -125,8 +121,6 @@ export class VirtualTexture extends Texture {
     * @returns
     */
     public create(width: number, height: number, useMiamp: boolean = true) {
-        // eslint-disable-next-line @typescript-eslint/no-deprecated
-        bindCtx(this, webGPUContext);
         let device = this._boundCtx!.device;
         const bytesPerRow = width * 4;
         let td = new Float32Array(width * height * 4);
@@ -137,7 +131,7 @@ export class VirtualTexture extends Texture {
         });
 
         device.queue.writeBuffer(textureDataBuffer, 0, td);
-        const commandEncoder = GPUContext.beginCommandEncoder();
+        const commandEncoder = this._boundCtx!.gpuContext.beginCommandEncoder();
         commandEncoder.copyBufferToTexture(
             {
                 buffer: textureDataBuffer,
@@ -153,12 +147,11 @@ export class VirtualTexture extends Texture {
             },
         );
 
-        GPUContext.endCommandEncoder(commandEncoder);
+        this._boundCtx!.gpuContext.endCommandEncoder(commandEncoder);
     }
 
     public readTextureToImage() {
-        // eslint-disable-next-line @typescript-eslint/no-deprecated
-        const ctx = this._boundCtx ?? webGPUContext;
+        const ctx = this._boundCtx!;
         let device = ctx.device;
         let w = ctx.windowWidth;
         let h = ctx.windowHeight;
@@ -169,7 +162,7 @@ export class VirtualTexture extends Texture {
             size: td.byteLength,
             usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC,
         });
-        const commandEncoder = GPUContext.beginCommandEncoder();
+        const commandEncoder = ctx.gpuContext.beginCommandEncoder();
         commandEncoder.copyTextureToBuffer(
             {
                 texture: this.getGPUTexture()

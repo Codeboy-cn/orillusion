@@ -2,10 +2,10 @@
 import { UniformGPUBuffer } from '../../../gfx/graphics/webGpu/core/buffer/UniformGPUBuffer';
 import { MorphTarget_shader } from '../../../components/anim/morphAnim/MorphTarget_shader';
 import { ComputeShader } from '../../../gfx/graphics/webGpu/shader/ComputeShader';
-import { GPUContext } from '../../../gfx/renderJob/GPUContext';
 import { RenderShaderPass } from '../../../gfx/graphics/webGpu/shader/RenderShaderPass';
 import { GeometryBase } from '../../../core/geometry/GeometryBase';
 import { VertexAttributeData } from '../../../core/geometry/VertexAttributeData';
+import { View3D } from '../../../core/View3D';
 
 type MorphTargetCollectData = {
     mtCount: number;
@@ -112,7 +112,7 @@ export class MorphTargetData {
         }
     }
 
-    public computeMorphTarget(command: GPUCommandEncoder): void {
+    public computeMorphTarget(view: View3D, command: GPUCommandEncoder): void {
         this.uploadConfigGBuffer();
         this.uploadMorphTargetBuffer();
 
@@ -128,9 +128,7 @@ export class MorphTargetData {
         this._computeShader.workerSizeY = this._computeWorkGroupXY;
         this._computeShader.workerSizeZ = 1;
 
-        // if (false) {
-        GPUContext.computeCommand(command, this._computeShaders);
-        // }
+        view.engine3D.context3D.gpuContext.computeCommand(command, this._computeShaders);
     }
 
     public updateInfluence(index: number, value: number) {

@@ -25,14 +25,19 @@ export class Scene3D extends Object3D {
         this.skyObject = new Object3D();
         this.addChild(this.skyObject);
         this._isScene3D = true;
-        this.envMap ||= Engine3D.res.defaultSky;
     }
 
     /**
      *
-     * get environment texture
+     * get environment texture. Lazily falls back to the default sky of the
+     * engine this scene is attached to, so construction doesn't force a
+     * device binding before the scene is assigned to a View3D.
      */
     public get envMap(): Texture {
+        if (!this._envMap) {
+            const ctx = this.view?.engine3D?.context3D;
+            if (ctx) this._envMap = Engine3D.resFor(ctx).defaultSky;
+        }
         return this._envMap;
     }
 

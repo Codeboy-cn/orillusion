@@ -3,13 +3,14 @@ import { Object3D, Scene3D, Engine3D, AtmosphericComponent, CameraUtil, HoverCam
 import { GUIUtil } from "@samples/utils/GUIUtil";
 
 class Sample_PBR {
+    engine: Engine3D;
     lightObj3D: Object3D;
     scene: Scene3D;
 
     constructor() { }
 
     async run() {
-        const engine = await Engine3D.create({});
+        const engine = this.engine = await Engine3D.create({});
 
         Engine3D.setting.render.debug = true;
         Engine3D.setting.shadow.shadowBound = 5;
@@ -55,7 +56,7 @@ class Sample_PBR {
             for (let j = 0; j < 10; j++) {
                 //Create materials with different roughness and metallic
                 let mat = new LitMaterial();
-                mat.baseMap = Engine3D.res.whiteTexture;
+                mat.baseMap = this.engine.res.whiteTexture;
                 mat.roughness = i / 10;
                 mat.metallic = j / 10;
                 //Create balls

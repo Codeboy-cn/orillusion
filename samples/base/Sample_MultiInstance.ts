@@ -76,7 +76,7 @@ class Sample_MultiInstance {
         boxA.name = 'redBox';
         const mrA = boxA.addComponent(MeshRenderer);
         mrA.geometry = new BoxGeometry(40, 40, 40);
-        const matA = new LitMaterial();
+        const matA = new LitMaterial(engineA.context3D);
         matA.baseColor = new Color(1, 0.15, 0.15, 1);
         mrA.material = matA;
         sceneA.addChild(boxA);
@@ -112,7 +112,7 @@ class Sample_MultiInstance {
         sphB.name = 'blueSphere';
         const mrB = sphB.addComponent(MeshRenderer);
         mrB.geometry = new SphereGeometry(25, 32, 32);
-        const matB = new LitMaterial();
+        const matB = new LitMaterial(engineB.context3D);
         matB.baseColor = new Color(0.1, 0.4, 1.0, 1);
         mrB.material = matB;
         sceneB.addChild(sphB);

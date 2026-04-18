@@ -1,8 +1,6 @@
 import { Texture } from '../../graphics/webGpu/core/texture/Texture';
-import { webGPUContext, perContextResource } from '../../graphics/webGpu/Context3D';
 
 import { TextureCubeUtils } from './TextureCubeUtils';
-import { GPUContext } from '../../renderJob/GPUContext';
 import { IBLEnvMapCreator_cs } from '../../../assets/shader/compute/IBLEnvMapCreator_cs';
 
 /**
@@ -10,19 +8,17 @@ import { IBLEnvMapCreator_cs } from '../../../assets/shader/compute/IBLEnvMapCre
  * @group GFX
  */
 export class IBLEnvMapCreator {
-    private static _state = perContextResource<{ configBuffer: GPUBuffer; quaternionBuffer: GPUBuffer; blurSettingBuffer: GPUBuffer; pipeline: GPUComputePipeline; quaternionUploaded: boolean }>();
-
     static importantSample(image: { width: number; height: number; erpTexture: Texture }, dstSize: number, roughness: number, dstView: GPUTextureView): void {
-        // eslint-disable-next-line @typescript-eslint/no-deprecated
-        const ctx = image.erpTexture._boundCtx ?? webGPUContext;
+        const ctx = image.erpTexture._boundCtx!;
         const device = ctx.device;
-        const state = this._state(() => ({
-            configBuffer: null,
-            quaternionBuffer: null,
-            blurSettingBuffer: null,
-            pipeline: null,
+        const gpu = ctx.gpuContext;
+        const state = ctx.cache(IBLEnvMapCreator, () => ({
+            configBuffer: null as GPUBuffer,
+            quaternionBuffer: null as GPUBuffer,
+            blurSettingBuffer: null as GPUBuffer,
+            pipeline: null as GPUComputePipeline,
             quaternionUploaded: false,
-        }), ctx);
+        }));
 
         if (state.pipeline == null) {
             state.pipeline = device.createComputePipeline({
@@ -123,7 +119,7 @@ export class IBLEnvMapCreator {
             entries: entries1,
         });
 
-        const commandEncoder = GPUContext.beginCommandEncoder();
+        const commandEncoder = gpu.beginCommandEncoder();
         const computePass = commandEncoder.beginComputePass();
         computePass.setPipeline(computePipeline);
         computePass.setBindGroup(0, computeBindGroup0);
@@ -131,6 +127,6 @@ export class IBLEnvMapCreator {
         computePass.dispatchWorkgroups(dstSize / 8, dstSize / 8, 6);
 
         computePass.end();
-        GPUContext.endCommandEncoder(commandEncoder);
+        gpu.endCommandEncoder(commandEncoder);
     }
 }

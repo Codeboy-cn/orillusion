@@ -21,7 +21,7 @@ export class Sample_UISingleImage {
         let panelRoot: Object3D = new Object3D();
         panelRoot.scaleX = panelRoot.scaleY = panelRoot.scaleZ = 0.1;
 
-        let bitmapTexture2D = new BitmapTexture2D();
+        let bitmapTexture2D = new BitmapTexture2D(true, engine.context3D);
         bitmapTexture2D.flipY = true;
 
         // enable ui canvas 0

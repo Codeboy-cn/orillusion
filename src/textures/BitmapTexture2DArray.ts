@@ -1,10 +1,9 @@
 import { GPUFilterMode, GPUTextureFormat } from '../gfx/graphics/webGpu/WebGPUConst';
 
 import { BitmapTexture2D } from './BitmapTexture2D';
-import { GPUContext } from '../gfx/renderJob/GPUContext';
 import { ITexture } from '../gfx/graphics/webGpu/core/texture/ITexture';
 import { Texture } from '../gfx/graphics/webGpu/core/texture/Texture';
-import { bindCtx, webGPUContext } from '../gfx/graphics/webGpu/Context3D';
+import { Context3D } from '../gfx/graphics/webGpu/Context3D';
 
 /**
  * Type BitmapTexture 2D Array , Use in GPU
@@ -15,7 +14,7 @@ export class BitmapTexture2DArray extends Texture implements ITexture {
 
     private _bitmapTextures: BitmapTexture2D[];
 
-    constructor(width: number, height: number, numberLayer: number) {
+    constructor(width: number, height: number, numberLayer: number, ctx?: Context3D) {
         super(width, height, numberLayer);
 
         // this.visibility = GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT | GPUShaderStage.COMPUTE;
@@ -26,6 +25,7 @@ export class BitmapTexture2DArray extends Texture implements ITexture {
 
         this._bitmapTextures = [];
 
+        this._ensureBound(ctx);
         this.init();
     }
 
@@ -78,7 +78,7 @@ export class BitmapTexture2DArray extends Texture implements ITexture {
      * @internal
      */
     private updateTexture() {
-        let encoder = GPUContext.beginCommandEncoder();
+        let encoder = this._boundCtx!.gpuContext.beginCommandEncoder();
         for (let i = 0; i < this._bitmapTextures.length; i++) {
             let bitmapTexture = this._bitmapTextures[i];
             encoder.copyTextureToTexture(
@@ -99,7 +99,7 @@ export class BitmapTexture2DArray extends Texture implements ITexture {
                 },
             );
         }
-        GPUContext.endCommandEncoder(encoder);
+        this._boundCtx!.gpuContext.endCommandEncoder(encoder);
     }
 
     internalCreateBindingLayoutDesc() {
@@ -117,7 +117,7 @@ export class BitmapTexture2DArray extends Texture implements ITexture {
             dimension: '2d',
             usage: GPUTextureUsage.COPY_DST | GPUTextureUsage.TEXTURE_BINDING,
         }
-        // this.gpuTexture = webGPUContext.device.createTexture(this.textureDescriptor);
+        // this.gpuTexture = webthis._boundCtx!.gpuContext.device.createTexture(this.textureDescriptor);
         this.gpuTexture = this.getGPUTexture();
     }
 
@@ -130,8 +130,7 @@ export class BitmapTexture2DArray extends Texture implements ITexture {
     }
 
     internalCreateSampler() {
-        // eslint-disable-next-line @typescript-eslint/no-deprecated
-        bindCtx(this, webGPUContext);
+        this._ensureBound();
         this.gpuSampler = this._boundCtx!.device.createSampler(this);
     }
 }

@@ -1,4 +1,5 @@
 import { Engine3D } from '../Engine3D';
+import { Context3D } from '../gfx/graphics/webGpu/Context3D';
 import { Texture } from '../gfx/graphics/webGpu/core/texture/Texture';
 import { RenderShaderPass } from '../gfx/graphics/webGpu/shader/RenderShaderPass';
 import { Color } from '../math/Color';
@@ -17,11 +18,11 @@ export class ReflectionMaterial extends Material {
     /**
      * @constructor
      */
-    constructor() {
+    constructor(ctx?: Context3D) {
         super();
         this.shader = new ReflectionShader();
         // default value
-        this.baseMap = Engine3D.res.whiteTexture;
+        this.baseMap = Engine3D.resFor(ctx).whiteTexture;
         this.setDefine("USE_CUSTOMUNIFORM", true);
         this.reflectionIndex = 0;
     }

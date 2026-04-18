@@ -1,4 +1,5 @@
 import { Engine3D } from '../Engine3D';
+import { Context3D } from '../gfx/graphics/webGpu/Context3D';
 import { Texture } from '../gfx/graphics/webGpu/core/texture/Texture';
 import { Color } from '../math/Color';
 import { Material } from './Material';
@@ -13,11 +14,11 @@ export class UnLitMaterial extends Material {
     /**
      * @constructor
      */
-    constructor() {
+    constructor(ctx?: Context3D) {
         super();
         this.shader = new UnLitShader();
         // default value
-        this.baseMap = Engine3D.res.whiteTexture;
+        this.baseMap = Engine3D.resFor(ctx).whiteTexture;
     }
 
     public set baseMap(texture: Texture) {

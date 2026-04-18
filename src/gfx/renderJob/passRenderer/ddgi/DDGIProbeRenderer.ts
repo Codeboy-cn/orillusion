@@ -4,7 +4,6 @@ import { Engine3D } from '../../../../Engine3D';
 import { CEvent } from '../../../../event/CEvent';
 import { RenderTexture } from '../../../../textures/RenderTexture';
 import { EntityCollect } from '../../collect/EntityCollect';
-import { GPUContext } from '../../GPUContext';
 import { ProbeGBufferFrame } from '../../frame/ProbeGBufferFrame';
 import { OcclusionSystem } from '../../occlusion/OcclusionSystem';
 import { RendererBase } from '../RendererBase';
@@ -15,7 +14,7 @@ import { DDGIMultiBouncePass } from './DDGIMultiBouncePass';
 import { Probe } from './Probe';
 import { Texture } from '../../../graphics/webGpu/core/texture/Texture';
 import { View3D } from '../../../../core/View3D';
-import { webGPUContext } from '../../../graphics/webGpu/Context3D';
+import { Context3D } from '../../../graphics/webGpu/Context3D';
 import { GPUTextureFormat } from '../../../graphics/webGpu/WebGPUConst';
 import { DDGILightingPass } from './DDGILightingPass';
 import { ILight } from '../../../../components/lights/ILight';
@@ -59,15 +58,19 @@ export class DDGIProbeRenderer extends RendererBase {
      * 
      * @param volume 
      */
-    constructor(volume: DDGIIrradianceVolume) {
+    private _ctx: Context3D;
+
+    constructor(ctx: Context3D, volume: DDGIIrradianceVolume) {
         super();
 
         this.passType = PassType.GI;
 
+        this._ctx = ctx;
         this.volume = volume;
         let giSetting = volume.setting;
 
         this.cubeCamera = new CubeCamera(0.01, 5000);
+        this.cubeCamera.bindCtx(ctx);
 
         this.sizeW = giSetting.probeSourceTextureSize;
         this.sizeH = giSetting.probeSourceTextureSize;
@@ -78,12 +81,12 @@ export class DDGIProbeRenderer extends RendererBase {
 
         this.probeRenderResult = new ProbeRenderResult();
 
-        let probeGBufferFrame = new ProbeGBufferFrame(this.sizeW, this.sizeH, false);
+        let probeGBufferFrame = new ProbeGBufferFrame(this.sizeW, this.sizeH, false, ctx);
         this.positionMap = probeGBufferFrame.renderTargets[0];
         this.normalMap = probeGBufferFrame.renderTargets[1];
         this.colorMap = probeGBufferFrame.renderTargets[2];
 
-        this.setRenderStates(probeGBufferFrame);
+        this.setRenderStates(ctx, probeGBufferFrame);
     }
 
     /**
@@ -91,9 +94,9 @@ export class DDGIProbeRenderer extends RendererBase {
      * @group DDGI
      */
     public setInputTexture(textures: Texture[]) {
-        this.lightingPass = new DDGILightingPass();
-        this.bouncePass = new DDGIMultiBouncePass(this.volume);
-        this.irradianceComputePass = new DDGIIrradianceComputePass(this.volume);
+        this.lightingPass = new DDGILightingPass(this._ctx);
+        this.bouncePass = new DDGIMultiBouncePass(this.volume, this._ctx);
+        this.irradianceComputePass = new DDGIIrradianceComputePass(this._ctx, this.volume);
         this.lightingPass.setInputs([this.positionMap, this.normalMap, this.colorMap, textures[0], textures[1]]);
         this.bouncePass.setInputs([this.normalMap, this.colorMap, this.lightingPass.lightingTexture, this.irradianceColorMap]);
         this.irradianceComputePass.setTextures([this.positionMap, this.normalMap, this.bouncePass.blendTexture], this.irradianceColorMap, this.irradianceDepthMap);
@@ -187,7 +190,7 @@ export class DDGIProbeRenderer extends RendererBase {
         this.volume.uploadBuffer();
 
         let collectInfo = EntityCollect.instance.getRenderNodes(view.scene, probeCamera);
-        GPUContext.bindCamera(encoder, probeCamera);
+        view.engine3D.context3D.gpuContext.bindCamera(encoder, probeCamera);
 
         let drawMin = Math.max(0, Engine3D.setting.render.drawOpMin);
         let drawMax = Math.min(Engine3D.setting.render.drawOpMax, collectInfo.opaqueList.length);
@@ -298,6 +301,7 @@ export class DDGIProbeRenderer extends RendererBase {
         //On demand rendering probe
         if (execRender) {
             let probeList = EntityCollect.instance.getProbes(view.scene);
+            this.renderContext.gpu = view.engine3D.context3D.gpuContext;
             this.renderContext.clean();
             this.renderContext.beginOpaqueRenderPass();
             this.tempProbeList.length = 0;
@@ -341,9 +345,9 @@ export class DDGIProbeRenderer extends RendererBase {
     private initIrradianceMap(volume: DDGIIrradianceVolume): void {
         let setting = volume.setting;
         let usage = GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.COPY_SRC | GPUTextureUsage.COPY_DST;
-        this.irradianceDepthMap = new RenderTexture(setting.octRTMaxSize, setting.octRTMaxSize, GPUTextureFormat.rgba16float, false, usage);
+        this.irradianceDepthMap = new RenderTexture(setting.octRTMaxSize, setting.octRTMaxSize, GPUTextureFormat.rgba16float, false, usage, 1, 0, true, true, this._ctx);
         this.irradianceDepthMap.name = 'irradianceDepthMap';
-        this.irradianceColorMap = new RenderTexture(setting.octRTMaxSize, setting.octRTMaxSize, GPUTextureFormat.rgba16float, false, usage);
+        this.irradianceColorMap = new RenderTexture(setting.octRTMaxSize, setting.octRTMaxSize, GPUTextureFormat.rgba16float, false, usage, 1, 0, true, true, this._ctx);
         this.irradianceColorMap.name = 'irradianceColorMap';
     }
 
@@ -353,15 +357,15 @@ export class DDGIProbeRenderer extends RendererBase {
     */
     private writeToTexture(texture: RenderTexture, array: Float32Array, width: number, height: number) {
         console.log(texture.name);
-        // eslint-disable-next-line @typescript-eslint/no-deprecated
-        const device = (texture._boundCtx ?? webGPUContext).device;
+        const ctx = texture._boundCtx!;
+        const device = ctx.device;
         const buffer = device.createBuffer({
             size: array.byteLength,
             usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC,
         });
 
         device.queue.writeBuffer(buffer, 0, array as BufferSource);
-        const commandEncoder = GPUContext.beginCommandEncoder();
+        const commandEncoder = ctx.gpuContext.beginCommandEncoder();
         commandEncoder.copyBufferToTexture(
             {
                 buffer: buffer,
@@ -377,6 +381,6 @@ export class DDGIProbeRenderer extends RendererBase {
             },
         );
 
-        GPUContext.endCommandEncoder(commandEncoder);
+        ctx.gpuContext.endCommandEncoder(commandEncoder);
     }
 }

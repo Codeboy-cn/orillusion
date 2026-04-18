@@ -21,7 +21,7 @@ export class Sample_UIVideo {
 
         let canvas = exampleScene.view.enableUICanvas();
 
-        let videoTexture = new VideoTexture();
+        let videoTexture = new VideoTexture(engine.context3D);
         await videoTexture.load('/video/dt.mp4');
 
         //create UI root

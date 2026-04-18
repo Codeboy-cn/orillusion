@@ -4,6 +4,7 @@ import { GUIUtil } from "@samples/utils/GUIUtil";
 
 //sample of toggle shadow
 class Sample_ShadowToggle {
+    engine: Engine3D;
     scene: Scene3D;
     async run() {
         Engine3D.setting.shadow.enable = true;
@@ -11,7 +12,7 @@ class Sample_ShadowToggle {
         Engine3D.setting.shadow.shadowSize = 2048;
         Engine3D.setting.shadow.shadowBound = 200;
         Engine3D.setting.shadow.shadowBias = 0.02;
-        const engine = await Engine3D.create({});
+        const engine = this.engine = await Engine3D.create({});
 
         GUIHelp.init();
 
@@ -86,7 +87,7 @@ class Sample_ShadowToggle {
             let material = new LitMaterial();
             material.name = 'Floor Material';
 
-            material.baseMap = Engine3D.res.grayTexture;
+            material.baseMap = this.engine.res.grayTexture;
             let floor = new Object3D();
             let mr = floor.addComponent(MeshRenderer);
             mr.geometry = new BoxGeometry(10000, 1, 10000);

@@ -12,7 +12,7 @@ class HDRSkyMap {
         let scene = createExampleScene(engine).scene;
         // use solid color as background
         let sky = scene.getOrAddComponent(SkyRenderer);
-        sky.map = new SolidColorSky(new Color(0.3, 0.5, 0.3, 1));
+        sky.map = new SolidColorSky(new Color(0.3, 0.5, 0.3, 1), engine.context3D);
         //gui
         GUIHelp.addColor(sky.map, 'color');
         GUIHelp.open();

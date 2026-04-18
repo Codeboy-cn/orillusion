@@ -25,10 +25,10 @@ async function demo() {
     document.body.appendChild(video)
 
     // Create VideoTexture
-    let videoTexture = new VideoTexture();
+    let videoTexture = new VideoTexture(engine.context3D);
     await videoTexture.load(video)
     // Create VideoMaterial
-    let mat = new VideoMaterial();
+    let mat = new VideoMaterial(engine.context3D);
     mat.baseMap = videoTexture;
 
     // Create a cube to play video

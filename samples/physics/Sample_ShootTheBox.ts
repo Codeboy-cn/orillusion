@@ -4,12 +4,13 @@ import { Physics, Rigidbody } from "@orillusion/physics";
 import dat from "dat.gui";
 
 class Sample_ShootTheBox {
+    engine: Engine3D;
     view: View3D;
     ballSpeed: number = 5;
     async run() {
         //init Physics System
         await Physics.init();
-        const engine = await Engine3D.create({
+        const engine = this.engine = await Engine3D.create({
             //make Physics System continuously effective
             renderLoop: () => {
                 if (Physics.isInited) {
@@ -95,7 +96,7 @@ class Sample_ShootTheBox {
         let mat = new LitMaterial();
         mr.material = mat;
         mat.baseColor = KelvinUtil.color_temperature_to_rgb(1325);
-        Engine3D.res.addPrefab("ball", sphereObj);
+        this.engine.res.addPrefab("ball", sphereObj);
 
         //add some tips
         const gui = new dat.GUI();
@@ -123,7 +124,7 @@ class Sample_ShootTheBox {
         //right mouse down
         if (e.mouseCode == 2) {
             let ray = this.view.camera.screenPointToRay(e.mouseX, e.mouseY);
-            let ball = Engine3D.res.getPrefab("ball");
+            let ball = this.engine.res.getPrefab("ball");
             let collider = ball.addComponent(ColliderComponent);
             collider.shape = new SphereColliderShape(1);
             let rigidBody = ball.addComponent(Rigidbody);

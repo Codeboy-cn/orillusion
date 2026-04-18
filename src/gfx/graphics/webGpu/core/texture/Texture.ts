@@ -1,6 +1,6 @@
 import { GPUAddressMode, GPUFilterMode } from '../../WebGPUConst';
 import { TextureMipmapGenerator } from './TextureMipmapGenerator';
-import { Context3D, webGPUContext, perContextResource, bindCtx } from '../../Context3D';
+import { Context3D, bindCtx } from '../../Context3D';
 
 /**
  * Texture — CPU-authoritative scene-graph object (Plan B).
@@ -17,6 +17,17 @@ export class Texture implements GPUSamplerDescriptor {
 
     /** The Context3D this texture is bound to. Set on first GPU use. */
     public _boundCtx: Context3D | null = null;
+
+    /**
+     * Ensure this texture is bound to a Context3D and return it. A ctx must
+     * be available either by explicit arg or via prior `bindCtx()` — there
+     * is no ambient fallback.
+     */
+    public _ensureBound(ctx?: Context3D): Context3D {
+        if (ctx) { bindCtx(this, ctx); return ctx; }
+        if (this._boundCtx) return this._boundCtx;
+        throw new Error(`Texture(${this.constructor.name}) used before bindCtx — thread a Context3D from the owning Engine3D.`);
+    }
 
     /**
      * name of texture
@@ -37,10 +48,7 @@ export class Texture implements GPUSamplerDescriptor {
     private _gpuTexture: GPUTexture | null = null;
     protected get gpuTexture(): GPUTexture {
         if (!this._gpuTexture && this.textureDescriptor) {
-            if (!this._boundCtx) {
-                // eslint-disable-next-line @typescript-eslint/no-deprecated
-                bindCtx(this, webGPUContext);
-            }
+            this._ensureBound();
             this._gpuTexture = this._boundCtx!.device.createTexture(this.textureDescriptor);
             this._uploadSourceImage(this._gpuTexture);
         }
@@ -81,10 +89,7 @@ export class Texture implements GPUSamplerDescriptor {
     private _gpuSampler: GPUSampler | null = null;
     public get gpuSampler(): GPUSampler {
         if (!this._gpuSampler) {
-            if (!this._boundCtx) {
-                // eslint-disable-next-line @typescript-eslint/no-deprecated
-                bindCtx(this, webGPUContext);
-            }
+            this._ensureBound();
             this._gpuSampler = this._boundCtx!.device.createSampler(this);
         }
         return this._gpuSampler;
@@ -100,10 +105,7 @@ export class Texture implements GPUSamplerDescriptor {
     private _gpuSampler_cmp: GPUSampler | null = null;
     public get gpuSampler_comparison(): GPUSampler {
         if (!this._gpuSampler_cmp) {
-            if (!this._boundCtx) {
-                // eslint-disable-next-line @typescript-eslint/no-deprecated
-                bindCtx(this, webGPUContext);
-            }
+            this._ensureBound();
             this._gpuSampler_cmp = this._boundCtx!.device.createSampler({
                 compare: this._compare || 'less',
                 label: 'sampler_comparison',
@@ -385,10 +387,7 @@ export class Texture implements GPUSamplerDescriptor {
      */
     private _uploadSourceImage(tex: GPUTexture) {
         if (!this._sourceImageData) return;
-        if (!this._boundCtx) {
-            // eslint-disable-next-line @typescript-eslint/no-deprecated
-            bindCtx(this, webGPUContext);
-        }
+        this._ensureBound();
         this._boundCtx!.device.queue.copyExternalImageToTexture(
             { source: this._sourceImageData },
             { texture: tex },
@@ -629,19 +628,18 @@ export class Texture implements GPUSamplerDescriptor {
         }
     }
 
-    private static _texsStore = perContextResource<GPUTexture[]>();
-    private static _texs(): GPUTexture[] {
-        return this._texsStore(() => []);
+    private static _texs(ctx: Context3D): GPUTexture[] {
+        return ctx.cache(Texture, () => [] as GPUTexture[]);
     }
-    public static delayDestroyTexture(tex: GPUTexture) {
-        let list = this._texs();
+    public static delayDestroyTexture(ctx: Context3D, tex: GPUTexture) {
+        let list = this._texs(ctx);
         if (!list.includes(tex)) {
             list.push(tex);
         }
     }
 
-    public static destroyTexture() {
-        let list = this._texs();
+    public static destroyTexture(ctx: Context3D) {
+        let list = this._texs(ctx);
         if (list.length > 0) {
             while (list.length > 0) {
                 list.shift().destroy();

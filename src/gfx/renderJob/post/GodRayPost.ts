@@ -5,7 +5,6 @@ import { UniformGPUBuffer } from '../../graphics/webGpu/core/buffer/UniformGPUBu
 import { WebGPUDescriptorCreator } from '../../graphics/webGpu/descriptor/WebGPUDescriptorCreator';
 import { ComputeShader } from '../../graphics/webGpu/shader/ComputeShader';
 import { GPUTextureFormat } from '../../graphics/webGpu/WebGPUConst';
-import { GPUContext } from '../GPUContext';
 import { RendererPassState } from '../passRenderer/state/RendererPassState';
 import { PostBase } from './PostBase';
 import { Engine3D } from '../../../Engine3D';
@@ -101,7 +100,7 @@ export class GodRayPost extends PostBase {
         this.historyGodRayData = new StorageGPUBuffer(4 * this.godRayTexture.width * this.godRayTexture.height);
         this.godRayCompute.setStorageBuffer('historyGodRayData', this.historyGodRayData);
 
-        let rtFrame = GBufferFrame.getGBufferFrame(GBufferFrame.colorPass_GBuffer);
+        let rtFrame = GBufferFrame.getGBufferFrame(GBufferFrame.colorPass_GBuffer, this._boundCtx!);
         this.godRayCompute.setSamplerTexture(`gBufferTexture`, rtFrame.getCompressGBufferTexture());
         this.godRayCompute.setSamplerTexture('inTex', this.getLastRenderTexture());
         this.godRayCompute.setStorageTexture(`outTex`, this.godRayTexture);
@@ -117,7 +116,7 @@ export class GodRayPost extends PostBase {
     private _createGodRayResources() {
         let presentationSize = this._boundCtx!.presentationSize;
         let [w, h] = presentationSize;
-        this.godRayTexture = new VirtualTexture(w, h, GPUTextureFormat.rgba16float, false, GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.COPY_SRC | GPUTextureUsage.TEXTURE_BINDING);
+        this.godRayTexture = new VirtualTexture(w, h, GPUTextureFormat.rgba16float, false, GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.COPY_SRC | GPUTextureUsage.TEXTURE_BINDING, 1, 0, 1, this._boundCtx!);
         this.godRayTexture.name = 'godRayTexture';
         let gtaoDec = new RTDescriptor();
         gtaoDec.loadOp = `load`;
@@ -146,9 +145,9 @@ export class GodRayPost extends PostBase {
 
             let lightUniformEntries = GlobalBindGroup.getLightEntries(view.scene);
             this.godRayCompute.setStorageBuffer("lightBuffer", lightUniformEntries.storageGPUBuffer);
-            this.godRayCompute.setStorageBuffer("models", GlobalBindGroup.modelMatrixBindGroup.matrixBufferDst);
+            this.godRayCompute.setStorageBuffer("models", GlobalBindGroup.getModelMatrixBindGroup(view.engine3D.context3D).matrixBufferDst);
 
-            this.rendererPassState = WebGPUDescriptorCreator.createRendererPassState(this.rtFrame, null);
+            this.rendererPassState = WebGPUDescriptorCreator.createRendererPassState(view.engine3D.context3D, this.rtFrame, null);
             this.rendererPassState.label = "GodRay";
 
             let globalUniform = GlobalBindGroup.getCameraGroup(view.camera);
@@ -167,7 +166,7 @@ export class GodRayPost extends PostBase {
         this.godRaySetting.setFloat('blendColor', setting.blendColor ? 1 : 0);
         this.godRaySetting.setFloat('scatteringExponent', setting.scatteringExponent);
         this.godRaySetting.apply();
-        GPUContext.computeCommand(command, [this.godRayCompute]);
-        GPUContext.lastRenderPassState = this.rendererPassState;
+        this._boundCtx!.gpuContext.computeCommand(command, [this.godRayCompute]);
+        this._boundCtx!.gpuContext.lastRenderPassState = this.rendererPassState;
     }
 }

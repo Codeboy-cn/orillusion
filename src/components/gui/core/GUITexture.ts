@@ -1,4 +1,5 @@
 import { Engine3D } from "../../../Engine3D";
+import { Context3D } from "../../../gfx/graphics/webGpu/Context3D";
 import { Texture } from "../../../gfx/graphics/webGpu/core/texture/Texture";
 
 /**
@@ -20,8 +21,8 @@ export class GUITexture {
         return this._staticId;
     }
 
-    constructor(texture: Texture) {
-        texture ||= Engine3D.res.whiteTexture;
+    constructor(texture: Texture, ctx?: Context3D) {
+        texture ||= Engine3D.resFor(ctx).whiteTexture;
         texture.addressModeU = 'clamp-to-edge';
         texture.addressModeV = 'clamp-to-edge';
         this.texture = texture;

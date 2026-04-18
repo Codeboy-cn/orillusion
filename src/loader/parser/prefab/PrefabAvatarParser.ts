@@ -16,7 +16,7 @@ export class PrefabAvatarParser extends ParserBase {
         for (let j = 0; j < avatarCount; j++) {
             let prefabAvatarData = new PrefabAvatarData();
             prefabAvatarData.formBytes(bytesStream.readBytesArray());
-            Engine3D.res.addObj(prefabAvatarData.name, prefabAvatarData);
+            Engine3D.resFor(prefabParser.ctx).addObj(prefabAvatarData.name, prefabAvatarData);
         }
     }
 

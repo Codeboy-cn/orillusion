@@ -7,7 +7,7 @@ import { UUID } from "../../../../../util/Global";
 import { ProfilerUtil } from "../../../../../util/ProfilerUtil";
 import { Time } from "../../../../../util/Time";
 import { ShadowLightsCollect } from "../../../../renderJob/collect/ShadowLightsCollect";
-import { webGPUContext } from "../../Context3D";
+import { bindCtx, Context3D } from "../../Context3D";
 import { UniformGPUBuffer } from "../buffer/UniformGPUBuffer";
 import { GlobalBindGroupLayout } from "./GlobalBindGroupLayout";
 import { MatrixBindGroup } from "./MatrixBindGroup";
@@ -37,13 +37,17 @@ export class GlobalUniformGroup {
     public pointShadowStart = 0;
     public pointShadowEnd = 0;
 
+    private _ctx: Context3D;
+
     /**
      *
+     * @param ctx owning Context3D
      * @param matrixBindGroup global matrix bindgroup
      */
-    constructor(matrixBindGroup: MatrixBindGroup) {
+    constructor(ctx: Context3D, matrixBindGroup: MatrixBindGroup) {
         this.uuid = UUID();
         this.usage = GPUBufferUsage.UNIFORM | GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST;
+        this._ctx = ctx;
         // ... + 8(shadow matrix) + 8(csm matrix) + 4(csm bias) + 4(csm scattering exp...)
         // this.uniformGPUBuffer = new UniformGPUBuffer(32 * 4 * 4 + (3 * 4 * 4) + 8 * 16 + CSM.Cascades * 16 + 4 + 4);
         this.uniformGPUBuffer = new UniformGPUBuffer(8192 + 9 * 4 * 4);
@@ -58,8 +62,10 @@ export class GlobalUniformGroup {
         this.uniformByteLength = this.uniformGPUBuffer.memory.shareDataBuffer.byteLength;
         this.matrixesByteLength = (Matrix4.block * 4) * Matrix4.maxCount;
 
-        // eslint-disable-next-line @typescript-eslint/no-deprecated
-        let ctx = (this.uniformGPUBuffer as any)._boundCtx ?? webGPUContext;
+        let ctx = this._ctx;
+        if (!this.uniformGPUBuffer._boundCtx) bindCtx(this.uniformGPUBuffer, ctx);
+        const matrixBuf = this.matrixBindGroup.matrixBufferDst;
+        if (matrixBuf && !matrixBuf._boundCtx) bindCtx(matrixBuf, ctx);
         this.globalBindGroup = ctx.device.createBindGroup({
             label: `global_bindGroupLayout`,
             layout: GlobalBindGroupLayout.getGlobalDataBindGroupLayout(ctx),
@@ -145,7 +151,7 @@ export class GlobalUniformGroup {
         this.uniformGPUBuffer.setFloat(`renderState_split`, Engine3D.setting.render.renderState_split);
         const ownerC = (camera?.transform as any)?.view3D?.engine3D;
         const inputC = ownerC?.inputSystem;
-        const ctxC = ownerC?.context3D ?? webGPUContext;
+        const ctxC = ownerC?.context3D;
         let mouseX = (inputC?.mouseX ?? 0) * (ctxC?.pixelRatio ?? 1);
         let mouseY = (inputC?.mouseY ?? 0) * (ctxC?.pixelRatio ?? 1);
         this.uniformGPUBuffer.setFloat(`mouseX`, mouseX);
@@ -215,7 +221,7 @@ export class GlobalUniformGroup {
 
         const ownerS = (camera?.transform as any)?.view3D?.engine3D;
         const inputS = ownerS?.inputSystem;
-        const ctxS = ownerS?.context3D ?? webGPUContext;
+        const ctxS = ownerS?.context3D;
         let mouseX = (inputS?.mouseX ?? 0) * (ctxS?.pixelRatio ?? 1);
         let mouseY = (inputS?.mouseY ?? 0) * (ctxS?.pixelRatio ?? 1);
         this.uniformGPUBuffer.setFloat(`mouseX`, mouseX);

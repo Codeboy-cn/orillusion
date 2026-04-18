@@ -5,7 +5,6 @@ import { UniformGPUBuffer } from '../../graphics/webGpu/core/buffer/UniformGPUBu
 import { WebGPUDescriptorCreator } from '../../graphics/webGpu/descriptor/WebGPUDescriptorCreator';
 import { ComputeShader } from '../../graphics/webGpu/shader/ComputeShader';
 import { GPUTextureFormat } from '../../graphics/webGpu/WebGPUConst';
-import { GPUContext } from '../GPUContext';
 import { RTResourceMap } from '../frame/RTResourceMap';
 import { RendererPassState } from '../passRenderer/state/RendererPassState';
 import { PostBase } from './PostBase';
@@ -118,7 +117,7 @@ export class DepthOfFieldPost extends PostBase {
             this.blurSettings.push(blurSetting);
 
             blurCompute.setUniformBuffer('blurSetting', blurSetting);
-            let rtFrame = GBufferFrame.getGBufferFrame(GBufferFrame.colorPass_GBuffer);
+            let rtFrame = GBufferFrame.getGBufferFrame(GBufferFrame.colorPass_GBuffer, this._boundCtx!);
             blurCompute.setSamplerTexture(`gBufferTexture`, rtFrame.getCompressGBufferTexture());
 
             let input = i % 2 == 0 ? this.blurTexture1 : this.blurTexture2;
@@ -142,13 +141,13 @@ export class DepthOfFieldPost extends PostBase {
         let w = presentationSize[0];
         let h = presentationSize[1];
 
-        this.blurTexture1 = new VirtualTexture(w, h, GPUTextureFormat.rgba16float, false, GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.COPY_SRC | GPUTextureUsage.TEXTURE_BINDING);
+        this.blurTexture1 = new VirtualTexture(w, h, GPUTextureFormat.rgba16float, false, GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.COPY_SRC | GPUTextureUsage.TEXTURE_BINDING, 1, 0, 1, this._boundCtx!);
         this.blurTexture1.name = 'dof1';
         let blur1Dec = new RTDescriptor();
         blur1Dec.clearValue = [0, 0, 0, 1];
         blur1Dec.loadOp = `clear`;
 
-        this.blurTexture2 = new VirtualTexture(w, h, GPUTextureFormat.rgba16float, false, GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.COPY_SRC | GPUTextureUsage.TEXTURE_BINDING);
+        this.blurTexture2 = new VirtualTexture(w, h, GPUTextureFormat.rgba16float, false, GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.COPY_SRC | GPUTextureUsage.TEXTURE_BINDING, 1, 0, 1, this._boundCtx!);
         this.blurTexture2.name = 'dof2';
         let blur2Dec = new RTDescriptor();
         blur2Dec.clearValue = [0, 0, 0, 1];
@@ -175,7 +174,7 @@ export class DepthOfFieldPost extends PostBase {
                 const blurCompute = this.blurComputes[i];
                 blurCompute.setUniformBuffer('globalUniform', standUniform.uniformGPUBuffer);
             }
-            this.rendererPassState = WebGPUDescriptorCreator.createRendererPassState(this.rtFrame, null);
+            this.rendererPassState = WebGPUDescriptorCreator.createRendererPassState(view.engine3D.context3D, this.rtFrame, null);
         }
         
 
@@ -190,8 +189,8 @@ export class DepthOfFieldPost extends PostBase {
             blurSetting.apply();
             blurCompute.setStorageBuffer('blurSetting', blurSetting);
         }
-        GPUContext.computeCommand(command, this.blurComputes);
-        GPUContext.lastRenderPassState = this.rendererPassState;
+        this._boundCtx!.gpuContext.computeCommand(command, this.blurComputes);
+        this._boundCtx!.gpuContext.lastRenderPassState = this.rendererPassState;
     }
 
     public onResize(): void {

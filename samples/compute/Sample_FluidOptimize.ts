@@ -1,5 +1,5 @@
 import { GUIHelp } from '@orillusion/debug/GUIHelp';
-import { Camera3D, CameraUtil, ColliderComponent, Engine3D, HoverCameraController, Object3D, PlaneGeometry, PointerEvent3D, Scene3D, Vector3, View3D, webGPUContext } from '@orillusion/core';
+import { Camera3D, CameraUtil, ColliderComponent, Engine3D, HoverCameraController, Object3D, PlaneGeometry, PointerEvent3D, Scene3D, Vector3, View3D } from '@orillusion/core';
 import { FluidEmulation } from './fluid/FluidSimulator';
 import { FluidSimulatorMaterial2 } from './fluid/FluidSimulatorMaterialOptimize';
 
@@ -27,7 +27,7 @@ export class Demo_FluidOptimize {
 
         let camera = CameraUtil.createCamera3DObject(scene);
 
-        camera.perspective(60, webGPUContext.aspect, 0.01, 10000.0);
+        camera.perspective(60, engine.context3D.aspect, 0.01, 10000.0);
         let ctl = camera.object3D.addComponent(HoverCameraController);
         ctl.setCamera(-45, -30, 50, new Vector3(15, 0, 10));
 

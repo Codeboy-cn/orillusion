@@ -127,8 +127,9 @@ export class FontParser extends ParserBase {
         let fontData: FontInfo = this.data;
         for (const fontPage of fontData.fontPage) {
             let texturePath = this.baseUrl + fontPage.file;
-            await Engine3D.res.loadTexture(texturePath, null, true);
-            let texture = Engine3D.res.getTexture(texturePath);
+            const resHost = Engine3D.resFor(this.ctx);
+            await resHost.loadTexture(texturePath, null, true);
+            let texture = resHost.getTexture(texturePath);
             let source: GUITexture = new GUITexture(texture);
             images.push(source);
         }

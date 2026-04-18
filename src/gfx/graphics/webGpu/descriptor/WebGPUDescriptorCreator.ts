@@ -1,9 +1,7 @@
 import { RTFrame } from '../../../renderJob/frame/RTFrame';
 import { RTResourceConfig } from '../../../renderJob/config/RTResourceConfig';
-import { GPUTextureFormat } from '../WebGPUConst';
-import { Context3D, webGPUContext } from '../Context3D';
+import { Context3D } from '../Context3D';
 import { RendererPassState } from '../../../renderJob/passRenderer/state/RendererPassState';
-import { CResizeEvent } from '../../../../event/CResizeEvent';
 import { GBufferFrame } from '../../../renderJob/frame/GBufferFrame';
 /**
  * @internal
@@ -14,17 +12,17 @@ export class WebGPUDescriptorCreator {
     /** Per-Context3D cache of RTFrame→RendererPassState so descriptors built
      *  against one device are not reused for another. */
     private static _perContextPassState: WeakMap<Context3D, Map<RTFrame, RendererPassState>> = new WeakMap();
-    private static _passStateMap(): Map<RTFrame, RendererPassState> {
-        let m = this._perContextPassState.get(webGPUContext);
+    private static _passStateMap(ctx: Context3D): Map<RTFrame, RendererPassState> {
+        let m = this._perContextPassState.get(ctx);
         if (!m) {
             m = new Map<RTFrame, RendererPassState>();
-            this._perContextPassState.set(webGPUContext, m);
+            this._perContextPassState.set(ctx, m);
         }
         return m;
     }
 
-    public static createRendererPassState(rtFrame: RTFrame, loadOp: GPULoadOp = null) {
-        const passMap = WebGPUDescriptorCreator._passStateMap();
+    public static createRendererPassState(ctx: Context3D, rtFrame: RTFrame, loadOp: GPULoadOp = null) {
+        const passMap = WebGPUDescriptorCreator._passStateMap(ctx);
         let rps: RendererPassState = passMap.get(rtFrame);
         if (!rps) {
             rps = new RendererPassState();
@@ -43,7 +41,7 @@ export class WebGPUDescriptorCreator {
         if (rtFrame && rtFrame.renderTargets.length > 0) {
             rps.renderTargets = rtFrame.renderTargets;
             rps.rtTextureDescriptors = rtFrame.rtDescriptors;
-            rps.renderPassDescriptor = WebGPUDescriptorCreator.getRenderPassDescriptor(rps);
+            rps.renderPassDescriptor = WebGPUDescriptorCreator.getRenderPassDescriptor(ctx, rps);
             if (rps.renderPassDescriptor.depthStencilAttachment) {
                 rps.renderPassDescriptor.depthStencilAttachment.depthLoadOp = rtFrame.depthLoadOp;
             }
@@ -51,7 +49,7 @@ export class WebGPUDescriptorCreator {
                 rps.renderPassDescriptor.colorAttachments[0].loadOp = 'load'
             }
             rps.depthLoadOp = rtFrame.depthLoadOp;
-            rps.renderBundleEncoderDescriptor = WebGPUDescriptorCreator.getRenderBundleDescriptor(rps);
+            rps.renderBundleEncoderDescriptor = WebGPUDescriptorCreator.getRenderBundleDescriptor(ctx, rps);
             rps.renderTargetTextures = [];
             for (let i = 0; i < rtFrame.renderTargets.length; i++) {
                 const element = rtFrame.renderTargets[i];
@@ -64,13 +62,12 @@ export class WebGPUDescriptorCreator {
             }
 
         } else {
-            rps.renderPassDescriptor = WebGPUDescriptorCreator.getRenderPassDescriptor(rps, loadOp);
-            rps.renderBundleEncoderDescriptor = WebGPUDescriptorCreator.getRenderBundleDescriptor(rps);
+            rps.renderPassDescriptor = WebGPUDescriptorCreator.getRenderPassDescriptor(ctx, rps, loadOp);
+            rps.renderBundleEncoderDescriptor = WebGPUDescriptorCreator.getRenderBundleDescriptor(ctx, rps);
             // if(!rps.customSize){
             rps.renderTargetTextures = [
                 {
-                    // eslint-disable-next-line @typescript-eslint/no-deprecated
-                    format: webGPUContext.presentationFormat,
+                    format: ctx.presentationFormat,
                 },
             ];
             // }
@@ -88,10 +85,9 @@ export class WebGPUDescriptorCreator {
      * @returns
      */
     // static getRenderPassDescriptor(attachMentTextures: VirtualTexture[], renderPassState:RenderPassState): any {
-    public static getRenderPassDescriptor(renderPassState: RendererPassState, loadOp: GPULoadOp = null): any {
+    public static getRenderPassDescriptor(ctx: Context3D, renderPassState: RendererPassState, loadOp: GPULoadOp = null): any {
         if (renderPassState.renderPassDescriptor) return renderPassState.renderPassDescriptor;
-        // eslint-disable-next-line @typescript-eslint/no-deprecated
-        let presentationSize = webGPUContext.presentationSize;
+        let presentationSize = ctx.presentationSize;
         let attachMentTexture = [];
 
         let size = [];
@@ -103,22 +99,20 @@ export class WebGPUDescriptorCreator {
                 attachMentTexture.push({
                     view: texture.getGPUView(),
                     resolveTarget: undefined,
-                    loadOp: rtDesc.loadOp,// webGPUContext.canvasConfig && webGPUContext.canvasConfig.alpha ? `load` : `clear`,
+                    loadOp: rtDesc.loadOp,
                     clearValue: rtDesc.clearValue,
                     storeOp: rtDesc.storeOp,
                 });
             }
         } else {
             if (!renderPassState.customSize) {
-                // eslint-disable-next-line @typescript-eslint/no-deprecated
-                let clearValue = webGPUContext.canvasConfig && webGPUContext.canvasConfig.alpha ? [1.0, 1.0, 1.0, 0.0] : [0.0, 0.0, 0.0, 1.0]
+                let clearValue = ctx.canvasConfig && ctx.canvasConfig.alpha ? [1.0, 1.0, 1.0, 0.0] : [0.0, 0.0, 0.0, 1.0]
                 size = presentationSize;
                 if (renderPassState.isOutTarget == true) {
                     attachMentTexture.push({
                         view: undefined,
                         resolveTarget: undefined,
-                        // eslint-disable-next-line @typescript-eslint/no-deprecated
-                        loadOp: (webGPUContext.canvasConfig && webGPUContext.canvasConfig.alpha) || loadOp != null ? `load` : `clear`,
+                        loadOp: (ctx.canvasConfig && ctx.canvasConfig.alpha) || loadOp != null ? `load` : `clear`,
                         clearValue: clearValue,
                         storeOp: 'store',
                     });
@@ -164,10 +158,9 @@ export class WebGPUDescriptorCreator {
      * @param cleanColor
      * @returns
      */
-    public static getRenderBundleDescriptor(renderPassState: RendererPassState): GPURenderBundleEncoderDescriptor {
+    public static getRenderBundleDescriptor(ctx: Context3D, renderPassState: RendererPassState): GPURenderBundleEncoderDescriptor {
         if (renderPassState.renderBundleEncoderDescriptor) return renderPassState.renderBundleEncoderDescriptor;
-        // eslint-disable-next-line @typescript-eslint/no-deprecated
-        let presentationSize = webGPUContext.presentationSize;
+        let presentationSize = ctx.presentationSize;
         let attachMentTexture = [];
         let size = [];
         if (renderPassState.renderTargets && renderPassState.renderTargets.length > 0) {

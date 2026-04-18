@@ -1,11 +1,12 @@
 import { GUIHelp } from "@orillusion/debug/GUIHelp";
-import { Engine3D, View3D, Scene3D, CameraUtil, AtmosphericComponent, webGPUContext, HoverCameraController, Object3D, DirectLight, KelvinUtil, PlaneGeometry, VertexAttributeName, LitMaterial, MeshRenderer, Vector4, Vector3, Matrix3, PostProcessingComponent, TAAPost, BitmapTexture2D, GlobalFog, Color, FXAAPost } from "@orillusion/core";
+import { Engine3D, View3D, Scene3D, CameraUtil, AtmosphericComponent, HoverCameraController, Object3D, DirectLight, KelvinUtil, PlaneGeometry, VertexAttributeName, LitMaterial, MeshRenderer, Vector4, Vector3, Matrix3, PostProcessingComponent, TAAPost, BitmapTexture2D, GlobalFog, Color, FXAAPost } from "@orillusion/core";
 import { GUIUtil } from "@samples/utils/GUIUtil";
 import { GrassComponent, TerrainGeometry } from "@orillusion/geometry";
 import { Stats } from "@orillusion/stats";
 
 // An sample of custom vertex attribute of geometry
 export class Sample_Grass {
+    engine: Engine3D;
     view: View3D;
     post: PostProcessingComponent;
     async run() {
@@ -18,7 +19,7 @@ export class Sample_Grass {
 
         GUIHelp.init();
 
-        const engine = await Engine3D.create();
+        const engine = this.engine = await Engine3D.create();
         this.view = new View3D();
         this.view.scene = new Scene3D();
         this.view.scene.addComponent(AtmosphericComponent);
@@ -26,7 +27,7 @@ export class Sample_Grass {
 
         this.view.camera = CameraUtil.createCamera3DObject(this.view.scene);
         this.view.camera.enableCSM = true;
-        this.view.camera.perspective(60, webGPUContext.aspect, 1, 5000.0);
+        this.view.camera.perspective(60, engine.context3D.aspect, 1, 5000.0);
         this.view.camera.object3D.z = -15;
         this.view.camera.object3D.addComponent(HoverCameraController).setCamera(35, -20, 500);
 
@@ -49,10 +50,10 @@ export class Sample_Grass {
 
     private async createScene(scene: Scene3D) {
         //bitmap
-        let bitmapTexture = await Engine3D.res.loadTexture('terrain/test01/bitmap.png');
-        let heightTexture = await Engine3D.res.loadTexture('terrain/test01/height.png');
-        let grassTexture = await Engine3D.res.loadTexture('terrain/grass/GrassThick.png');
-        let gustNoiseTexture = await Engine3D.res.loadTexture('terrain/grass/displ_noise_curl_1.png');
+        let bitmapTexture = await this.engine.res.loadTexture('terrain/test01/bitmap.png');
+        let heightTexture = await this.engine.res.loadTexture('terrain/test01/height.png');
+        let grassTexture = await this.engine.res.loadTexture('terrain/grass/GrassThick.png');
+        let gustNoiseTexture = await this.engine.res.loadTexture('terrain/grass/displ_noise_curl_1.png');
         let sunObj = new Object3D();
         let sunLight = sunObj.addComponent(DirectLight);
         sunLight.lightColor = KelvinUtil.color_temperature_to_rgb(6553);
@@ -86,7 +87,7 @@ export class Sample_Grass {
         {
             let grass = new Object3D();
             grassCom = grass.addComponent(GrassComponent);
-            grassCom.setGrassTexture(Engine3D.res.whiteTexture);
+            grassCom.setGrassTexture(this.engine.res.whiteTexture);
             // grassCom.setGrassTexture(grassTexture);
             grassCom.setWindNoiseTexture(gustNoiseTexture);
             grassCom.setGrass(18, 1, 5, 1, grassCount);

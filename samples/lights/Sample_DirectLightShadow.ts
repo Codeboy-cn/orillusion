@@ -4,6 +4,7 @@ import { GUIUtil } from "@samples/utils/GUIUtil";
 
 //sample of direction light
 class Sample_DirectLightShadow {
+    engine: Engine3D;
     scene: Scene3D;
     async run() {
         Engine3D.setting.render.debug = true;
@@ -17,7 +18,7 @@ class Sample_DirectLightShadow {
         Engine3D.setting.shadow.shadowBias = 0.02;
 
         Engine3D.setting.occlusionQuery.octree = { width: 1000, height: 1000, depth: 1000, x: 0, y: 0, z: 0 }
-        const engine = await Engine3D.create({});
+        const engine = this.engine = await Engine3D.create({});
 
         GUIHelp.init();
 
@@ -78,7 +79,7 @@ class Sample_DirectLightShadow {
         }
         {
             let mat = new LitMaterial();
-            mat.baseMap = Engine3D.res.grayTexture;
+            mat.baseMap = this.engine.res.grayTexture;
             // mat.roughness = 0.4;
             // mat.metallic = 0.6;
             let floor = new Object3D();
