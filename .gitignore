@@ -24,3 +24,6 @@ dist
 
 /.vscode
 /.labe
+
+# probe artifacts
+/test/multi/_out
