@@ -77,6 +77,18 @@ const args = Object.fromEntries(
     }),
 );
 
+// Coverage note: `packages/*` is exercised transitively through samples/.
+//   - @orillusion/debug            -> almost every sample uses GUIHelp
+//   - @orillusion/physics + ammo   -> samples/physics/*
+//   - @orillusion/graphic          -> samples/graphic/*
+//   - @orillusion/stats            -> samples/stats/* + many others
+//   - @orillusion/geometry         -> samples/geometry/*
+//   - @orillusion/media-extention  -> samples/material/Sample_VideoMaterial
+//   - @orillusion/particle         -> samples/particle/*
+//   - @orillusion/post             -> samples/post/* (re-exported by core)
+//   - @orillusion/draco            -> samples/animation/Sample_Skeleton3 (draco glb)
+// No package ships its own samples/ today; if that changes, this walker
+// needs to also pick up packages/*/samples/.
 async function listSamples() {
     const out = [];
     async function walk(dir, prefix) {
