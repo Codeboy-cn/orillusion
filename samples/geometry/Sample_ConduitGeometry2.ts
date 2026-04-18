@@ -1,4 +1,4 @@
-import { AttributeAnimCurve, BitmapTexture2D, BlendMode, BloomPost, Color, Engine3D, ExtrudeGeometry, LitMaterial, MeshRenderer, Object3D, Object3DUtil, PropertyAnimClip, PropertyAnimation, Scene3D, Vector3, WrapMode } from "@orillusion/core";
+import { AttributeAnimCurve, BitmapTexture2D, BlendMode, Color, Engine3D, ExtrudeGeometry, LitMaterial, MeshRenderer, Object3D, Object3DUtil, PropertyAnimClip, PropertyAnimation, Scene3D, Vector3, WrapMode } from "@orillusion/core";
 import { createExampleScene, createSceneParam } from "@samples/utils/ExampleScene";
 import { UVMoveComponent } from "@samples/material/script/UVMoveComponent";
 import { GUIHelp } from "@orillusion/debug/GUIHelp";
@@ -26,8 +26,7 @@ class Sample_ConduitGeometry2 {
         let exampleScene = createExampleScene(engine, param);
         // exampleScene.camera.enableCSM = true;
         this.scene = exampleScene.scene;
-        let job = engine.startRenderView(exampleScene.view);
-        // job.addPost(new BloomPost());
+        engine.startRenderView(exampleScene.view);
         await this.createMaterial();
         await this.loadCurveData();
 

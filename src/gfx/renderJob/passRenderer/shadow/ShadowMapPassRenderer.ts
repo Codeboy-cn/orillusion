@@ -35,12 +35,12 @@ export class ShadowMapPassRenderer extends RendererBase {
 
     constructor(ctx: Context3D) {
         super();
-        this.setShadowMap(ctx, Engine3D.setting.shadow.shadowSize, CSM.Cascades);
+        this.setShadowMap(ctx, Engine3D.setting.shadow.shadowSize);
         this.passType = PassType.SHADOW;
 
     }
 
-    setShadowMap(ctx: Context3D, size: number, cascades: number) {
+    setShadowMap(ctx: Context3D, size: number) {
         this.rendererPassStates = [];
         this.depth2DArrayTexture = new Depth2DTextureArray(size, size, GPUTextureFormat.depth32float, 8, ctx);
         Reference.getInstance().attached(this.depth2DArrayTexture, this);
@@ -239,7 +239,7 @@ export class ShadowMapPassRenderer extends RendererBase {
     }
 
 
-    protected recordShadowRenderBundleNode(view: View3D, shadowCamera: Camera3D, encoder, nodes: RenderNode[], clusterLightingBuffer?: ClusterLightingBuffer) {
+    protected recordShadowRenderBundleNode(view: View3D, shadowCamera: Camera3D, encoder: GPURenderBundleEncoder, nodes: RenderNode[], clusterLightingBuffer?: ClusterLightingBuffer) {
         const gpu = view.engine3D.context3D.gpuContext;
         GlobalBindGroup.updateCameraGroup(shadowCamera);
         gpu.bindCamera(encoder, shadowCamera);
@@ -249,7 +249,7 @@ export class ShadowMapPassRenderer extends RendererBase {
                 let renderNode = nodes[i];
                 if (!renderNode.transform.enable)
                     continue;
-                renderNode.recordRenderPass2(view, this._rendererType, this.rendererPassState, clusterLightingBuffer, encoder);
+                renderNode.recordRenderPass2(view, this._rendererType, this.rendererPassState, clusterLightingBuffer, encoder as unknown as GPURenderPassEncoder);
             }
         }
     }

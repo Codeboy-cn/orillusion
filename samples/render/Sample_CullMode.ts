@@ -1,5 +1,5 @@
 import { GUIHelp } from "@orillusion/debug/GUIHelp";
-import { Engine3D, Scene3D, AtmosphericComponent, Object3D, Camera3D, OrbitController, DirectLight, Color, View3D, BitmapTexture2D, UnLitMaterial, MeshRenderer, PlaneGeometry, Vector3, GPUCullMode, CameraUtil } from "@orillusion/core";
+import { Engine3D, Scene3D, AtmosphericComponent, Object3D, OrbitController, DirectLight, Color, View3D, BitmapTexture2D, UnLitMaterial, MeshRenderer, PlaneGeometry, Vector3, GPUCullMode, CameraUtil } from "@orillusion/core";
 
 class Sample_CullMode {
     async run() {
@@ -53,7 +53,7 @@ class Sample_CullMode {
         cullMode[GPUCullMode.back] = GPUCullMode.back;
 
         // change cull mode by click dropdown box
-        GUIHelp.add({ cullMode: GPUCullMode.none }, 'cullMode', cullMode).onChange((v) => {
+        GUIHelp.add({ cullMode: GPUCullMode.none }, 'cullMode', cullMode).onChange((v: GPUCullMode) => {
             material.cullMode = v;
         });
         GUIHelp.open();
