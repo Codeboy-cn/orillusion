@@ -1,9 +1,8 @@
-import { test, expect, end, delay } from '../util'
-import { Camera3D, CameraUtil, Engine3D, GTAOPost, Object3D, PostProcessingComponent, Scene3D, View3D } from '@orillusion/core';
+import { test, expect, end, waitUntil } from '../util'
+import { CameraUtil, Engine3D, GTAOPost, PostProcessingComponent, Scene3D, View3D } from '@orillusion/core';
 
 await test('Post GTAOPost test', async () => {
     const engine = await Engine3D.create();
-    engine.frameRate = 2;
 
     let view = new View3D();
     view.scene = new Scene3D();
@@ -12,8 +11,10 @@ await test('Post GTAOPost test', async () => {
 
     let postProcessing = view.scene.addComponent(PostProcessingComponent);
     let gtao = postProcessing.addPost(GTAOPost);
-    await delay(500)
-    let dest = Math.floor(window.innerWidth * window.devicePixelRatio);
+    // gtaoTexture is created lazily on the first render(); poll instead
+    // of racing a fixed delay against the RAF tick.
+    await waitUntil(() => gtao.gtaoTexture)
+    let dest = engine.context3D.presentationSize[0];
     let src = gtao.gtaoTexture?.width;
     expect(src).tobe(dest)
     Engine3D.pause()
