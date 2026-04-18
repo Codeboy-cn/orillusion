@@ -27,6 +27,8 @@ export class Context3D extends CEventDispatcher {
     public canvasConfig: CanvasConfig;
     private _pixelRatio: number = 1.0;
     private _resizeEvent: CEvent;
+    private _resizeObserver: ResizeObserver | null = null;
+    private _ownsCanvas: boolean = false;
 
     public adapter: GPUAdapter;
     public device: GPUDevice;
@@ -106,6 +108,7 @@ export class Context3D extends CEventDispatcher {
             this.canvas.style.height = '100%';
             this.canvas.style.zIndex = canvasConfig?.zIndex ? canvasConfig.zIndex.toString() : '0';
             document.body.appendChild(this.canvas);
+            this._ownsCanvas = true;
         }
 
         if (canvasConfig && canvasConfig.backgroundImage) {
@@ -130,15 +133,44 @@ export class Context3D extends CEventDispatcher {
 
         this._resizeEvent = new CResizeEvent(CResizeEvent.RESIZE, { width: this.windowWidth, height: this.windowHeight });
         // Lazy require to avoid circular import at module load.
-        const resizeObserver = new ResizeObserver(async () => {
+        this._resizeObserver = new ResizeObserver(async () => {
             this.updateSize();
             const { Texture } = await import('./core/texture/Texture');
             Texture.destroyTexture(this);
         });
 
-        resizeObserver.observe(this.canvas);
+        this._resizeObserver.observe(this.canvas);
         this.updateSize();
         return true;
+    }
+
+    /**
+     * Release everything this context owns: the ResizeObserver, the
+     * GPUCanvasContext configuration, the GPUDevice (frees the adapter
+     * slot so the next Engine3D.create() can succeed without exhausting
+     * the browser's per-origin device limit), and any canvas we created
+     * ourselves. Safe to call more than once; idempotent after first run.
+     *
+     * After dispose(), `this.lost` flips to true via the device.lost
+     * promise resolver installed in init(); the shared render loop
+     * already skips lost contexts.
+     */
+    public dispose() {
+        if (this._resizeObserver) {
+            this._resizeObserver.disconnect();
+            this._resizeObserver = null;
+        }
+        if (this.context) {
+            try { this.context.unconfigure(); } catch { /* already gone */ }
+        }
+        if (this.device && !this.lost) {
+            try { this.device.destroy(); } catch { /* already gone */ }
+        }
+        if (this._ownsCanvas && this.canvas && this.canvas.parentNode) {
+            this.canvas.parentNode.removeChild(this.canvas);
+        }
+        this._caches.clear();
+        this._gpuContext = null;
     }
 
     public updateSize() {

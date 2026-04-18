@@ -271,10 +271,19 @@ export class Engine3D {
     public get width(): number { return this.context3D.windowWidth; }
     public get height(): number { return this.context3D.windowHeight; }
 
+    /**
+     * Release this engine's GPU device, DOM canvas, ResizeObserver and
+     * input listeners. Required for long-running apps that create/drop
+     * engines (tests, editor previews, modal viewers) — without it, the
+     * browser's per-origin GPU adapter pool is exhausted after a handful
+     * of iterations. Safe to call more than once.
+     */
     public dispose() {
         Engine3D._instances.delete(this);
         this.views = [];
         this.renderJobs.clear();
+        this.inputSystem?.dispose();
+        this.context3D.dispose();
     }
 
     // -------- render view setup --------

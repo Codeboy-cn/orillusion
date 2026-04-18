@@ -82,6 +82,10 @@ export class InputSystem extends CEventDispatcher {
     protected _windowsEvent3d: CEvent;
     mouseLock: boolean = false;
 
+    private _wheelHandler: ((e: WheelEvent) => void) | null = null;
+    private _keyDownHandler: ((e: KeyboardEvent) => void) | null = null;
+    private _keyUpHandler: ((e: KeyboardEvent) => void) | null = null;
+
     /**
      * init the input system
      * @param canvas the reference of canvas
@@ -123,11 +127,12 @@ export class InputSystem extends CEventDispatcher {
         //     this.mouseEnd(ev);
         // }
 
-        canvas.addEventListener(`wheel`, (e: WheelEvent) => this.mouseWheel(e), { passive: false });
-
-        window.addEventListener('keydown', (e: KeyboardEvent) => this.keyDown(e), true);
-
-        window.addEventListener('keyup', (e: KeyboardEvent) => this.keyUp(e), true);
+        this._wheelHandler = (e: WheelEvent) => this.mouseWheel(e);
+        this._keyDownHandler = (e: KeyboardEvent) => this.keyDown(e);
+        this._keyUpHandler = (e: KeyboardEvent) => this.keyUp(e);
+        canvas.addEventListener(`wheel`, this._wheelHandler, { passive: false });
+        window.addEventListener('keydown', this._keyDownHandler, true);
+        window.addEventListener('keyup', this._keyUpHandler, true);
 
         canvas.oncontextmenu = function () {
             return false;
@@ -145,6 +150,35 @@ export class InputSystem extends CEventDispatcher {
         this._keyEvent3d = new KeyEvent();
         this._pointerEvent3D = new PointerEvent3D();
         this._windowsEvent3d = new CEvent();
+    }
+
+    /**
+     * Detach every listener this InputSystem installed (window keyboard
+     * listeners + canvas pointer/wheel handlers). Idempotent. Called by
+     * `Engine3D.dispose()` — without it, every disposed engine leaks a
+     * pair of window-level keydown/keyup listeners that still reference
+     * the engine's scene graph.
+     */
+    public dispose() {
+        if (this._keyDownHandler) {
+            window.removeEventListener('keydown', this._keyDownHandler, true);
+            this._keyDownHandler = null;
+        }
+        if (this._keyUpHandler) {
+            window.removeEventListener('keyup', this._keyUpHandler, true);
+            this._keyUpHandler = null;
+        }
+        if (this.canvas) {
+            if (this._wheelHandler) this.canvas.removeEventListener('wheel', this._wheelHandler);
+            this.canvas.onpointerdown = null;
+            this.canvas.onpointerup = null;
+            this.canvas.onpointerenter = null;
+            this.canvas.onpointermove = null;
+            this.canvas.onpointercancel = null;
+            this.canvas.oncontextmenu = null;
+        }
+        this._wheelHandler = null;
+        this.canvas = null;
     }
 
     public useMouseLock() {
