@@ -32,6 +32,19 @@ export class Context3D extends CEventDispatcher {
     public device: GPUDevice;
     public presentationFormat: GPUTextureFormat;
 
+    /** Set to true when the underlying GPUDevice has been lost (driver reset,
+     *  device unplug, tab/iframe suspended, explicit `device.destroy()`...).
+     *  Once lost, the device is permanently unusable — all `_boundCtx`
+     *  resources on this Context3D are stale. The owning Engine3D stops
+     *  scheduling render frames. App code should listen for
+     *  `Context3D.DEVICE_LOST` and call `Engine3D.create()` again to recover. */
+    public lost: boolean = false;
+    public lostInfo: GPUDeviceLostInfo | null = null;
+
+    /** Event type dispatched on this Context3D when `device.lost` fires.
+     *  `event.data` is the `GPUDeviceLostInfo` (reason + message). */
+    public static readonly DEVICE_LOST: string = 'deviceLost';
+
     /** Per-Context3D GPU command/pipeline state (lazy).
      *  Factory is installed by GPUContext.ts at its module load to avoid a
      *  circular ESM import at Context3D load time. */
@@ -66,6 +79,17 @@ export class Context3D extends CEventDispatcher {
         if (!this.device) throw new Error('Your browser does not support WebGPU!');
         this.device.label = `device-${Context3D._nextLabel++}`;
         this.presentationFormat = navigator.gpu.getPreferredCanvasFormat();
+
+        // Subscribe to device-lost once. Fires on driver reset, tab suspend,
+        // explicit `device.destroy()`, or GPU process crash. We don't attempt
+        // auto-recovery — the device is irrecoverable — but we flag the
+        // context and dispatch an event so the engine stops rendering and
+        // apps can dispose + recreate.
+        this.device.lost.then((info) => {
+            this.lost = true;
+            this.lostInfo = info;
+            this.dispatchEvent(new CEvent(Context3D.DEVICE_LOST, info));
+        });
 
         this.canvasConfig = canvasConfig;
         if (canvasConfig && canvasConfig.canvas) {

@@ -379,6 +379,12 @@ export class Engine3D {
     }
 
     private async _renderOnce(_time: number) {
+        // If this engine's GPU device has been lost (driver reset, tab
+        // suspended, explicit destroy), skip the frame entirely. Any
+        // command-encoder / queue.submit call would throw. Other engines
+        // in `_instances` keep rendering unaffected.
+        if (this.context3D.lost) return;
+
         this.frameCount++;
 
         let views = this.views;
