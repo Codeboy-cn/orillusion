@@ -358,7 +358,6 @@ export class RenderShaderPass extends ShaderPassBase {
             this.shaderVariant = ShaderReflection.genRenderShaderVariant(this);
             this.reBuild(geometry, rendererPassState);
             this._valueChange = false;
-            this._textureChange = false;
             if (noticeFun) {
                 noticeFun();
             }
@@ -419,11 +418,11 @@ export class RenderShaderPass extends ShaderPassBase {
         this.bindGroups[groupIndex] = group;
     }
 
-    protected checkBuffer(bufferName: string, buffer: GPUBufferBase) {
+    protected checkBuffer(_bufferName: string, _buffer: GPUBufferBase) {
         return;
     }
 
-    protected preCompileShader(stage: ShaderStage, code: string, format?: string) {
+    protected preCompileShader(stage: ShaderStage, code: string) {
         let shader: string = code;
         if (shader.indexOf(`version `) != -1) {
             var wgsl = ShaderConverter.convertGLSL(shader);
@@ -606,7 +605,6 @@ export class RenderShaderPass extends ShaderPassBase {
         return entries;
     }
 
-    private _cacheEntries
     protected genGroups(groupIndex: number, infos: ShaderReflectionVarInfo[][], force: boolean = false) {
         if (!this.bindGroups[groupIndex] || force) {
             const shaderRefs: ShaderReflectionVarInfo[] = infos[groupIndex];
@@ -782,7 +780,6 @@ export class RenderShaderPass extends ShaderPassBase {
         }
 
         if (renderPassState.zPreTexture || renderPassState.depthTexture) {
-            let blendEnable = shaderState.blendMode != BlendMode.NONE;
             if (Engine3D.setting.render.zPrePass && renderPassState.zPreTexture && shaderState.useZ) {
                 renderPipelineDescriptor[`depthStencil`] = {
                     depthWriteEnabled: false,
