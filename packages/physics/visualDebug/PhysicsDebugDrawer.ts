@@ -157,10 +157,7 @@ export class PhysicsDebugDrawer {
         console.error(warning);
     }
 
-    private draw3dText(location: Ammo.btVector3, textString: string): void {
-        const _location = Ammo.wrapPointer(location as unknown as number, Ammo.btVector3);
-        const _textString = Ammo.UTF8ToString(textString as unknown as number);
-        console.log("draw3dText", _location, _textString);
+    private draw3dText(_location: Ammo.btVector3, _textString: string): void {
     }
 
     private clearLines(): void {

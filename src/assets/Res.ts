@@ -404,7 +404,7 @@ export class Res {
                 return ret;
             })
             .catch((e) => {
-                console.log(e);
+                console.error(e);
             });
     }
 

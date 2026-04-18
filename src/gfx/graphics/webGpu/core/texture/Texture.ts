@@ -355,7 +355,7 @@ export class Texture implements GPUSamplerDescriptor {
         }
 
         if (width < 32 || height < 32) {
-            console.log(imageBitmap['name'] + 'Size must be greater than 32!');
+            console.warn(imageBitmap['name'] + 'Size must be greater than 32!');
         }
 
         this.width = width;

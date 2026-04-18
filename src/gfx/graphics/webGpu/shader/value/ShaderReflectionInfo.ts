@@ -251,7 +251,7 @@ export class ShaderReflection {
             } else {
                 let oldAtt = tmp[newAtt.name];
                 if (oldAtt.location == newAtt.location && oldAtt.name != newAtt.name) {
-                    console.log('location must same!');
+                    console.warn('location must same!');
                 }
             }
         }

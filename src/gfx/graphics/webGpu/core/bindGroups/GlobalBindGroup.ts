@@ -66,7 +66,7 @@ export class GlobalBindGroup {
 
     public static getLightEntries(scene: Scene3D): LightEntries {
         if (!scene) {
-            console.log(`getLightEntries scene is null`);
+            console.warn(`getLightEntries scene is null`);
         }
 
         let lightEntries = this._lightEntriesMap.get(scene);
@@ -79,7 +79,7 @@ export class GlobalBindGroup {
 
     public static getReflectionEntries(scene: Scene3D): ReflectionEntries {
         if (!scene) {
-            console.log(`getLightEntries scene is null`);
+            console.warn(`getLightEntries scene is null`);
         }
 
         let reflectionEntries = this._reflectionEntriesMap.get(scene);

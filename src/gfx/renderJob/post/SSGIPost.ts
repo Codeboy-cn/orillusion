@@ -86,7 +86,6 @@ export class SSGIPost extends PostBase {
     }
 
     onCameraChange(oldPos: Vector3, newPos: Vector3) {
-        console.log("a",);
         let p = Vector3.distance(oldPos, newPos);
         p = Math.min(0.45, p) + 0.01;
         this.updateBuffer.setFloat("delay", p);

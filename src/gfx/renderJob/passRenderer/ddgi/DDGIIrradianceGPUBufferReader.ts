@@ -3,7 +3,7 @@ import { CEvent } from "../../../../event/CEvent";
 import { CEventDispatcher } from "../../../../event/CEventDispatcher";
 import { RenderTexture } from "../../../../textures/RenderTexture";
 import { bindCtx, Context3D } from "../../../graphics/webGpu/Context3D";
-import { DDGIProbeRenderer, GIRenderCompleteEvent, GIRenderStartEvent } from "./DDGIProbeRenderer";
+import { DDGIProbeRenderer, GIRenderCompleteEvent } from "./DDGIProbeRenderer";
 
 export let IrradianceDataReaderCompleteEvent: CEvent = new CEvent('IrradianceDataReaderCompleteEvent');
 export class DDGIIrradianceGPUBufferReader extends CEventDispatcher {
@@ -51,31 +51,15 @@ export class DDGIIrradianceGPUBufferReader extends CEventDispatcher {
             this,
         );
 
-        //listener
-        this.probeRenderer.addEventListener(
-            GIRenderStartEvent.type,
-            () => {
-                console.log('GIRenderStartEvent');
-            },
-            this,
-        );
     }
 
     private async onProbeRenderComplete() {
-        console.log('GIRenderCompleteEvent');
         if (!this.readFlag) {
             this.readFlag = true;
-            let startTime = Date.now();
-            console.log('irradianceDataReader start reading ');
-
             await this.read(this.srcColorMap.getGPUTexture(), this.opColorBuffer, this.opColorArray);
             await this.read(this.srcDepthMap.getGPUTexture(), this.opDepthBuffer, this.opDepthArray);
             this.readFlag = false;
-            console.log('process time :', Date.now() - startTime);
-            console.log('irradianceDataReader read complete');
             this.dispatchEvent(IrradianceDataReaderCompleteEvent);
-        } else {
-            console.log('irradianceDataReader is reading yet!!!');
         }
     }
 

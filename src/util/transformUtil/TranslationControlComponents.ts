@@ -101,8 +101,6 @@ export class TranslationControlComponents extends TransformControllerBaseCompone
 
         this.mX.transform.localPosition = trs[0];
 
-        console.log(this.target.localPosition);
-
         // this.target.localPosition = this.mX.transform.worldPosition.clone();
     }
 

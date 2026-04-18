@@ -12,7 +12,6 @@ export class Navi3DMergeVertex {
 
         let sameVertexIndex: Map<number, Vector3> = new Map<number, Vector3>();
         let redirectionIndex: number[] = [];
-        let mergePointCount: number = 0;
         for (let i = 0, c = this.vertex.length; i < c; i++) {
             let item = this.vertex[i];
             let samePointIndex = -1;
@@ -24,14 +23,11 @@ export class Navi3DMergeVertex {
             })
             if (samePointIndex > -1) {
                 redirectionIndex[i] = samePointIndex;
-                // console.log('points merged：', i, samePointIndex);
-                mergePointCount++;
             } else {
                 sameVertexIndex.set(i, item);
                 redirectionIndex[i] = i;
             }
         }
-        console.log('mergePointCount：', mergePointCount);
 
         //force modify indices
         this.indices = [];

@@ -86,7 +86,6 @@ export class Graphic3DFaceRenderer extends MeshRenderer {
             this.transformBuffer.setVector4("uvRect_" + i, new Vector4(0, 0, 1, 1));
             this.transformBuffer.setVector4("uvRect2_" + i, new Vector4(0, 0, 1, 1));
             this.transformBuffer.setVector4("uvSpeed_" + i, new Vector4(0, 0, 0, 0));
-            console.log("create dynamic geometry", i);
         }
 
         this.transformBuffer.apply();

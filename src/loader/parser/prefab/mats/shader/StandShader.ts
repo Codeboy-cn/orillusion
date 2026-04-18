@@ -356,8 +356,6 @@ export class StandShader extends Shader {
      */
     public set clearCoatRoughnessMap(value: Texture) {
         if (!value) return;
-        console.log("USE_CLEARCOAT_ROUGHNESS");
-
         this.getDefaultColorShader().setTexture(`clearCoatRoughnessMap`, value);
         this.getDefaultColorShader().setDefine(`USE_CLEARCOAT_ROUGHNESS`, true);
     }

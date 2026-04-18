@@ -356,7 +356,6 @@ export class DDGIProbeRenderer extends RendererBase {
     * @group DDGI
     */
     private writeToTexture(texture: RenderTexture, array: Float32Array, width: number, height: number) {
-        console.log(texture.name);
         const ctx = texture._boundCtx!;
         const device = ctx.device;
         const buffer = device.createBuffer({

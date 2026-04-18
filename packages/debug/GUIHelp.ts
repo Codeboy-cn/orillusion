@@ -71,7 +71,6 @@ class _GUIHelp {
         // dgui.addFolder(key);
         let controller = dgui.addColor(target[key], 'rgba').name(key);
         controller.onChange((val) => {
-            console.log(val);
             let node = target[key];
             node['rgba'] = val;
             target[key] = node;

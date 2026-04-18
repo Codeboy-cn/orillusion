@@ -255,39 +255,4 @@ export class QuadTree {
         }
     }
 
-    private logDeep: number = 0;
-    private logTree(cellIndex: number): void {
-        if (cellIndex < 0)
-            return;
-
-        this.logDeep++;
-
-        var cell: QuadTreeCell = this._cells[cellIndex];
-
-        var spaces: String = "";
-        for (var si: number = 0; si < (this.logDeep - 1); si++)
-            spaces += "-|";
-
-        console.log(spaces + "i=" + cellIndex + " " +
-            cell.aabb.minPosX.toFixed(2) + " " + cell.aabb.maxPosX.toFixed(2) + " "
-            + cell.aabb.minPosY.toFixed(2) + " " + cell.aabb.maxPosY.toFixed(2));
-
-        var i: number;
-        for (i = 0; i < cell.nodeIndices.length; i++) {
-            if (cell.nodeIndices[i] >= 0) {
-                var tri: IQuadNode = this._quadNodes[cell.nodeIndices[i]];
-                console.log(spaces + " t=" + cell.nodeIndices[i] + " " +
-                    tri.aabb.minPosX.toFixed(2) + " " + tri.aabb.maxPosX.toFixed(2) + " "
-                    + tri.aabb.minPosY.toFixed(2) + " " + tri.aabb.maxPosY.toFixed(2));
-
-            }
-        }
-        for (i = 0; i < cell.childCellIndices.length; i++) {
-            if (cell.childCellIndices[i] >= 0) {
-                this.logTree(cell.childCellIndices[i]);
-            }
-        }
-        this.logDeep--;
-    }
-
 }
