@@ -7,7 +7,7 @@ import { Matrix4 } from "../../../../../math/Matrix4";
 
 @RegisterShader
 export class SkyShader extends Shader {
-    private readonly _fixOrthMatrix: Matrix4;
+    private _fixOrthMatrix: Matrix4;
     private _cacheData = { enable: false, aspect: 1.0, near: 1.0, far: 1000.0 };
     constructor() {
         super();
@@ -45,5 +45,15 @@ export class SkyShader extends Shader {
             this.setUniform('fixOrthProj', this._fixOrthMatrix.rawData);
         }
 
+    }
+
+    public destroy(force?: boolean) {
+        // Release the sky shader's private orth-proj matrix back to the
+        // static table. Base Shader.destroy() doesn't know about it.
+        if (this._fixOrthMatrix) {
+            Matrix4.freeIndex(this._fixOrthMatrix);
+            this._fixOrthMatrix = null;
+        }
+        super.destroy(force);
     }
 }

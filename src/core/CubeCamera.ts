@@ -115,4 +115,19 @@ export class CubeCamera extends Object3D {
         this.back_camera._boundCtx ||= ctx;
         return this;
     }
+
+    public destroy(force?: boolean) {
+        // super.destroy() already walks entityChildren, so the 6 face
+        // Object3Ds are covered. We just null out our strong refs so the
+        // components can GC. Clearing refs isn't strictly required for
+        // correctness — it's here so a stale reference read after destroy
+        // trips fast instead of silently returning a dead camera.
+        super.destroy(force);
+        this.up_camera = null;
+        this.down_camera = null;
+        this.left_camera = null;
+        this.right_camera = null;
+        this.front_camera = null;
+        this.back_camera = null;
+    }
 }

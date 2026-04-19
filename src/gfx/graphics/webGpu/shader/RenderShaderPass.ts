@@ -287,7 +287,11 @@ export class RenderShaderPass extends ShaderPassBase {
             this._textureChange = true;
             this.textures[name] = texture;
             if (name == "envMap") {
+                if (this.envMap) {
+                    Reference.getInstance().detached(this.envMap, this);
+                }
                 this.envMap = texture;
+                Reference.getInstance().attached(this.envMap, this);
             } else if (name == "prefilterMap") {
                 this.prefilterMap = texture;
             } else if (name == "reflectionMap") {
@@ -927,6 +931,7 @@ export class RenderShaderPass extends ShaderPassBase {
         this.defineValue[`USE_CSM`] = CSM.Cascades > 1;
         this.defineValue[`USE_IES_PROFILE`] = IESProfiles.use;
 
+        this.defineValue[`USE_RTE`] = Engine3D.setting.useRTE;
     }
 
     private genReflection() {

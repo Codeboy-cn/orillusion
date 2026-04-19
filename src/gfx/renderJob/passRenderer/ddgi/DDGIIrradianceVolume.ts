@@ -54,6 +54,15 @@ export class DDGIIrradianceVolume {
         this.isVolumeChange = true;
     }
 
+    // `randomOrientation` is the only Matrix4 this volume owns directly.
+    // Called by LightEntries.destroy() during engine teardown.
+    public destroy() {
+        if (this.randomOrientation) {
+            Matrix4.freeIndex(this.randomOrientation);
+            this.randomOrientation = null;
+        }
+    }
+
     public updateProbes(probes: Probe[]): void {
         let frameArray = this.probesBufferData;
         for (let probe of probes) {

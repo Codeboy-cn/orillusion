@@ -9,6 +9,7 @@ import { version } from '../package.json';
 import { Context3D } from './gfx/graphics/webGpu/Context3D';
 
 import { ForwardRenderJob } from './gfx/renderJob/jobs/ForwardRenderJob';
+import { OverlayRenderJob } from './gfx/renderJob/jobs/OverlayRenderJob';
 import { GlobalBindGroup } from './gfx/graphics/webGpu/core/bindGroups/GlobalBindGroup';
 import { Interpolator } from './math/TimeInterpolator';
 import { RendererJob } from './gfx/renderJob/jobs/RendererJob';
@@ -40,6 +41,8 @@ export class Engine3D {
 
     /** Engine-level settings. Shared across instances. */
     public static setting: EngineSetting = {
+        useRTE: false,
+        RTEScale: 1.0,
         doublePrecision: false,
         occlusionQuery: { enable: true, debug: false },
         pick: { enable: true, mode: `bound`, detail: `mesh` },
@@ -110,7 +113,8 @@ export class Engine3D {
         shadow: {
             enable: true, type: 'HARD', pointShadowBias: 0.0005, shadowSize: 2048, pointShadowSize: 1024,
             shadowSoft: 0.005, shadowBound: 100, shadowBias: 0.05, needUpdate: true, autoUpdate: true,
-            updateFrameRate: 2, csmMargin: 0.1, csmScatteringExp: 0.7, csmAreaScale: 0.4, debug: false,
+            updateFrameRate: 2, csmMargin: 0.1, csmScatteringExp: 0.7, csmAreaScale: 0.4,
+            maxCascades: 4, maxShadowMapNum: 8, maxShadowMapWidth: 2048, maxShadowMapHeight: 2048, debug: false,
         },
         gi: {
             enable: false, offsetX: 0, offsetY: 0, offsetZ: 0, probeSpace: 64, probeXCount: 4, probeYCount: 2,
@@ -368,6 +372,23 @@ export class Engine3D {
         return this.renderJobs.get(view);
     }
 
+    /**
+     * Add an overlay view that renders on top of existing views.
+     * Preserves the color buffer but clears depth — ideal for UI, axis
+     * helpers, gizmos that should always be visible.
+     */
+    public addOverlayView(view: View3D): OverlayRenderJob {
+        view.engine3D = this;
+        if (view.camera) {
+            (view.camera as any)._boundCtx ||= this.context3D;
+        }
+        this.views.push(view);
+        let renderJob = new OverlayRenderJob(view);
+        this.renderJobs.set(view, renderJob);
+        Engine3D._ensureLoop();
+        return renderJob;
+    }
+
     public static pause() {
         if (this._rafId !== 0) {
             cancelAnimationFrame(this._rafId);
@@ -478,7 +499,7 @@ export class Engine3D {
 
         if (this._renderLoop) await this._renderLoop();
 
-        WasmMatrix.updateAllContinueTransform(0, Matrix4.useCount, 16);
+        WasmMatrix.updateAllContinueTransform(0, Matrix4.useCount, Time.delta, Engine3D.setting.useRTE ? Engine3D.setting.RTEScale : 0.0);
         let globalMatrixBindGroup = GlobalBindGroup.getModelMatrixBindGroup(this.context3D);
         globalMatrixBindGroup.writeBuffer(Matrix4.useCount * 16);
 

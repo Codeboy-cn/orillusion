@@ -80,4 +80,18 @@ export class PostRenderer extends RendererBase {
         gpu.endCommandEncoder(command);
     }
 
+    // Called via RendererJob.destroy() on engine dispose. finalQuadView is
+    // an orphan Object3D (never added to a scene), and each attached post
+    // owns extra ViewQuads — scene.destroy() never reaches any of them.
+    public destroy(force?: boolean) {
+        this.finalQuadView?.destroy(force);
+        this.finalQuadView = null;
+        if (this.postList) {
+            for (const post of this.postList.values()) {
+                post.destroy?.(force);
+            }
+            this.postList.clear();
+        }
+    }
+
 }

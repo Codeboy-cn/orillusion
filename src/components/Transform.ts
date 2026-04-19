@@ -774,6 +774,10 @@ export class Transform extends ComponentBase {
     destroy(): void {
         super.destroy();
 
+        // Return this transform's slot to the static Matrix4 table so the next
+        // Transform() can reuse it. Without this, `Matrix4.useCount` grows forever.
+        if (this._worldMatrix) Matrix4.freeIndex(this._worldMatrix);
+
         this.scene3D = null;
         this.eventPositionChange = null;
         this.eventRotationChange = null;

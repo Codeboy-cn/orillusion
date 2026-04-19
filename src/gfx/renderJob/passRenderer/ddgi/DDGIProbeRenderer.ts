@@ -382,4 +382,11 @@ export class DDGIProbeRenderer extends RendererBase {
 
         ctx.gpuContext.endCommandEncoder(commandEncoder);
     }
+
+    // Tears down the orphan 6-face cube camera owned by this renderer.
+    // RendererJob.destroy() calls this during Engine3D.dispose().
+    public destroy(force?: boolean) {
+        this.cubeCamera?.destroy(force);
+        this.cubeCamera = null;
+    }
 }

@@ -13,14 +13,16 @@ import { CameraType } from './CameraType';
 import { CubeCamera } from './CubeCamera';
 import { Context3D } from '../gfx/graphics/webGpu/Context3D';
 import { FrustumCSM } from './csm/FrustumCSM';
-import { CSM } from './csm/CSM';
 import { CResizeEvent } from '../event/CResizeEvent';
+import { ILight } from '../components/lights/ILight';
 
 /**
  * Camera components
  * @group Components
  */
 export class Camera3D extends ComponentBase {
+
+    public static mainCamera: Camera3D;
 
     public _boundCtx: Context3D | null = null;
 
@@ -104,6 +106,8 @@ export class Camera3D extends ComponentBase {
      */
     public isShadowCamera: boolean = false;
 
+    public shadowLight?: ILight;
+
     /**
    * @internal
    */
@@ -118,7 +122,6 @@ export class Camera3D extends ComponentBase {
     private _halfh: number;
     private _ray: Ray;
     private _enableCSM: boolean = false;
-    public mainCamera: Camera3D;
 
     /**
      * @internal
@@ -150,7 +153,7 @@ export class Camera3D extends ComponentBase {
     }
     public set enableCSM(value: boolean) {
         if (value && !this.csm) {
-            this.csm = new FrustumCSM(CSM.Cascades);
+            this.csm = new FrustumCSM(Engine3D.setting.shadow.maxCascades);
             if (this._boundCtx) {
                 for (const child of this.csm.children) {
                     (child.shadowCamera as any)._boundCtx ||= this._boundCtx;
@@ -561,8 +564,7 @@ export class Camera3D extends ComponentBase {
         }
         this.frustum.update(this.pvMatrix);
         this.frustum.updateBoundBox(this.pvMatrixInv);
-        let shadow = Engine3D.setting.shadow;
-        this.enableCSM && this.csm?.update(this._projectionMatrix, this._pvMatrixInv, this.near, this.far, shadow);
+        // CSM update moved to DirectLight.onUpdate (see 0.9 refactor)
     }
 
     // for jitter projection
@@ -700,6 +702,22 @@ export class Camera3D extends ComponentBase {
         // this.transform.updateWorldMatrix();
         const e = this.transform._worldMatrix.rawData;
         return target.set(-e[8], -e[9], -e[10]).normalize();
+    }
+
+    public destroy(force?: boolean): void {
+        // Release the 7 Matrix4 slots this camera holds in the static matrix table;
+        // ComponentBase.destroy() wouldn't know about these private fields.
+        for (const m of [this._projectionMatrix, this._projectionMatrixInv, this._viewMatrix, this._viewMatrixInv, this._unprojection, this._pvMatrix, this._pvMatrixInv]) {
+            if (m) Matrix4.freeIndex(m);
+        }
+        this._projectionMatrix = null;
+        this._projectionMatrixInv = null;
+        this._viewMatrix = null;
+        this._viewMatrixInv = null;
+        this._unprojection = null;
+        this._pvMatrix = null;
+        this._pvMatrixInv = null;
+        super.destroy(force);
     }
 
 }

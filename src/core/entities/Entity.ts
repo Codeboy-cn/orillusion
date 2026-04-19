@@ -343,9 +343,12 @@ export class Entity extends CEventDispatcher {
                 c.destroy(force);
             });
             this.components.clear();
-            this.entityChildren.forEach((c) => {
-                c.destroy(force);
-            })
+            // Iterate a snapshot: child.destroy() triggers Transform.beforeDestroy,
+            // which removes the child from our entityChildren. Mutating the array
+            // mid-forEach drops every other child (leaving 3 of 6 cube-camera faces
+            // and the whole scene camera behind, leaking their Matrix4 slots).
+            const children = this.entityChildren.slice();
+            for (const c of children) c.destroy(force);
 
             this.removeAllChild();
 

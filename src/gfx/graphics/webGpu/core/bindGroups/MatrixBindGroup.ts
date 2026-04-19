@@ -1,3 +1,4 @@
+import { Engine3D } from '../../../../../Engine3D';
 import { Matrix4 } from '../../../../../math/Matrix4';
 import { UUID } from '../../../../../util/Global';
 import { bindCtx, Context3D } from '../../Context3D';
@@ -23,15 +24,26 @@ export class MatrixBindGroup {
 
     private cacheWorldMatrix(ctx: Context3D) {
         this.groupBufferSize = Matrix4.maxCount * Matrix4.blockBytes;
-        this.matrixBufferDst = new MatrixGPUBuffer(this.groupBufferSize / 4);
+        this.matrixBufferDst = new MatrixGPUBuffer(this.groupBufferSize / 4 + Matrix4.maxCount * 8);
         bindCtx(this.matrixBufferDst, ctx);
         this.matrixBufferDst.visibility = GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT | GPUShaderStage.COMPUTE
         this.matrixBufferDst.buffer.label = this.groupBufferSize.toString();
     }
 
     writeBuffer(len: number) {
-        const matBytes = Matrix4.dynamicMatrixBytes;
-        this.matrixBufferDst.mapAsyncWrite(matBytes, len);
+        if (Engine3D.setting.doublePrecision) {
+            Matrix4.dynamicMatrixBytes_32bit.set(Matrix4.dynamicMatrixBytes);
+            this.matrixBufferDst.mapAsyncWrite(Matrix4.dynamicMatrixBytes_32bit, len);
+        } else {
+            this.matrixBufferDst.mapAsyncWrite(Matrix4.dynamicMatrixBytes, len);
+        }
+
+        if (Engine3D.setting.useRTE) {
+            const ctx = this.matrixBufferDst._boundCtx;
+            if (ctx) {
+                ctx.device.queue.writeBuffer(this.matrixBufferDst.buffer, Matrix4.maxCount * (16 * 4), Matrix4.matrixWorldPositionHLDatas as unknown as BufferSource);
+            }
+        }
     }
 
 }

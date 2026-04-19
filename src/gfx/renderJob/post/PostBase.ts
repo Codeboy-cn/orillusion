@@ -36,11 +36,14 @@ export class PostBase {
         let ctx = view.engine3D.context3D;
         bindCtx(this, ctx);
         ctx.addEventListener(CResizeEvent.RESIZE, this.onResize, this);
+        this._resizeListenerCtx = ctx;
         if (!this._resourceCreated) {
             this._resourceCreated = true;
             this.createResource(view);
         }
     }
+
+    private _resizeListenerCtx: Context3D | null = null;
 
     protected createResource(view: View3D) { }
 
@@ -82,17 +85,34 @@ export class PostBase {
 
     public destroy(force?: boolean) {
         this.postRenderer = null;
-        for (let i = 0; i < this.rtViewQuad.size; i++) {
-            const quad = this.rtViewQuad.values[i] as ViewQuad;
-            quad.destroy(force);
+        // Drop the RESIZE listener registered on the Context3D in bindView.
+        // Without this, the ctx's dispatcher keeps a strong ref to `this`,
+        // and `this._boundCtx` keeps a strong ref back to the ctx — the
+        // cycle alone is fine, but the ctx is usually also anchored by
+        // some static field, so the whole thing (including the post's
+        // RenderTextures) outlives Engine3D.dispose().
+        if (this._resizeListenerCtx) {
+            this._resizeListenerCtx.removeEventListener(CResizeEvent.RESIZE, this.onResize, this);
+            this._resizeListenerCtx = null;
         }
-        this.rtViewQuad.clear();
-        this.rtViewQuad = null;
+        // Map.values is a FUNCTION, not an indexable collection — the old
+        // `map.values[i]` always read `undefined` and threw on `.destroy`.
+        // Iterate the Map itself.
+        if (this.rtViewQuad) {
+            for (const quad of this.rtViewQuad.values()) {
+                quad.destroy(force);
+            }
+            this.rtViewQuad.clear();
+            this.rtViewQuad = null;
+        }
 
-        for (let i = 0; i < this.virtualTexture.size; i++) {
-            const tex = this.virtualTexture.values[i] as VirtualTexture;
-            Reference.getInstance().detached(tex, this);
-            tex.destroy(force);
+        if (this.virtualTexture) {
+            for (const tex of this.virtualTexture.values()) {
+                Reference.getInstance().detached(tex, this);
+                tex.destroy(force);
+            }
+            this.virtualTexture.clear();
+            this.virtualTexture = null;
         }
     }
 }

@@ -99,4 +99,23 @@ export class GlobalBindGroup {
         }
         return ctx;
     }
+
+    // Called from Engine3D.dispose(). Purges every camera entry whose
+    // _boundCtx matches the disposed context, plus the scene-keyed entries.
+    // Without this, a long-running app that creates/drops engines leaks a
+    // Scene3D + per-camera GlobalUniformGroup per cycle.
+    public static removeContext(ctx: Context3D) {
+        for (const cam of [...this._cameraBindGroups.keys()]) {
+            if (cam._boundCtx === ctx) {
+                this._cameraBindGroups.get(cam)?.destroy();
+                this._cameraBindGroups.delete(cam);
+            }
+        }
+    }
+
+    public static removeScene(scene: Scene3D) {
+        this._lightEntriesMap.get(scene)?.destroy();
+        this._lightEntriesMap.delete(scene);
+        this._reflectionEntriesMap.delete(scene);
+    }
 }

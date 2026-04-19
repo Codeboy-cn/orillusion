@@ -224,4 +224,11 @@ export class ReflectionRenderer extends RendererBase {
     protected occlusionRenderNodeTest(i: number, id: number, occlusionSystem: OcclusionSystem): boolean {
         return true;//occlusionSystem.zDepthRenderNodeTest(id) > 0;
     }
+
+    // The cube camera is orphan (never added to a scene), so scene.destroy()
+    // won't reach it. RendererJob.destroy() calls this on engine teardown.
+    public destroy(force?: boolean) {
+        this.cubeCamera?.destroy(force);
+        this.cubeCamera = null;
+    }
 }

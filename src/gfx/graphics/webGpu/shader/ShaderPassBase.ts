@@ -113,6 +113,10 @@ export class ShaderPassBase {
         }
     }
 
+    public getStorageBuffer(name: string): StorageGPUBuffer {
+        return this._bufferDic.get(name) as StorageGPUBuffer;
+    }
+
     /**
      * set struct storage gpu buffer
      * @param name buffer name
@@ -139,6 +143,10 @@ export class ShaderPassBase {
         } else {
             this._bufferDic.set(name, buffer);
         }
+    }
+
+    public getUniformBuffer(name: string): UniformGPUBuffer {
+        return this._bufferDic.get(name) as UniformGPUBuffer;
     }
 
     /**

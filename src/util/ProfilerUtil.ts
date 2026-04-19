@@ -107,6 +107,12 @@ export class ProfilerUtil {
         this.viewMap.get(view)[pass].pipelineCount++;
     }
 
+    // Engine3D.dispose() calls this so profiler counters don't leak the
+    // View3D (and its draw-stat record) for every disposed engine.
+    public static removeView(view: View3D) {
+        this.viewMap.delete(view);
+    }
+
     public static start(id: string) {
         let profilerLabel = this.profilerLabelMap.get(id);
         if (!profilerLabel) {

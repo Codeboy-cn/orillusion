@@ -85,6 +85,7 @@ export class InputSystem extends CEventDispatcher {
     private _wheelHandler: ((e: WheelEvent) => void) | null = null;
     private _keyDownHandler: ((e: KeyboardEvent) => void) | null = null;
     private _keyUpHandler: ((e: KeyboardEvent) => void) | null = null;
+    private _mouseLockHandler: ((e: MouseEvent) => void) | null = null;
 
     /**
      * init the input system
@@ -168,6 +169,10 @@ export class InputSystem extends CEventDispatcher {
             window.removeEventListener('keyup', this._keyUpHandler, true);
             this._keyUpHandler = null;
         }
+        if (this._mouseLockHandler) {
+            document.removeEventListener('mousemove', this._mouseLockHandler, false);
+            this._mouseLockHandler = null;
+        }
         if (this.canvas) {
             if (this._wheelHandler) this.canvas.removeEventListener('wheel', this._wheelHandler);
             this.canvas.onpointerdown = null;
@@ -185,13 +190,21 @@ export class InputSystem extends CEventDispatcher {
         if (this.mouseLock) return;
         this.canvas.requestPointerLock();
         this.mouseLock = true;
-        document.addEventListener("mousemove", (e) => this.onMouseLockMove(e), false);
+        // Save the bound handler so releaseMouseLock can actually remove it.
+        // A fresh arrow in addEventListener/removeEventListener produces two
+        // distinct function identities, so removeEventListener would no-op
+        // and the InputSystem would leak via document's listener list.
+        this._mouseLockHandler = (e) => this.onMouseLockMove(e);
+        document.addEventListener("mousemove", this._mouseLockHandler, false);
     }
 
     public releaseMouseLock() {
         this.mouseLock = false;
         document.exitPointerLock();
-        document.removeEventListener("mousemove", (e) => this.onMouseLockMove(e), false);
+        if (this._mouseLockHandler) {
+            document.removeEventListener("mousemove", this._mouseLockHandler, false);
+            this._mouseLockHandler = null;
+        }
     }
 
     public onMouseLockMove(e: MouseEvent) {

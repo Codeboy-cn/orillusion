@@ -308,6 +308,12 @@ export class HoverCameraController extends ComponentBase {
             input.removeEventListener(PointerEvent3D.POINTER_UP, this.onMouseUp, this);
             input.removeEventListener(PointerEvent3D.POINTER_WHEEL, this.onMouseWheel, this);
         }
+        // Free the two orphan helper Object3Ds (not part of the scene graph,
+        // so they would otherwise leak their Transform's Matrix4 slots on reinit).
+        this._currentPos?.destroy(force);
+        this._currentPos = null;
+        this._targetPos?.destroy(force);
+        this._targetPos = null;
         super.destroy(force);
         this.camera = null;
         this._flowTarget = null;

@@ -477,7 +477,11 @@ export class RenderNode extends ComponentBase {
                         const subGeometry = subGeometries[i];
                         let lodInfos = subGeometry.lodLevels;
                         let lodInfo = lodInfos[node.lodLevel];
-                        gpu.drawIndexed(encoder, lodInfo.indexCount, 1, lodInfo.indexStart, 0, worldMatrix.index);
+                        if (this.instanceCount > 0) {
+                            gpu.drawIndexed(encoder, lodInfo.indexCount, this.instanceCount, lodInfo.indexStart, 0, 0);
+                        } else {
+                            gpu.drawIndexed(encoder, lodInfo.indexCount, 1, lodInfo.indexStart, 0, worldMatrix.index);
+                        }
                     }
                 }
             }

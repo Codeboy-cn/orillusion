@@ -21,6 +21,7 @@ import { ReflectionRenderer } from '../passRenderer/cubeRenderer/ReflectionRende
 import { PassType } from '../passRenderer/state/PassType';
 import { ProfilerUtil } from '../../../util/ProfilerUtil';
 import { FXAAPost } from '../post/FXAAPost';
+import { Camera3D } from '../../../core/Camera3D';
 
 /**
  * render jobs 
@@ -207,6 +208,8 @@ export class RendererJob {
     public renderFrame() {
         let view = this._view;
 
+        Camera3D.mainCamera = view.camera;
+
         ProfilerUtil.startView(view);
 
         GlobalBindGroup.getLightEntries(view.scene).update(view);
@@ -256,5 +259,15 @@ export class RendererJob {
 
     public debug() {
 
+    }
+
+    // Called from Engine3D.dispose(). Tears down the renderer-owned orphan
+    // Object3Ds (cube cameras, view quads, helper lights) that are never
+    // attached to the scene graph, so scene.destroy() never reaches them.
+    // Without this the Matrix4 slot table leaks ~60 entries per reinit.
+    public destroy(force?: boolean) {
+        (this.reflectionRenderer as any)?.destroy?.(force);
+        (this.ddgiProbeRenderer as any)?.destroy?.(force);
+        (this.postRenderer as any)?.destroy?.(force);
     }
 }
