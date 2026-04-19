@@ -56,4 +56,9 @@ export class RenderShaderCollect {
             }
         }
     }
+
+    public removeView(view: View3D) {
+        this.renderShaderUpdateList.delete(view);
+        this.renderNodeList.delete(view);
+    }
 }

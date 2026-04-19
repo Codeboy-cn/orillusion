@@ -10,6 +10,7 @@ import { BoundingBox } from '../../../core/bound/BoundingBox';
 import { GeometryBase } from '../../../core/geometry/GeometryBase';
 import { Octree } from '../../../core/tree/octree/Octree';
 import { Vector3 } from '../../../math/Vector3';
+import { Time } from '../../../util/Time';
 import { zSorterUtil } from '../../../util/ZSorterUtil';
 import { RenderLayerUtil, RenderLayer } from '../config/RenderLayer';
 import { Probe } from '../passRenderer/ddgi/Probe';
@@ -337,5 +338,28 @@ export class EntityCollect {
     public getRenderShaderCollect(view: View3D) {
         let viewList = this._renderShaderCollect.renderShaderUpdateList.get(view);
         return viewList;
+    }
+
+    // Engine3D.dispose() calls this so the singleton's scene-keyed maps
+    // don't accumulate one entry per disposed engine. Each entry pins a
+    // Scene3D plus its render-node / light / probe / sky arrays.
+    public removeScene(scene: Scene3D) {
+        this._sceneLights?.delete(scene);
+        this._sceneGIProbes?.delete(scene);
+        this._op_RenderNodes?.delete(scene);
+        this._tr_RenderNodes?.delete(scene);
+        this._octreeRenderNodes?.delete(scene);
+        this._reflections?.delete(scene);
+        this._op_renderGroup?.delete(scene);
+        this._tr_renderGroup?.delete(scene);
+        this._skyMap?.delete(scene);
+    }
+
+    // Engine3D.dispose() also calls this — `_renderShaderCollect` is keyed by
+    // View3D (not Scene3D) so removeScene() above can't reach it, and a stale
+    // view-keyed entry here pins the view's camera, scene graph, and every
+    // RenderNode that was ever enqueued for this view.
+    public removeView(view: View3D) {
+        this._renderShaderCollect?.removeView(view);
     }
 }

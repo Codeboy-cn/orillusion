@@ -171,6 +171,14 @@ export class Context3D extends CEventDispatcher {
         }
         this._caches.clear();
         this._gpuContext = null;
+        // Every RenderTexture / ComputeShader / ViewQuad / PostBase / Camera3D
+        // attached to this context subscribes to CResizeEvent.RESIZE with
+        // `this` as the listener's thisObject. The ctx's dispatcher then keeps
+        // a strong ref to every such instance, which back-ref this ctx via
+        // `_boundCtx` — the cycle alone is collectable, but the instances are
+        // usually also pinned externally (scene graph, pipeline caches),
+        // transitively stranding this whole device after dispose. Purge here.
+        this.removeAllEventListener();
     }
 
     public updateSize() {

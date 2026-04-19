@@ -17,11 +17,14 @@ import { ShaderLib } from './assets/shader/ShaderLib';
 import { ShaderUtil } from './gfx/graphics/webGpu/shader/util/ShaderUtil';
 import { ComponentCollect } from './gfx/renderJob/collect/ComponentCollect';
 import { ShadowLightsCollect } from './gfx/renderJob/collect/ShadowLightsCollect';
+import { EntityCollect } from './gfx/renderJob/collect/EntityCollect';
+import { ProfilerUtil } from './util/ProfilerUtil';
 import { WasmMatrix } from './components/matrix/WasmMatrix';
 import { Matrix4 } from './math/Matrix4';
 import { FXAAPost } from './gfx/renderJob/post/FXAAPost';
 import { PostProcessingComponent } from './components/post/PostProcessingComponent';
 import { GBufferFrame } from './gfx/renderJob/frame/GBufferFrame';
+import { Camera3D } from './core/Camera3D';
 
 /**
  * Orillusion 3D Engine.
@@ -280,6 +283,37 @@ export class Engine3D {
      */
     public dispose() {
         Engine3D._instances.delete(this);
+        // Each View3D/Scene3D/Camera3D owned by this engine lives on as a
+        // key in a handful of static per-view and per-scene maps. If we
+        // don't evict them here every reinit would leak: a full Scene3D
+        // subtree, each view's GlobalUniformGroup, profiler counters,
+        // light/shadow bookkeeping, etc. Evict them all.
+        for (const view of this.views) {
+            ComponentCollect.removeView(view);
+            ProfilerUtil.removeView(view);
+            EntityCollect.instance.removeView(view);
+            if (view.scene) {
+                EntityCollect.instance.removeScene(view.scene);
+                ShadowLightsCollect.removeScene(view.scene);
+                GlobalBindGroup.removeScene(view.scene);
+            }
+            // Clear the global `Camera3D.mainCamera` if it points at this
+            // engine's camera — otherwise the static field pins the
+            // camera, its Context3D (via _boundCtx) and its entire scene
+            // graph, defeating GC for the whole engine on reinit.
+            if (view.camera && Camera3D.mainCamera === view.camera) {
+                Camera3D.mainCamera = null;
+            }
+        }
+        GlobalBindGroup.removeContext(this.context3D);
+        // Tear down renderer-owned orphan Object3Ds (cube cameras, view
+        // quads, post effects) before the context dies — a CubeCamera
+        // alone holds 7 Object3Ds = 49 Matrix4 slots per engine.
+        for (const job of this.renderJobs.values()) job.destroy?.();
+        // Orphan components (their transform.view3D is null) are filed under
+        // a shared `view=null` key in ComponentCollect's per-view maps and
+        // can't be reached by removeView(). Purge the ones bound to this ctx.
+        ComponentCollect.removeNullViewEntriesForCtx(this.context3D);
         this.views = [];
         this.renderJobs.clear();
         this.inputSystem?.dispose();

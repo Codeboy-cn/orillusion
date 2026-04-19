@@ -190,4 +190,45 @@ export class ComponentCollect {
             list.delete(component);
         }
     }
+
+    // Called from Engine3D.dispose() so a disposed engine's View3D entries
+    // don't linger in every per-view static map (would leak the View3D, its
+    // scene tree, and every registered component callback).
+    public static removeView(view: View3D) {
+        this.init();
+        this.componentsUpdateList.delete(view);
+        this.componentsLateUpdateList.delete(view);
+        this.componentsBeforeUpdateList.delete(view);
+        this.componentsComputeList.delete(view);
+        this.componentsEnablePickerList.delete(view);
+        this.graphicComponent.delete(view);
+    }
+
+    // Some components bind with a null View3D because their owning Object3D
+    // was never attached to a scene (ViewQuad, CSM shadow cameras, cube
+    // cameras). Those live under a shared `view=null` key in every inner map,
+    // so per-view eviction cannot reach them. Purge all null-keyed entries
+    // whose component or object3D was bound to the given ctx.
+    public static removeNullViewEntriesForCtx(ctx: unknown) {
+        this.init();
+        const lists = [
+            this.componentsUpdateList,
+            this.componentsLateUpdateList,
+            this.componentsBeforeUpdateList,
+            this.componentsComputeList,
+            this.graphicComponent,
+        ];
+        for (const list of lists) {
+            const inner = list.get(null as any);
+            if (!inner) continue;
+            for (const comp of [...inner.keys()]) {
+                const compCtx = (comp as any)._boundCtx;
+                const objCtx = (comp as any).object3D?._boundCtx;
+                if (compCtx === ctx || objCtx === ctx) {
+                    inner.delete(comp);
+                }
+            }
+            if (inner.size === 0) list.delete(null as any);
+        }
+    }
 }
