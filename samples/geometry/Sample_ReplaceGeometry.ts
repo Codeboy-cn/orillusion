@@ -16,9 +16,9 @@ class Sample_ReplaceGeometry {
         const engine = this.engine = await Engine3D.create();
         let exampleScene = createExampleScene(engine, param);
 
-        Engine3D.setting.shadow.shadowBound = 100;
-        Engine3D.setting.shadow.shadowSize = 2048;
-        Engine3D.setting.shadow.shadowBias = 0.04;
+        // Engine3D.setting.shadow.shadowBound = 100;
+        // Engine3D.setting.shadow.shadowSize = 2048;
+        // Engine3D.setting.shadow.shadowBias = 0.04;
 
         this.scene = exampleScene.scene;
 

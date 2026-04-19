@@ -34,93 +34,135 @@ class Sample_MultiInstance {
         const makePane = (label: string) => {
             const pane = document.createElement('div');
             pane.style.cssText = 'flex:1;display:flex;flex-direction:column;min-width:0';
+            const header = document.createElement('div');
+            header.style.cssText = 'display:flex;align-items:center;gap:8px;padding:4px 8px;background:#1a1a1a;color:#9cf';
             const title = document.createElement('div');
-            title.style.cssText = 'padding:4px 8px;background:#1a1a1a;color:#9cf';
+            title.style.cssText = 'flex:1';
             title.textContent = label;
+            const reinitBtn = document.createElement('button');
+            reinitBtn.textContent = 'reinit()';
+            reinitBtn.style.cssText = 'background:#223;border:1px solid #446;color:#9cf;padding:2px 8px;cursor:pointer;font-family:inherit;font-size:11px';
+            header.appendChild(title);
+            header.appendChild(reinitBtn);
             const canvas = document.createElement('canvas');
             canvas.style.cssText = 'flex:1;width:100%;height:100%;display:block';
-            pane.appendChild(title);
+            pane.appendChild(header);
             pane.appendChild(canvas);
             stage.appendChild(pane);
-            return { pane, title, canvas };
+            return { pane, title, reinitBtn, canvas };
         };
 
         const a = makePane('Engine A — red box + direct light');
         const b = makePane('Engine B — blue sphere + point light');
 
-        // Scene-graph objects materialize GPU resources lazily per-Context3D
-        // on first render, so you can build both engines' scenes in any order
-        // without any explicit `engine.use()` bookkeeping.
-        const engineA = await Engine3D.create({ canvasConfig: { canvas: a.canvas } });
+        type Instance = { engine: Engine3D; scene: Scene3D };
 
-        a.title.textContent = `Engine A (id=${engineA.id}) — red box + direct light`;
+        // ---------- Engine A builder ----------
+        const buildEngineA = async (): Promise<Instance> => {
+            const engine = await Engine3D.create({ canvasConfig: { canvas: a.canvas } });
+            a.title.textContent = `Engine A (id=${engine.id}) — red box + direct light`;
 
-        // ---------- Scene A ----------
-        const sceneA = new Scene3D();
-        sceneA.addComponent(AtmosphericComponent);
+            const scene = new Scene3D();
+            scene.addComponent(AtmosphericComponent);
 
-        const camA = CameraUtil.createCamera3D(null, sceneA);
-        camA.perspective(60, engineA.context3D.aspect, 1, 2000);
-        const ctrlA = camA.object3D.addComponent(HoverCameraController);
-        ctrlA.setCamera(30, -15, 120);
+            const cam = CameraUtil.createCamera3D(null, scene);
+            cam.perspective(60, engine.context3D.aspect, 1, 2000);
+            cam.object3D.addComponent(HoverCameraController).setCamera(30, -15, 120);
 
-        const lightObjA = new Object3D();
-        lightObjA.rotationX = 45;
-        lightObjA.rotationY = 60;
-        const dirA = lightObjA.addComponent(DirectLight);
-        dirA.lightColor = KelvinUtil.color_temperature_to_rgb(5500);
-        dirA.intensity = 3;
-        sceneA.addChild(lightObjA);
+            const lightObj = new Object3D();
+            lightObj.rotationX = 45;
+            lightObj.rotationY = 60;
+            const dir = lightObj.addComponent(DirectLight);
+            dir.lightColor = KelvinUtil.color_temperature_to_rgb(5500);
+            dir.intensity = 3;
+            scene.addChild(lightObj);
 
-        const boxA = new Object3D();
-        boxA.name = 'redBox';
-        const mrA = boxA.addComponent(MeshRenderer);
-        mrA.geometry = new BoxGeometry(40, 40, 40);
-        const matA = new LitMaterial(engineA.context3D);
-        matA.baseColor = new Color(1, 0.15, 0.15, 1);
-        mrA.material = matA;
-        sceneA.addChild(boxA);
+            const box = new Object3D();
+            box.name = 'redBox';
+            const mr = box.addComponent(MeshRenderer);
+            mr.geometry = new BoxGeometry(40, 40, 40);
+            const mat = new LitMaterial(engine.context3D);
+            mat.baseColor = new Color(1, 0.15, 0.15, 1);
+            mr.material = mat;
+            scene.addChild(box);
 
-        const viewA = new View3D();
-        viewA.scene = sceneA;
-        viewA.camera = camA;
-        engineA.startRenderView(viewA);
+            const view = new View3D();
+            view.scene = scene;
+            view.camera = cam;
+            engine.startRenderView(view);
+            return { engine, scene };
+        };
 
-        // ---------- Engine B ----------
-        const engineB = await Engine3D.create({ canvasConfig: { canvas: b.canvas } });
-        b.title.textContent = `Engine B (id=${engineB.id}) — blue sphere + point light`;
+        // ---------- Engine B builder ----------
+        const buildEngineB = async (): Promise<Instance> => {
+            const engine = await Engine3D.create({ canvasConfig: { canvas: b.canvas } });
+            b.title.textContent = `Engine B (id=${engine.id}) — blue sphere + point light`;
 
-        // ---------- Scene B ----------
-        const sceneB = new Scene3D();
-        sceneB.addComponent(AtmosphericComponent);
+            const scene = new Scene3D();
+            scene.addComponent(AtmosphericComponent);
 
-        const camB = CameraUtil.createCamera3D(null, sceneB);
-        camB.perspective(45, engineB.context3D.aspect, 1, 2000);
-        const ctrlB = camB.object3D.addComponent(HoverCameraController);
-        ctrlB.setCamera(0, 0, 140);
+            const cam = CameraUtil.createCamera3D(null, scene);
+            cam.perspective(45, engine.context3D.aspect, 1, 2000);
+            cam.object3D.addComponent(HoverCameraController).setCamera(0, 0, 140);
 
-        const ptLightObj = new Object3D();
-        ptLightObj.transform.x = 40;
-        ptLightObj.transform.y = 30;
-        const ptLight = ptLightObj.addComponent(PointLight);
-        ptLight.lightColor = new Color(1, 1, 1);
-        ptLight.intensity = 30;
-        ptLight.range = 300;
-        sceneB.addChild(ptLightObj);
+            const ptLightObj = new Object3D();
+            ptLightObj.transform.x = 40;
+            ptLightObj.transform.y = 30;
+            const ptLight = ptLightObj.addComponent(PointLight);
+            ptLight.lightColor = new Color(1, 1, 1);
+            ptLight.intensity = 30;
+            ptLight.range = 300;
+            scene.addChild(ptLightObj);
 
-        const sphB = new Object3D();
-        sphB.name = 'blueSphere';
-        const mrB = sphB.addComponent(MeshRenderer);
-        mrB.geometry = new SphereGeometry(25, 32, 32);
-        const matB = new LitMaterial(engineB.context3D);
-        matB.baseColor = new Color(0.1, 0.4, 1.0, 1);
-        mrB.material = matB;
-        sceneB.addChild(sphB);
+            const sph = new Object3D();
+            sph.name = 'blueSphere';
+            const mr = sph.addComponent(MeshRenderer);
+            mr.geometry = new SphereGeometry(25, 32, 32);
+            const mat = new LitMaterial(engine.context3D);
+            mat.baseColor = new Color(0.1, 0.4, 1.0, 1);
+            mr.material = mat;
+            scene.addChild(sph);
 
-        const viewB = new View3D();
-        viewB.scene = sceneB;
-        viewB.camera = camB;
-        engineB.startRenderView(viewB);
+            const view = new View3D();
+            view.scene = scene;
+            view.camera = cam;
+            engine.startRenderView(view);
+            return { engine, scene };
+        };
+
+        let instA = await buildEngineA();
+        let instB = await buildEngineB();
+
+        const wireReinit = (
+            btn: HTMLButtonElement,
+            getInst: () => Instance,
+            setInst: (i: Instance) => void,
+            builder: () => Promise<Instance>,
+            label: string,
+        ) => {
+            btn.addEventListener('click', async () => {
+                btn.disabled = true;
+                const prev = getInst();
+                const prevId = prev.engine.id;
+                console.log(`[multi-sample] reinit ${label}: destroying scene + disposing engine id=${prevId}`);
+                // Tear down scene tree first so every Object3D/component/MeshRenderer/
+                // LitMaterial/Geometry runs its destroy() hook, then drop the engine —
+                // `context3D.dispose()` will `device.destroy()` to catch any GPU handles
+                // still bound to this device.
+                prev.scene.destroy(true);
+                prev.engine.dispose();
+                const next = await builder();
+                setInst(next);
+                console.log(`[multi-sample] reinit ${label}: new id=${next.engine.id} (was ${prevId})`);
+                btn.disabled = false;
+            });
+        };
+
+        wireReinit(a.reinitBtn, () => instA, (i) => (instA = i), buildEngineA, 'A');
+        wireReinit(b.reinitBtn, () => instB, (i) => (instB = i), buildEngineB, 'B');
+
+        const engineA = instA.engine;
+        const engineB = instB.engine;
 
         console.log('[multi-sample] engineA.id =', engineA.id, 'engineB.id =', engineB.id);
         console.log('[multi-sample] isolated GPU devices =', engineA.context3D.device !== engineB.context3D.device);

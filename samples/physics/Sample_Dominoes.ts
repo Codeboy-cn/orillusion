@@ -3,6 +3,8 @@ import { CollisionShapeUtil, Physics, Rigidbody } from "@orillusion/physics";
 import { Stats } from "@orillusion/stats";
 import dat from "dat.gui";
 import { Graphic3D } from '@orillusion/graphic'
+import { GUIHelp } from "@orillusion/debug/GUIHelp";
+import { GUIUtil } from "@samples/utils/GUIUtil";
 
 /**
  * Sample class demonstrating the creation of a domino effect with physics interactions.
@@ -14,6 +16,7 @@ class Sample_Dominoes {
         await Physics.init();
         this.engine = await Engine3D.create({ renderLoop: () => Physics.update() });
         const engine = this.engine;
+        await GUIHelp.init();
 
         let scene = new Scene3D();
         scene.addComponent(Stats);
@@ -29,11 +32,13 @@ class Sample_Dominoes {
 
         // Create directional light
         let lightObj3D = new Object3D();
-        lightObj3D.localPosition = new Vector3(0, 30, -40);
+        lightObj3D.localPosition = new Vector3(0, 56, 33);
         lightObj3D.localRotation = new Vector3(20, 160, 0);
         let directLight = lightObj3D.addComponent(DirectLight);
         directLight.castShadow = true;
         directLight.intensity = 2;
+        directLight.shadowBias = 0.5;
+        GUIUtil.renderDirLight(directLight);
         scene.addChild(lightObj3D);
 
         // init sky

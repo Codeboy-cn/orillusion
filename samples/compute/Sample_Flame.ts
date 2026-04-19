@@ -59,7 +59,6 @@ export class Demo_Flame {
             let light = obj.addComponent(DirectLight);
             light.intensity = 5;
             light.castShadow = true;
-            light.debug();
             scene.addChild(obj);
         }
 

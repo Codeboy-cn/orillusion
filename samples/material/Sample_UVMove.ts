@@ -10,6 +10,7 @@ class Sample_UVMove {
     lightObj: Object3D;
     async run() {
         const engine = this.engine = await Engine3D.create();
+        await GUIHelp.init();
 
         Engine3D.setting.material.materialChannelDebug = true;
         Engine3D.setting.shadow.shadowBound = 5;
@@ -41,14 +42,20 @@ class Sample_UVMove {
         /******** light *******/
         {
             let lightObj = this.lightObj = new Object3D();
+            lightObj.y = 64;
             lightObj.rotationX = 57;
             lightObj.rotationY = 347;
             lightObj.rotationZ = 0;
 
             let directLight = lightObj.addComponent(DirectLight);
             directLight.lightColor = KelvinUtil.color_temperature_to_rgb(5355);
-            directLight.castShadow = true;
+            directLight.castShadow = false;
             directLight.intensity = 2;
+            directLight.shadowBias = 0.2;
+            directLight.shadowBoundWidth = 512;
+            directLight.shadowBoundHeight = 512;
+            directLight.shadowBoundFar = 512;
+            GUIUtil.renderDirLight(directLight);
             this.scene.addChild(lightObj);
         }
 

@@ -10,8 +10,6 @@ class Sample_Skeleton {
 
         Engine3D.setting.shadow.autoUpdate = true;
         Engine3D.setting.shadow.updateFrameRate = 1;
-        Engine3D.setting.shadow.shadowBound = 100;
-        Engine3D.setting.shadow.shadowBias = 0.01;
 
         const engine = this.engine = await Engine3D.create();
 
@@ -22,7 +20,7 @@ class Sample_Skeleton {
         camera.perspective(60, engine.aspect, 0.01, 5000.0);
 
         let ctrl = camera.object3D.addComponent(HoverCameraController);
-        ctrl.setCamera(-45, -45, 100);
+        ctrl.setCamera(-30, -45, 100);
         ctrl.maxDistance = 1000;
 
         let view = new View3D();
@@ -62,9 +60,7 @@ class Sample_Skeleton {
         /******** light *******/
         {
             this.lightObj3D = new Object3D();
-            this.lightObj3D.x = 0;
-            this.lightObj3D.y = 30;
-            this.lightObj3D.z = -40;
+            this.lightObj3D.y = 100;
             this.lightObj3D.rotationX = 144;
             this.lightObj3D.rotationY = 0;
             this.lightObj3D.rotationZ = 0;
@@ -72,6 +68,8 @@ class Sample_Skeleton {
             directLight.lightColor = KelvinUtil.color_temperature_to_rgb(5355);
             directLight.castShadow = true;
             directLight.intensity = 3;
+            directLight.shadowBias = 0.2;
+            directLight.shadowBoundFar = 200;
             GUIUtil.renderDirLight(directLight);
             scene.addChild(this.lightObj3D);
         }

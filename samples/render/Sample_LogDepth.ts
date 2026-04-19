@@ -1,10 +1,12 @@
 import { Engine3D, Scene3D, AtmosphericComponent, View3D, CameraUtil, HoverCameraController, Object3D, MeshRenderer, SphereGeometry, UnLitMaterial, BoxGeometry, SkyRenderer, Color, Vector3 } from "@orillusion/core";
+import { GUIHelp } from "@orillusion/debug/GUIHelp";
 
 export class Sample_LogDepth {
     engine: Engine3D;
     async run() {
-        Engine3D.setting.render.useLogDepth = true;
+        Engine3D.setting.render.useLogDepth = sessionStorage.logdepth === 'false' ? false : true;
         const engine = this.engine = await Engine3D.create();
+        GUIHelp.init();
 
         let scene = new Scene3D();
         let camera = CameraUtil.createCamera3DObject(scene);
@@ -21,6 +23,14 @@ export class Sample_LogDepth {
         view.scene = scene;
         view.camera = camera;
         engine.startRenderView(view);
+
+        // change cull mode by click dropdown box
+        GUIHelp.add(Engine3D.setting.render, 'useLogDepth').onChange((v) => {
+            sessionStorage.logdepth = v
+            location.reload()
+        });
+        GUIHelp.open();
+        GUIHelp.endFolder();
     }
 
     async initScene(scene: Scene3D) {
