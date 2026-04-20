@@ -180,29 +180,20 @@ export class Vector2 {
     }
 
     /**
-     * Add the vectors.
+     * Add the vectors. Returns a new Vector2.
      * @param a
-     * @param target
      * @returns
      */
-    public add(a: Vector2, target?: Vector2): Vector2 {
-        target = target || new Vector2();
-        target.x = this.x + a.x;
-        target.y = this.y + a.y;
-        return target;
+    public add(a: Vector2): Vector2 {
+        return new Vector2(this.x + a.x, this.y + a.y);
     }
 
     /**
-     * Vector subtraction
+     * Vector subtraction. Returns a new Vector2.
      * @param a
-     * @param target
-     * 
      */
-    public sub(a: Vector2, target?: Vector2): Vector2 {
-        target = target || new Vector2();
-        target.x = this.x - a.x;
-        target.y = this.y - a.y;
-        return target;
+    public sub(a: Vector2): Vector2 {
+        return new Vector2(this.x - a.x, this.y - a.y);
     }
 
     /**
@@ -216,16 +207,12 @@ export class Vector2 {
     }
 
     /**
-     * Let's multiply the x and y values of this vector by a.
-     * @param a 
-     * @param target 
-     * @returns 
+     * Let's multiply the x and y values of this vector by a. Returns a new Vector2.
+     * @param a
+     * @returns
      */
-    public multiply(a: number, target?: Vector2) {
-        target = target || new Vector2();
-        target.x = this.x * a;
-        target.y = this.y * a;
-        return target;
+    public multiply(a: number): Vector2 {
+        return new Vector2(this.x * a, this.y * a);
     }
 
     /**
@@ -240,28 +227,20 @@ export class Vector2 {
         return this;
     }
     /**
-     * We're going to divide the x and y values of this vector by v.
-     * @param v 
-     * @param target 
-     * @returns 
+     * We're going to divide the x and y values of this vector by v. Returns a new Vector2.
+     * @param v
+     * @returns
      */
-    public divide(v: number, target?: Vector2) {
-        target = target || new Vector2();
-        target.x = this.x / v;
-        target.y = this.y / v;
-        return target;
+    public divide(v: number): Vector2 {
+        return new Vector2(this.x / v, this.y / v);
     }
 
     /**
-     * Vector inversion
-     * @param target 
-     * @returns 
+     * Vector inversion. Returns a new Vector2.
+     * @returns
      */
-    public neg(target?: Vector2): Vector2 {
-        if (!target) target = new Vector2();
-        target.x = -target.x;
-        target.y = -target.y;
-        return target;
+    public neg(): Vector2 {
+        return new Vector2(-this.x, -this.y);
     }
 
     public abs() {
@@ -285,12 +264,12 @@ export class Vector2 {
         return Math.atan2(target.y - this.y, target.x - this.x);
     }
 
-    public unt(target?: Vector2): Vector2 {
-        target = target || new Vector2();
+    /**
+     * Unit (normalized) vector. Returns a new Vector2.
+     */
+    public unt(): Vector2 {
         let d = this.abs();
-        target.x = this.x / d;
-        target.y = this.y / d;
-        return target;
+        return new Vector2(this.x / d, this.y / d);
     }
 
     public angleTo(v: Vector2): number {

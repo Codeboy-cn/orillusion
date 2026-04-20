@@ -230,7 +230,7 @@ export class Path2DShape3D extends LineShape3D implements CanvasPath {
             for (let j = 0; j <= segment; j++) {
                 tempAngle = angle + Math.PI * 0.5 * j / segment;
                 point = new Vector2(Math.cos(tempAngle), Math.sin(tempAngle)).multiplyScaler(radii);
-                point.add(offset, point);
+                Vector2.add(point, offset, point);
                 firstPosition ||= point;
                 roundRectList.push(point);
             }

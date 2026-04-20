@@ -144,8 +144,8 @@ export class RayCastMeshDetail {
         this._u2.scale(v);
 
         this._info.uv.copyFrom(this._u0);
-        this._info.uv.add(this._u1, this._info.uv);
-        this._info.uv.add(this._u2, this._info.uv);
+        Vector2.add(this._info.uv, this._u1, this._info.uv);
+        Vector2.add(this._info.uv, this._u2, this._info.uv);
 
         // this.info.uv.copyFrom(face.u1);
         this._info.localPosition.copyFrom(ray.direction).multiplyScalar(t);

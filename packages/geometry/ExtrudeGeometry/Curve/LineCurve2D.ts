@@ -20,8 +20,9 @@ export class LineCurve2D extends Curve2D {
         if (t >= 1) {
             result.copyFrom(this.v1);
         } else {
-            this.v1.sub(this.v0, result);
-            result.multiplyScaler(t).add(this.v0, result);
+            Vector2.sub(this.v1, this.v0, result);
+            result.multiplyScaler(t);
+            Vector2.add(result, this.v0, result);
         }
         return result;
     }
@@ -31,7 +32,7 @@ export class LineCurve2D extends Curve2D {
     }
 
     public getTangent(t: number, result: Vector2 = new Vector2()): Vector2 {
-        this.v1.sub(this.v0, result);
+        Vector2.sub(this.v1, this.v0, result);
         result.normalize();
         return result;
     }

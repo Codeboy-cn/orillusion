@@ -633,7 +633,7 @@ export function randomPointBetweenSphere(r: Rand, minRadius: number, maxRadius: 
 export function randomPointInsideUnitCircle(r: Rand) {
     let v = randomUnitVector2(r);
     // As the volume of the sphere increases (x^3) over an interval we have to increase range as well with x^(1/3)
-    v.multiply(Math.pow(rangedRandomFloat(r, 0.0, 1.0), 1.0 / 2.0), v);
+    Vector2.multiplyScalar(v, Math.pow(rangedRandomFloat(r, 0.0, 1.0), 1.0 / 2.0), v);
     return v;
 }
 
