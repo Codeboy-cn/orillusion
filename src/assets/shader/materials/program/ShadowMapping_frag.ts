@@ -96,11 +96,18 @@ export let ShadowMapping_frag: string = /*wgsl*/ `
       var isOutSideArea:f32 = 1.0;
       var varying_shadowUV:vec2<f32> = vec2<f32>(0.0);
       #if USE_SHADOWMAPING
-        // RFC-003 normal bias: nudge the receiver position along the surface
-        // normal in world space before transforming into light clip space.
-        // Mitigates self-shadow acne on grazing surfaces without peter-panning
-        // along the depth axis (that's what shadowBias is for).
-        let receiverPos = ORI_VertexVarying.vWorldPos.xyz + fragData.N * normalBias;
+        // RFC-003 Layer B (normalBias): push receiver along surface normal in
+        // world space before the shadow-space transform.
+        // RFC-003 Layer C (shadowBias): slope-scaled per-fragment. The incoming
+        // shadowBias is the quantization baseline; the per-fragment amplifier
+        // 1/max(NoL, 0.1) covers grazing-angle acne (one-texel depth variation
+        // grows like tan(grazing)). Floor 0.1 caps the multiplier at 10x so
+        // peter-panning stays bounded.
+        let N = normalize(fragData.N);
+        let L = normalize(-light.direction);
+        let NoL = max(dot(N, L), 0.1);
+        let effectiveShadowBias = shadowBias / NoL;
+        let receiverPos = ORI_VertexVarying.vWorldPos.xyz + N * normalBias;
         var shadowPosTmp = shadowMatrix * vec4<f32>(receiverPos, 1.0);
         var shadowPos = shadowPosTmp.xyz / shadowPosTmp.w;
         varying_shadowUV = shadowPos.xy * vec2<f32>(0.5, -0.5) + vec2<f32>(0.5, 0.5);
@@ -121,7 +128,7 @@ export let ShadowMapping_frag: string = /*wgsl*/ `
                 var offset = vec2<f32>(f32(x), f32(y)) ;
                 var offsetUV = offset * uvOnePixel ;
                 var weight = min(length(offset),1.0) ;
-                var depth = textureSampleCompareLevel(shadowMap, shadowMapSampler, varying_shadowUV + offsetUV , depthTexIndex, shadowPos.z - shadowBias);
+                var depth = textureSampleCompareLevel(shadowMap, shadowMapSampler, varying_shadowUV + offsetUV , depthTexIndex, shadowPos.z - effectiveShadowBias);
                 if (depth < 0.5) {
                   totalWeight += 1.0;
                 }else{
@@ -151,11 +158,16 @@ export let ShadowMapping_frag: string = /*wgsl*/ `
               // RFC-003: shadowBias is a world-space distance subtracted from the
               // measured fragment-to-light distance; normalBias offsets the receiver
               // along its normal first to mitigate acne on grazing surfaces.
-              let receiverPos = worldPos + ORI_ShadingInput.Normal * light.normalBias[0];
+              let N = normalize(ORI_ShadingInput.Normal);
+              let receiverPos = worldPos + N * light.normalBias[0];
               let frgToLight = receiverPos - lightPos.xyz;
               var dir: vec3<f32> = normalize(frgToLight);
               var len = length(frgToLight);
-              let bias = light.shadowBias[0];
+              // Slope-scaled bias: dir points fragment→away from light, so the
+              // direction toward the light is -dir. Floor NoL at 0.1 to cap the
+              // 1/NoL multiplier at 10x (matches the directional path).
+              let NoL = max(dot(N, -dir), 0.1);
+              let bias = light.shadowBias[0] / NoL;
 
           #if USE_PCF_SHADOW
               let samples = 4.0;
