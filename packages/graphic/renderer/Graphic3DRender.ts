@@ -388,18 +388,23 @@ export class Graphic3D extends Object3D {
             custom.buildLines([farLT, farRT, farRB, farLB, farLT], color);
             custom.buildLines([nearLT, nearRT, nearRB, nearLB, nearLT], color);
         } else if (camera.type == CameraType.ortho) {
-            camera.viewPort;
-            camera.viewPort.height;
+            // Use the ortho bounds (left/right/bottom/top), not viewPort — shadow cameras
+            // never get viewPort sized (they bypass _bindToCtx), so viewPort.width/height
+            // would be 0 and draw nothing. Corners are POINTS in camera-local space, so
+            // use transformPoint (rotation + translation) rather than transformVector
+            // (rotation only) — otherwise the rectangle is glued to the world origin
+            // and ignores the light's xyz.
             let worldMatrix = camera.transform.worldMatrix;
-            let farLT = worldMatrix.transformVector(new Vector3(camera.viewPort.width * -0.5, camera.viewPort.height * 0.5, camera.far));
-            let farLB = worldMatrix.transformVector(new Vector3(camera.viewPort.width * -0.5, camera.viewPort.height * -0.5, camera.far));
-            let farRT = worldMatrix.transformVector(new Vector3(camera.viewPort.width * 0.5, camera.viewPort.height * 0.5, camera.far));
-            let farRB = worldMatrix.transformVector(new Vector3(camera.viewPort.width * 0.5, camera.viewPort.height * -0.5, camera.far));
+            let l = camera.left, r = camera.right, b = camera.bottom, t = camera.top;
+            let farLT = worldMatrix.transformPoint(new Vector3(l, t, camera.far));
+            let farLB = worldMatrix.transformPoint(new Vector3(l, b, camera.far));
+            let farRT = worldMatrix.transformPoint(new Vector3(r, t, camera.far));
+            let farRB = worldMatrix.transformPoint(new Vector3(r, b, camera.far));
 
-            let nearLT = worldMatrix.transformVector(new Vector3(camera.viewPort.width * -0.5, camera.viewPort.height * 0.5, camera.near));
-            let nearLB = worldMatrix.transformVector(new Vector3(camera.viewPort.width * -0.5, camera.viewPort.height * -0.5, camera.near));
-            let nearRT = worldMatrix.transformVector(new Vector3(camera.viewPort.width * 0.5, camera.viewPort.height * 0.5, camera.near));
-            let nearRB = worldMatrix.transformVector(new Vector3(camera.viewPort.width * 0.5, camera.viewPort.height * -0.5, camera.near));
+            let nearLT = worldMatrix.transformPoint(new Vector3(l, t, camera.near));
+            let nearLB = worldMatrix.transformPoint(new Vector3(l, b, camera.near));
+            let nearRT = worldMatrix.transformPoint(new Vector3(r, t, camera.near));
+            let nearRB = worldMatrix.transformPoint(new Vector3(r, b, camera.near));
 
             let custom = this.createCustomShape(`CameraFrustum_${camera.object3D.instanceID}`);
             custom.buildLines([nearLT, farLT], color);

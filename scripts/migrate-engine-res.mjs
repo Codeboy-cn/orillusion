@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 // One-shot migration: samples/** Engine3D.res.xxx -> engine.res.xxx.
 // Strategy:
-//   1. Find the class block that contains `const engine = await Engine3D.create(...)`.
+//   1. Find the class block that contains `const engine = await Engine3D.init(...)`.
 //      That's the "runner class". Its methods all get access to `this.engine`.
 //   2. Inject `engine: Engine3D;` field at the top of that class body.
-//   3. Rewrite `const engine = await Engine3D.create(...)`
-//      to `const engine = this.engine = await Engine3D.create(...)`.
+//   3. Rewrite `const engine = await Engine3D.init(...)`
+//      to `const engine = this.engine = await Engine3D.init(...)`.
 //   4. Inside the runner class body ONLY, rewrite `Engine3D.res` -> `this.engine.res`.
 //      (Not in sibling classes — they have their own `this`.)
 //   5. For files with no class wrapper (module-level run()), just `Engine3D.res` -> `engine.res`.
@@ -81,7 +81,7 @@ for (const file of walk(ROOT)) {
 
     const createMatch = src.match(CREATE_RE);
     if (!createMatch) {
-        notes.push(`SKIP (no Engine3D.create — helper class): ${file.replace(ROOT, '')}`);
+        notes.push(`SKIP (no Engine3D.init — helper class): ${file.replace(ROOT, '')}`);
         skipped++;
         continue;
     }
@@ -108,7 +108,7 @@ for (const file of walk(ROOT)) {
         // Rewrite the create line within the class body.
         next = next.replace(
             /const\s+engine\s*=\s*await\s+Engine3D\.create\(/,
-            'const engine = this.engine = await Engine3D.create(',
+            'const engine = this.engine = await Engine3D.init(',
         );
 
         // Rewrite Engine3D.res -> this.engine.res ONLY within the class body.
@@ -116,7 +116,7 @@ for (const file of walk(ROOT)) {
         const body = next.slice(newOpen + 1, newClose + (next.length - src.length === offsetDelta ? 0 : 0));
         // Note: after the previous replace, offsets may have shifted further.
         // Redo the class boundary lookup on the mutated string to be safe.
-        const recluredIdx = next.indexOf('this.engine = await Engine3D.create');
+        const recluredIdx = next.indexOf('this.engine = await Engine3D.init');
         const cls2 = findEnclosingClass(next, recluredIdx);
         if (!cls2) {
             notes.push(`ERROR: lost class boundary after edit: ${file.replace(ROOT, '')}`);
