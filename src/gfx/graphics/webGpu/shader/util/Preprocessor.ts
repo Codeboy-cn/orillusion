@@ -1,4 +1,5 @@
 import { ShaderLib } from '../../../../../assets/shader/ShaderLib';
+import { evalCondition } from './PreprocessorExpr';
 
 /**
  * @internal
@@ -133,7 +134,15 @@ export class Preprocessor {
                     stack.push(skip);
                     continue;
                 }
-                let condition = command.substring(command.indexOf('if') + 2).trim();
+                let condition: string;
+                if (command.startsWith('#elseif')) {
+                    condition = command.substring('#elseif'.length).trim();
+                } else {
+                    condition = command.substring('#else'.length).trim();
+                    if (condition.startsWith('if')) {
+                        condition = condition.substring(2).trim();
+                    }
+                }
                 if (condition == '') {
                     console.error(`preprocess command error, conditions missing: ${command}`);
                 }
@@ -192,11 +201,7 @@ export class Preprocessor {
     }
 
     protected static parseCondition(condition: string, defineValue: { [name: string]: any }): boolean {
-        let value = defineValue[condition];
-        if (value == undefined) {
-            return false;
-        }
-        return value == true || value != 0;
+        return evalCondition(condition, defineValue);
     }
 
     public static filterComment(code: string): string {
