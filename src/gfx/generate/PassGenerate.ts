@@ -85,6 +85,13 @@ export class PassGenerate {
             // missing slot 4 and WebGPU rejects the shadow pipeline with
             // "Vertex attribute slot 4 used in shadowcastmap_vert is not
             // present in the VertexState".
+            //
+            // Must set the define unconditionally (even when false). Otherwise
+            // RenderShaderPass.preDefine's `if (!('USE_TANGENT' in defineValue))`
+            // fallback re-derives it from geometry.hasAttribute(TANGENT) inside
+            // preCompile and silently flips the shadow pass back to true for any
+            // model whose mesh carries tangent data (e.g. wukong.gltf), even
+            // after the user explicitly disabled it on the color pass.
             let useTangent = colorPass.defineValue[`USE_TANGENT`] === true;
             let shadowPassList = shader.getSubShaders(PassType.SHADOW);
             if (!shadowPassList || shadowPassList.length < (i + 1)) {
@@ -93,9 +100,7 @@ export class PassGenerate {
                 shadowPass.setTexture(`baseMap`, colorPass.getTexture(`baseMap`));
                 shadowPass.setUniform(`alphaCutoff`, colorPass.getUniform(`alphaCutoff`));
                 // shadowPass.setDefine("USE_ALPHACUT", colorPass.shaderState.alphaCutoff < 1.0);
-                if (useTangent) {
-                    shadowPass.setDefine(`USE_TANGENT`, useTangent);
-                }
+                shadowPass.setDefine(`USE_TANGENT`, useTangent);
                 if (use_skeleton) {
                     shadowPass.setDefine(`USE_SKELETON`, use_skeleton);
                 }
@@ -127,9 +132,10 @@ export class PassGenerate {
                 castPointShadowPass.setDefine("USE_ALPHACUT", 1);
                 // castPointShadowPass.doubleSide = false ;
                 for (let j = 0; j < 1; j++) {
-                    if (useTangent) {
-                        castPointShadowPass.setDefine(`USE_TANGENT`, useTangent);
-                    }
+                    // Same rationale as CastShadowMaterialPass above — mirror
+                    // the color pass's USE_TANGENT unconditionally so preDefine
+                    // can't re-derive it from geometry attributes.
+                    castPointShadowPass.setDefine(`USE_TANGENT`, useTangent);
                     if (use_skeleton) {
                         castPointShadowPass.setDefine(`USE_SKELETON`, use_skeleton);
                     }
@@ -164,9 +170,8 @@ export class PassGenerate {
                 if (!depthPassList || depthPassList.length < i) {
                     let depthPass = new DepthMaterialPass();
                     depthPass.setTexture(`baseMap`, colorPass.getTexture(`baseMap`));
-                    if (!useTangent) {
-                        depthPass.setDefine(`USE_TANGENT`, useTangent);
-                    }
+                    // Same rationale as createShadowPass — mirror unconditionally.
+                    depthPass.setDefine(`USE_TANGENT`, useTangent);
                     if (use_skeleton) {
                         depthPass.setDefine(`USE_SKELETON`, use_skeleton);
                     }
