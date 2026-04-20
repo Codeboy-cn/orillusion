@@ -421,6 +421,97 @@ export class Vector3 {
     }
 
     /**
+     * Component-wise multiply two vectors
+     */
+    public static multiply(a: Vector3, b: Vector3, result?: Vector3): Vector3 {
+        result ||= new Vector3();
+        result.x = a.x * b.x;
+        result.y = a.y * b.y;
+        result.z = a.z * b.z;
+        return result;
+    }
+
+    /**
+     * Component-wise divide two vectors
+     */
+    public static divide(a: Vector3, b: Vector3, result?: Vector3): Vector3 {
+        result ||= new Vector3();
+        result.x = a.x / b.x;
+        result.y = a.y / b.y;
+        result.z = a.z / b.z;
+        return result;
+    }
+
+    /**
+     * Multiply a vector by a scalar
+     */
+    public static multiplyScalar(a: Vector3, s: number, result?: Vector3): Vector3 {
+        result ||= new Vector3();
+        result.x = a.x * s;
+        result.y = a.y * s;
+        result.z = a.z * s;
+        return result;
+    }
+
+    /**
+     * result = a + b * s
+     */
+    public static addScaledVector(a: Vector3, b: Vector3, s: number, result?: Vector3): Vector3 {
+        result ||= new Vector3();
+        result.x = a.x + b.x * s;
+        result.y = a.y + b.y * s;
+        result.z = a.z + b.z * s;
+        return result;
+    }
+
+    /**
+     * Cross product of two vectors
+     */
+    public static cross(a: Vector3, b: Vector3, result?: Vector3): Vector3 {
+        result ||= new Vector3();
+        const ax = a.x, ay = a.y, az = a.z;
+        const bx = b.x, by = b.y, bz = b.z;
+        result.x = ay * bz - az * by;
+        result.y = az * bx - ax * bz;
+        result.z = ax * by - ay * bx;
+        result.w = 1;
+        return result;
+    }
+
+    /**
+     * Negate a vector
+     */
+    public static negate(a: Vector3, result?: Vector3): Vector3 {
+        result ||= new Vector3();
+        result.x = -a.x;
+        result.y = -a.y;
+        result.z = -a.z;
+        return result;
+    }
+
+    /**
+     * Component-wise minimum of two vectors
+     */
+    public static min(a: Vector3, b: Vector3, result?: Vector3): Vector3 {
+        result ||= new Vector3();
+        result.x = Math.min(a.x, b.x);
+        result.y = Math.min(a.y, b.y);
+        result.z = Math.min(a.z, b.z);
+        return result;
+    }
+
+    /**
+     * Component-wise maximum of two vectors
+     */
+    public static max(a: Vector3, b: Vector3, result?: Vector3): Vector3 {
+        result ||= new Vector3();
+        result.x = Math.max(a.x, b.x);
+        result.y = Math.max(a.y, b.y);
+        result.z = Math.max(a.z, b.z);
+        return result;
+    }
+
+    /**
      * @internal
      * @param current 
      * @param target 
@@ -606,10 +697,11 @@ export class Vector3 {
      * Subtract two vectors and assign the result to yourself
      * @param a Minus vector
      */
-    public decrementBy(a: Vector3): void {
+    public decrementBy(a: Vector3): this {
         this.x -= a.x;
         this.y -= a.y;
         this.z -= a.z;
+        return this;
     }
 
     /**
@@ -660,10 +752,11 @@ export class Vector3 {
      * The current vector plus is equal to the vector, plus just the x, y, and z components
      * @param a vector
      */
-    public incrementBy(a: Vector3) {
+    public incrementBy(a: Vector3): this {
         this.x += a.x;
         this.y += a.y;
         this.z += a.z;
+        return this;
     }
 
 

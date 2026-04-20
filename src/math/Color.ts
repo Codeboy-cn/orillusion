@@ -184,18 +184,19 @@ export class Color {
      * @param b blue channel
      * @param a alpha channel
      */
-    public setTo(r: number, g: number, b: number, a: number) {
+    public setTo(r: number, g: number, b: number, a: number): this {
         this.r = Math.max(r, 0.0);
         this.g = Math.max(g, 0.0);
         this.b = Math.max(b, 0.0);
         this.a = Math.max(a, 0.0);
+        return this;
     }
 
     /**
      * update this color rgba from hexadecimal 
      * @param hex hex string.
      */
-    public setHex(hex: string) {
+    public setHex(hex: string): this {
         if (typeof hex !== 'string' || Color.NON_HEX_CHARS.test(hex) || !Color.VALID_HEX_SIZE.test(hex)) {
             throw new TypeError('Expected a valid hex string');
         }
@@ -225,6 +226,7 @@ export class Color {
         this.r = red / 255;
         this.g = green / 255;
         this.b = blue / 255;
+        return this;
     }
 
     /**
@@ -298,7 +300,7 @@ export class Color {
      * @param scalar 
      * @returns 
      */
-    public copyFromArray(arr: number[], scalar: number = 255) {
+    public copyFromArray(arr: number[], scalar: number = 255): this {
         this.r = arr[0] / scalar;
         this.g = arr[1] / scalar;
         this.b = arr[2] / scalar;

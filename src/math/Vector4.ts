@@ -136,6 +136,54 @@ export class Vector4 {
         return target;
     }
 
+    /**
+     * Add two vectors
+     */
+    public static add(a: Vector4, b: Vector4, result?: Vector4): Vector4 {
+        result ||= new Vector4();
+        result.x = a.x + b.x;
+        result.y = a.y + b.y;
+        result.z = a.z + b.z;
+        result.w = a.w + b.w;
+        return result;
+    }
+
+    /**
+     * Subtract two vectors
+     */
+    public static sub(a: Vector4, b: Vector4, result?: Vector4): Vector4 {
+        result ||= new Vector4();
+        result.x = a.x - b.x;
+        result.y = a.y - b.y;
+        result.z = a.z - b.z;
+        result.w = a.w - b.w;
+        return result;
+    }
+
+    /**
+     * Multiply a vector by a scalar
+     */
+    public static multiplyScalar(a: Vector4, s: number, result?: Vector4): Vector4 {
+        result ||= new Vector4();
+        result.x = a.x * s;
+        result.y = a.y * s;
+        result.z = a.z * s;
+        result.w = a.w * s;
+        return result;
+    }
+
+    /**
+     * Linear interpolation between two vectors: result = a + (b - a) * t
+     */
+    public static lerp(a: Vector4, b: Vector4, t: number, result?: Vector4): Vector4 {
+        result ||= new Vector4();
+        result.x = a.x + (b.x - a.x) * t;
+        result.y = a.y + (b.y - a.y) * t;
+        result.z = a.z + (b.z - a.z) * t;
+        result.w = a.w + (b.w - a.w) * t;
+        return result;
+    }
+
     public static distance(pt1: Vector4, pt2: Vector4): number {
         let x: number = pt1.x - pt2.x;
         let y: number = pt1.y - pt2.y;

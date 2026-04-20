@@ -413,7 +413,7 @@ export class Matrix4 {
      * matrix multiply
      * @param mat4 multiply target
      */
-    public multiply(mat4: Matrix4): void {
+    public multiply(mat4: Matrix4): this {
         let a = this.rawData;
         let b = mat4.rawData;
         let r = Matrix4.floatArray;
@@ -454,13 +454,39 @@ export class Matrix4 {
         a[13] = r[13];
         a[14] = r[14];
         a[15] = r[15];
+        return this;
     }
 
     /**
-     * 
-     * @param a 
-     * @param b 
-     * @returns 
+     * Multiply two matrices: result = a * b. Allocates a new Matrix4 if result is omitted.
+     * @param a left-hand matrix
+     * @param b right-hand matrix
+     * @param result optional output matrix
+     */
+    public static multiply(a: Matrix4, b: Matrix4, result?: Matrix4): Matrix4 {
+        result ||= new Matrix4();
+        result.multiplyMatrices(a, b);
+        return result;
+    }
+
+    /**
+     * Invert a matrix into result. Returns null when src is singular.
+     * @param src source matrix
+     * @param result optional output matrix
+     */
+    public static invert(src: Matrix4, result?: Matrix4): Matrix4 | null {
+        result ||= new Matrix4();
+        if (result !== src) {
+            result.copyFrom(src);
+        }
+        return result.invert() ? result : null;
+    }
+
+    /**
+     *
+     * @param a
+     * @param b
+     * @returns
      */
     public multiplyMatrices(a: Matrix4, b: Matrix4) {
 
@@ -874,7 +900,7 @@ export class Matrix4 {
      * multiply matrix a b
      * @param lhs target matrix
      */
-    public append(lhs: Matrix4): void {
+    public append(lhs: Matrix4): this {
         let data = this.rawData;
         let m111: number = data[0];
         let m121: number = data[4];
@@ -912,6 +938,7 @@ export class Matrix4 {
         data[13] = m141 * lhs.rawData[1] + m142 * lhs.rawData[5] + m143 * lhs.rawData[9] + m144 * lhs.rawData[13];
         data[14] = m141 * lhs.rawData[2] + m142 * lhs.rawData[6] + m143 * lhs.rawData[10] + m144 * lhs.rawData[14];
         data[15] = m141 * lhs.rawData[3] + m142 * lhs.rawData[7] + m143 * lhs.rawData[11] + m144 * lhs.rawData[15];
+        return this;
     }
 
     /**

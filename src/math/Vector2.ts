@@ -100,6 +100,66 @@ export class Vector2 {
     }
 
     /**
+     * Add two vectors
+     */
+    public static add(a: Vector2, b: Vector2, result?: Vector2): Vector2 {
+        result ||= new Vector2();
+        result.x = a.x + b.x;
+        result.y = a.y + b.y;
+        return result;
+    }
+
+    /**
+     * Subtract two vectors
+     */
+    public static sub(a: Vector2, b: Vector2, result?: Vector2): Vector2 {
+        result ||= new Vector2();
+        result.x = a.x - b.x;
+        result.y = a.y - b.y;
+        return result;
+    }
+
+    /**
+     * Component-wise multiply two vectors
+     */
+    public static multiply(a: Vector2, b: Vector2, result?: Vector2): Vector2 {
+        result ||= new Vector2();
+        result.x = a.x * b.x;
+        result.y = a.y * b.y;
+        return result;
+    }
+
+    /**
+     * Component-wise divide two vectors
+     */
+    public static divide(a: Vector2, b: Vector2, result?: Vector2): Vector2 {
+        result ||= new Vector2();
+        result.x = a.x / b.x;
+        result.y = a.y / b.y;
+        return result;
+    }
+
+    /**
+     * Multiply a vector by a scalar
+     */
+    public static multiplyScalar(a: Vector2, s: number, result?: Vector2): Vector2 {
+        result ||= new Vector2();
+        result.x = a.x * s;
+        result.y = a.y * s;
+        return result;
+    }
+
+    /**
+     * Negate a vector
+     */
+    public static negate(a: Vector2, result?: Vector2): Vector2 {
+        result ||= new Vector2();
+        result.x = -a.x;
+        result.y = -a.y;
+        return result;
+    }
+
+    /**
      * Sets the x and y components of this vector.
      * @param x The x component of the vector, which defaults to 0.
      * @param y The y component of the vector, which defaults to 0.

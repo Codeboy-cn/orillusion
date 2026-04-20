@@ -147,7 +147,7 @@ export class Quaternion {
      * @param qa Quaternion 1
      * @param qb Quaternion 2
      */
-    public multiply(qa: Quaternion, qb: Quaternion) {
+    public multiply(qa: Quaternion, qb: Quaternion): this {
         var w1: number = qa.w;
         var x1: number = qa.x;
         var y1: number = qa.y;
@@ -161,6 +161,7 @@ export class Quaternion {
         this.x = w1 * x2 + x1 * w2 + y1 * z2 - z1 * y2;
         this.y = w1 * y2 - x1 * z2 + y1 * w2 + z1 * x2;
         this.z = w1 * z2 + x1 * y2 - y1 * x2 + z1 * w2;
+        return this;
     }
 
     public multiplyVector(vector: Vector3, target: Quaternion = null): Quaternion {
@@ -182,7 +183,7 @@ export class Quaternion {
      * @param axis  axis
      * @param angle angle
      */
-    public fromAxisAngle(axis: Vector3, angle: number) {
+    public fromAxisAngle(axis: Vector3, angle: number): this {
         angle *= Math.PI / 180.0;
         var halfAngle: number = angle * 0.5;
         var sinA: number = Math.sin(halfAngle);
@@ -193,6 +194,7 @@ export class Quaternion {
         this.z = axis.z * sinA;
 
         this.normalize();
+        return this;
     }
 
     /**
@@ -430,13 +432,14 @@ export class Quaternion {
      * The normalize of the quaternion. Convert this quaternion to a normalize coefficient.
      * @param val normalize coefficient, which is 1 by default
      */
-    public normalize(val: number = 1): void {
+    public normalize(val: number = 1): this {
         var mag: number = val / Math.sqrt(this.x * this.x + this.y * this.y + this.z * this.z + this.w * this.w);
 
         this.x *= mag;
         this.y *= mag;
         this.z *= mag;
         this.w *= mag;
+        return this;
     }
 
     /**
@@ -451,12 +454,13 @@ export class Quaternion {
      * Extracts a quaternion rotation matrix out of a given Matrix3D object.
      * @param matrix The Matrix3D out of which the rotation will be extracted.
      */
-    public fromMatrix(matrix: any) {
+    public fromMatrix(matrix: any): this {
         var v: Vector3 = matrix.decompose(Orientation3D.QUATERNION)[1];
         this.x = v.x;
         this.y = v.y;
         this.z = v.z;
         this.w = v.w;
+        return this;
     }
 
     /**
@@ -534,13 +538,63 @@ export class Quaternion {
      * from untiy API
      * op
      */
-    public mul(lhs: Quaternion, rhs: Quaternion, target?: Quaternion) {
-        let ret = target || new Quaternion();
-        ret.x = lhs.w * rhs.x + lhs.x * rhs.w + lhs.y * rhs.z - lhs.z * rhs.y;
-        ret.y = lhs.w * rhs.y + lhs.y * rhs.w + lhs.z * rhs.x - lhs.x * rhs.z;
-        ret.z = lhs.w * rhs.z + lhs.z * rhs.w + lhs.x * rhs.y - lhs.y * rhs.x;
-        ret.w = lhs.w * rhs.w - lhs.x * rhs.x - lhs.y * rhs.y - lhs.z * rhs.z;
-        return ret;
+    public static mul(lhs: Quaternion, rhs: Quaternion, result?: Quaternion): Quaternion {
+        result ||= new Quaternion();
+        const x = lhs.w * rhs.x + lhs.x * rhs.w + lhs.y * rhs.z - lhs.z * rhs.y;
+        const y = lhs.w * rhs.y + lhs.y * rhs.w + lhs.z * rhs.x - lhs.x * rhs.z;
+        const z = lhs.w * rhs.z + lhs.z * rhs.w + lhs.x * rhs.y - lhs.y * rhs.x;
+        const w = lhs.w * rhs.w - lhs.x * rhs.x - lhs.y * rhs.y - lhs.z * rhs.z;
+        result.x = x;
+        result.y = y;
+        result.z = z;
+        result.w = w;
+        return result;
+    }
+
+    /**
+     * Canonical static multiply — alias of Quaternion.mul.
+     */
+    public static multiply(a: Quaternion, b: Quaternion, result?: Quaternion): Quaternion {
+        return Quaternion.mul(a, b, result);
+    }
+
+    /**
+     * Invert a quaternion.
+     */
+    public static inverse(src: Quaternion, result?: Quaternion): Quaternion {
+        result ||= new Quaternion();
+        const norm = src.w * src.w + src.x * src.x + src.y * src.y + src.z * src.z;
+        if (norm > 0.0) {
+            const invNorm = 1.0 / norm;
+            result.w = src.w * invNorm;
+            result.x = -src.x * invNorm;
+            result.y = -src.y * invNorm;
+            result.z = -src.z * invNorm;
+        } else {
+            result.x = result.y = result.z = 0;
+            result.w = 1;
+        }
+        return result;
+    }
+
+    /**
+     * Rotate a Vector3 by a Quaternion.
+     */
+    public static transformVector(q: Quaternion, v: Vector3, result?: Vector3): Vector3 {
+        result ||= new Vector3();
+        const x2 = v.x;
+        const y2 = v.y;
+        const z2 = v.z;
+
+        const w1 = -q.x * x2 - q.y * y2 - q.z * z2;
+        const x1 = q.w * x2 + q.y * z2 - q.z * y2;
+        const y1 = q.w * y2 - q.x * z2 + q.z * x2;
+        const z1 = q.w * z2 + q.x * y2 - q.y * x2;
+
+        result.x = -w1 * q.x + x1 * q.w - y1 * q.z + z1 * q.y;
+        result.y = -w1 * q.y + x1 * q.z + y1 * q.w - z1 * q.x;
+        result.z = -w1 * q.z - x1 * q.y + y1 * q.x + z1 * q.w;
+        return result;
     }
 
     private clampf(value: number, minInclusive: number, maxInclusive: number): number {
