@@ -46,11 +46,20 @@ export class Texture implements GPUSamplerDescriptor {
      * Context3D for the lifetime of the texture.
      */
     private _gpuTexture: GPUTexture | null = null;
+    private _mipmapMaterialized: boolean = false;
     protected get gpuTexture(): GPUTexture {
         if (!this._gpuTexture && this.textureDescriptor) {
             this._ensureBound();
             this._gpuTexture = this._boundCtx!.device.createTexture(this.textureDescriptor);
             this._uploadSourceImage(this._gpuTexture);
+            // Mipmap generation needs the GPUTexture to exist and re-enters
+            // this getter (TextureMipmapGenerator reads getGPUTexture()); use
+            // a latch so that re-entry returns the freshly created texture
+            // rather than recursing.
+            if (this.useMipmap && !this._mipmapMaterialized) {
+                this._mipmapMaterialized = true;
+                TextureMipmapGenerator.webGPUGenerateMipmap(this);
+            }
         }
         return this._gpuTexture;
     }
@@ -370,14 +379,14 @@ export class Texture implements GPUSamplerDescriptor {
         this._sourceImageData = imageBitmap;
         this.updateTextureDescription();
 
+        // Descriptor + source image only — do NOT materialize the GPUTexture
+        // here. The owning Context3D is often unknown at texture-load time
+        // (e.g. `new BitmapTexture2D(); await tex.load(url)`); forcing
+        // `this.gpuTexture` now would hit _ensureBound() before the texture
+        // is threaded into a material/engine. First real GPU access from a
+        // bound consumer creates the texture, uploads `_sourceImageData`,
+        // and generates mipmaps (see the gpuTexture getter).
         this.updateGPUTexture();
-
-        // gpuTexture getter auto-uploads _sourceImageData for fresh slots,
-        // so accessing it here materializes the current context's copy.
-        const tex = this.gpuTexture;
-        if (tex instanceof GPUTexture && this.useMipmap) {
-            TextureMipmapGenerator.webGPUGenerateMipmap(this);
-        }
     }
 
     /**
@@ -461,6 +470,7 @@ export class Texture implements GPUSamplerDescriptor {
         this._view = null;
         this._gpuSampler = null;
         this._gpuSampler_cmp = null;
+        this._mipmapMaterialized = false;
     }
 
     /**

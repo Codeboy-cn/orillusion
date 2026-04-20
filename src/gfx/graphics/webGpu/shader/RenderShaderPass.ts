@@ -671,6 +671,13 @@ export class RenderShaderPass extends ShaderPassBase {
                         console.error(`buffer ${refs.varName} is missing!`);
                     }
                 } else if (refs.varType == `var`) {
+                    // Lazily bind any texture reaching the bind group to this
+                    // pass's Context3D. Samples commonly `new BitmapTexture2D()`
+                    // without threading the engine's ctx; first real GPU use
+                    // (this path) is where the binding is resolvable.
+                    const bindIfNeeded = (t: Texture) => {
+                        if (t && !t._boundCtx && this._boundCtx) bindCtx(t, this._boundCtx);
+                    };
                     if (refs.dataType == `sampler`) {
                         let textureName = refs.varName.replace(`Sampler`, ``);
                         let texture = this.textures[textureName];
@@ -679,6 +686,7 @@ export class RenderShaderPass extends ShaderPassBase {
                             this.setTexture(textureName, texture);
                         }
                         if (texture) {
+                            bindIfNeeded(texture);
                             let entry: GPUBindGroupEntry = {
                                 binding: refs.binding,
                                 resource: texture.gpuSampler
@@ -691,6 +699,7 @@ export class RenderShaderPass extends ShaderPassBase {
                         let textureName = refs.varName.replace(`Sampler`, ``);
                         let texture = this.textures[textureName];
                         if (texture) {
+                            bindIfNeeded(texture);
                             let entry: GPUBindGroupEntry = {
                                 binding: refs.binding,
                                 resource: texture.gpuSampler_comparison
@@ -706,6 +715,7 @@ export class RenderShaderPass extends ShaderPassBase {
                             this.setTexture(refs.varName, texture);
                         }
                         if (texture) {
+                            bindIfNeeded(texture);
                             let entry: GPUBindGroupEntry = {
                                 binding: refs.binding,
                                 resource: texture.getGPUView(),

@@ -242,12 +242,17 @@ export class GUIUtil {
             const nKey = `normalBias${suffix}`;
             Object.defineProperty(readout, sKey, {
                 enumerable: true,
-                get: () => light.lightData.shadowBias[idx] ?? 0,
+                // `shadowBias`/`normalBias` are sized in LightBase.start() once the
+                // owning engine's setting is reachable; when GUI is built before
+                // startRenderView (see Sample_Outline) the arrays are still
+                // undefined, so guard with optional chaining so dat.gui probes
+                // a real number (not a throw) and creates a NumberController.
+                get: () => light.lightData.shadowBias?.[idx] ?? 0,
                 set: () => { /* read-only: next frame's listen() poll resets the input */ },
             });
             Object.defineProperty(readout, nKey, {
                 enumerable: true,
-                get: () => light.lightData.normalBias[idx] ?? 0,
+                get: () => light.lightData.normalBias?.[idx] ?? 0,
                 set: () => { /* read-only */ },
             });
             rows.push({ sKey, nKey, idx });

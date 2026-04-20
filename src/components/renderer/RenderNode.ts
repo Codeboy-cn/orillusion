@@ -626,9 +626,14 @@ export class RenderNode extends ComponentBase {
     }
 
     public beforeDestroy(force?: boolean) {
-        Reference.getInstance().detached(this._geometry, this);
-        if (!Reference.getInstance().hasReference(this._geometry)) {
-            this._geometry.destroy(force);
+        // SkyRenderer (and subclasses like AtmosphericComponent) build their
+        // geometry lazily in onEnable(), so removing the component before the
+        // render loop starts leaves `_geometry` undefined here.
+        if (this._geometry) {
+            Reference.getInstance().detached(this._geometry, this);
+            if (!Reference.getInstance().hasReference(this._geometry)) {
+                this._geometry.destroy(force);
+            }
         }
 
         for (let i = 0; i < this._materials.length; i++) {

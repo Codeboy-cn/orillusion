@@ -16,8 +16,15 @@ class _GUIHelp {
     constructor() {
         this.data = {};
         this.bind = {};
+        // When debug is off, add() returns this stub. Every dat.gui Controller
+        // chain method must round-trip back to the stub so callers can freely
+        // chain `.add(...).step(...).listen()` without guarding each step.
         this._nullBind = {};
-        this._nullBind.onChange = () => { };
+        const chain = () => this._nullBind;
+        for (const m of ['onChange', 'onFinishChange', 'step', 'min', 'max',
+                         'listen', 'name', 'options', 'updateDisplay', 'remove']) {
+            this._nullBind[m] = chain;
+        }
     }
 
     init(zIndex: number = 10) {
