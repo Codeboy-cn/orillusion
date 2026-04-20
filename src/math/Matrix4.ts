@@ -1781,19 +1781,16 @@ export class Matrix4 {
     }
 
     /**
-     * Invert the current matrix in place.
-     * Throws if the matrix is singular. Use the static `Matrix4.invert(src, result?)`
-     * helper for a safe variant that returns `null` on singular input.
+     * Invert the current matrix in place. No-ops silently when the matrix is
+     * singular (matches Matrix3.invert). Use `Matrix4.invert(src, result?)`
+     * for the safe variant that returns `null` on singular input.
      */
     public invert(): this {
         let d = this.determinant;
         let invertable = Math.abs(d) > 0.00000000001;
         let data: FloatArray = this.rawData;
 
-        if (!invertable) {
-            throw new Error('Matrix4.invert: matrix is singular');
-        }
-        {
+        if (invertable) {
             d = 1 / d;
             let m11: number = data[0];
             let m21: number = data[4];
