@@ -244,7 +244,7 @@ export class MathUtil {
     public static getEularDir_yUp(v: number): Vector3 {
         let q = Quaternion.HELP_0;
         q.fromEulerAngles(0, v, 0);
-        q.transformVector(Vector3.Z_AXIS, Vector3.HELP_5);
+        Quaternion.transformVector(q, Vector3.Z_AXIS, Vector3.HELP_5);
         return Vector3.HELP_5;
     }
 

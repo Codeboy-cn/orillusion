@@ -164,18 +164,19 @@ export class Quaternion {
         return this;
     }
 
-    public multiplyVector(vector: Vector3, target: Quaternion = null): Quaternion {
-        target ||= new Quaternion();
-        var x2: number = vector.x;
-        var y2: number = vector.y;
-        var z2: number = vector.z;
-
-        target.w = -this.x * x2 - this.y * y2 - this.z * z2;
-        target.x = this.w * x2 + this.y * z2 - this.z * y2;
-        target.y = this.w * y2 - this.x * z2 + this.z * x2;
-        target.z = this.w * z2 + this.x * y2 - this.y * x2;
-
-        return target;
+    /**
+     * Multiply this quaternion by a vector. Returns a new Quaternion.
+     */
+    public multiplyVector(vector: Vector3): Quaternion {
+        const x2: number = vector.x;
+        const y2: number = vector.y;
+        const z2: number = vector.z;
+        return new Quaternion(
+            this.w * x2 + this.y * z2 - this.z * y2,
+            this.w * y2 - this.x * z2 + this.z * x2,
+            this.w * z2 + this.x * y2 - this.y * x2,
+            -this.x * x2 - this.y * y2 - this.z * z2,
+        );
     }
 
     /**
@@ -464,24 +465,15 @@ export class Quaternion {
     }
 
     /**
-     * Returns a quaternion that inverts the current quaternion
-     * @param target The default parameter is null. If the current parameter is null, a new quaternion object is returned
-     * @returns Quaternion Result
+     * Returns a new quaternion that inverts the current quaternion.
      */
-    public inverse(target: Quaternion = null): Quaternion {
-        target ||= new Quaternion();
-
-        var norm: number = this.w * this.w + this.x * this.x + this.y * this.y + this.z * this.z;
-
+    public inverse(): Quaternion {
+        const norm: number = this.w * this.w + this.x * this.x + this.y * this.y + this.z * this.z;
         if (norm > 0.0) {
-            var invNorm = 1.0 / norm;
-            target.w = this.w * invNorm;
-            target.x = -this.x * invNorm;
-            target.y = -this.y * invNorm;
-            target.z = -this.z * invNorm;
+            const invNorm = 1.0 / norm;
+            return new Quaternion(-this.x * invNorm, -this.y * invNorm, -this.z * invNorm, this.w * invNorm);
         }
-
-        return target;
+        return new Quaternion();
     }
 
     /**
@@ -493,32 +485,12 @@ export class Quaternion {
     }
 
     /**
-     * Rotates a point.
+     * Rotate a vector by this quaternion. Returns a new Vector3.
      * @param vector The Vector3D object to be rotated.
-     * @param target An optional Vector3D object that will contain the rotated coordinates. If not provided, a new object will be created.
-     * @returns A Vector3D object containing the rotated point.
+     * @returns A new Vector3D containing the rotated point.
      */
-    public transformVector(vector: Vector3, target: Vector3 = null): Vector3 {
-        var x1: number;
-        var y1: number;
-        var z1: number;
-        var w1: number;
-        var x2: number = vector.x;
-        var y2: number = vector.y;
-        var z2: number = vector.z;
-
-        target ||= new Vector3();
-
-        // p*q'
-        w1 = -this.x * x2 - this.y * y2 - this.z * z2;
-        x1 = this.w * x2 + this.y * z2 - this.z * y2;
-        y1 = this.w * y2 - this.x * z2 + this.z * x2;
-        z1 = this.w * z2 + this.x * y2 - this.y * x2;
-
-        target.x = -w1 * this.x + x1 * this.w - y1 * this.z + z1 * this.y;
-        target.y = -w1 * this.y + x1 * this.z + y1 * this.w - z1 * this.x;
-        target.z = -w1 * this.z - x1 * this.y + y1 * this.x + z1 * this.w;
-        return target;
+    public transformVector(vector: Vector3): Vector3 {
+        return Quaternion.transformVector(this, vector);
     }
 
     /**

@@ -6,7 +6,7 @@ await test('Quaternion fromEulerAngles', async () => {
     quat.fromEulerAngles(0, -90, 0);
 
     let result = new Vector3();
-    quat.transformVector(new Vector3(10, 0, 0), result);
+    Quaternion.transformVector(quat, new Vector3(10, 0, 0), result);
 
     expect(result.x).toSubequal(0);
     expect(result.y).toSubequal(0);
@@ -24,7 +24,7 @@ await test('Quaternion multiply', async () => {
     finalQuat.multiply(quatA, quatB);
 
     let result = new Vector3();
-    finalQuat.transformVector(new Vector3(10, 0, 0), result);
+    Quaternion.transformVector(finalQuat, new Vector3(10, 0, 0), result);
 
     expect(result.x).toSubequal(0);
     expect(result.y).toSubequal(0);

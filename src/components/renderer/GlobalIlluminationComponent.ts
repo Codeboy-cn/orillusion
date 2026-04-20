@@ -102,7 +102,7 @@ export class GlobalIlluminationComponent extends ComponentBase {
                 -array[ii * 4 + 2],
                 0
             );
-            quat.transformVector(dir, dir);
+            Quaternion.transformVector(quat, dir, dir);
             let len = array[ii * 4 + 3];
             let id = `showRays${probeIndex}${i}`;
 
