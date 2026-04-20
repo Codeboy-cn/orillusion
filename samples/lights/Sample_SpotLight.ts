@@ -93,9 +93,14 @@ class Sample_SpotLight {
         mrw.material = mat;
         this.scene.addChild(wall_w);
 
+        // Wall positions: move side walls outward by their half-thickness so
+        // their inner face sits flush with wall_w's end. Previously centered at
+        // ±250 which made wall_a/wall_d overlap wall_w in a 5×100×10 volume at
+        // each corner — that produced a bright line along the corner edge in
+        // the shadow map (two back-face depths fighting at the intersection).
         let wall_a = new Object3D();
         wall_a.localScale = new Vector3(10, 100, 500);
-        wall_a.localPosition = new Vector3(250, 50, 0);
+        wall_a.localPosition = new Vector3(255, 50, 0);
         let mra = wall_a.addComponent(MeshRenderer);
         mra.geometry = box;
         mra.material = mat;
@@ -103,7 +108,7 @@ class Sample_SpotLight {
 
         let wall_d = new Object3D();
         wall_d.localScale = new Vector3(10, 100, 500);
-        wall_d.localPosition = new Vector3(-250, 50, 0);
+        wall_d.localPosition = new Vector3(-255, 50, 0);
         let mrd = wall_d.addComponent(MeshRenderer);
         mrd.geometry = box;
         mrd.material = mat;
