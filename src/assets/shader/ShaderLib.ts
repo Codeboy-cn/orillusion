@@ -25,6 +25,11 @@ import { FragmentOutput } from './core/struct/FragmentOutput';
 import { ShadingInput } from './core/struct/ShadingInput';
 import { IESProfiles_frag } from './lighting/IESProfiles_frag';
 import { ShadowMapping_frag } from './materials/program/ShadowMapping_frag';
+import { ShadowCommon } from './shadow/ShadowCommon';
+import { PCF_frag } from './shadow/PCF_frag';
+import { CSM_frag } from './shadow/CSM_frag';
+import { DirectShadow_frag } from './shadow/DirectShadow_frag';
+import { PointShadow_frag } from './shadow/PointShadow_frag';
 import { Irradiance_frag } from './lighting/Irradiance_frag';
 import { BRDF_frag } from './lighting/BRDF_frag';
 import { BxDF_frag } from './lighting/BxDF_frag';
@@ -95,6 +100,11 @@ export class ShaderLib {
         ShaderLib.register('ShadingInput', ShadingInput);
         ShaderLib.register('IESProfiles_frag', IESProfiles_frag);
 
+        ShaderLib.register('ShadowCommon', ShadowCommon);
+        ShaderLib.register('PCF_frag', PCF_frag);
+        ShaderLib.register('CSM_frag', CSM_frag);
+        ShaderLib.register('DirectShadow_frag', DirectShadow_frag);
+        ShaderLib.register('PointShadow_frag', PointShadow_frag);
         ShaderLib.register('ShadowMapping_frag', ShadowMapping_frag);
 
         ShaderLib.register('Irradiance_frag', Irradiance_frag);
