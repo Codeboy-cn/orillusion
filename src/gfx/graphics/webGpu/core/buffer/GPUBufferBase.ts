@@ -541,7 +541,13 @@ export class GPUBufferBase {
             const commandEncoder = device.createCommandEncoder();
             commandEncoder.copyBufferToBuffer(tBuffer, 0, destBuffer, 0, len * 4);
             device.queue.submit([commandEncoder.finish()]);
-            tBuffer.mapAsync(GPUMapMode.WRITE).then(() => this.mapAsyncReady.push(tBuffer));
+            tBuffer.mapAsync(GPUMapMode.WRITE).then(
+                () => this.mapAsyncReady.push(tBuffer),
+                (err) => {
+                    // device.destroy() during dispose rejects pending mapAsync with AbortError.
+                    if (err?.name !== 'AbortError') throw err;
+                },
+            );
         }
     }
 

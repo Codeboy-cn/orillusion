@@ -64,7 +64,13 @@ export class MatrixGPUBuffer extends GPUBufferBase {
             // TODO: combine this submit with the main one, but we'll have to delay calling mapAsync until after the submit.
             device.queue.submit([commandEncoder.finish()]);
             // TODO: use this data during rendering.
-            tBuffer.mapAsync(GPUMapMode.WRITE).then(() => this.mapAsyncReady.push(tBuffer));
+            tBuffer.mapAsync(GPUMapMode.WRITE).then(
+                () => this.mapAsyncReady.push(tBuffer),
+                (err) => {
+                    // device.destroy() during dispose rejects pending mapAsync with AbortError.
+                    if (err?.name !== 'AbortError') throw err;
+                },
+            );
         }
     }
 }
