@@ -2,7 +2,7 @@ import { test, end } from '../util'
 import { Camera3D, CameraUtil, Color, DirectLight, Engine3D, Object3D, Scene3D, View3D } from '@orillusion/core';
 
 await test('DirectionLight test', async () => {
-    const engine = await Engine3D.create();
+    const engine = await Engine3D.init();
     engine.frameRate = 10;
 
     let view = new View3D();

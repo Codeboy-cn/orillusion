@@ -2,7 +2,7 @@ import { test, expect, end, delay } from '../util'
 import { WasmMatrix, Color, ComputeGPUBuffer, Engine3D, Matrix4, Vector2, Vector3, Vector4 } from '@orillusion/core';
 
 await test('ComputeGPUBuffer ', async () => {
-    const engine = await Engine3D.create();
+    const engine = await Engine3D.init();
     await WasmMatrix.init(Matrix4.allocCount);
     expect(engine.context3D != null).toEqual(true);
 

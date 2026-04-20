@@ -66,7 +66,7 @@ const VARIANCE_THRESHOLD = 6;       // grayscale stddev below this == uniform ca
 const SKIP = new Set([
     'audio/Sample_DynamicAudio.ts',
     'audio/Sample_StaticAudio.ts',
-    // Pure CPU benchmark — no Engine3D.create, no canvas by design.
+    // Pure CPU benchmark — no Engine3D.init, no canvas by design.
     'benchmark/Sample_Matrix.ts',
 ]);
 

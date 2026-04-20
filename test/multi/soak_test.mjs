@@ -99,7 +99,7 @@ async function run() {
                 const canvas = document.createElement('canvas');
                 canvas.width = 256; canvas.height = 256;
                 document.body.appendChild(canvas);
-                const warm = await Engine3D.create({ canvasConfig: { canvas } });
+                const warm = await Engine3D.init({ canvasConfig: { canvas } });
                 for (let f = 0; f < framesPerEngine; f++) {
                     await new Promise(r => requestAnimationFrame(() => r(null)));
                 }
@@ -112,7 +112,7 @@ async function run() {
                 canvas.width = 256; canvas.height = 256;
                 document.body.appendChild(canvas);
 
-                const engine = await Engine3D.create({ canvasConfig: { canvas } });
+                const engine = await Engine3D.init({ canvasConfig: { canvas } });
 
                 for (let f = 0; f < framesPerEngine; f++) {
                     await new Promise(r => requestAnimationFrame(() => r(null)));
@@ -155,7 +155,7 @@ async function run() {
 
             // Create in parallel — this is the realistic multi-viewport case.
             const created = await Promise.all(
-                canvases.map((canvas) => Engine3D.create({ canvasConfig: { canvas } }))
+                canvases.map((canvas) => Engine3D.init({ canvasConfig: { canvas } }))
             );
             engines.push(...created);
 
@@ -183,7 +183,7 @@ async function run() {
             const postCanvas = document.createElement('canvas');
             postCanvas.width = 256; postCanvas.height = 256;
             document.body.appendChild(postCanvas);
-            const post = await Engine3D.create({ canvasConfig: { canvas: postCanvas } });
+            const post = await Engine3D.init({ canvasConfig: { canvas: postCanvas } });
             await new Promise(r => requestAnimationFrame(() => r(null)));
             const postOk = post.frameCount > 0 || true; // create succeeded
             post.dispose();

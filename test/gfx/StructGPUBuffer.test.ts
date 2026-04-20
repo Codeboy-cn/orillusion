@@ -12,7 +12,7 @@ class TestInfo extends Struct {
 }
 
 await test('StructGPUBuffer ', async () => {
-    const engine = await Engine3D.create();
+    const engine = await Engine3D.init();
     expect(engine.context3D != null).toEqual(true);
 
     let arr_TestInfos: TestInfo[] = [];

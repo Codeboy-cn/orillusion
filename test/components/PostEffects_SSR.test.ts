@@ -2,7 +2,7 @@ import { test, expect, end, waitUntil } from '../util'
 import { CameraUtil, Color, Engine3D, PostProcessingComponent, SSRPost, Scene3D, SkyRenderer, SolidColorSky, View3D } from '@orillusion/core';
 
 await test('Post SSR test', async () => {
-    const engine = await Engine3D.create();
+    const engine = await Engine3D.init();
 
     let view = new View3D();
     view.scene = new Scene3D();

@@ -3,7 +3,7 @@ import { ComputeShader, Engine3D, UniformGPUBuffer } from '@orillusion/core';
 
 await test('ComputeShader', async () => {
 
-    await Engine3D.create();
+    await Engine3D.init();
 
     let gaussianBlurShader = new ComputeShader(/* wgsl */ `
         struct GaussianBlurArgs {

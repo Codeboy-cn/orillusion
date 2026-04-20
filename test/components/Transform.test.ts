@@ -1,7 +1,7 @@
 import { test, expect, end, delay } from '../util'
 import { Camera3D, Engine3D, Object3D, Scene3D } from '@orillusion/core';
 
-const engine = await Engine3D.create();
+const engine = await Engine3D.init();
 engine.frameRate = 10;
 
 await test('Transform not repeat', async () => {

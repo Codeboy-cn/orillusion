@@ -1,7 +1,7 @@
 import { test, expect, end, delay } from '../util'
 import { Engine3D } from '@orillusion/core';
 
-const engine = await Engine3D.create();
+const engine = await Engine3D.init();
 
 await test('webgpu context', async () => {
     expect(engine.context3D != null).toEqual(true);

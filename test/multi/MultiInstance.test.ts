@@ -90,7 +90,7 @@ await test('create two Engine3D instances with isolated GPU devices', async () =
     // Build each engine's scene while that engine's Context3D is active so
     // all GPU resources (buffers, samplers, default textures) are created
     // on that engine's device. The pattern is create → build → startView.
-    engineA = await Engine3D.create({ canvasConfig: { canvas: canvasA, devicePixelRatio: 1 } });
+    engineA = await Engine3D.init({ canvasConfig: { canvas: canvasA, devicePixelRatio: 1 } });
     {
         // ----- Scene A: red box + direct light -----
         const sceneA = new Scene3D();
@@ -122,7 +122,7 @@ await test('create two Engine3D instances with isolated GPU devices', async () =
         viewA.camera = camA;
     }
 
-    engineB = await Engine3D.create({ canvasConfig: { canvas: canvasB, devicePixelRatio: 1 } });
+    engineB = await Engine3D.init({ canvasConfig: { canvas: canvasB, devicePixelRatio: 1 } });
     {
         // ----- Scene B: blue sphere + point light -----
         const sceneB = new Scene3D();

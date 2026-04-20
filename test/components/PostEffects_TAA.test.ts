@@ -2,7 +2,7 @@ import { test, expect, end, delay } from '../util'
 import { Camera3D, CameraUtil, Engine3D, Object3D, PostProcessingComponent, Scene3D, TAAPost, View3D } from '@orillusion/core';
 
 await test('Post TAAPost test', async () => {
-    const engine = await Engine3D.create();
+    const engine = await Engine3D.init();
     engine.frameRate = 2;
 
     let view = new View3D();

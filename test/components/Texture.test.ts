@@ -1,7 +1,7 @@
 import { test, expect, end } from '../util'
 import { Color, Engine3D, Float16ArrayTexture, Float32ArrayTexture, SolidColorSky } from '@orillusion/core';
 
-const engine = await Engine3D.create();
+const engine = await Engine3D.init();
 engine.frameRate = 10;
     
 await test('textue2D create Uint8Texture', async () => {

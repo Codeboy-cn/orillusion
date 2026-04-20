@@ -68,7 +68,7 @@ async function run() {
             canvas.width = 320; canvas.height = 240;
             document.body.appendChild(canvas);
 
-            const engine = await Engine3D.create({ canvasConfig: { canvas } });
+            const engine = await Engine3D.init({ canvasConfig: { canvas } });
 
             // Subscribe BEFORE destroy so we don't race the lost promise.
             let eventFired = false;
