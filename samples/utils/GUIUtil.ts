@@ -212,8 +212,51 @@ export class GUIUtil {
         GUIHelp.add(light, 'debugCSM').onChange(() => this.refreshDirectLightDebug(light));
         GUIHelp.add(light, 'debugShadowBound').onChange(() => this.refreshDirectLightDebug(light));
 
+        GUIUtil._addBiasReadout(light);
+
         open && GUIHelp.open();
         GUIHelp.endFolder();
+    }
+
+    /**
+     * Live readout of the per-frame auto-resolved shadowBias / normalBias
+     * (RFC-003 ShadowBiasCalculator output). The values live in
+     * `light.lightData.shadowBias[i]` / `light.lightData.normalBias[i]` and are
+     * rewritten every frame in GlobalUniformGroup.setCamera, so we expose
+     * getters and mark the dat.gui control `.listen()` to poll.
+     *
+     * - DirectLight with CSM: one row per cascade.
+     * - DirectLight without CSM, PointLight, SpotLight: single row (cascade 0).
+     */
+    private static _addBiasReadout(light: DirectLight | PointLight | SpotLight) {
+        const maxCascades = light.transform.view3D?.engine3D?.setting.shadow.maxCascades ?? 4;
+        const isDirect = light instanceof DirectLight;
+        const readout: any = {};
+        const rows: { sKey: string; nKey: string; idx: number }[] = [];
+        const pushRow = (suffix: string, idx: number) => {
+            const sKey = `shadowBias${suffix}`;
+            const nKey = `normalBias${suffix}`;
+            Object.defineProperty(readout, sKey, {
+                enumerable: true,
+                get: () => light.lightData.shadowBias[idx] ?? 0,
+                set: () => { /* read-only: next frame's listen() poll resets the input */ },
+            });
+            Object.defineProperty(readout, nKey, {
+                enumerable: true,
+                get: () => light.lightData.normalBias[idx] ?? 0,
+                set: () => { /* read-only */ },
+            });
+            rows.push({ sKey, nKey, idx });
+        };
+        if (isDirect) {
+            for (let i = 0; i < maxCascades; i++) pushRow(`[${i}]`, i);
+        } else {
+            pushRow('', 0);
+        }
+        for (const row of rows) {
+            GUIHelp.add(readout, row.sKey).listen();
+            GUIHelp.add(readout, row.nKey).listen();
+        }
     }
 
     private static _clearDebugDirectLight(light: DirectLight) {
@@ -298,6 +341,8 @@ export class GUIUtil {
         GUIHelp.add(light, 'quadratic', 0.0, 2.0, 0.001);
         GUIHelp.add(light, 'castShadow');
 
+        GUIUtil._addBiasReadout(light);
+
         GUIHelp.open();
         GUIHelp.endFolder();
     }
@@ -321,6 +366,8 @@ export class GUIUtil {
         GUIHelp.add(light, 'outerAngle', 0.0, 180.0, 0.001);
         GUIHelp.add(light, 'innerAngle', 0.0, 100.0, 0.001);
         GUIHelp.add(light, 'castShadow');
+
+        GUIUtil._addBiasReadout(light);
 
         GUIHelp.open();
         GUIHelp.endFolder();
