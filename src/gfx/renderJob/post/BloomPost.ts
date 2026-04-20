@@ -15,7 +15,7 @@ import { VirtualTexture } from '../../../textures/VirtualTexture';
  * Bloom Effects
  * ```
  * bloom setting
- * let cfg = {@link Engine3D.setting.render.postProcessing.bloom};
+ * let cfg = {@link this.setting.render.postProcessing.bloom};
  *```
  * @group Post Effects
  */
@@ -50,14 +50,14 @@ export class BloomPost extends PostBase {
      * @internal
      */
     onAttach(view: View3D,) {
-        Engine3D.setting.render.postProcessing.bloom.enable = true;
+        this.setting.render.postProcessing.bloom.enable = true;
         this.createGUI();
     }
     /**
      * @internal
      */Render
     onDetach(view: View3D,) {
-        Engine3D.setting.render.postProcessing.bloom.enable = false;
+        this.setting.render.postProcessing.bloom.enable = false;
         this.removeGUI();
     }
 
@@ -68,58 +68,58 @@ export class BloomPost extends PostBase {
     }
 
     public get downSampleBlurSize(): number {
-        return Engine3D.setting.render.postProcessing.bloom.downSampleBlurSize;
+        return this.setting.render.postProcessing.bloom.downSampleBlurSize;
     }
     public set downSampleBlurSize(value: number) {
-        Engine3D.setting.render.postProcessing.bloom.downSampleBlurSize = value;
+        this.setting.render.postProcessing.bloom.downSampleBlurSize = value;
     }
 
     public get downSampleBlurSigma(): number {
-        return Engine3D.setting.render.postProcessing.bloom.downSampleBlurSigma;
+        return this.setting.render.postProcessing.bloom.downSampleBlurSigma;
     }
 
     public set downSampleBlurSigma(value: number) {
-        Engine3D.setting.render.postProcessing.bloom.downSampleBlurSigma = value;
+        this.setting.render.postProcessing.bloom.downSampleBlurSigma = value;
     }
 
     public get upSampleBlurSize(): number {
-        return Engine3D.setting.render.postProcessing.bloom.upSampleBlurSize;
+        return this.setting.render.postProcessing.bloom.upSampleBlurSize;
     }
 
     public set upSampleBlurSize(value: number) {
-        Engine3D.setting.render.postProcessing.bloom.upSampleBlurSize = value;
+        this.setting.render.postProcessing.bloom.upSampleBlurSize = value;
     }
 
     public get upSampleBlurSigma(): number {
-        return Engine3D.setting.render.postProcessing.bloom.upSampleBlurSigma;
+        return this.setting.render.postProcessing.bloom.upSampleBlurSigma;
     }
 
     public set upSampleBlurSigma(value: number) {
-        Engine3D.setting.render.postProcessing.bloom.upSampleBlurSigma = value;
+        this.setting.render.postProcessing.bloom.upSampleBlurSigma = value;
     }
 
     public get luminanceThreshole(): number {
-        return Engine3D.setting.render.postProcessing.bloom.luminanceThreshole;
+        return this.setting.render.postProcessing.bloom.luminanceThreshole;
     }
 
     public set luminanceThreshole(value: number) {
-        Engine3D.setting.render.postProcessing.bloom.luminanceThreshole = value;
+        this.setting.render.postProcessing.bloom.luminanceThreshole = value;
     }
 
     public get bloomIntensity(): number {
-        return Engine3D.setting.render.postProcessing.bloom.bloomIntensity;
+        return this.setting.render.postProcessing.bloom.bloomIntensity;
     }
 
     public set bloomIntensity(value: number) {
-        Engine3D.setting.render.postProcessing.bloom.bloomIntensity = value;
+        this.setting.render.postProcessing.bloom.bloomIntensity = value;
     }
 
     public get hdr(): number {
-        return Engine3D.setting.render.postProcessing.bloom.hdr;
+        return this.setting.render.postProcessing.bloom.hdr;
     }
 
     public set hdr(value: number) {
-        Engine3D.setting.render.postProcessing.bloom.hdr = value;
+        this.setting.render.postProcessing.bloom.hdr = value;
     }
 
     private createThreshouldCompute() {
@@ -134,7 +134,7 @@ export class BloomPost extends PostBase {
     }
 
     private createDownSampleComputes() {
-        let setting = Engine3D.setting.render.postProcessing.bloom;
+        let setting = this.setting.render.postProcessing.bloom;
         const N = setting.downSampleStep;
         this.downSampleComputes = [];
 
@@ -154,7 +154,7 @@ export class BloomPost extends PostBase {
     }
 
     private createUpSampleComputes() {
-        let setting = Engine3D.setting.render.postProcessing.bloom;
+        let setting = this.setting.render.postProcessing.bloom;
         const N = setting.downSampleStep;
         this.upSampleComputes = [];
         {
@@ -188,7 +188,7 @@ export class BloomPost extends PostBase {
     }
 
     private createPostCompute() {
-        let setting = Engine3D.setting.render.postProcessing.bloom;
+        let setting = this.setting.render.postProcessing.bloom;
         const N = setting.downSampleStep;
 
         this.postCompute = new ComputeShader(post);
@@ -204,7 +204,7 @@ export class BloomPost extends PostBase {
     }
 
     private _createBloomResources() {
-        let setting = Engine3D.setting.render.postProcessing.bloom;
+        let setting = this.setting.render.postProcessing.bloom;
         this.bloomSetting = new UniformGPUBuffer(4 * 2); //vector4 * 2
 
         let [screenWidth, screenHeight] = this._boundCtx!.presentationSize;
@@ -254,7 +254,7 @@ export class BloomPost extends PostBase {
             this.rendererPassState = WebGPUDescriptorCreator.createRendererPassState(view.engine3D.context3D, this.rtFrame, null);
             this.rendererPassState.label = "Bloom";
         }
-        let cfg = Engine3D.setting.render.postProcessing.bloom;
+        let cfg = this.setting.render.postProcessing.bloom;
 
         this.bloomSetting.setFloat('downSampleStep', cfg.downSampleStep);
         this.bloomSetting.setFloat('downSampleBlurSize', cfg.downSampleBlurSize);
@@ -272,7 +272,7 @@ export class BloomPost extends PostBase {
     }
 
     public onResize() {
-        let cfg = Engine3D.setting.render.postProcessing.bloom;
+        let cfg = this.setting.render.postProcessing.bloom;
 
         let [screenWidth, screenHeight] = this._boundCtx!.presentationSize;
         this.RT_threshold.resize(screenWidth, screenHeight);

@@ -1,4 +1,3 @@
-import { Engine3D } from '../../../Engine3D';
 import { View3D } from '../../../core/View3D';
 import { GlobalBindGroup } from '../../graphics/webGpu/core/bindGroups/GlobalBindGroup';
 import { ColorPassRenderer } from '../passRenderer/color/ColorPassRenderer';
@@ -26,17 +25,18 @@ export class ForwardRenderJob extends RendererJob {
     public start(): void {
         super.start();
         const ctx = this.view.engine3D.context3D;
+        const setting = this.view.engine3D.setting;
         {
             let colorPassRenderer = new ColorPassRenderer();
             let rtFrame = GBufferFrame.getGBufferFrame(GBufferFrame.colorPass_GBuffer, ctx);
 
-            if (Engine3D.setting.render.zPrePass) {
+            if (setting.render.zPrePass) {
                 rtFrame.zPreTexture = this.depthPassRenderer.rendererPassState.depthTexture;
             }
 
             colorPassRenderer.setRenderStates(ctx, rtFrame);
 
-            if (Engine3D.setting.gi.enable) {
+            if (setting.gi.enable) {
                 let lightEntries = GlobalBindGroup.getLightEntries(this.view.scene);
                 this.ddgiProbeRenderer = new DDGIProbeRenderer(ctx, lightEntries.irradianceVolume);
                 this.ddgiProbeRenderer.setInputTexture([
@@ -57,7 +57,7 @@ export class ForwardRenderJob extends RendererJob {
             this.rendererMap.addRenderer(guiPassRenderer);
         }
 
-        if (Engine3D.setting.render.debug) {
+        if (setting.render.debug) {
             this.debug();
         }
     }

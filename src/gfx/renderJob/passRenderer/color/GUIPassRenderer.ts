@@ -1,4 +1,3 @@
-import { Engine3D } from "../../../../Engine3D";
 import { RenderNode } from "../../../../components/renderer/RenderNode";
 import { View3D } from "../../../../core/View3D";
 import { GlobalBindGroup } from "../../../graphics/webGpu/core/bindGroups/GlobalBindGroup";
@@ -88,7 +87,8 @@ export class GUIPassRenderer extends RendererBase {
                 }
             }
 
-            for (let i = Engine3D.setting.render.drawOpMin; i < Math.min(nodes.length, Engine3D.setting.render.drawOpMax); ++i) {
+            const render = view.engine3D.setting.render;
+            for (let i = render.drawOpMin; i < Math.min(nodes.length, render.drawOpMax); ++i) {
                 let renderNode = nodes[i];
                 if (!renderNode.transform.enable)
                     continue;

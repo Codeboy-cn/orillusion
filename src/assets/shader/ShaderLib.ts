@@ -50,7 +50,7 @@ import { GBufferStand } from './core/common/GBufferStand';
 import { ReflectionShader_shader } from './materials/ReflectionShader_shader';
 import { ReflectionCG } from './env/ReflectionCG';
 import { SHCommon_frag } from './core/common/SHCommon_frag';
-import { Engine3D } from '../../Engine3D';
+import { EngineSetting } from '../../setting/EngineSetting';
 import { getLightData } from './core/struct/LightData';
 
 /**
@@ -58,7 +58,7 @@ import { getLightData } from './core/struct/LightData';
  */
 export class ShaderLib {
 
-    public static init() {
+    public static init(seedSetting: EngineSetting) {
         ShaderLib.register('MathShader', MathShader);
         ShaderLib.register('FastMathShader', FastMathShader);
         ShaderLib.register("BitUtil", BitUtil);
@@ -67,7 +67,7 @@ export class ShaderLib {
 
         ShaderLib.register('MatrixShader', MatrixShader);
 
-        ShaderLib.register('GlobalUniform', GlobalUniform(Engine3D.setting.shadow.maxShadowMapNum));
+        ShaderLib.register('GlobalUniform', GlobalUniform(seedSetting.shadow.maxShadowMapNum));
         ShaderLib.register('WorldMatrixUniform', WorldMatrixUniform);
         ShaderLib.register('NormalMap_frag', NormalMap_frag);
         ShaderLib.register('LightingFunction_frag', LightingFunction_frag);
@@ -85,7 +85,7 @@ export class ShaderLib {
         ShaderLib.register('FragmentVarying', FragmentVarying);
         ShaderLib.register('FragmentOutput', FragmentOutput);
 
-        ShaderLib.register('LightData', getLightData(Engine3D.setting.shadow.maxCascades));
+        ShaderLib.register('LightData', getLightData(seedSetting.shadow.maxCascades));
         ShaderLib.register('ClusterLight', ClusterLight);
         ShaderLib.register('ShadingInput', ShadingInput);
         ShaderLib.register('IESProfiles_frag', IESProfiles_frag);

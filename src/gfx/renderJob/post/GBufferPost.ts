@@ -27,7 +27,7 @@ import { Combine_cs, TestComputeLoadBuffer, Vector3, mergeFunctions } from '../.
  * Let the intersection of the object and the object imitate the effect of the light being cross-occluded
  * ```
  * gtao setting
- * let cfg = {@link Engine3D.setting.render.postProcessing.gtao};
+ * let cfg = {@link this.setting.render.postProcessing.gtao};
  *```
  * @group Post Effects
  */
@@ -61,7 +61,7 @@ export class GBufferPost extends PostBase {
      * @internal
      */Render
     onDetach(view: View3D,) {
-        // Engine3D.setting.render.useCompressGBuffer = false;
+        // this.setting.render.useCompressGBuffer = false;
     }
 
     /**
@@ -124,7 +124,7 @@ export class GBufferPost extends PostBase {
         let rtFrame = GBufferFrame.getGBufferFrame("ColorPassGBuffer", this._boundCtx!);
         let gBufferTexture = rtFrame.getCompressGBufferTexture();
 
-        let reflectionSetting = Engine3D.setting.reflectionSetting;
+        let reflectionSetting = this.setting.reflectionSetting;
         let reflectionsGBufferFrame = GBufferFrame.getGBufferFrame(GBufferFrame.reflections_GBuffer, this._boundCtx!, reflectionSetting.width, reflectionSetting.height);
         let reflectionsGBufferTexture = reflectionsGBufferFrame.getCompressGBufferTexture();
 

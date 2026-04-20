@@ -40,14 +40,14 @@ export class FXAAPost extends PostBase {
      * @internal
      */
     onAttach(view: View3D,) {
-        Engine3D.setting.render.postProcessing.fxaa.enable = true;
+        this.setting.render.postProcessing.fxaa.enable = true;
     }
 
     /**
      * @internal
      */
     onDetach(view: View3D,) {
-        Engine3D.setting.render.postProcessing.fxaa.enable = false;
+        this.setting.render.postProcessing.fxaa.enable = false;
     }
 
     public render(view: View3D, command: GPUCommandEncoder) {

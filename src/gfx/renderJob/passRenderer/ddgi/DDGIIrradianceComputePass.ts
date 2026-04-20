@@ -1,6 +1,5 @@
 import { DDGIIrradiance_shader } from '../../../../assets/shader/compute/DDGIIrradiance_Cs';
 import { View3D } from '../../../../core/View3D';
-import { Engine3D } from '../../../../Engine3D';
 import { RenderTexture } from '../../../../textures/RenderTexture';
 import { Context3D } from '../../../graphics/webGpu/Context3D';
 import { GlobalBindGroup } from '../../../graphics/webGpu/core/bindGroups/GlobalBindGroup';
@@ -33,7 +32,7 @@ export class DDGIIrradianceComputePass {
     private initPipeline() {
         this.computeShader = new ComputeShader(DDGIIrradiance_shader);
 
-        let giSetting = Engine3D.setting.gi;
+        let giSetting = this._ctx.engine!.setting.gi;
         let pixelCount = giSetting.octRTMaxSize * giSetting.octRTMaxSize;
 
         this.irradianceBuffer = new StorageGPUBuffer(pixelCount * 4, GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST);

@@ -27,7 +27,7 @@ export class PrefabTextureParser extends ParserBase {
         }
 
         const resHost = Engine3D.resFor(prefabParser.ctx);
-        let textureList = await resHost.loadBitmapTextures(textures, Engine3D.setting.loader.numConcurrent, loaderFunctions, true);
+        let textureList = await resHost.loadBitmapTextures(textures, prefabParser.ctx!.engine!.setting.loader.numConcurrent, loaderFunctions, true);
         for (const tex of textureList) {
             resHost.addTexture(tex.name, tex);
         }

@@ -1,5 +1,6 @@
 import { DirectLight, EntityCollect, Vector3, Vector4 } from "../../../../..";
-import { Engine3D } from "../../../../../Engine3D";
+import { PointLight } from "../../../../../components/lights/PointLight";
+import { SpotLight } from "../../../../../components/lights/SpotLight";
 import { Camera3D } from "../../../../../core/Camera3D";
 import { CSM } from "../../../../../core/csm/CSM";
 import { splitDouble_Vector3 } from "../../../../../math/DoublePrecision";
@@ -8,6 +9,7 @@ import { UUID } from "../../../../../util/Global";
 import { ProfilerUtil } from "../../../../../util/ProfilerUtil";
 import { Time } from "../../../../../util/Time";
 import { ShadowLightsCollect } from "../../../../renderJob/collect/ShadowLightsCollect";
+import { ShadowBiasCalculator } from "../../../../renderJob/passRenderer/shadow/ShadowBiasCalculator";
 import { bindCtx, Context3D } from "../../Context3D";
 import { UniformGPUBuffer } from "../buffer/UniformGPUBuffer";
 import { GlobalBindGroupLayout } from "./GlobalBindGroupLayout";
@@ -28,7 +30,7 @@ export class GlobalUniformGroup {
     private uniformByteLength: number;
     private matrixesByteLength: number;
 
-    private shadowMatrixRaw = new Float32Array(Engine3D.setting.shadow.maxShadowMapNum * 16);
+    private shadowMatrixRaw: Float32Array;
     private csmMatrixRaw = new Float32Array(CSM.Cascades * 16);
     private csmShadowBias = new Float32Array(4);
 
@@ -49,9 +51,11 @@ export class GlobalUniformGroup {
         this.uuid = UUID();
         this.usage = GPUBufferUsage.UNIFORM | GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST;
         this._ctx = ctx;
+        const setting = ctx.engine!.setting;
+        this.shadowMatrixRaw = new Float32Array(setting.shadow.maxShadowMapNum * 16);
         // ... + 8(shadow matrix) + 8(csm matrix) + 4(csm bias) + 4(csm scattering exp...)
         // this.uniformGPUBuffer = new UniformGPUBuffer(32 * 4 * 4 + (3 * 4 * 4) + 8 * 16 + CSM.Cascades * 16 + 4 + 4);
-        this.uniformGPUBuffer = new UniformGPUBuffer(8192 + 9 * 4 * 4 + 8 + 1 + 4 + Engine3D.setting.shadow.maxShadowMapNum * 16);
+        this.uniformGPUBuffer = new UniformGPUBuffer(8192 + 9 * 4 * 4 + 8 + 1 + 4 + setting.shadow.maxShadowMapNum * 16);
         this.uniformGPUBuffer.visibility = GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT | GPUShaderStage.COMPUTE;
 
         this.matrixBindGroup = matrixBindGroup;
@@ -111,7 +115,7 @@ export class GlobalUniformGroup {
     public setCamera(camera: Camera3D) {
         this.uniformGPUBuffer.setMatrix(`_projectionMatrix`, camera.projectionMatrix);
 
-        if (Engine3D.setting.useRTE) {
+        if (this._ctx.engine!.setting.useRTE) {
             const mainCamera = Camera3D.mainCamera || camera;
 
             this.temp_worldMatrix.copyFrom(camera.transform.worldMatrix);
@@ -144,7 +148,7 @@ export class GlobalUniformGroup {
         this.shadowMatrixRaw.fill(0);
         this.csmMatrixRaw.fill(0);
         if (!camera.isShadowCamera) {
-            const maxShadowMapNum = Engine3D.setting.shadow.maxShadowMapNum;
+            const maxShadowMapNum = this._ctx.engine!.setting.shadow.maxShadowMapNum;
             let shadowMatrixRawIndex: number = 0;
             for (let i = 0; i < maxShadowMapNum; i++) {
                 if (i < shadowLightList.length) {
@@ -154,7 +158,7 @@ export class GlobalUniformGroup {
                         for (let csm = 0; csm < shadowLight.lightData.csmShadowMapNum; csm++) {
                             let shadowCamera: Camera3D = shadowLight.csmShadowCamera[csm];
 
-                            if (Engine3D.setting.useRTE) {
+                            if (this._ctx.engine!.setting.useRTE) {
                                 let viewMatrix = this.temp_viewMatrix.copyFrom(shadowCamera.transform.worldMatrix);
 
                                 let rtePos = Vector3.sub(shadowCamera.transform.worldPosition, camera.transform.worldPosition);
@@ -169,22 +173,17 @@ export class GlobalUniformGroup {
                                 this.shadowMatrixRaw.set(shadowCamera.pvMatrix.rawData, shadowMatrixRawIndex * 16);
                             }
 
-                            let baseCamera = shadowLight.csmShadowCamera[0];
-                            let shadowBiasScale = (shadowCamera.right - shadowCamera.left) / (baseCamera.right - baseCamera.left);
-                            if (csm == 0) {
-                                let depth = shadowLight.shadowBoundFar - shadowLight.shadowBoundNear;
-                                let sizeOnePixel = 1 / shadowLight.shadowMapWidth;
-                                shadowLight.lightData.shadowBias[0] = sizeOnePixel / depth - shadowLight.shadowCSMBias * 0.01;
-                            } else if (csm > 0) {
-                                shadowLight.lightData.shadowBias[csm] = shadowLight.lightData.shadowBias[0] * shadowBiasScale;
-                            }
+                            // RFC-003: per-cascade bias derived from auto formula or
+                            // user override, scaled by frustum-relative cascade size.
+                            shadowLight.lightData.shadowBias[csm] = ShadowBiasCalculator.resolveDirectShadowBias(shadowLight, csm);
+                            shadowLight.lightData.normalBias[csm] = ShadowBiasCalculator.resolveDirectNormalBias(shadowLight, csm);
 
                             shadowMatrixRawIndex++;
                         }
                     } else {
                         let shadowCamera = shadowLight.shadowCamera;
 
-                        if (Engine3D.setting.useRTE) {
+                        if (this._ctx.engine!.setting.useRTE) {
                             let viewMatrix = this.temp_viewMatrix.copyFrom(shadowCamera.transform.worldMatrix);
 
                             let rtePos = Vector3.sub(shadowCamera.transform.worldPosition, camera.transform.worldPosition, Vector3.HELP_6);
@@ -199,6 +198,18 @@ export class GlobalUniformGroup {
                         } else {
                             this.shadowMatrixRaw.set(shadowCamera.pvMatrix.rawData, shadowMatrixRawIndex * 16);
                         }
+
+                        // Non-CSM directional / point / spot lights still need cascade-0
+                        // bias slots filled. Point/spot use world-units; direct uses NDC.
+                        const sLight: any = shadowLight;
+                        if (sLight instanceof DirectLight) {
+                            sLight.lightData.shadowBias[0] = ShadowBiasCalculator.resolveDirectShadowBias(sLight, 0);
+                            sLight.lightData.normalBias[0] = ShadowBiasCalculator.resolveDirectNormalBias(sLight, 0);
+                        } else if (sLight instanceof PointLight || sLight instanceof SpotLight) {
+                            const pmSize = this._ctx.engine!.setting.shadow.pointShadowSize;
+                            sLight.lightData.shadowBias[0] = ShadowBiasCalculator.resolvePointShadowBias(sLight, pmSize);
+                            sLight.lightData.normalBias[0] = ShadowBiasCalculator.resolvePointNormalBias(sLight, pmSize);
+                        }
                         shadowMatrixRawIndex++;
                     }
                 } else if (shadowMatrixRawIndex < maxShadowMapNum) {
@@ -210,12 +221,12 @@ export class GlobalUniformGroup {
 
         this.uniformGPUBuffer.setFloat32Array(`shadowMatrix`, this.shadowMatrixRaw);
 
-        let shadowMapSize = Engine3D.setting.shadow.shadowSize;
+        let shadowMapSize = this._ctx.engine!.setting.shadow.shadowSize;
         this.uniformGPUBuffer.setFloat32Array(`csmShadowBias`, this.csmShadowBias);
         this.uniformGPUBuffer.setFloat32Array(`csmMatrix`, this.csmMatrixRaw);
         this.uniformGPUBuffer.setFloat32Array(`shadowLights`, this.shadowLights);
 
-        let reflectionSetting = Engine3D.setting.reflectionSetting;
+        let reflectionSetting = this._ctx.engine!.setting.reflectionSetting;
         let reflectionCount = EntityCollect.instance.getReflections(camera.transform.scene3D).length;
         this.uniformGPUBuffer.setFloat(`reflectionProbeSize`, reflectionSetting.reflectionProbeSize);
         this.uniformGPUBuffer.setFloat(`reflectionProbeMaxCount`, reflectionSetting.reflectionProbeMaxCount);
@@ -226,7 +237,7 @@ export class GlobalUniformGroup {
         this.uniformGPUBuffer.setFloat(`test3`, ProfilerUtil.testObj.testValue3);
         this.uniformGPUBuffer.setFloat(`test4`, ProfilerUtil.testObj.testValue4);
 
-        if (Engine3D.setting.useRTE) {
+        if (this._ctx.engine!.setting.useRTE) {
             const cameraPos = Vector3.HELP_0.set(
                 this.temp_worldMatrix.rawData[12],
                 this.temp_worldMatrix.rawData[13],
@@ -240,14 +251,17 @@ export class GlobalUniformGroup {
         this.uniformGPUBuffer.setFloat32Array(`SH`, camera.sh);
         this.uniformGPUBuffer.setFloat(`time`, Time.time);
         this.uniformGPUBuffer.setFloat(`delta`, Time.delta);
+        // Legacy globalUniform.shadowBias — read by DDGI / GodRay compute paths only.
+        // Real-time shadow now uses per-light light.shadowBias[csm] instead. We feed
+        // a conservative texel-derived default to keep baked-probe shadow stable.
         this.uniformGPUBuffer.setFloat(`shadowBias`, camera.getShadowBias(shadowMapSize));
-        this.uniformGPUBuffer.setFloat(`skyExposure`, Engine3D.setting.sky.skyExposure);
-        this.uniformGPUBuffer.setFloat(`renderPassState`, Engine3D.setting.render.renderPassState);
-        this.uniformGPUBuffer.setFloat(`quadScale`, Engine3D.setting.render.quadScale);
-        this.uniformGPUBuffer.setFloat(`hdrExposure`, Engine3D.setting.render.hdrExposure);
-        this.uniformGPUBuffer.setInt32(`renderState_left`, Engine3D.setting.render.renderState_left);
-        this.uniformGPUBuffer.setInt32(`renderState_right`, Engine3D.setting.render.renderState_right);
-        this.uniformGPUBuffer.setFloat(`renderState_split`, Engine3D.setting.render.renderState_split);
+        this.uniformGPUBuffer.setFloat(`skyExposure`, this._ctx.engine!.setting.sky.skyExposure);
+        this.uniformGPUBuffer.setFloat(`renderPassState`, this._ctx.engine!.setting.render.renderPassState);
+        this.uniformGPUBuffer.setFloat(`quadScale`, this._ctx.engine!.setting.render.quadScale);
+        this.uniformGPUBuffer.setFloat(`hdrExposure`, this._ctx.engine!.setting.render.hdrExposure);
+        this.uniformGPUBuffer.setInt32(`renderState_left`, this._ctx.engine!.setting.render.renderState_left);
+        this.uniformGPUBuffer.setInt32(`renderState_right`, this._ctx.engine!.setting.render.renderState_right);
+        this.uniformGPUBuffer.setFloat(`renderState_split`, this._ctx.engine!.setting.render.renderState_split);
         const ownerC = (camera?.transform as any)?.view3D?.engine3D;
         const inputC = ownerC?.inputSystem;
         const ctxC = ownerC?.context3D;
@@ -259,11 +273,16 @@ export class GlobalUniformGroup {
         this.uniformGPUBuffer.setFloat(`windowHeight`, ctxC?.windowHeight ?? 0);
         this.uniformGPUBuffer.setFloat(`near`, camera.near);
         this.uniformGPUBuffer.setFloat(`far`, camera.far);
-        this.uniformGPUBuffer.setFloat(`pointShadowBias`, Engine3D.setting.shadow.pointShadowBias);
+        // Legacy globalUniform.pointShadowBias — kept for shader struct compat.
+        // Real-time point shadow now reads light.shadowBias[0] instead.
+        this.uniformGPUBuffer.setFloat(`pointShadowBias`, 0.0);
         this.uniformGPUBuffer.setFloat(`shadowMapSize`, shadowMapSize);
-        this.uniformGPUBuffer.setFloat(`shadowSoft`, Engine3D.setting.shadow.shadowSoft);
-        this.uniformGPUBuffer.setFloat(`enableCSM`, camera.enableCSM ? 1 : 0);
-        this.uniformGPUBuffer.setFloat(`csmMargin`, Engine3D.setting.shadow.csmMargin);
+        this.uniformGPUBuffer.setFloat(`shadowSoft`, this._ctx.engine!.setting.shadow.shadowSoft);
+        // Legacy globalUniform.enableCSM — kept for shader struct compat (DDGI / GodRay
+        // compute paths still read it). Realtime shadow gates on per-light
+        // light.csmShadowMapIndex >= 0 now, so this stays 0.
+        this.uniformGPUBuffer.setFloat(`enableCSM`, 0.0);
+        this.uniformGPUBuffer.setFloat(`csmMargin`, this._ctx.engine!.setting.shadow.csmMargin);
         this.uniformGPUBuffer.setInt32(`nDirShadowStart`, this.dirShadowStart);
         this.uniformGPUBuffer.setInt32(`nDirShadowEnd`, this.dirShadowEnd);
         this.uniformGPUBuffer.setInt32(`nPointShadowStart`, this.pointShadowStart);
@@ -273,11 +292,11 @@ export class GlobalUniformGroup {
 
         this.uniformGPUBuffer.setVector4(`_retain`, Vector4.ZERO);
 
-        if (Engine3D.setting.useRTE) {
+        if (this._ctx.engine!.setting.useRTE) {
             const mainCamera = Camera3D.mainCamera || camera;
 
             const cameraPos: Vector3 = mainCamera.transform.worldPosition;
-            const valueHL = splitDouble_Vector3(cameraPos);
+            const valueHL = splitDouble_Vector3(cameraPos, this._ctx.engine!.setting.RTEScale);
             const cameraPosH = valueHL[0];
             const cameraPosL = valueHL[1];
             this.uniformGPUBuffer.setVector3(`cameraPositionH`, cameraPosH);

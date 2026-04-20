@@ -1,5 +1,4 @@
 
-import { Engine3D } from '../../Engine3D';
 import { View3D } from '../../core/View3D';
 import { MeshRenderer } from './MeshRenderer';
 import { BoundingBox } from '../../core/bound/BoundingBox';
@@ -35,11 +34,14 @@ export class SkyRenderer extends MeshRenderer {
         this.alwaysRender = true;
 
         this.object3D.bound = new BoundingBox(Vector3.ZERO.clone(), Vector3.MAX);
-        this.geometry = new SphereGeometry(Engine3D.setting.sky.defaultFar, 20, 20);
         this.skyMaterial ||= new SkyMaterial();
     }
 
     public onEnable(): void {
+        if (!this.geometry) {
+            const defaultFar = this.transform.view3D?.engine3D?.setting.sky.defaultFar ?? 5000;
+            this.geometry = new SphereGeometry(defaultFar, 20, 20);
+        }
         if (!this._readyPipeline) {
             this.initPipeline();
         } else {

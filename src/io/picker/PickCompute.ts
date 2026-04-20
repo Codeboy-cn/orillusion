@@ -1,4 +1,4 @@
-import { Camera3D, Engine3D } from '../..';
+import { Camera3D } from '../..';
 import { Picker_cs } from '../../assets/shader/compute/Picker_cs';
 import { View3D } from '../../core/View3D';
 import { GlobalBindGroup } from '../../gfx/graphics/webGpu/core/bindGroups/GlobalBindGroup';
@@ -56,7 +56,7 @@ export class PickCompute {
         var z = this._outBuffer.outFloat32Array[6];
         target.set(x, y, z);
 
-        if (Engine3D.setting.useRTE) {
+        if (Camera3D.mainCamera._boundCtx?.engine?.setting.useRTE) {
             target.add(Camera3D.mainCamera.transform.worldPosition, target);
         }
         

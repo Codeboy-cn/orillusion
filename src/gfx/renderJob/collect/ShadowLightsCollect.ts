@@ -1,4 +1,3 @@
-import { Engine3D } from '../../..';
 import { DirectLight } from '../../../components/lights/DirectLight';
 import { ILight } from '../../../components/lights/ILight';
 import { LightType } from '../../../components/lights/LightData';
@@ -202,8 +201,8 @@ export class ShadowLightsCollect {
                     light.lightData.castShadowIndex = j++;
                 }
             }
-            if (j > Engine3D.setting.shadow.maxShadowMapNum) {
-                console.error('ShadowLightsCollect: max shadow map num reached, please increase Engine3D.setting.shadow.maxShadowMapNum');
+            if (j > view.engine3D.setting.shadow.maxShadowMapNum) {
+                console.error('ShadowLightsCollect: max shadow map num reached, please increase engine.setting.shadow.maxShadowMapNum');
             }
             nDirShadowEnd = directionLightList.length;
         }

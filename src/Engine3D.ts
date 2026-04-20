@@ -27,108 +27,149 @@ import { PostProcessingComponent } from './components/post/PostProcessingCompone
 import { GBufferFrame } from './gfx/renderJob/frame/GBufferFrame';
 import { Camera3D } from './core/Camera3D';
 
+/** Recursive partial — allows passing any subset of EngineSetting to
+ *  `Engine3D.init({ setting: ... })`. Functions and class instances
+ *  (Color, HDRTextureCube, ...) are passed through as-is. */
+export type EngineSettingInit = DeepPartial<EngineSetting>;
+
+type DeepPartial<T> = T extends (infer U)[]
+    ? DeepPartial<U>[]
+    : T extends Function
+    ? T
+    : T extends object
+    ? { [P in keyof T]?: DeepPartial<T[P]> }
+    : T;
+
+/** Plain-object test: only `{}` literals recurse during deepMerge. Class
+ *  instances (Color), arrays, null, primitives all bypass the recursion
+ *  and get assigned whole. */
+function _isPlainObject(v: any): boolean {
+    if (v === null || typeof v !== 'object' || Array.isArray(v)) return false;
+    const proto = Object.getPrototypeOf(v);
+    return proto === Object.prototype || proto === null;
+}
+
+function _deepMerge<T extends object>(target: T, source: any): T {
+    if (!source) return target;
+    for (const key of Object.keys(source)) {
+        const sv = source[key];
+        if (sv === undefined) continue;
+        const tv = (target as any)[key];
+        if (_isPlainObject(sv) && _isPlainObject(tv)) {
+            _deepMerge(tv, sv);
+        } else {
+            (target as any)[key] = sv;
+        }
+    }
+    return target;
+}
+
 /**
  * Orillusion 3D Engine.
  *
- * Call `await Engine3D.create({ canvasConfig })` to obtain an engine
- * instance. Each instance owns its canvas, input system, views and
- * render jobs; instances share a single WebGPU device pool and a
- * shared RAF render loop.
+ * Call `await Engine3D.init({ canvasConfig, setting })` to obtain an
+ * engine instance. Each instance owns its canvas, input system, views,
+ * render jobs, and configuration (`engine.setting`). Instances share a
+ * single WebGPU device pool and a shared RAF render loop.
  *
  * @group engine3D
  */
 export class Engine3D {
 
-    /** Engine-level settings. Shared across instances. */
-    public static setting: EngineSetting = {
-        useRTE: false,
-        RTEScale: 1.0,
-        doublePrecision: false,
-        occlusionQuery: { enable: true, debug: false },
-        pick: { enable: true, mode: `bound`, detail: `mesh` },
-        render: {
-            debug: false,
-            renderPassState: 4,
-            renderState_left: 5,
-            renderState_right: 5,
-            renderState_split: 0.5,
-            quadScale: 1,
-            hdrExposure: 1.5,
-            debugQuad: -1,
-            maxPointLight: 1000,
-            maxDirectLight: 4,
-            maxSportLight: 1000,
-            drawOpMin: 0,
-            drawOpMax: Number.MAX_SAFE_INTEGER,
-            drawTrMin: 0,
-            drawTrMax: Number.MAX_SAFE_INTEGER,
-            zPrePass: false,
-            useLogDepth: false,
-            useCompressGBuffer: false,
-            gi: false,
-            postProcessing: {
-                bloom: {
-                    downSampleStep: 3,
-                    downSampleBlurSize: 9,
-                    downSampleBlurSigma: 1.0,
-                    upSampleBlurSize: 9,
-                    upSampleBlurSigma: 1.0,
-                    luminanceThreshole: 1.0,
-                    bloomIntensity: 1.0,
-                    hdr: 1.0
+    /** Factory for the baseline EngineSetting. Returns a fresh deep copy
+     *  so per-instance mutations never bleed into sibling engines. Class
+     *  instances (Color) are constructed fresh too. */
+    private static _defaultSetting(): EngineSetting {
+        return {
+            useRTE: false,
+            RTEScale: 1.0,
+            doublePrecision: false,
+            occlusionQuery: { enable: true, debug: false },
+            pick: { enable: true, mode: `bound`, detail: `mesh` },
+            render: {
+                debug: false,
+                renderPassState: 4,
+                renderState_left: 5,
+                renderState_right: 5,
+                renderState_split: 0.5,
+                quadScale: 1,
+                hdrExposure: 1.5,
+                debugQuad: -1,
+                maxPointLight: 1000,
+                maxDirectLight: 4,
+                maxSportLight: 1000,
+                drawOpMin: 0,
+                drawOpMax: Number.MAX_SAFE_INTEGER,
+                drawTrMin: 0,
+                drawTrMax: Number.MAX_SAFE_INTEGER,
+                zPrePass: false,
+                useLogDepth: false,
+                useCompressGBuffer: false,
+                gi: false,
+                postProcessing: {
+                    bloom: {
+                        downSampleStep: 3,
+                        downSampleBlurSize: 9,
+                        downSampleBlurSigma: 1.0,
+                        upSampleBlurSize: 9,
+                        upSampleBlurSigma: 1.0,
+                        luminanceThreshole: 1.0,
+                        bloomIntensity: 1.0,
+                        hdr: 1.0
+                    },
+                    globalFog: {
+                        debug: false,
+                        enable: false,
+                        fogType: 0.0,
+                        fogHeightScale: 0.1,
+                        start: 400,
+                        end: 10,
+                        density: 0.02,
+                        ins: 0.5,
+                        skyFactor: 0.5,
+                        skyRoughness: 0.4,
+                        overrideSkyFactor: 0.8,
+                        fogColor: new Color(96 / 255, 117 / 255, 133 / 255, 1),
+                        falloff: 0.7,
+                        rayLength: 200.0,
+                        scatteringExponent: 2.7,
+                        dirHeightLine: 10.0,
+                    },
+                    godRay: {
+                        blendColor: true,
+                        rayMarchCount: 16,
+                        scatteringExponent: 5,
+                        intensity: 0.5
+                    },
+                    ssao: { enable: false, radius: 0.15, bias: -0.1, aoPower: 2.0, debug: true },
+                    outline: { enable: false, strength: 1, groupCount: 4, outlinePixel: 2, fadeOutlinePixel: 4, textureScale: 1, useAddMode: false, debug: true },
+                    taa: { enable: false, jitterSeedCount: 8, blendFactor: 0.1, sharpFactor: 0.6, sharpPreBlurFactor: 0.5, temporalJitterScale: 0.13, debug: true },
+                    gtao: { enable: false, darkFactor: 1.0, maxDistance: 5.0, maxPixel: 50.0, rayMarchSegment: 6, multiBounce: false, usePosFloat32: true, blendColor: true, debug: true },
+                    ssr: { enable: false, pixelRatio: 1, fadeEdgeRatio: 0.2, rayMarchRatio: 0.5, fadeDistanceMin: 600, fadeDistanceMax: 2000, roughnessThreshold: 0.5, powDotRN: 0.2, mixThreshold: 0.1, debug: true },
+                    fxaa: { enable: false },
+                    depthOfView: { enable: false, iterationCount: 3, pixelOffset: 1.0, near: 150, far: 300 },
                 },
-                globalFog: {
-                    debug: false,
-                    enable: false,
-                    fogType: 0.0,
-                    fogHeightScale: 0.1,
-                    start: 400,
-                    end: 10,
-                    density: 0.02,
-                    ins: 0.5,
-                    skyFactor: 0.5,
-                    skyRoughness: 0.4,
-                    overrideSkyFactor: 0.8,
-                    fogColor: new Color(96 / 255, 117 / 255, 133 / 255, 1),
-                    falloff: 0.7,
-                    rayLength: 200.0,
-                    scatteringExponent: 2.7,
-                    dirHeightLine: 10.0,
-                },
-                godRay: {
-                    blendColor: true,
-                    rayMarchCount: 16,
-                    scatteringExponent: 5,
-                    intensity: 0.5
-                },
-                ssao: { enable: false, radius: 0.15, bias: -0.1, aoPower: 2.0, debug: true },
-                outline: { enable: false, strength: 1, groupCount: 4, outlinePixel: 2, fadeOutlinePixel: 4, textureScale: 1, useAddMode: false, debug: true },
-                taa: { enable: false, jitterSeedCount: 8, blendFactor: 0.1, sharpFactor: 0.6, sharpPreBlurFactor: 0.5, temporalJitterScale: 0.13, debug: true },
-                gtao: { enable: false, darkFactor: 1.0, maxDistance: 5.0, maxPixel: 50.0, rayMarchSegment: 6, multiBounce: false, usePosFloat32: true, blendColor: true, debug: true },
-                ssr: { enable: false, pixelRatio: 1, fadeEdgeRatio: 0.2, rayMarchRatio: 0.5, fadeDistanceMin: 600, fadeDistanceMax: 2000, roughnessThreshold: 0.5, powDotRN: 0.2, mixThreshold: 0.1, debug: true },
-                fxaa: { enable: false },
-                depthOfView: { enable: false, iterationCount: 3, pixelOffset: 1.0, near: 150, far: 300 },
             },
-        },
-        shadow: {
-            enable: true, type: 'HARD', pointShadowBias: 0.0005, shadowSize: 2048, pointShadowSize: 1024,
-            shadowSoft: 0.005, shadowBound: 100, shadowBias: 0.05, needUpdate: true, autoUpdate: true,
-            updateFrameRate: 2, csmMargin: 0.1, csmScatteringExp: 0.7, csmAreaScale: 0.4,
-            maxCascades: 4, maxShadowMapNum: 8, maxShadowMapWidth: 2048, maxShadowMapHeight: 2048, debug: false,
-        },
-        gi: {
-            enable: false, offsetX: 0, offsetY: 0, offsetZ: 0, probeSpace: 64, probeXCount: 4, probeYCount: 2,
-            probeZCount: 4, probeSize: 32, probeSourceTextureSize: 2048, octRTMaxSize: 2048, octRTSideSize: 16,
-            maxDistance: 64 * 1.73, normalBias: 0.25, depthSharpness: 1, hysteresis: 0.98, lerpHysteresis: 0.01,
-            irradianceChebyshevBias: 0.01, rayNumber: 144, irradianceDistanceBias: 32, indirectIntensity: 1.0,
-            ddgiGamma: 2.2, bounceIntensity: 0.025, probeRoughness: 1, realTimeGI: false, debug: false, autoRenderProbe: false,
-        },
-        sky: { type: 'HDRSKY', sky: null, skyExposure: 1.0, defaultFar: 65536, defaultNear: 1 },
-        light: { maxLight: 4096 },
-        material: { materialChannelDebug: false, materialDebug: false },
-        loader: { numConcurrent: 20 },
-        reflectionSetting: { reflectionProbeMaxCount: 8, reflectionProbeSize: 256, width: 256 * 6, height: 8 * 256, enable: true }
-    };
+            shadow: {
+                enable: true, type: 'HARD', shadowSize: 2048, pointShadowSize: 1024,
+                shadowSoft: 0.005, needUpdate: true, autoUpdate: true,
+                updateFrameRate: 2, csmMargin: 0.1, csmScatteringExp: 0.7, csmAreaScale: 0.4,
+                maxCascades: 4, maxShadowMapNum: 8, maxShadowMapWidth: 2048, maxShadowMapHeight: 2048, debug: false,
+            },
+            gi: {
+                enable: false, offsetX: 0, offsetY: 0, offsetZ: 0, probeSpace: 64, probeXCount: 4, probeYCount: 2,
+                probeZCount: 4, probeSize: 32, probeSourceTextureSize: 2048, octRTMaxSize: 2048, octRTSideSize: 16,
+                maxDistance: 64 * 1.73, normalBias: 0.25, depthSharpness: 1, hysteresis: 0.98, lerpHysteresis: 0.01,
+                irradianceChebyshevBias: 0.01, rayNumber: 144, irradianceDistanceBias: 32, indirectIntensity: 1.0,
+                ddgiGamma: 2.2, bounceIntensity: 0.025, probeRoughness: 1, realTimeGI: false, debug: false, autoRenderProbe: false,
+            },
+            sky: { type: 'HDRSKY', sky: null, skyExposure: 1.0, defaultFar: 65536, defaultNear: 1 },
+            light: { maxLight: 4096 },
+            material: { materialChannelDebug: false, materialDebug: false },
+            loader: { numConcurrent: 20 },
+            reflectionSetting: { reflectionProbeMaxCount: 8, reflectionProbeSize: 256, width: 256 * 6, height: 8 * 256, enable: true }
+        };
+    }
 
     /**
      * Per-Context3D Res accessor. Pass the owning engine's `context3D`
@@ -165,7 +206,7 @@ export class Engine3D {
             return Engine3D._instances.values().next().value!.context3D;
         }
         if (Engine3D._instances.size === 0) {
-            throw new Error(`Engine3D.resFor: no engine created yet — call Engine3D.create() first.`);
+            throw new Error(`Engine3D.resFor: no engine created yet — call Engine3D.init() first.`);
         }
         throw new Error(
             `Engine3D.resFor: ${Engine3D._instances.size} engines exist — pass ctx explicitly so resources bind to the intended device.`
@@ -183,6 +224,15 @@ export class Engine3D {
     // -------- instance fields --------
     public readonly context3D: Context3D;
     public readonly id: number;
+    /**
+     * Per-engine configuration tree. Defaults live in `Engine3D._defaultSetting()`;
+     * overrides come from `descriptor.setting` at `Engine3D.init()` time and
+     * are deep-merged on top. Mutating at runtime (`engine.setting.shadow.enable = false`)
+     * takes effect on the next frame for values read each frame; values baked
+     * into GPU resources at `create()` time (shadow map dimensions, reflection
+     * probe size, etc.) need re-creation.
+     */
+    public readonly setting: EngineSetting;
     public views: View3D[] = [];
     public renderJobs: Map<View3D, RendererJob> = new Map();
     public inputSystem: InputSystem;
@@ -207,31 +257,46 @@ export class Engine3D {
 
     private static _nextId: number = 0;
 
-    constructor() {
+    constructor(settingOverride?: EngineSettingInit) {
         this.id = ++Engine3D._nextId;
+        this.setting = _deepMerge(Engine3D._defaultSetting(), settingOverride);
+        // Derive reflection attachment dimensions from probe size / count.
+        // Done per-instance so each engine sizes its reflection GBuffer to
+        // its own settings.
+        this.setting.reflectionSetting.width = this.setting.reflectionSetting.reflectionProbeSize * 6;
+        this.setting.reflectionSetting.height = this.setting.reflectionSetting.reflectionProbeSize * this.setting.reflectionSetting.reflectionProbeMaxCount;
         this.context3D = new Context3D();
+        this.context3D.engine = this;
     }
 
-    /** Multi-instance factory. Each returned engine owns its own canvas & render loop. */
-    public static async create(descriptor: { canvasConfig?: CanvasConfig; beforeRender?: Function; renderLoop?: Function; lateRender?: Function, engineSetting?: EngineSetting } = {}): Promise<Engine3D> {
-        await Engine3D._initSharedSubsystems(descriptor.engineSetting);
-        let inst = new Engine3D();
+    /** Multi-instance factory. Each returned engine owns its own canvas, render
+     *  loop, and `setting` tree. Pass any subset of EngineSetting via
+     *  `descriptor.setting` — it is deep-merged onto the defaults. */
+    public static async init(descriptor: {
+        canvasConfig?: CanvasConfig;
+        beforeRender?: Function;
+        renderLoop?: Function;
+        lateRender?: Function;
+        setting?: EngineSettingInit;
+    } = {}): Promise<Engine3D> {
+        let inst = new Engine3D(descriptor.setting);
+        await Engine3D._initSharedSubsystems(inst.setting);
         await inst._initInstance(descriptor);
         return inst;
     }
 
-    /** One-time process-wide init (shader text templates, wasm matrix pool, settings). */
-    private static async _initSharedSubsystems(settingOverride?: EngineSetting) {
-        if (settingOverride) this.setting = { ...this.setting, ...settingOverride };
+    /** One-time process-wide init (shader text templates, wasm matrix pool).
+     *  Runs exactly once, seeded from the first engine's setting — subsequent
+     *  engines inherit those process-wide choices (doublePrecision, shader
+     *  templates) regardless of their own setting. */
+    private static async _initSharedSubsystems(seedSetting: EngineSetting) {
         if (this._sharedInit) return;
         console.log('Engine Version', version);
         if (!window.isSecureContext) {
             console.warn('WebGPU is only supported in secure contexts (HTTPS or localhost)');
         }
-        await WasmMatrix.init(Matrix4.allocCount, this.setting.doublePrecision);
-        this.setting.reflectionSetting.width = this.setting.reflectionSetting.reflectionProbeSize * 6;
-        this.setting.reflectionSetting.height = this.setting.reflectionSetting.reflectionProbeSize * this.setting.reflectionSetting.reflectionProbeMaxCount;
-        ShaderLib.init();
+        await WasmMatrix.init(Matrix4.allocCount, seedSetting.doublePrecision);
+        ShaderLib.init(seedSetting);
         ShadowLightsCollect.init();
         this._sharedInit = true;
     }
@@ -252,8 +317,8 @@ export class Engine3D {
         GBufferFrame.getGBufferFrame(
             GBufferFrame.reflections_GBuffer,
             this.context3D,
-            Engine3D.setting.reflectionSetting.width,
-            Engine3D.setting.reflectionSetting.height,
+            this.setting.reflectionSetting.width,
+            this.setting.reflectionSetting.height,
             false
         );
 
@@ -345,11 +410,11 @@ export class Engine3D {
         let renderJob = new ForwardRenderJob(view);
         this.renderJobs.set(view, renderJob);
 
-        if (Engine3D.setting.pick.mode == `pixel`) {
+        if (this.setting.pick.mode == `pixel`) {
             let postProcessing = view.scene.getOrAddComponent(PostProcessingComponent);
             postProcessing.addPost(FXAAPost);
         }
-        if (Engine3D.setting.pick.mode == `pixel` || Engine3D.setting.pick.mode == `bound`) {
+        if (this.setting.pick.mode == `pixel` || this.setting.pick.mode == `bound`) {
             view.enablePick = true;
         }
         return renderJob;
@@ -499,7 +564,7 @@ export class Engine3D {
 
         if (this._renderLoop) await this._renderLoop();
 
-        WasmMatrix.updateAllContinueTransform(0, Matrix4.useCount, Time.delta, Engine3D.setting.useRTE ? Engine3D.setting.RTEScale : 0.0);
+        WasmMatrix.updateAllContinueTransform(0, Matrix4.useCount, Time.delta, this.setting.useRTE ? this.setting.RTEScale : 0.0);
         let globalMatrixBindGroup = GlobalBindGroup.getModelMatrixBindGroup(this.context3D);
         globalMatrixBindGroup.writeBuffer(Matrix4.useCount * 16);
 

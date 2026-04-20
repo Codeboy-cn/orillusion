@@ -1,5 +1,4 @@
 import { Camera3D } from '../core/Camera3D';
-import { Engine3D } from '../Engine3D';
 import { MouseCode } from '../event/MouseCode';
 import { CEventDispatcher } from '../event/CEventDispatcher';
 import { Ray } from '../math/Ray';
@@ -79,7 +78,8 @@ export class PickFire extends CEventDispatcher {
     public start() {
         const input = this._inputSystem();
         if (!input) return;
-        if (Engine3D.setting.pick.enable) {
+        const pick = this._view.engine3D.setting.pick;
+        if (pick.enable) {
             input.addEventListener(PointerEvent3D.POINTER_DOWN, this.onTouchStart, this);
             input.addEventListener(PointerEvent3D.POINTER_UP, this.onTouchEnd, this);
             input.addEventListener(PointerEvent3D.POINTER_CLICK, this.onTouchOnce, this);
@@ -87,7 +87,7 @@ export class PickFire extends CEventDispatcher {
             input.addEventListener(PointerEvent3D.POINTER_MOVE, this.onTouchMove, this);
         }
 
-        if (Engine3D.setting.pick.mode == `pixel`) {
+        if (pick.mode == `pixel`) {
             this._pickCompute = new PickCompute();
             this._pickCompute.init(this._view);
         }
@@ -152,7 +152,7 @@ export class PickFire extends CEventDispatcher {
     private _lastFocus: ColliderComponent;
 
     private getPickInfo() {
-        if(Engine3D.setting.pick.mode == `pixel`) {
+        if(this._view.engine3D.setting.pick.mode == `pixel`) {
             return {
                 worldPos: this._pickCompute.getPickWorldPosition(),
                 worldNormal: this._pickCompute.getPickWorldNormal(),
@@ -263,7 +263,8 @@ export class PickFire extends CEventDispatcher {
 
     private pick(camera: Camera3D) {
         this._interestList.length = 0;
-        if (Engine3D.setting.pick.mode == `pixel`) {
+        const mode = this._view.engine3D.setting.pick.mode;
+        if (mode == `pixel`) {
             this._pickCompute.compute(this._view);
             let meshID = this._pickCompute.getPickMeshID();
             let iterator = this.mouseEnableMap.get(meshID);
@@ -272,7 +273,7 @@ export class PickFire extends CEventDispatcher {
                 let distance = Vector3.distance(position, this.ray.origin);
                 this._interestList.push({ distance: distance, collider: iterator, intersectPoint: position });
             }
-        } else if (Engine3D.setting.pick.mode == `bound`) {
+        } else if (mode == `bound`) {
             const input = this._inputSystem();
             this.ray = camera.screenPointToRay(input.mouseX, input.mouseY);
             let intersect: HitInfo;

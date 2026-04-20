@@ -1,5 +1,4 @@
-﻿import { Engine3D } from "../../../../Engine3D";
-import { CEvent } from "../../../../event/CEvent";
+﻿import { CEvent } from "../../../../event/CEvent";
 import { CEventDispatcher } from "../../../../event/CEventDispatcher";
 import { RenderTexture } from "../../../../textures/RenderTexture";
 import { bindCtx, Context3D } from "../../../graphics/webGpu/Context3D";
@@ -22,7 +21,7 @@ export class DDGIIrradianceGPUBufferReader extends CEventDispatcher {
         this.probeRenderer = probeRender;
         this.srcColorMap = colorMap;
         this.srcDepthMap = depthMap;
-        let giSetting = Engine3D.setting.gi;
+        let giSetting = ctx.engine!.setting.gi;
         let pixelCount = giSetting.octRTMaxSize * giSetting.octRTMaxSize;
 
         bindCtx(this, ctx);

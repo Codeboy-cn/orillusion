@@ -13,7 +13,9 @@ export class ShaderState {
     public frontFace?: GPUFrontFace = `ccw`;
     public cullMode?: GPUCullMode = GPUCullMode.back;
     public topology?: GPUPrimitiveTopology = GPUPrimitiveTopology.triangle_list;
-    public depthBias?: number = 10;
+    public depthBias?: number = 0;
+    public depthBiasSlopeScale?: number = 0;
+    public depthBiasClamp?: number = 0;
 
     public useLight: boolean = false;
     public useProbe: boolean = false;
@@ -55,6 +57,12 @@ export class ShaderState {
         }
         if (values.has('depthBias')) {
             this.depthBias = values.get('depthBias');
+        }
+        if (values.has('depthBiasSlopeScale')) {
+            this.depthBiasSlopeScale = values.get('depthBiasSlopeScale');
+        }
+        if (values.has('depthBiasClamp')) {
+            this.depthBiasClamp = values.get('depthBiasClamp');
         }
 
         if (values.has('useLight')) {

@@ -23,7 +23,7 @@ import { CResizeEvent } from '../../../event/CResizeEvent';
  * Temporal AA
  * ```
  *       //setting
- *       let cfg = {@link Engine3D.setting.render.postProcessing.taa};
+ *       let cfg = {@link this.setting.render.postProcessing.taa};
  *         let view = new View3D();
         view.scene = this.scene;
         view.camera = mainCamera;
@@ -70,7 +70,7 @@ export class TAAPost extends PostBase {
      * @internal
      */
     onAttach(view: View3D) {
-        Engine3D.setting.render.postProcessing.taa.enable = true;
+        this.setting.render.postProcessing.taa.enable = true;
         view.camera.enableJitterProjection(true);
 
         this.createGUI();
@@ -79,63 +79,63 @@ export class TAAPost extends PostBase {
      * @internal
      */
     onDetach(view: View3D) {
-        Engine3D.setting.render.postProcessing.taa.enable = false;
+        this.setting.render.postProcessing.taa.enable = false;
         view.camera.enableJitterProjection(false);
     }
 
     public get jitterSeedCount() {
-        let setting = Engine3D.setting.render.postProcessing.taa;
+        let setting = this.setting.render.postProcessing.taa;
         return setting.jitterSeedCount;
     }
 
     public set jitterSeedCount(value: number) {
         value = clamp(value, 2, 32);
         value = Math.round(value);
-        let setting = Engine3D.setting.render.postProcessing.taa;
+        let setting = this.setting.render.postProcessing.taa;
         setting.jitterSeedCount = value;
     }
 
     public get blendFactor() {
-        let setting = Engine3D.setting.render.postProcessing.taa;
+        let setting = this.setting.render.postProcessing.taa;
         return setting.blendFactor;
     }
 
     public set blendFactor(value: number) {
         value = clamp(value, 0, 1);
-        let setting = Engine3D.setting.render.postProcessing.taa;
+        let setting = this.setting.render.postProcessing.taa;
         setting.blendFactor = value;
     }
 
     public get sharpFactor() {
-        let setting = Engine3D.setting.render.postProcessing.taa;
+        let setting = this.setting.render.postProcessing.taa;
         return setting.sharpFactor;
     }
 
     public set sharpFactor(value: number) {
         value = clamp(value, 0.1, 0.99);
-        let setting = Engine3D.setting.render.postProcessing.taa;
+        let setting = this.setting.render.postProcessing.taa;
         setting.sharpFactor = value;
     }
 
     public get sharpPreBlurFactor() {
-        let setting = Engine3D.setting.render.postProcessing.taa;
+        let setting = this.setting.render.postProcessing.taa;
         return setting.sharpPreBlurFactor;
     }
 
     public set sharpPreBlurFactor(value: number) {
         value = clamp(value, 0.1, 0.99);
-        let setting = Engine3D.setting.render.postProcessing.taa;
+        let setting = this.setting.render.postProcessing.taa;
         setting.sharpPreBlurFactor = value;
     }
 
     public get temporalJitterScale() {
-        let setting = Engine3D.setting.render.postProcessing.taa;
+        let setting = this.setting.render.postProcessing.taa;
         return setting.temporalJitterScale;
     }
 
     public set temporalJitterScale(value: number) {
         value = clamp(value, 0, 1);
-        let setting = Engine3D.setting.render.postProcessing.taa;
+        let setting = this.setting.render.postProcessing.taa;
         setting.temporalJitterScale = value;
     }
 
@@ -229,7 +229,7 @@ export class TAAPost extends PostBase {
             this.rendererPassState = WebGPUDescriptorCreator.createRendererPassState(view.engine3D.context3D, this.rtFrame, null);
         }
 
-        let cfg = Engine3D.setting.render.postProcessing.taa;
+        let cfg = this.setting.render.postProcessing.taa;
         this.taaSetting.setMatrix('preProjMatrix', this.preProjMatrix);
         this.taaSetting.setMatrix('preViewMatrix', this.preViewMatrix);
         this.taaSetting.setFloat('jitterFrameIndex', view.camera.jitterFrameIndex);

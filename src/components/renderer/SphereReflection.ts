@@ -13,7 +13,6 @@ import { MeshRenderer } from './MeshRenderer';
 import { GBufferFrame } from '../../gfx/renderJob/frame/GBufferFrame';
 import { ReflectionMaterial } from '../../materials/ReflectionMaterial';
 import { BoundingSphere } from '../../core/bound/BoundingSphere';
-import { Engine3D } from '../../Engine3D';
 
 
 /**
@@ -39,7 +38,7 @@ export class SphereReflection extends Reflection {
         mr.geometry = new SphereGeometry(25, 30, 30);
         // mr.material = new LitMaterial();
 
-        let reflectionSetting = Engine3D.setting.reflectionSetting;
+        let reflectionSetting = view.engine3D.setting.reflectionSetting;
         let reflectionsGBufferFrame = GBufferFrame.getGBufferFrame(GBufferFrame.reflections_GBuffer, view.engine3D.context3D, reflectionSetting.width, reflectionSetting.height);
         let mat = new ReflectionMaterial();
         mat.reflectionIndex = index;

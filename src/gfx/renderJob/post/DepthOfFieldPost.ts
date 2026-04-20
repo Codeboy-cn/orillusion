@@ -20,7 +20,7 @@ import { DepthOfView_cs } from '../../../assets/shader/compute/DepthOfView_cs';
  * A common post-processing effect that simulates the focusing characteristics of a camera lens.
  * ```
  *       //Configure parameters related to depth of field
- *       let cfg = {@link Engine3D.setting.render.postProcessing.depthOfView};
+ *       let cfg = {@link this.setting.render.postProcessing.depthOfView};
  *       cfg.near = 150;
  *       cfg.far = 300;
  *       cfg.pixelOffset = 1.0;
@@ -63,52 +63,52 @@ export class DepthOfFieldPost extends PostBase {
      * @internal
      */
     public onAttach(view: View3D,) {
-        Engine3D.setting.render.postProcessing.depthOfView.enable = true;
+        this.setting.render.postProcessing.depthOfView.enable = true;
     }
     /**
      * @internal
      */
     public onDetach(view: View3D,) {
-        Engine3D.setting.render.postProcessing.depthOfView.enable = false;
+        this.setting.render.postProcessing.depthOfView.enable = false;
     }
 
     public get pixelOffset() {
-        let setting = Engine3D.setting.render.postProcessing.depthOfView;
+        let setting = this.setting.render.postProcessing.depthOfView;
         return setting.pixelOffset;
     }
 
     public set pixelOffset(value: number) {
         value = Math.max(0, value);
-        let setting = Engine3D.setting.render.postProcessing.depthOfView;
+        let setting = this.setting.render.postProcessing.depthOfView;
         setting.pixelOffset = value;
     }
 
     public get near() {
-        let setting = Engine3D.setting.render.postProcessing.depthOfView;
+        let setting = this.setting.render.postProcessing.depthOfView;
         return setting.near;
     }
 
     public set near(value: number) {
         value = Math.max(0, value);
-        let setting = Engine3D.setting.render.postProcessing.depthOfView;
+        let setting = this.setting.render.postProcessing.depthOfView;
         setting.near = value;
     }
 
     public get far() {
-        let setting = Engine3D.setting.render.postProcessing.depthOfView;
+        let setting = this.setting.render.postProcessing.depthOfView;
         return setting.far;
     }
 
     public set far(value: number) {
         value = Math.max(0, value);
-        let setting = Engine3D.setting.render.postProcessing.depthOfView;
+        let setting = this.setting.render.postProcessing.depthOfView;
         setting.far = value;
     }
 
     private createBlurCompute() {
         this.blurSettings = [];
         this.blurComputes = [];
-        let cfg = Engine3D.setting.render.postProcessing.depthOfView;
+        let cfg = this.setting.render.postProcessing.depthOfView;
 
         for (let i = 0; i < cfg.iterationCount; i++) {
             let blurSetting: UniformGPUBuffer = new UniformGPUBuffer(4);
@@ -178,7 +178,7 @@ export class DepthOfFieldPost extends PostBase {
         }
         
 
-        let cfg = Engine3D.setting.render.postProcessing.depthOfView;
+        let cfg = this.setting.render.postProcessing.depthOfView;
         cfg.far = Math.max(cfg.near, cfg.far) + 0.0001;
         for (let i = 0; i < cfg.iterationCount; i++) {
             let blurCompute = this.blurComputes[i];
@@ -197,7 +197,7 @@ export class DepthOfFieldPost extends PostBase {
         let presentationSize = this._boundCtx!.presentationSize;
         let w = presentationSize[0];
         let h = presentationSize[1];
-        let cfg = Engine3D.setting.render.postProcessing.depthOfView;
+        let cfg = this.setting.render.postProcessing.depthOfView;
         cfg.far = Math.max(cfg.near, cfg.far) + 0.0001;
 
         this.blurTexture1.resize(w, h);

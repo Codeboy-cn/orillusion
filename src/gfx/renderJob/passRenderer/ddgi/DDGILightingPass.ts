@@ -22,7 +22,7 @@ export class DDGILightingPass {
 
     public lightingTexture: RenderTexture;
     constructor(ctx?: Context3D) {
-        let giSetting = Engine3D.setting.gi;
+        let giSetting = ctx!.engine!.setting.gi;
         this.lightingTexture = new RenderTexture(giSetting.probeSourceTextureSize, giSetting.probeSourceTextureSize, GPUTextureFormat.rgba16float, false, GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.STORAGE_BINDING, 1, 0, true, true, ctx);
     }
 
@@ -60,7 +60,7 @@ export class DDGILightingPass {
         // EntityCollect.instance.sky ? EntityCollect.instance.sky.materials : defaultRes.defaultSky
         const gpu = view.engine3D.context3D.gpuContext;
         let command = gpu.beginCommandEncoder();
-        let giSetting = Engine3D.setting.gi;
+        let giSetting = view.engine3D.setting.gi;
 
         this.computeShader.workerSizeX = giSetting.probeSourceTextureSize / 8;
         this.computeShader.workerSizeY = giSetting.probeSourceTextureSize / 8;

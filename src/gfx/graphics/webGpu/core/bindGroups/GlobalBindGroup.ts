@@ -71,7 +71,7 @@ export class GlobalBindGroup {
 
         let lightEntries = this._lightEntriesMap.get(scene);
         if (!lightEntries) {
-            lightEntries = new LightEntries();
+            lightEntries = new LightEntries(scene);
             this._lightEntriesMap.set(scene, lightEntries);
         }
         return this._lightEntriesMap.get(scene);

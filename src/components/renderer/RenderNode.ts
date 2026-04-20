@@ -23,6 +23,7 @@ import { RenderLayer } from "../../gfx/renderJob/config/RenderLayer";
 import { RenderShaderCompute } from "../../gfx/graphics/webGpu/compute/RenderShaderCompute";
 import { PassType } from "../../gfx/renderJob/passRenderer/state/PassType";
 import { ProfilerUtil } from "../../util/ProfilerUtil";
+import { bindCtx } from "../../gfx/graphics/webGpu/Context3D";
 
 
 /**
@@ -262,6 +263,12 @@ export class RenderNode extends ComponentBase {
     }
 
     protected initPipeline() {
+        // Per-instance setting access needs a Context3D; defer until this node
+        // is attached to a scene whose view is bound to an engine. onEnable()
+        // will retry when the component reaches a scene.
+        const ctx = this.transform?.view3D?.engine3D?.context3D;
+        if (!ctx) return;
+
         if (this._geometry && this._materials.length > 0) {
             for (let j = 0; j < this._materials.length; j++) {
                 const material = this._materials[j];
@@ -270,6 +277,7 @@ export class RenderNode extends ComponentBase {
                     const pass = passList[i];
                     // let shader = RenderShader.getShader(pass.instanceID);
                     if (!pass.shaderReflection) {
+                        bindCtx(pass, ctx);
                         pass.preCompile(this._geometry);
                     }
                     this._geometry.generate(pass.shaderReflection);
@@ -327,7 +335,8 @@ export class RenderNode extends ComponentBase {
 
         // add if alpha == 1
         let ignoreDepthPass = RendererMaskUtil.hasMask(this.rendererMask, RendererMask.IgnoreDepthPass);
-        if (!ignoreDepthPass && Engine3D.setting.render.zPrePass) {
+        const zPrePass = this.transform.view3D?.engine3D?.setting.render.zPrePass ?? false;
+        if (!ignoreDepthPass && zPrePass) {
             for (let i = 0; i < this.materials.length; i++) {
                 const mat = this.materials[i];
                 PassGenerate.createDepthPass(this, mat.shader);

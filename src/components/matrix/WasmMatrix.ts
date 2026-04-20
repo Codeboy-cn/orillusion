@@ -1,10 +1,10 @@
-import { Engine3D, Matrix4 } from '../..';
+import { Matrix4 } from '../..';
 import matrix from './matrix';
 
 export type FloatArray = Float32Array | Float64Array;
 
 export function CreateFloatArray(buffer: ArrayBufferLike, byteOffset?: number, length?: number) {
-    if (Engine3D.setting.doublePrecision) 
+    if (WasmMatrix.useDoublePrecision)
         return new Float64Array(buffer, byteOffset, length);
     return new Float32Array(buffer, byteOffset, length);
 }

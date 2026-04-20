@@ -13,6 +13,7 @@ import { Reference } from '../../../util/Reference';
 import { CResizeEvent } from '../../../event/CResizeEvent';
 import { bindCtx, Context3D } from '../../graphics/webGpu/Context3D';
 import { RendererPassState } from '../passRenderer/state/RendererPassState';
+import { EngineSetting } from '../../../setting/EngineSetting';
 /**
  * @internal
  * Base class for post-processing effects
@@ -41,6 +42,13 @@ export class PostBase {
             this._resourceCreated = true;
             this.createResource(view);
         }
+    }
+
+    /** Per-engine setting tree. Safe to use from any Post method body and
+     *  from sample code after `addPost(...)` — `_boundCtx` is set before
+     *  any `onAttach` / `render` / getter access by user code. */
+    protected get setting(): EngineSetting {
+        return this._boundCtx!.engine!.setting;
     }
 
     private _resizeListenerCtx: Context3D | null = null;

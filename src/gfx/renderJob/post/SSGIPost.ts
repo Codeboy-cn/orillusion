@@ -27,7 +27,7 @@ import { Combine_cs, Vector3, mergeFunctions } from '../../..';
  * Let the intersection of the object and the object imitate the effect of the light being cross-occluded
  * ```
  * gtao setting
- * let cfg = {@link Engine3D.setting.render.postProcessing.gtao};
+ * let cfg = engine.setting.render.postProcessing.gtao;
  *```
  * @group Post Effects
  */
@@ -78,8 +78,6 @@ export class SSGIPost extends PostBase {
      */
     onAttach(view: View3D,) {
         this.view = view;
-        // Engine3D.setting.render.useCompressGBuffer = true;
-
 
         view.camera.transform.onPositionChange = view.camera.transform.onPositionChange ?
             mergeFunctions(view.camera.transform.onPositionChange, (a, b) => this.onCameraChange(a, b)) : (a, b) => this.onCameraChange(a, b);
@@ -94,7 +92,6 @@ export class SSGIPost extends PostBase {
      * @internal
      */Render
     onDetach(view: View3D,) {
-        // Engine3D.setting.render.useCompressGBuffer = false;
     }
 
     set ins(v: number) {

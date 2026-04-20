@@ -81,7 +81,8 @@ export class Scene3D extends Object3D {
         const sky = EntityCollect.instance.getSky(this);
         if (sky && `exposure` in sky) {
             (sky as any).exposure = value;
-            Engine3D.setting.sky.skyExposure = value;
+            const setting = this.view?.engine3D?.setting;
+            if (setting) setting.sky.skyExposure = value;
         }
     }
 

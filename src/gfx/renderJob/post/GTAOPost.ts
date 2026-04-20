@@ -21,7 +21,7 @@ import { GTAO_cs } from '../../../assets/shader/compute/GTAO_cs';
  * Let the intersection of the object and the object imitate the effect of the light being cross-occluded
  * ```
  * gtao setting
- * let cfg = {@link Engine3D.setting.render.postProcessing.gtao};
+ * let cfg = {@link this.setting.render.postProcessing.gtao};
  *```
  * @group Post Effects
  */
@@ -61,87 +61,87 @@ export class GTAOPost extends PostBase {
      * @internal
      */
     onAttach(view: View3D,) {
-        Engine3D.setting.render.postProcessing.gtao.enable = true;
+        this.setting.render.postProcessing.gtao.enable = true;
     }
     /**
      * @internal
      */Render
     onDetach(view: View3D,) {
-        Engine3D.setting.render.postProcessing.gtao.enable = false;
+        this.setting.render.postProcessing.gtao.enable = false;
     }
 
     public get maxDistance() {
-        let setting = Engine3D.setting.render.postProcessing.gtao;
+        let setting = this.setting.render.postProcessing.gtao;
         return setting.maxDistance;
     }
 
     public set maxDistance(value: number) {
         value = clamp(value, 0.1, 50);
-        let setting = Engine3D.setting.render.postProcessing.gtao;
+        let setting = this.setting.render.postProcessing.gtao;
         setting.maxDistance = value;
     }
 
     public get maxPixel() {
-        let setting = Engine3D.setting.render.postProcessing.gtao;
+        let setting = this.setting.render.postProcessing.gtao;
         return setting.maxPixel;
     }
 
     public set maxPixel(value: number) {
         value = clamp(value, 5, 100);
-        let setting = Engine3D.setting.render.postProcessing.gtao;
+        let setting = this.setting.render.postProcessing.gtao;
         setting.maxPixel = value;
     }
 
     public get darkFactor() {
-        let setting = Engine3D.setting.render.postProcessing.gtao;
+        let setting = this.setting.render.postProcessing.gtao;
         return setting.darkFactor;
     }
 
     public set darkFactor(value: number) {
         value = clamp(value, 0.01, 1);
-        let setting = Engine3D.setting.render.postProcessing.gtao;
+        let setting = this.setting.render.postProcessing.gtao;
         setting.darkFactor = value;
     }
 
 
     public get rayMarchSegment() {
-        let setting = Engine3D.setting.render.postProcessing.gtao;
+        let setting = this.setting.render.postProcessing.gtao;
         return setting.rayMarchSegment;
     }
 
     public set rayMarchSegment(value: number) {
         value = clamp(value, 4, 10);
-        let setting = Engine3D.setting.render.postProcessing.gtao;
+        let setting = this.setting.render.postProcessing.gtao;
         setting.rayMarchSegment = value;
     }
 
     public get multiBounce() {
-        let setting = Engine3D.setting.render.postProcessing.gtao;
+        let setting = this.setting.render.postProcessing.gtao;
         return setting.multiBounce;
     }
 
     public set multiBounce(value: boolean) {
-        let setting = Engine3D.setting.render.postProcessing.gtao;
+        let setting = this.setting.render.postProcessing.gtao;
         setting.multiBounce = value;
     }
 
     public get blendColor() {
-        let setting = Engine3D.setting.render.postProcessing.gtao;
+        let setting = this.setting.render.postProcessing.gtao;
         return setting.blendColor;
     }
 
     public set blendColor(value: boolean) {
-        let setting = Engine3D.setting.render.postProcessing.gtao;
+        let setting = this.setting.render.postProcessing.gtao;
         setting.blendColor = value;
     }
 
     public get usePosFloat32() {
-        let setting = Engine3D.setting.render.postProcessing.gtao;
+        let setting = this.setting.render.postProcessing.gtao;
         return setting.usePosFloat32;
     }
 
     public set usePosFloat32(value: boolean) {
-        let setting = Engine3D.setting.render.postProcessing.gtao;
+        let setting = this.setting.render.postProcessing.gtao;
         setting.usePosFloat32 = value;
     }
 
@@ -206,7 +206,7 @@ export class GTAOPost extends PostBase {
             let globalUniform = GlobalBindGroup.getCameraGroup(view.camera);
             this.gtaoCompute.setUniformBuffer('globalUniform', globalUniform.uniformGPUBuffer);
         }
-        let cfg = Engine3D.setting.render.postProcessing.gtao;
+        let cfg = this.setting.render.postProcessing.gtao;
 
         this.directionsBuffer.setFloat32Array('array', this.randomDirection());
         this.directionsBuffer.apply();

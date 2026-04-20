@@ -1,4 +1,3 @@
-import { Engine3D } from '../../../Engine3D';
 import { View3D } from '../../../core/View3D';
 import { RTFrame } from '../frame/RTFrame';
 import { RendererJob } from './RendererJob';
@@ -31,7 +30,7 @@ export class OverlayRenderJob extends RendererJob {
         {
             let overlayColorPassRenderer = new OverlayColorPassRenderer();
 
-            if (Engine3D.setting.render.zPrePass && this.depthPassRenderer) {
+            if (this._view.engine3D.setting.render.zPrePass && this.depthPassRenderer) {
                 rtFrame.zPreTexture = this.depthPassRenderer.rendererPassState.depthTexture;
             }
 
@@ -39,7 +38,7 @@ export class OverlayRenderJob extends RendererJob {
             this.rendererMap.addRenderer(overlayColorPassRenderer);
         }
 
-        if (Engine3D.setting.render.debug) {
+        if (this._view.engine3D.setting.render.debug) {
             this.debug();
         }
     }

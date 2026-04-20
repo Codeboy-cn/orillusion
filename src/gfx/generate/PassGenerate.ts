@@ -10,12 +10,17 @@ import { CastShadowMaterialPass } from '../../materials/multiPass/CastShadowMate
 import { CastPointShadowMaterialPass } from '../../materials/multiPass/CastPointShadowMaterialPass';
 import { DepthMaterialPass } from '../../materials/multiPass/DepthMaterialPass';
 import { RenderShaderPass } from '../..';
+import { bindCtx, Context3D } from '../graphics/webGpu/Context3D';
 
 /**
  * @internal
  * @group GFX
  */
 export class PassGenerate {
+
+    private static _ctxOf(renderNode: RenderNode): Context3D | null {
+        return renderNode.transform?.view3D?.engine3D?.context3D ?? null;
+    }
 
     public static createGIPass(renderNode: RenderNode, shader: Shader) {
         if (RendererMaskUtil.hasMask(renderNode.rendererMask, RendererMask.Sky)) {
@@ -27,6 +32,8 @@ export class PassGenerate {
                 pass.cullMode = colorPass.cullMode;
                 pass.frontFace = colorPass.frontFace;
                 shader.addRenderPass(pass, 0);
+                const ctx = this._ctxOf(renderNode);
+                if (ctx) bindCtx(pass, ctx);
                 pass.preCompile(renderNode.geometry);
             }
 
@@ -55,6 +62,8 @@ export class PassGenerate {
 
                 pass.cullMode = colorPass.cullMode;
                 pass.frontFace = colorPass.frontFace;
+                const ctx = this._ctxOf(renderNode);
+                if (ctx) bindCtx(pass, ctx);
                 pass.preCompile(renderNode.geometry);
                 shader.addRenderPass(pass);
             }
@@ -97,6 +106,8 @@ export class PassGenerate {
                 // } else if (colorPass.cullMode == `front`) {
                 //     shadowPass.shaderState.cullMode = `back`;
                 // }
+                const ctxA = this._ctxOf(renderNode);
+                if (ctxA) bindCtx(shadowPass, ctxA);
                 shadowPass.preCompile(renderNode.geometry);
                 shader.addRenderPass(shadowPass);
             }
@@ -122,6 +133,8 @@ export class PassGenerate {
                         castPointShadowPass.setDefine(`USE_MORPHNORMALS`, useMorphNormals);
                     }
                     castPointShadowPass.shaderState.cullMode = `front`;
+                    const ctxB = this._ctxOf(renderNode);
+                    if (ctxB) bindCtx(castPointShadowPass, ctxB);
                     castPointShadowPass.preCompile(renderNode.geometry);
                 }
                 shader.addRenderPass(castPointShadowPass);
@@ -157,6 +170,8 @@ export class PassGenerate {
                     }
                     depthPass.cullMode = colorPass.cullMode;
                     depthPass.frontFace = colorPass.frontFace;
+                    const ctx = this._ctxOf(renderNode);
+                    if (ctx) bindCtx(depthPass, ctx);
                     depthPass.preCompile(renderNode.geometry);
                     shader.addRenderPass(depthPass);
                 }
@@ -198,6 +213,8 @@ export class PassGenerate {
 
                 pass.setDefine("USE_CASTREFLECTION", true);
 
+                const ctx = this._ctxOf(renderNode);
+                if (ctx) bindCtx(pass, ctx);
                 pass.preCompile(renderNode.geometry);
                 shader.addRenderPass(pass);
             }

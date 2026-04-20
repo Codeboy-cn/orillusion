@@ -2,9 +2,9 @@
 
 //TODO dynamic lights need fixed
 
-import { Engine3D } from "../../../../../../Engine3D";
 import { LightData } from "../../../../../../components/lights/LightData";
 import { Camera3D } from "../../../../../../core/Camera3D";
+import { Scene3D } from "../../../../../../core/Scene3D";
 import { View3D } from "../../../../../../core/View3D";
 import { MemoryInfo } from "../../../../../../core/pool/memory/MemoryInfo";
 import { Vector3 } from "../../../../../../math/Vector3";
@@ -21,18 +21,19 @@ export class LightEntries {
     public irradianceVolume: DDGIIrradianceVolume;
     private _lightList: MemoryInfo[] = [];
 
-    constructor() {
-        const lightDataSize = LightData.lightSize + Engine3D.setting.shadow.maxCascades;
+    constructor(scene: Scene3D) {
+        const setting = scene.view!.engine3D.setting;
+        const lightDataSize = LightData.lightSize + setting.shadow.maxCascades * 2;
 
         this.storageGPUBuffer = new StorageGPUBuffer(
-            lightDataSize * Engine3D.setting.light.maxLight,
+            lightDataSize * setting.light.maxLight,
             GPUBufferUsage.COPY_SRC
         );
 
         this.irradianceVolume = new DDGIIrradianceVolume();
-        this.irradianceVolume.init(Engine3D.setting.gi);
+        this.irradianceVolume.init(setting.gi);
 
-        for (let i = 0; i < Engine3D.setting.light.maxLight; i++) {
+        for (let i = 0; i < setting.light.maxLight; i++) {
             let memory = this.storageGPUBuffer.memory.allocation_node(lightDataSize * 4);
             this._lightList.push(memory);
         }
@@ -48,7 +49,7 @@ export class LightEntries {
         for (let i = 0; i < lights.length; i++) {
             const light = lights[i].lightData;
             light.index = i;
-            if (Engine3D.setting.useRTE) {
+            if (view.engine3D.setting.useRTE) {
                 const oldPos = light.lightPosition;
 
                 Vector3.sub(light.lightPosition, mainCameraPos, Vector3.HELP_0);
@@ -101,5 +102,6 @@ export class LightEntries {
         memory.writeFloat(0);
 
         memory.writeArray(light.shadowBias);
+        memory.writeArray(light.normalBias);
     }
 }

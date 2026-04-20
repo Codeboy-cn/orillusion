@@ -338,6 +338,12 @@ export class RenderShaderPass extends ShaderPassBase {
     public reBuild(geometry: GeometryBase, rendererPassState: RendererPassState) {
         this.compileShader(ShaderStage.vertex, this._destVS, rendererPassState);
         this.compileShader(ShaderStage.fragment, this._destFS, rendererPassState);
+        // Orphan renderers (ViewQuad used by post passes) never reach
+        // RenderNode.initPipeline, so vertexBufferLayouts is empty when
+        // createPipeline reads it — the resulting pipeline is missing
+        // every attribute slot beyond 0 and WebGPU rejects it. generate()
+        // is idempotent, so the normal scene-graph path is unaffected.
+        geometry.generate(this.shaderReflection);
         this.genRenderPipeline(geometry, rendererPassState);
         // this.apply(geometry,rendererPassState);
     }
@@ -402,7 +408,7 @@ export class RenderShaderPass extends ShaderPassBase {
             this.defineValue[`USEGBUFFER`] = false;
         }
 
-        if (Engine3D.setting.render.useCompressGBuffer) {
+        if (this._boundCtx!.engine!.setting.render.useCompressGBuffer) {
             this.defineValue[`USE_COMPRESSGBUFFER`] = true;
         } else {
             this.defineValue[`USE_COMPRESSGBUFFER`] = false;
@@ -784,7 +790,7 @@ export class RenderShaderPass extends ShaderPassBase {
         }
 
         if (renderPassState.zPreTexture || renderPassState.depthTexture) {
-            if (Engine3D.setting.render.zPrePass && renderPassState.zPreTexture && shaderState.useZ) {
+            if (this._boundCtx!.engine!.setting.render.zPrePass && renderPassState.zPreTexture && shaderState.useZ) {
                 renderPipelineDescriptor[`depthStencil`] = {
                     depthWriteEnabled: false,
                     depthCompare: GPUCompareFunction.less,
@@ -795,6 +801,9 @@ export class RenderShaderPass extends ShaderPassBase {
                     depthWriteEnabled: shaderState.depthWriteEnabled,
                     depthCompare: shaderState.depthCompare,
                     format: renderPassState.depthTexture.format,
+                    depthBias: shaderState.depthBias,
+                    depthBiasSlopeScale: shaderState.depthBiasSlopeScale,
+                    depthBiasClamp: shaderState.depthBiasClamp,
                 };
 
             }
@@ -891,17 +900,18 @@ export class RenderShaderPass extends ShaderPassBase {
         this.defineValue[`USE_LIGHT`] = useLight;
         this.defineValue[`USE_VERTXCOLOR`] = useVertexColor;
 
-        if (Engine3D.setting.pick.mode == `pixel`) {
+        const setting = this._boundCtx!.engine!.setting;
+        if (setting.pick.mode == `pixel`) {
             this.defineValue[`USE_WORLDPOS`] = true;
         }
 
-        if (Engine3D.setting.gi.enable) {
+        if (setting.gi.enable) {
             this.defineValue[`USEGI`] = true;
         } else {
             this.defineValue[`USEGI`] = false;
         }
 
-        if (Engine3D.setting.render.debug) {
+        if (setting.render.debug) {
             this.defineValue[`USE_DEBUG`] = true;
             this.defineValue[`DEBUG_CLUSTER`] = true;
         }
@@ -912,7 +922,7 @@ export class RenderShaderPass extends ShaderPassBase {
             this.defineValue[`USE_LIGHT`] = false;
         }
 
-        if (Engine3D.setting.render.useLogDepth) {
+        if (setting.render.useLogDepth) {
             this.defineValue[`USE_LOGDEPTH`] = true;
             this.shaderState.useFragDepth = true;
         } else {
@@ -925,13 +935,13 @@ export class RenderShaderPass extends ShaderPassBase {
             this.defineValue[`USE_OUTDEPTH`] = false;
         }
 
-        this.defineValue[`USE_PCF_SHADOW`] = Engine3D.setting.shadow.type == `PCF`;
-        this.defineValue[`USE_HARD_SHADOW`] = Engine3D.setting.shadow.type == `HARD`;
-        this.defineValue[`USE_SOFT_SHADOW`] = Engine3D.setting.shadow.type == `SOFT`;
+        this.defineValue[`USE_PCF_SHADOW`] = setting.shadow.type == `PCF`;
+        this.defineValue[`USE_HARD_SHADOW`] = setting.shadow.type == `HARD`;
+        this.defineValue[`USE_SOFT_SHADOW`] = setting.shadow.type == `SOFT`;
         this.defineValue[`USE_CSM`] = CSM.Cascades > 1;
         this.defineValue[`USE_IES_PROFILE`] = IESProfiles.use;
 
-        this.defineValue[`USE_RTE`] = Engine3D.setting.useRTE;
+        this.defineValue[`USE_RTE`] = setting.useRTE;
     }
 
     private genReflection() {

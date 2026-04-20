@@ -1,4 +1,3 @@
-import { Engine3D } from '../../../../../Engine3D';
 import { Matrix4 } from '../../../../../math/Matrix4';
 import { UUID } from '../../../../../util/Global';
 import { bindCtx, Context3D } from '../../Context3D';
@@ -31,15 +30,16 @@ export class MatrixBindGroup {
     }
 
     writeBuffer(len: number) {
-        if (Engine3D.setting.doublePrecision) {
+        const ctx = this.matrixBufferDst._boundCtx;
+        const setting = ctx?.engine?.setting;
+        if (setting?.doublePrecision) {
             Matrix4.dynamicMatrixBytes_32bit.set(Matrix4.dynamicMatrixBytes);
             this.matrixBufferDst.mapAsyncWrite(Matrix4.dynamicMatrixBytes_32bit, len);
         } else {
             this.matrixBufferDst.mapAsyncWrite(Matrix4.dynamicMatrixBytes, len);
         }
 
-        if (Engine3D.setting.useRTE) {
-            const ctx = this.matrixBufferDst._boundCtx;
+        if (setting?.useRTE) {
             if (ctx) {
                 ctx.device.queue.writeBuffer(this.matrixBufferDst.buffer, Matrix4.maxCount * (16 * 4), Matrix4.matrixWorldPositionHLDatas as unknown as BufferSource);
             }

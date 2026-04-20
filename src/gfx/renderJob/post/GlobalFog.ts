@@ -26,14 +26,16 @@ export class GlobalFog extends PostBase {
     /**
      * @internal
      */
-    private fogSetting: GlobalFogSetting;
     public fogOpTexture: VirtualTexture;
     private fogCompute: ComputeShader;
     private fogUniform: UniformGPUBuffer;
 
     constructor() {
         super();
-        this.fogSetting = Engine3D.setting.render.postProcessing.globalFog;
+    }
+
+    private get fogSetting(): GlobalFogSetting {
+        return this.setting.render.postProcessing.globalFog;
     }
 
     private createCompute(view: View3D) {
@@ -100,13 +102,13 @@ export class GlobalFog extends PostBase {
      * @internal
      */
     public onAttach(view: View3D,) {
-        Engine3D.setting.render.postProcessing.globalFog.enable = true;
+        this.setting.render.postProcessing.globalFog.enable = true;
     }
     /**
      * @internal
      */
     public onDetach(view: View3D,) {
-        Engine3D.setting.render.postProcessing.globalFog.enable = false;
+        this.setting.render.postProcessing.globalFog.enable = false;
     }
 
     public set fogType(v: number) {

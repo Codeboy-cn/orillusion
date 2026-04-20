@@ -34,12 +34,18 @@ export class Context3D extends CEventDispatcher {
     public device: GPUDevice;
     public presentationFormat: GPUTextureFormat;
 
+    /** Back-reference to the owning Engine3D. Populated by `new Engine3D()`
+     *  immediately after constructing this Context3D. Used by per-context
+     *  subsystems (GlobalUniformGroup, RenderShaderPass, ...) to read the
+     *  engine's instance `setting` without needing a view/camera handle. */
+    public engine: import('../../../Engine3D').Engine3D | null = null;
+
     /** Set to true when the underlying GPUDevice has been lost (driver reset,
      *  device unplug, tab/iframe suspended, explicit `device.destroy()`...).
      *  Once lost, the device is permanently unusable — all `_boundCtx`
      *  resources on this Context3D are stale. The owning Engine3D stops
      *  scheduling render frames. App code should listen for
-     *  `Context3D.DEVICE_LOST` and call `Engine3D.create()` again to recover. */
+     *  `Context3D.DEVICE_LOST` and call `Engine3D.init()` again to recover. */
     public lost: boolean = false;
     public lostInfo: GPUDeviceLostInfo | null = null;
 
@@ -147,7 +153,7 @@ export class Context3D extends CEventDispatcher {
     /**
      * Release everything this context owns: the ResizeObserver, the
      * GPUCanvasContext configuration, the GPUDevice (frees the adapter
-     * slot so the next Engine3D.create() can succeed without exhausting
+     * slot so the next Engine3D.init() can succeed without exhausting
      * the browser's per-origin device limit), and any canvas we created
      * ourselves. Safe to call more than once; idempotent after first run.
      *
