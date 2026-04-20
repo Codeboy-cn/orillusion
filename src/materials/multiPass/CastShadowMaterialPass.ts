@@ -1,4 +1,3 @@
-import { GPUCullMode } from '../../gfx/graphics/webGpu/WebGPUConst';
 import { RenderShaderPass } from '../../gfx/graphics/webGpu/shader/RenderShaderPass';
 import { PassType } from '../../gfx/renderJob/passRenderer/state/PassType';
 import { Vector3 } from '../../math/Vector3';
@@ -20,18 +19,15 @@ export class CastShadowMaterialPass extends RenderShaderPass {
         this.shaderState.castShadow = false;
         this.shaderState.acceptShadow = false;
 
-        // Shadow map stores BACK-FACE depth of closed meshes (front-face culled).
-        // The mesh's own thickness becomes the gap between occluder and receiver,
-        // so receivers on the lit front face pass the shadow test naturally —
-        // acne, peter-panning, and corner light leaks are geometrically impossible
-        // on watertight geometry. Thin / single-sided meshes lose their shadow
-        // under this setup; they'd need a two-sided opt-out (not yet implemented).
-        this.shaderState.cullMode = GPUCullMode.front;
-        // Rasterizer slope bias: kept as a minor safety against extreme grazing,
-        // but scaled way down — the mesh thickness is the primary bias now.
-        this.shaderState.depthBias = 0;
-        this.shaderState.depthBiasSlopeScale = 0.5;
-        this.shaderState.depthBiasClamp = 0;
+        // Directional shadows stay on the traditional front-face path (cullMode
+        // inherited from ShaderState default = back, i.e. renders front faces).
+        // Switching to back-face / front-cull would break single-sided geometry
+        // like terrains, planes, and grass blades — they have no back faces to
+        // rasterize, so they'd cast no shadow at all. Instead, bias is tuned to
+        // cover slope acne directly (shader applies 1/max(NoL, 0.1) too).
+        this.shaderState.depthBias = 1;
+        this.shaderState.depthBiasSlopeScale = 1.75;
+        this.shaderState.depthBiasClamp = 0.001;
 
         this.setDefine(`USE_ALPHACUT`, true);
         // this.alphaCutoff = 0.5 ;

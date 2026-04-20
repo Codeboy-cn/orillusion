@@ -422,7 +422,7 @@ export class GUIUtil {
                 const extent = cam.right - cam.left;
                 const depth = Math.max(cam.far - cam.near, 1e-6);
                 const texel = extent / Math.max(dl.shadowMapWidth || 1, 1);
-                return (texel * 0.25) / depth;
+                return (texel * 1.5) / depth;
             });
         } else {
             const pl = light as PointLight | SpotLight;

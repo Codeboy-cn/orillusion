@@ -35,7 +35,7 @@ const setup = await inner.evaluate(async () => {
     }
     if (!light) return { ok: false, reason: 'no spot light found in pointLightList' };
     light.transform.x = -86;
-    light.transform.y = 200;
+    light.transform.y = 338.13;
     light.transform.z = -300;
     light.transform.rotationX = 342;
     light.transform.rotationY = 360;

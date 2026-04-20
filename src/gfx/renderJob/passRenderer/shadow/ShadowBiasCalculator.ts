@@ -64,17 +64,16 @@ export class ShadowBiasCalculator {
     private static directBaselineBias(light: DirectLight): number {
         const v = (light as any)._shadowBias;
         if (typeof v === 'number') return v;
-        // Use cascade 0 (the tightest, most-detailed cascade) as the auto baseline.
-        // Post-back-face shadow rendering the mesh's own thickness covers slope
-        // and texel quantization, so the coefficient here only needs to hold
-        // fp-precision residuals (matrix multiply + UNORM24 round-trip). Shader
-        // still divides by max(NoL, 0.1) for grazing-angle safety.
+        // Directional shadow stays on front-face rasterization (supports single-
+        // sided terrain / planes / grass blades), so bias carries texel
+        // quantization + fp-precision margin. Shader still divides by
+        // max(NoL, 0.1) for grazing amplification.
         const cam = (light.enableCSM && light.csmShadowCamera?.length ? light.csmShadowCamera[0] : light.shadowCamera);
         if (!cam) return 0.0005;
         const extent = cam.right - cam.left;
         const depth = Math.max(cam.far - cam.near, 1e-6);
         const texelSize = extent / Math.max(light.shadowMapWidth || 1, 1);
-        return (texelSize * 0.25) / depth;
+        return (texelSize * 1.5) / depth;
     }
 
     private static directBaselineNormalBias(light: DirectLight): number {
@@ -84,7 +83,7 @@ export class ShadowBiasCalculator {
         if (!cam) return 0.05;
         const extent = cam.right - cam.left;
         const texelSize = extent / Math.max(light.shadowMapWidth || 1, 1);
-        return texelSize * 0.05;
+        return texelSize * 0.5;
     }
 
     /**
