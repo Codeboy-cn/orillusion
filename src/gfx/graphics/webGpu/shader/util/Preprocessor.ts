@@ -1,5 +1,5 @@
 import { ShaderLib } from '../../../../../assets/shader/ShaderLib';
-import { evalCondition } from './PreprocessorExpr';
+import { evalCondition, expand } from './PreprocessorExpr';
 
 /**
  * @internal
@@ -25,13 +25,16 @@ export class Preprocessor {
     protected static parsePreprocess(context: PreprocessorContext, code: string, defineValue: { [name: string]: any }): string {
         let begIndex = code.indexOf('#');
         if (begIndex == -1) {
-            return code;
+            return expand(code, defineValue);
         }
         let header = code.substring(0, begIndex);
         let endIndex = code.indexOf('\n', code.lastIndexOf('#'));
+        if (endIndex == -1) endIndex = code.length;
         let codeBlock = code.substring(begIndex, endIndex);
         let tail = code.substring(endIndex);
-        return header + this.parsePreprocessCommand(context, codeBlock, defineValue) + tail;
+        return expand(header, defineValue) +
+            this.parsePreprocessCommand(context, codeBlock, defineValue) +
+            expand(tail, defineValue);
     }
 
     protected static parseAutoBindingForAllGroup(code: string): string {
@@ -105,7 +108,7 @@ export class Preprocessor {
             let skip = stack[stack.length - 1];
             if (line.trim().indexOf('#') != 0) {
                 if (!skip) {
-                    result += line + '\n';
+                    result += expand(line, defineValue) + '\n';
                 }
                 continue;
             }
@@ -201,7 +204,7 @@ export class Preprocessor {
     }
 
     protected static parseCondition(condition: string, defineValue: { [name: string]: any }): boolean {
-        return evalCondition(condition, defineValue);
+        return evalCondition(expand(condition, defineValue), defineValue);
     }
 
     public static filterComment(code: string): string {

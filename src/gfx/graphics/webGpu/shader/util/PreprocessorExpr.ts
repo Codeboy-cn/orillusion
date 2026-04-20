@@ -240,3 +240,36 @@ export function evalCondition(expr: string, defines: Record<string, any>): boole
         throw new Error(`unexpected trailing tokens in expression: ${expr}`);
     return toBool(evalNode(ast, defines));
 }
+
+function stringifyDefine(v: any): string {
+    if (v === undefined || v === null) return '';
+    if (typeof v === 'string') return v;
+    if (typeof v === 'boolean') return v ? '1' : '0';
+    if (typeof v === 'number') return String(v);
+    return String(v);
+}
+
+/**
+ * Single-pass identifier expansion.
+ *
+ * Replaces each bare identifier in `text` with its `defines` value.
+ *   - arguments of `defined(X)` are preserved (so `defined(FOO)` never
+ *     collapses to `defined(1)`).
+ *   - `true` / `false` / `defined` keywords are never substituted.
+ *   - unknown identifiers pass through unchanged.
+ *   - self-referential `#define A A+1` does not loop — only the outer
+ *     scan runs, the substituted `A` inside the RHS is not re-expanded.
+ *
+ * Function-like macros are not supported; prefer `fn` in shader code.
+ */
+export function expand(text: string, defines: Record<string, any>): string {
+    return text.replace(
+        /defined\s*\(\s*[A-Za-z_]\w*\s*\)|\b[A-Za-z_]\w*\b/g,
+        (match) => {
+            if (match.startsWith('defined')) return match;
+            if (match === 'true' || match === 'false' || match === 'defined') return match;
+            if (!(match in defines)) return match;
+            return stringifyDefine(defines[match]);
+        }
+    );
+}
