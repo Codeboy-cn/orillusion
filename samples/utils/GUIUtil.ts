@@ -476,10 +476,38 @@ export class GUIUtil {
             this._clearDebugPointLight(light, debugId);
             const pos = light.transform.worldPosition;
             g.drawAxis(debugId, pos, 10);
-            // Three orthogonal great circles approximate the range sphere.
-            g.drawCircle(`${debugId}_cx`, pos, light.lightData.range, 48, Vector3.X_AXIS, light.lightColor);
-            g.drawCircle(`${debugId}_cy`, pos, light.lightData.range, 48, Vector3.Y_AXIS, light.lightColor);
-            g.drawCircle(`${debugId}_cz`, pos, light.lightData.range, 48, Vector3.Z_AXIS, light.lightColor);
+            if (light instanceof SpotLight) {
+                // Cone: apex at light pos, axis along light.direction, opening
+                // at half of outerAngle, extending `range` as the slant length.
+                const axis = new Vector3().copyFrom(light.lightData.direction);
+                axis.normalize();
+                const slant = light.lightData.range;
+                const halfRad = (light.outerAngle * 0.5) * Math.PI / 180;
+                const baseDist = slant * Math.cos(halfRad);
+                const baseR = slant * Math.sin(halfRad);
+                const baseCenter = new Vector3(pos.x + axis.x * baseDist, pos.y + axis.y * baseDist, pos.z + axis.z * baseDist);
+                // Two axes in the plane perpendicular to `axis` for radial rays.
+                const helper = Math.abs(axis.y) > 0.9 ? Vector3.X_AXIS : Vector3.Y_AXIS;
+                const perpA = new Vector3();
+                const perpB = new Vector3();
+                axis.crossProduct(helper, perpA); perpA.normalize();
+                axis.crossProduct(perpA, perpB); perpB.normalize();
+                const p = (a: number, b: number) => new Vector3(
+                    baseCenter.x + perpA.x * baseR * a + perpB.x * baseR * b,
+                    baseCenter.y + perpA.y * baseR * a + perpB.y * baseR * b,
+                    baseCenter.z + perpA.z * baseR * a + perpB.z * baseR * b,
+                );
+                g.drawCircle(`${debugId}_base`, baseCenter, baseR, 48, axis, light.lightColor);
+                g.drawLines(`${debugId}_ray0`, [pos, p(1, 0)], light.lightColor);
+                g.drawLines(`${debugId}_ray1`, [pos, p(-1, 0)], light.lightColor);
+                g.drawLines(`${debugId}_ray2`, [pos, p(0, 1)], light.lightColor);
+                g.drawLines(`${debugId}_ray3`, [pos, p(0, -1)], light.lightColor);
+            } else {
+                // PointLight: three orthogonal great circles approximate the range sphere.
+                g.drawCircle(`${debugId}_cx`, pos, light.lightData.range, 48, Vector3.X_AXIS, light.lightColor);
+                g.drawCircle(`${debugId}_cy`, pos, light.lightData.range, 48, Vector3.Y_AXIS, light.lightColor);
+                g.drawCircle(`${debugId}_cz`, pos, light.lightData.range, 48, Vector3.Z_AXIS, light.lightColor);
+            }
         };
         light.bindOnChange();
     }
@@ -489,9 +517,16 @@ export class GUIUtil {
         const g = light.transform.view3D.scene.getChildByName('graphic3D') as Graphic3D;
         if (!g) return;
         g.Clear(debugId);
+        // Point light shapes
         g.Clear(`${debugId}_cx`);
         g.Clear(`${debugId}_cy`);
         g.Clear(`${debugId}_cz`);
+        // Spot cone shapes
+        g.Clear(`${debugId}_base`);
+        g.Clear(`${debugId}_ray0`);
+        g.Clear(`${debugId}_ray1`);
+        g.Clear(`${debugId}_ray2`);
+        g.Clear(`${debugId}_ray3`);
     }
 
     public static renderGIComponent(component: GlobalIlluminationComponent, view: View3D): void {
