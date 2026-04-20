@@ -45,8 +45,10 @@ export class ShadowBiasCalculator {
         const v = (light as any)._shadowBias;
         if (typeof v === 'number') return v;
         // One cube face is 90° FOV; at distance r the face spans ~2r.
+        // Coefficient 0.25× post-back-face shadow rendering: mesh thickness is
+        // the primary bias, host only covers fp-precision residuals.
         const texelSize = (2 * (light.lightData.range || 1)) / Math.max(pointShadowMapSize, 1);
-        return texelSize * 1.5;
+        return texelSize * 0.25;
     }
 
     /**
@@ -56,25 +58,23 @@ export class ShadowBiasCalculator {
         const v = (light as any)._normalBias;
         if (typeof v === 'number') return v;
         const texelSize = (2 * (light.lightData.range || 1)) / Math.max(pointShadowMapSize, 1);
-        return texelSize * 0.5;
+        return texelSize * 0.05;
     }
 
     private static directBaselineBias(light: DirectLight): number {
         const v = (light as any)._shadowBias;
         if (typeof v === 'number') return v;
         // Use cascade 0 (the tightest, most-detailed cascade) as the auto baseline.
-        // Shader divides by max(NoL, 0.1) to handle grazing-angle slope amplification
-        // per fragment. The 1.5× here is a fp-precision margin (NOT slope) — near-
-        // perpendicular receivers (NoL≈1) get zero slope amplification, so the host
-        // must leave ~1.5 texels worth of NDC headroom for matrix-multiply and
-        // UNORM24 round-trip noise. Without it, subtle acne reappears on flat
-        // ground lit from overhead.
+        // Post-back-face shadow rendering the mesh's own thickness covers slope
+        // and texel quantization, so the coefficient here only needs to hold
+        // fp-precision residuals (matrix multiply + UNORM24 round-trip). Shader
+        // still divides by max(NoL, 0.1) for grazing-angle safety.
         const cam = (light.enableCSM && light.csmShadowCamera?.length ? light.csmShadowCamera[0] : light.shadowCamera);
         if (!cam) return 0.0005;
         const extent = cam.right - cam.left;
         const depth = Math.max(cam.far - cam.near, 1e-6);
         const texelSize = extent / Math.max(light.shadowMapWidth || 1, 1);
-        return (texelSize * 1.5) / depth;
+        return (texelSize * 0.25) / depth;
     }
 
     private static directBaselineNormalBias(light: DirectLight): number {
@@ -84,7 +84,7 @@ export class ShadowBiasCalculator {
         if (!cam) return 0.05;
         const extent = cam.right - cam.left;
         const texelSize = extent / Math.max(light.shadowMapWidth || 1, 1);
-        return texelSize * 0.5;
+        return texelSize * 0.05;
     }
 
     /**
