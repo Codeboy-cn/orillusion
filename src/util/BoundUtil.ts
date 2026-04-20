@@ -43,7 +43,7 @@ export class BoundUtil {
                 tempPoints[7].set(tempMax.x, tempMax.y, tempMax.z); // 111
 
                 for (const p of tempPoints) {
-                    matrix.transformPoint(p, p);
+                    Matrix4.transformPoint(matrix, p, p);
                     bound.expandByPoint(p);
                 }
             }
@@ -76,7 +76,7 @@ export class BoundUtil {
         tempPoints[7].set(tempMax.x, tempMax.y, tempMax.z); // 111
 
         for (const p of tempPoints) {
-            matrix.transformPoint(p, p);
+            Matrix4.transformPoint(matrix, p, p);
             bound.expandByPoint(p);
         }
 

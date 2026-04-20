@@ -475,11 +475,13 @@ export class Matrix4 {
      * @param result optional output matrix
      */
     public static invert(src: Matrix4, result?: Matrix4): Matrix4 | null {
+        if (Math.abs(src.determinant) <= 0.00000000001) return null;
         result ||= new Matrix4();
         if (result !== src) {
             result.copyFrom(src);
         }
-        return result.invert() ? result : null;
+        result.invert();
+        return result;
     }
 
     /**
@@ -529,59 +531,60 @@ export class Matrix4 {
     }
 
     /**
-     * convert a vector3 to this matrix space
-     * if output not set , return a new one
-     * @param v target vector3
-     * @param output save target
-     * @returns save target
+     * Convert a point (w=1) to this matrix space. Returns a new Vector3.
+     * @param v target point
      */
-    public multiplyPoint3(v: Vector3, output?: Vector3): Vector3 {
-        output ||= new Vector3();
-        let rawData = this.rawData;
-        output.x = rawData[0] * v.x + rawData[4] * v.y + rawData[8] * v.z + rawData[12];
-        output.y = rawData[1] * v.x + rawData[5] * v.y + rawData[9] * v.z + rawData[13];
-        output.z = rawData[2] * v.x + rawData[6] * v.y + rawData[10] * v.z + rawData[14];
-        return output;
+    public multiplyPoint3(v: Vector3): Vector3 {
+        return Matrix4.multiplyPoint3(this, v);
     }
 
-    public multiplyVector4(a: Vector3, out?: Vector3) {
-        out ||= new Vector3();
-        let m = this.rawData;
-        let x = a.x;
-        let y = a.y;
-        let z = a.z;
-        let w = m[3] * x + m[7] * y + m[11] * z + m[15];
-        w = w || 1.0;
-        out.x = (m[0] * x + m[4] * y + m[8] * z + m[12]) / w;
-        out.y = (m[1] * x + m[5] * y + m[9] * z + m[13]) / w;
-        out.z = (m[2] * x + m[6] * y + m[10] * z + m[14]) / w;
-        out.w = 1;
-        return out;
+    public static multiplyPoint3(m: Matrix4, v: Vector3, result?: Vector3): Vector3 {
+        result ||= new Vector3();
+        const rawData = m.rawData;
+        const x = v.x, y = v.y, z = v.z;
+        result.x = rawData[0] * x + rawData[4] * y + rawData[8] * z + rawData[12];
+        result.y = rawData[1] * x + rawData[5] * y + rawData[9] * z + rawData[13];
+        result.z = rawData[2] * x + rawData[6] * y + rawData[10] * z + rawData[14];
+        return result;
     }
 
     /**
-     * convert a vector3 to this matrix space
-     * if output not set , return a new one
-     * @param v convert target
-     * @param target ref one vector3
-     * @returns Vector3 
+     * Transform a homogeneous vector (w computed from matrix) and divide by w.
+     * Returns a new Vector3.
      */
-    public transformVector4(v: Vector3, target?: Vector3): Vector3 {
-        let data: FloatArray = this.rawData;
+    public multiplyVector4(a: Vector3): Vector3 {
+        return Matrix4.multiplyVector4(this, a);
+    }
 
-        target ||= new Vector3();
+    public static multiplyVector4(m: Matrix4, a: Vector3, result?: Vector3): Vector3 {
+        result ||= new Vector3();
+        const d = m.rawData;
+        const x = a.x, y = a.y, z = a.z;
+        let w = d[3] * x + d[7] * y + d[11] * z + d[15];
+        w = w || 1.0;
+        result.x = (d[0] * x + d[4] * y + d[8] * z + d[12]) / w;
+        result.y = (d[1] * x + d[5] * y + d[9] * z + d[13]) / w;
+        result.z = (d[2] * x + d[6] * y + d[10] * z + d[14]) / w;
+        result.w = 1;
+        return result;
+    }
 
-        let x: number = v.x;
-        let y: number = v.y;
-        let z: number = v.z;
-        let w: number = v.w;
+    /**
+     * Transform a 4D vector (v.w used directly) by this matrix. Returns a new Vector3.
+     */
+    public transformVector4(v: Vector3): Vector3 {
+        return Matrix4.transformVector4(this, v);
+    }
 
-        target.x = x * data[0] + y * data[4] + z * data[8] + w * data[12];
-        target.y = x * data[1] + y * data[5] + z * data[9] + w * data[13];
-        target.z = x * data[2] + y * data[6] + z * data[10] + w * data[14];
-        target.w = x * data[3] + y * data[7] + z * data[11] + w * data[15];
-
-        return target;
+    public static transformVector4(m: Matrix4, v: Vector3, result?: Vector3): Vector3 {
+        result ||= new Vector3();
+        const data = m.rawData;
+        const x = v.x, y = v.y, z = v.z, w = v.w;
+        result.x = x * data[0] + y * data[4] + z * data[8] + w * data[12];
+        result.y = x * data[1] + y * data[5] + z * data[9] + w * data[13];
+        result.z = x * data[2] + y * data[6] + z * data[10] + w * data[14];
+        result.w = x * data[3] + y * data[7] + z * data[11] + w * data[15];
+        return result;
     }
 
     /**
@@ -1778,15 +1781,19 @@ export class Matrix4 {
     }
 
     /**
-     * Invert the current matrix
-     * @returns boolean Whether can invert it
+     * Invert the current matrix in place.
+     * Throws if the matrix is singular. Use the static `Matrix4.invert(src, result?)`
+     * helper for a safe variant that returns `null` on singular input.
      */
-    public invert(): boolean {
+    public invert(): this {
         let d = this.determinant;
         let invertable = Math.abs(d) > 0.00000000001;
         let data: FloatArray = this.rawData;
 
-        if (invertable) {
+        if (!invertable) {
+            throw new Error('Matrix4.invert: matrix is singular');
+        }
+        {
             d = 1 / d;
             let m11: number = data[0];
             let m21: number = data[4];
@@ -1822,50 +1829,43 @@ export class Matrix4 {
             data[14] = -d * (m11 * (m22 * m43 - m42 * m23) - m21 * (m12 * m43 - m42 * m13) + m41 * (m12 * m23 - m22 * m13));
             data[15] = d * (m11 * (m22 * m33 - m32 * m23) - m21 * (m12 * m33 - m32 * m13) + m31 * (m12 * m23 - m22 * m13));
         }
-        return invertable;
+        return this;
     }
 
     /**
-     * Converts the current coordinates to the world coordinates
-     * @param v Current coordinates
-     * @param target world coordinate
-     * @returns world coordinate
+     * Convert the given point from the current matrix coordinate system to world
+     * coordinates. Returns a new Vector3.
      */
-    public transformPoint(v: Vector3, target?: Vector3): Vector3 {
-        let data: FloatArray = this.rawData;
-        target ||= new Vector3();
+    public transformPoint(v: Vector3): Vector3 {
+        return Matrix4.transformPoint(this, v);
+    }
 
-        let x: number = v.x;
-        let y: number = v.y;
-        let z: number = v.z;
-
-        target.x = x * data[0] + y * data[4] + z * data[8] + data[12];
-        target.y = x * data[1] + y * data[5] + z * data[9] + data[13];
-        target.z = x * data[2] + y * data[6] + z * data[10] + data[14];
-
-        return target;
+    public static transformPoint(m: Matrix4, v: Vector3, result?: Vector3): Vector3 {
+        result ||= new Vector3();
+        const data = m.rawData;
+        const x = v.x, y = v.y, z = v.z;
+        result.x = x * data[0] + y * data[4] + z * data[8] + data[12];
+        result.y = x * data[1] + y * data[5] + z * data[9] + data[13];
+        result.z = x * data[2] + y * data[6] + z * data[10] + data[14];
+        return result;
     }
 
     /**
-     * Transforming a 3D vector with the current matrix does not deal with displacement
-     * @param v Vector of transformation
-     * @param target If the current argument is null then a new Vector3 will be returned
-     * @returns Vector3 The transformed vector
+     * Transform a 3D direction vector (no translation) by this matrix.
+     * Returns a new Vector3.
      */
-    public transformVector(v: Vector3, target?: Vector3): Vector3 {
-        let data: FloatArray = this.rawData;
+    public transformVector(v: Vector3): Vector3 {
+        return Matrix4.transformVector(this, v);
+    }
 
-        target ||= new Vector3();
-
-        let x: number = v.x;
-        let y: number = v.y;
-        let z: number = v.z;
-
-        target.x = x * data[0] + y * data[4] + z * data[8];
-        target.y = x * data[1] + y * data[5] + z * data[9];
-        target.z = x * data[2] + y * data[6] + z * data[10];
-
-        return target;
+    public static transformVector(m: Matrix4, v: Vector3, result?: Vector3): Vector3 {
+        result ||= new Vector3();
+        const data = m.rawData;
+        const x = v.x, y = v.y, z = v.z;
+        result.x = x * data[0] + y * data[4] + z * data[8];
+        result.y = x * data[1] + y * data[5] + z * data[9];
+        result.z = x * data[2] + y * data[6] + z * data[10];
+        return result;
     }
 
     /**

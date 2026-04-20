@@ -5,6 +5,7 @@ import { Object3D } from "../../core/entities/Object3D";
 import { GPUCompareFunction } from "../../gfx/graphics/webGpu/WebGPUConst";
 import { UnLitMaterial } from "../../materials/UnLitMaterial";
 import { Color } from "../../math/Color";
+import { Matrix4 } from "../../math/Matrix4";
 import { Vector3 } from "../../math/Vector3";
 import { BoxGeometry } from "../../shape/BoxGeometry";
 import { TransformAxisEnum } from "./TransformAxisEnum";
@@ -58,7 +59,7 @@ export class ScaleControlComponents extends TransformControllerBaseComponent {
                 break;
             default:
                 {
-                    this.mX.transform.worldMatrix.transformVector(offset, offset);
+                    Matrix4.transformVector(this.mX.transform.worldMatrix, offset, offset);
 
                     if (this.currentAxis == TransformAxisEnum.X || this.currentAxis == TransformAxisEnum.XY || this.currentAxis == TransformAxisEnum.XZ) {
                         this.mX.scaleX = Math.abs(this.mX.scaleX + offset.x);
@@ -88,7 +89,7 @@ export class ScaleControlComponents extends TransformControllerBaseComponent {
             value.z = offset.z;
         }
 
-        this.mX.transform.worldMatrix.transformVector(value, Vector3.HELP_1);
+        Matrix4.transformVector(this.mX.transform.worldMatrix, value, Vector3.HELP_1);
         this.mX.scaleX += Vector3.HELP_1.x;
         this.mX.scaleY += Vector3.HELP_1.y;
         this.mX.scaleZ += Vector3.HELP_1.z;

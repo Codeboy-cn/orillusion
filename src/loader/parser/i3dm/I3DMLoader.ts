@@ -111,7 +111,7 @@ export class I3DMLoader extends I3DMLoaderBase {
                 // instancedMesh.transform.worldMatrix.transformVector(v, v);
 
                 // instancedMesh.transform.localPosition.copy(averageVector);
-                instancedMesh.transform.worldMatrix.transformVector4(averageVector, instancedMesh.localPosition);
+                Matrix4.transformVector4(instancedMesh.transform.worldMatrix, averageVector, instancedMesh.localPosition);
 
             }
         });

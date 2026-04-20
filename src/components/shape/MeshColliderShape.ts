@@ -73,7 +73,7 @@ export class MeshColliderShape extends ColliderShape {
                         if(normalAttribute){
                             let normalData = normalAttribute.data;
                             let normal = new Vector3(normalData[i1], normalData[i1 + 1], normalData[i1 + 2]);
-                            fromMatrix.transformVector(normal, normal)
+                            Matrix4.transformVector(fromMatrix, normal, normal);
                             normal.normalize();
                             this._pickRet.normal = normal
                         }

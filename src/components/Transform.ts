@@ -244,7 +244,7 @@ export class Transform extends ComponentBase {
     }
 
     public get up(): Vector3 {
-        this.worldMatrix.transformVector(Vector3.UP, this._up);
+        Matrix4.transformVector(this.worldMatrix, Vector3.UP, this._up);
         return this._up;
     }
 
@@ -256,7 +256,7 @@ export class Transform extends ComponentBase {
     }
 
     public get down(): Vector3 {
-        this.worldMatrix.transformVector(Vector3.DOWN, this._down);
+        Matrix4.transformVector(this.worldMatrix, Vector3.DOWN, this._down);
         return this._down;
     }
 
@@ -275,7 +275,7 @@ export class Transform extends ComponentBase {
     }
 
     public get forward(): Vector3 {
-        this.worldMatrix.transformVector(Vector3.FORWARD, this._forward);
+        Matrix4.transformVector(this.worldMatrix, Vector3.FORWARD, this._forward);
         return this._forward;
     }
 
@@ -294,7 +294,7 @@ export class Transform extends ComponentBase {
     }
 
     public get back(): Vector3 {
-        this.worldMatrix.transformVector(Vector3.BACK, this._back);
+        Matrix4.transformVector(this.worldMatrix, Vector3.BACK, this._back);
         return this._back;
     }
 
@@ -306,7 +306,7 @@ export class Transform extends ComponentBase {
     }
 
     public get left(): Vector3 {
-        this.worldMatrix.transformVector(Vector3.neg_X_AXIS, this._left);
+        Matrix4.transformVector(this.worldMatrix, Vector3.neg_X_AXIS, this._left);
         return this._left;
     }
 
@@ -318,7 +318,7 @@ export class Transform extends ComponentBase {
     }
 
     public get right(): Vector3 {
-        this.worldMatrix.transformVector(Vector3.X_AXIS, this._right);
+        Matrix4.transformVector(this.worldMatrix, Vector3.X_AXIS, this._right);
         return this._right;
     }
 

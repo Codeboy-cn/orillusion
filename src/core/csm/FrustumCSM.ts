@@ -115,7 +115,7 @@ export class FrustumCSM {
                     let pt = section.corners[cornerIndex];
                     cornerIndex++;
                     pt.set(2.0 * x - 1.0, 2.0 * y - 1.0, depth, 1.0);
-                    pvInv.transformVector4(pt, pt);
+                    Matrix4.transformVector4(pvInv, pt, pt);
                     pt.multiplyScalar(1 / pt.w);
                 }
             }

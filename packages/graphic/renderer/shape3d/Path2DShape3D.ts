@@ -92,7 +92,7 @@ export class Path2DShape3D extends LineShape3D implements CanvasPath {
         this.appendPoint(point.x, point.z);
 
         for (let i = 0; i < segment; i++) {
-            rotateLocalPos = matrix.transformVector(rotateLocalPos, rotateLocalPos);
+            rotateLocalPos = Matrix4.transformVector(matrix, rotateLocalPos, rotateLocalPos);
             point = rotateLocalPos.add(centerPoint);
             this.appendPoint(point.x, point.z);
         }
@@ -159,7 +159,7 @@ export class Path2DShape3D extends LineShape3D implements CanvasPath {
                 this.appendPoint(radiusX * Math.cos(angle) + x, radiusY * Math.sin(angle) + y);
             } else {
                 let vec3 = Vector3.HELP_0.set(radiusX * Math.cos(angle), 0, radiusY * Math.sin(angle));
-                rotateMatrix.transformPoint(vec3, vec3);
+                Matrix4.transformPoint(rotateMatrix, vec3, vec3);
                 this.appendPoint(vec3.x + x, vec3.z + y);
             }
         }

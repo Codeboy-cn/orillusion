@@ -1,7 +1,7 @@
 import { GUIHelp } from "@orillusion/debug/GUIHelp";
 import { Ammo, Physics, Rigidbody } from "@orillusion/physics";
 import { createExampleScene, createSceneParam } from "@samples/utils/ExampleScene";
-import { Scene3D, Object3D, Engine3D, ColliderComponent, BoxColliderShape, Vector3, ComponentBase, KeyCode, KeyEvent, Quaternion, BoundUtil, Camera3D, Vector3Ex, MeshRenderer, LitMaterial, Color, BoxGeometry } from "@orillusion/core";
+import { Scene3D, Object3D, Engine3D, ColliderComponent, BoxColliderShape, Vector3, ComponentBase, KeyCode, KeyEvent, Quaternion, BoundUtil, Camera3D, Vector3Ex, MeshRenderer, LitMaterial, Color, BoxGeometry, Matrix4 } from "@orillusion/core";
 
 class Sample_PhysicsCar {
     engine: Engine3D;
@@ -389,10 +389,7 @@ class fixedCameraController extends ComponentBase {
         const q = Quaternion.HELP_0;
         q.fromEulerAngles(this.pitch, 0, 0.0);
         this._tempDir.applyQuaternion(q);
-        this._tempDir = this._target.transform.worldMatrix.transformVector(
-            this._tempDir,
-            this._tempDir
-        );
+        this._tempDir = Matrix4.transformVector(this._target.transform.worldMatrix, this._tempDir, this._tempDir);
         this._tempDir.normalize();
         let position = this._target.transform.worldPosition;
         this._tempPos = Vector3Ex.mulScale(
