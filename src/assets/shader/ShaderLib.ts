@@ -5,7 +5,9 @@ import { MathShader } from './math/MathShader';
 import { PhysicMaterialUniform_frag } from './materials/uniforms/PhysicMaterialUniform_frag';
 import { UnLitMaterialUniform_frag } from './materials/uniforms/UnLitMaterialUniform_frag';
 import { UnLit_frag } from './lighting/UnLit_frag';
-import { VertexAttributes_vert } from './core/struct/VertexAttributes';
+import { VertexAttributes, VertexAttributes_vert } from './core/struct/VertexAttributes';
+import { VertexOutput } from './core/struct/VertexOutput';
+import { VertexFunction_vert } from './core/base/VertexFunction_vert';
 import { VideoUniform_frag } from './materials/uniforms/VideoUniform_frag';
 import { IrradianceVolumeData_frag } from "./lighting/IrradianceVolumeData_frag";
 import { Inline_vert } from './core/inline/Inline_vert';
@@ -78,6 +80,9 @@ export class ShaderLib {
 
         ShaderLib.register('InstanceUniform', InstanceUniform);
         ShaderLib.register('Inline_vert', Inline_vert);
+        ShaderLib.register('VertexAttributes', VertexAttributes);
+        ShaderLib.register('VertexOutput', VertexOutput);
+        ShaderLib.register('VertexFunction_vert', VertexFunction_vert);
         ShaderLib.register('VertexAttributes_vert', VertexAttributes_vert);
         ShaderLib.register('Common_vert', Common_vert);
 
