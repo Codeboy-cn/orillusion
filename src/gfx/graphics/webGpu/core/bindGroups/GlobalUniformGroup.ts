@@ -199,22 +199,32 @@ export class GlobalUniformGroup {
                             this.shadowMatrixRaw.set(shadowCamera.pvMatrix.rawData, shadowMatrixRawIndex * 16);
                         }
 
-                        // Non-CSM directional / point / spot lights still need cascade-0
-                        // bias slots filled. Point/spot use world-units; direct uses NDC.
-                        const sLight: any = shadowLight;
-                        if (sLight instanceof DirectLight) {
-                            sLight.lightData.shadowBias[0] = ShadowBiasCalculator.resolveDirectShadowBias(sLight, 0);
-                            sLight.lightData.normalBias[0] = ShadowBiasCalculator.resolveDirectNormalBias(sLight, 0);
-                        } else if (sLight instanceof PointLight || sLight instanceof SpotLight) {
-                            const pmSize = this._ctx.engine!.setting.shadow.pointShadowSize;
-                            sLight.lightData.shadowBias[0] = ShadowBiasCalculator.resolvePointShadowBias(sLight, pmSize);
-                            sLight.lightData.normalBias[0] = ShadowBiasCalculator.resolvePointNormalBias(sLight, pmSize);
-                        }
+                        // Non-CSM directional light: fill cascade-0 bias slot
+                        // (NDC units). Point/spot are handled in a separate loop
+                        // below since getDirectShadowLightWhichScene only returns
+                        // directional lights.
+                        shadowLight.lightData.shadowBias[0] = ShadowBiasCalculator.resolveDirectShadowBias(shadowLight, 0);
+                        shadowLight.lightData.normalBias[0] = ShadowBiasCalculator.resolveDirectNormalBias(shadowLight, 0);
                         shadowMatrixRawIndex++;
                     }
                 } else if (shadowMatrixRawIndex < maxShadowMapNum) {
                     this.shadowMatrixRaw.set(camera.transform.worldMatrix.rawData, shadowMatrixRawIndex * 16);
                     shadowMatrixRawIndex++;
+                }
+            }
+
+            // Point / spot shadow lights: cube-shadow path doesn't need a shadow
+            // matrix, but the shader still reads light.shadowBias[0] /
+            // normalBias[0]. Those values aren't touched by the directional
+            // loop above (its list is filtered to directional lights), so walk
+            // the point-shadow list here and populate from the host formula.
+            const pointShadowList = ShadowLightsCollect.getPointShadowLightWhichScene(camera.transform.scene3D);
+            if (pointShadowList && pointShadowList.length) {
+                const pmSize = this._ctx.engine!.setting.shadow.pointShadowSize;
+                for (let i = 0; i < pointShadowList.length; i++) {
+                    const pLight = pointShadowList[i] as (PointLight | SpotLight);
+                    pLight.lightData.shadowBias[0] = ShadowBiasCalculator.resolvePointShadowBias(pLight, pmSize);
+                    pLight.lightData.normalBias[0] = ShadowBiasCalculator.resolvePointNormalBias(pLight, pmSize);
                 }
             }
         }
