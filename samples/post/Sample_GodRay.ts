@@ -12,12 +12,17 @@ export class Sample_GodRay {
 	scene: Scene3D;
 
 	async run() {
-		Engine3D.setting.shadow.shadowSize = 2048
-		Engine3D.setting.shadow.shadowBound = 400;
-		Engine3D.setting.shadow.shadowBias = 0.1;
-		Engine3D.setting.render.debug = true;
-
-		const engine = await Engine3D.create({ renderLoop: () => { this.loop() } });
+		const engine = await Engine3D.init({
+			setting: {
+				shadow: {
+					shadowSize: 2048,
+				},
+				render: {
+					debug: true,
+				},
+			},
+			renderLoop: () => { this.loop() }
+		});
 		GUIHelp.init();
 
 		this.scene = new Scene3D();
@@ -46,7 +51,6 @@ export class Sample_GodRay {
 		lc.intensity = 45;
 		lc.indirect = 0.3;
 		lc.enableCSM = true;
-		lc.shadowCSMBias = 0.005;
 		this.scene.addChild(this.lightObj);
 		GUIUtil.renderDirLight(lc);
 		sky.relativeTransform = this.lightObj.transform;

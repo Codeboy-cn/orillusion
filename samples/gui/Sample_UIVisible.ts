@@ -9,11 +9,14 @@ export class Sample_UIVisible {
     counter: number = 0;
     spriteCount = 10;
     async run() {
-        Engine3D.setting.shadow.autoUpdate = true;
-
         GUIHelp.init();
 
-        const engine = this.engine = await Engine3D.create({ renderLoop: () => { this.renderUpdate(); } });
+        const engine = this.engine = await Engine3D.init({
+            renderLoop: () => { this.renderUpdate(); },
+            setting: {
+                shadow: { autoUpdate: true },
+            },
+        });
 
         let exampleScene = createExampleScene(engine);
         engine.startRenderView(exampleScene.view);

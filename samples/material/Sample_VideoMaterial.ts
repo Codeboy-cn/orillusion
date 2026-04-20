@@ -2,7 +2,7 @@ import { Engine3D, Scene3D, Object3D, Camera3D, View3D, MeshRenderer, HoverCamer
 import { VideoTexture, VideoMaterial } from "@orillusion/media-extention"
 
 async function demo() {
-    const engine = await Engine3D.create();
+    const engine = await Engine3D.init();
     let scene = new Scene3D();
     scene.addComponent(AtmosphericComponent);
 

@@ -11,11 +11,14 @@ class Sample_Skeleton3 {
     view: View3D;
 
     async run() {
-        Engine3D.setting.shadow.autoUpdate = true;
-        Engine3D.setting.shadow.updateFrameRate = 1;
-        Engine3D.setting.shadow.shadowBound = 100;
-        const engine = this.engine = await Engine3D.create({
+        const engine = this.engine = await Engine3D.init({
             renderLoop: () => this.onRenderLoop(),
+            setting: {
+                shadow: {
+                    autoUpdate: true,
+                    updateFrameRate: 1,
+                },
+            },
         });
 
         GUIHelp.init();
@@ -111,7 +114,6 @@ class Sample_Skeleton3 {
             directLight.lightColor = KelvinUtil.color_temperature_to_rgb(5355);
             directLight.castShadow = true;
             directLight.intensity = 3;
-            directLight.shadowBias = 0.15;
             directLight.shadowBoundWidth = 256;
             directLight.shadowBoundHeight = 256;
             directLight.shadowBoundFar = 256;

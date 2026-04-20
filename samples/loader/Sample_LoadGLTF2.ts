@@ -7,12 +7,14 @@ class Sample_LoadGLTF2 {
     lightObj3D: Object3D;
     scene: Scene3D;
     async run() {
-        //config settings
-        Engine3D.setting.material.materialChannelDebug = true;
-        Engine3D.setting.shadow.shadowBound = 80;
-
         //init engine
-        const engine = this.engine = await Engine3D.create();
+        const engine = this.engine = await Engine3D.init({
+            //config settings
+            setting: {
+                material: { materialChannelDebug: true },
+                shadow: { },
+            },
+        });
         let exampleScene = createExampleScene(engine);
         this.scene = exampleScene.scene;
         engine.startRenderView(exampleScene.view);

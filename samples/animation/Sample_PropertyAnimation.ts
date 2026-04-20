@@ -9,10 +9,14 @@ class Sample_PropertyAnimation {
     animation: PropertyAnimation;
 
     async run() {
-        Engine3D.setting.shadow.autoUpdate = true;
-        Engine3D.setting.shadow.updateFrameRate = 1;
-
-        const engine = this.engine = await Engine3D.create();
+        const engine = this.engine = await Engine3D.init({
+            setting: {
+                shadow: {
+                    autoUpdate: true,
+                    updateFrameRate: 1,
+                },
+            },
+        });
         GUIHelp.init();
         let param = createSceneParam();
         param.camera.distance = 16;
@@ -21,7 +25,6 @@ class Sample_PropertyAnimation {
         GUIUtil.renderDirLight(exampleScene.light, false);
 
         this.scene = exampleScene.scene;
-        // exampleScene.camera.enableCSM = true;
         await this.initScene(this.scene);
 
         engine.startRenderView(exampleScene.view);
@@ -72,7 +75,7 @@ class Sample_PropertyAnimation {
     }
 
     private displayGUI() {
-        GUIUtil.renderShadowSetting(true);
+        GUIUtil.renderShadowSetting(this.engine, true);
         // restart the animation clip
         GUIHelp.addFolder('Property Animation');
         GUIHelp.addButton('Restart', () => {

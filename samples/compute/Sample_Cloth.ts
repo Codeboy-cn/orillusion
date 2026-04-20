@@ -9,11 +9,13 @@ export class Demo_Cloth {
     }
 
     async run() {
-        Engine3D.setting.shadow.shadowBound = 5;
-        Engine3D.setting.shadow.shadowSize = 2048;
-        Engine3D.setting.shadow.shadowBias = 0.0002;
-
-        const engine = this.engine = await Engine3D.create({});
+        const engine = this.engine = await Engine3D.init({
+            setting: {
+                shadow: {
+                    shadowSize: 2048,
+                },
+            },
+        });
 
         GUIHelp.init();
 

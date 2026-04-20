@@ -8,15 +8,16 @@ class Sample_ClearCoat {
     scene: Scene3D;
 
     async run() {
-        Engine3D.setting.pick.enable = true;
-        // Engine3D.setting.pick.mode = `pixel`;
-        Engine3D.setting.render.debug = true;
         GUIHelp.init();
 
-        const engine = this.engine = await Engine3D.create();
-
-        //config settings
-        Engine3D.setting.shadow.shadowBound = 300;
+        const engine = this.engine = await Engine3D.init({
+            setting: {
+                pick: { enable: true /*, mode: `pixel` */ },
+                render: { debug: true },
+                //config settings
+                shadow: { },
+            },
+        });
 
         this.scene = new Scene3D();
         let camera = CameraUtil.createCamera3DObject(this.scene);

@@ -8,10 +8,16 @@ class Sample_SpotLight {
     scene: Scene3D;
 
     async run() {
-        Engine3D.setting.occlusionQuery.enable = false;
-        Engine3D.setting.shadow.enable = true;
-        Engine3D.setting.shadow.pointShadowBias = 0.002;
-        const engine = this.engine = await Engine3D.create({});
+        const engine = this.engine = await Engine3D.init({
+            setting: {
+                occlusionQuery: {
+                    enable: false,
+                },
+                shadow: {
+                    enable: true,
+                },
+            },
+        });
 
         GUIHelp.init();
 

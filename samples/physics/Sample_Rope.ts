@@ -6,7 +6,7 @@ import dat from "dat.gui";
 class Sample_Rope {
     async run() {
         await Physics.init({ useSoftBody: true });
-        const engine = await Engine3D.create({ renderLoop: () => Physics.update() });
+        const engine = await Engine3D.init({ renderLoop: () => Physics.update() });
         let view = new View3D();
         view.scene = new Scene3D();
         let sky = view.scene.addComponent(AtmosphericComponent);
@@ -20,7 +20,6 @@ class Sample_Rope {
         sunLight.intensity = 2;
         sunLight.castShadow = true;
         sunLight.enableCSM = true;
-        sunLight.shadowCSMBias = 0.005;
         lightObj3D.rotationX = 24;
         lightObj3D.rotationY = -151;
         view.scene.addChild(lightObj3D);

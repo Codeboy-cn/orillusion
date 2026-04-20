@@ -59,8 +59,6 @@ export class Sample_UISpriteSheet {
     keyFrames: string[];
 
     async run() {
-        Engine3D.setting.shadow.autoUpdate = true;
-
         GUIConfig.quadMaxCountForView = 5001;
 
         GUIHelp.init();
@@ -72,7 +70,12 @@ export class Sample_UISpriteSheet {
             this.keyFrames.push((frameStart + i).toString().padStart(5, '0'));
         }
 
-        const engine = this.engine = await Engine3D.create({ renderLoop: () => { this.renderUpdate(); } });
+        const engine = this.engine = await Engine3D.init({
+            renderLoop: () => { this.renderUpdate(); },
+            setting: {
+                shadow: { autoUpdate: true },
+            },
+        });
         let exampleScene = createExampleScene(engine);
         this.scene = exampleScene.scene;
         this.scene.addComponent(Stats);

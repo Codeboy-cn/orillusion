@@ -9,8 +9,12 @@ class Sample_TextureSample {
     scene: Scene3D;
 
     async run() {
-        const engine = this.engine = await Engine3D.create();
-        Engine3D.setting.shadow.shadowBias = 0.01;
+        const engine = this.engine = await Engine3D.init({
+            setting: {
+                shadow: {
+                },
+            },
+        });
 
         this.scene = new Scene3D();
         let sky = this.scene.addComponent(AtmosphericComponent);
@@ -45,7 +49,6 @@ class Sample_TextureSample {
             directLight.castShadow = true;
             directLight.intensity = 3;
             directLight.enableCSM = true;
-            directLight.shadowCSMBias = 0.005;
             GUIHelp.init();
             GUIUtil.renderDirLight(directLight, false);
             this.scene.addChild(this.lightObj3D);

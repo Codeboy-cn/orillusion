@@ -8,12 +8,15 @@ class Sample_DepthOfView {
     constructor() { }
 
     async run() {
-        Engine3D.setting.shadow.enable = true
-        Engine3D.setting.shadow.shadowBound = 100
-        const engine = this.engine = await Engine3D.create({
+        const engine = this.engine = await Engine3D.init({
             canvasConfig: {
                 devicePixelRatio: 1
-            }
+            },
+            setting: {
+                shadow: {
+                    enable: true,
+                },
+            },
         })
 
         this.scene = new Scene3D()
@@ -58,7 +61,6 @@ class Sample_DepthOfView {
             lc.castShadow = true
             lc.intensity = 5
             lc.enableCSM = true;
-            lc.shadowCSMBias = 0.005;
             scene.addChild(this.lightObj)
         }
 

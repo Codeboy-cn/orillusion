@@ -6,7 +6,7 @@ class Sample_BitmapCubeStdSky {
     engine: Engine3D;
     async run() {
         // init engine
-        const engine = this.engine = await Engine3D.create({});
+        const engine = this.engine = await Engine3D.init({});
         // init scene
         let scene: Scene3D = createExampleScene(engine).scene;
         let sky = scene.getOrAddComponent(SkyRenderer);

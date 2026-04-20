@@ -9,9 +9,13 @@ class Sample_drawCallInstance {
     lightObj3D: Object3D;
     async run() {
 
-        Engine3D.setting.pick.enable = false;
         // init engine
-        const engine = await Engine3D.create({ renderLoop: () => this.renderLoop() });
+        const engine = await Engine3D.init({
+            renderLoop: () => this.renderLoop(),
+            setting: {
+                pick: { enable: false },
+            },
+        });
 
         OcclusionSystem.enable = false;
         // create new Scene

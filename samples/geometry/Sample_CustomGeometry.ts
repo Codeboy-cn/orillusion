@@ -6,11 +6,13 @@ import { GUIUtil } from "@samples/utils/GUIUtil";
 class Sample_CustomGeometry {
     dirLight: DirectLight;
     async run() {
-        Engine3D.setting.shadow.autoUpdate = true;
-
         GUIHelp.init();
 
-        const engine = await Engine3D.create();
+        const engine = await Engine3D.init({
+            setting: {
+                shadow: { autoUpdate: true },
+            },
+        });
         let view = new View3D();
         view.scene = new Scene3D();
         let sky = view.scene.addComponent(AtmosphericComponent);

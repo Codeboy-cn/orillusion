@@ -8,14 +8,14 @@ class Sample_LoadGLTF {
     lightObj3D: Object3D;
     scene: Scene3D;
     async run() {
-        //config settings
-        Engine3D.setting.material.materialChannelDebug = true;
-        Engine3D.setting.shadow.shadowBound = 100;
-        Engine3D.setting.shadow.shadowSize = 2048;
-
-
         //init engine
-        const engine = this.engine = await Engine3D.create();
+        const engine = this.engine = await Engine3D.init({
+            //config settings
+            setting: {
+                material: { materialChannelDebug: true },
+                shadow: { shadowSize: 2048 },
+            },
+        });
 
         this.scene = new Scene3D();
 

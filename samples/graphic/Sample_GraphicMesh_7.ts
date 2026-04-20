@@ -24,10 +24,12 @@ export class Sample_GraphicMesh_7 {
         Matrix4.maxCount = 500000;
         Matrix4.allocCount = 500000;
 
-        const engine = this.engine = await Engine3D.create();
-
-        Engine3D.setting.render.debug = true;
-        Engine3D.setting.shadow.shadowBound = 5;
+        const engine = this.engine = await Engine3D.init({
+            setting: {
+                render: { debug: true },
+                shadow: { },
+            },
+        });
 
         this.colors = [];
 

@@ -9,11 +9,13 @@ class Sample_UVMove {
     scene: Scene3D;
     lightObj: Object3D;
     async run() {
-        const engine = this.engine = await Engine3D.create();
+        const engine = this.engine = await Engine3D.init({
+            setting: {
+                material: { materialChannelDebug: true },
+                shadow: { },
+            },
+        });
         await GUIHelp.init();
-
-        Engine3D.setting.material.materialChannelDebug = true;
-        Engine3D.setting.shadow.shadowBound = 5;
 
         this.scene = new Scene3D();
         let sky = this.scene.addComponent(AtmosphericComponent);
@@ -51,7 +53,6 @@ class Sample_UVMove {
             directLight.lightColor = KelvinUtil.color_temperature_to_rgb(5355);
             directLight.castShadow = false;
             directLight.intensity = 2;
-            directLight.shadowBias = 0.2;
             directLight.shadowBoundWidth = 512;
             directLight.shadowBoundHeight = 512;
             directLight.shadowBoundFar = 512;

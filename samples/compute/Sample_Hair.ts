@@ -8,7 +8,7 @@ export class Demo_Hair {
     }
 
     async run() {
-        const engine = this.engine = await Engine3D.create({});
+        const engine = this.engine = await Engine3D.init({});
         
         GUIHelp.init();
 

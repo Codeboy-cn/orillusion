@@ -11,11 +11,16 @@ class Sample_PixelPick {
     g: Graphic3D;
 
     async run() {
-        Engine3D.setting.useRTE = true;
-        Engine3D.setting.pick.enable = true;
-        Engine3D.setting.pick.mode = `pixel`;
         // init Engine3D
-        const engine = this.engine = await Engine3D.create({});
+        const engine = this.engine = await Engine3D.init({
+            setting: {
+                useRTE: true,
+                pick: {
+                    enable: true,
+                    mode: `pixel`,
+                },
+            },
+        });
 
         let exampleScene = createExampleScene(engine);
         this.scene = exampleScene.scene;

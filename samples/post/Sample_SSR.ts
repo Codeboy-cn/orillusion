@@ -8,15 +8,17 @@ export class Sample_SSR {
     scene: Scene3D
 
     async run() {
-        Engine3D.setting.shadow.enable = true;
-        Engine3D.setting.shadow.shadowSize = 2048
-        Engine3D.setting.shadow.shadowBound = 200;
-        Engine3D.setting.shadow.shadowBias = 0.05;
         GUIHelp.init();
 
-        const engine = this.engine = await Engine3D.create({
+        const engine = this.engine = await Engine3D.init({
             canvasConfig: {
                 devicePixelRatio: 1
+            },
+            setting: {
+                shadow: {
+                    enable: true,
+                    shadowSize: 2048,
+                },
             },
             renderLoop: () => this.loop()
         })
@@ -52,7 +54,6 @@ export class Sample_SSR {
             lc.castShadow = true
             lc.intensity = 10
             lc.enableCSM = true;
-            lc.shadowCSMBias = 0.005;
             scene.addChild(this.lightObj)
             GUIUtil.renderDirLight(lc);
         }

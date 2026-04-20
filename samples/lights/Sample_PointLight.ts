@@ -11,8 +11,13 @@ export class Sample_PointLight {
     constructor() { }
 
     async run() {
-        Engine3D.setting.render.debug = true;
-        const engine = await Engine3D.create({});
+        const engine = await Engine3D.init({
+            setting: {
+                render: {
+                    debug: true,
+                },
+            },
+        });
 
         GUIHelp.init();
 

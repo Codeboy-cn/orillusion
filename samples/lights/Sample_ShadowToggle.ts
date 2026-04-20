@@ -7,12 +7,15 @@ class Sample_ShadowToggle {
     engine: Engine3D;
     scene: Scene3D;
     async run() {
-        Engine3D.setting.shadow.enable = true;
-        Engine3D.setting.shadow.autoUpdate = true;
-        Engine3D.setting.shadow.shadowSize = 2048;
-        Engine3D.setting.shadow.shadowBound = 200;
-        Engine3D.setting.shadow.shadowBias = 0.02;
-        const engine = this.engine = await Engine3D.create({});
+        const engine = this.engine = await Engine3D.init({
+            setting: {
+                shadow: {
+                    enable: true,
+                    autoUpdate: true,
+                    shadowSize: 2048,
+                },
+            },
+        });
 
         GUIHelp.init();
 
@@ -21,7 +24,6 @@ class Sample_ShadowToggle {
 
         // init camera3D
         let mainCamera = CameraUtil.createCamera3D(null, this.scene);
-        // mainCamera.enableCSM = true;
         mainCamera.perspective(60, engine.aspect, 1, 5000.0);
         //set camera data
         mainCamera.object3D.z = -15;
@@ -48,7 +50,6 @@ class Sample_ShadowToggle {
         sunLight.intensity = 4;
         sunLight.lightColor = KelvinUtil.color_temperature_to_rgb(6553);
         sunLight.castShadow = true;
-        sunLight.shadowBias = 1;
 
         this.scene.addChild(lightObj3D);
         GUIUtil.renderDirLight(sunLight, false);

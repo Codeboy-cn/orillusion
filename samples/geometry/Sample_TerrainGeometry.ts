@@ -9,15 +9,18 @@ class Sample_Terrain {
     view: View3D;
     post: PostProcessingComponent;
     async run() {
-        Engine3D.setting.shadow.autoUpdate = true;
-        Engine3D.setting.shadow.updateFrameRate = 1;
-        Engine3D.setting.shadow.shadowBound = 500;
-        Engine3D.setting.shadow.shadowSize = 2048;
-        // Engine3D.setting.render.zPrePass = true;
-
         GUIHelp.init();
 
-        const engine = this.engine = await Engine3D.create();
+        const engine = this.engine = await Engine3D.init({
+            setting: {
+                shadow: {
+                    autoUpdate: true,
+                    updateFrameRate: 1,
+                    shadowSize: 2048,
+                },
+                // render: { zPrePass: true },
+            },
+        });
         this.view = new View3D();
         this.view.scene = new Scene3D();
         this.view.scene.addComponent(AtmosphericComponent);
@@ -85,10 +88,6 @@ class Sample_Terrain {
             mr.material = mat;
             scene.addChild(floor);
         }
-
-        GUIHelp.addFolder("shadow");
-        GUIHelp.add(Engine3D.setting.shadow, "shadowBound", 0.0, 3000, 0.0001);
-        GUIHelp.endFolder();
 
         let globalFog = this.post.getPost(GlobalFog);
         GUIUtil.renderGlobalFog(globalFog);

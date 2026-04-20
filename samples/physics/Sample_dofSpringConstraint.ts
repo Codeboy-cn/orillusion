@@ -11,7 +11,7 @@ class Sample_dofSpringConstraint {
 
     async run() {
         await Physics.init();
-        const engine = this.engine = await Engine3D.create({ renderLoop: () => Physics.update() });
+        const engine = this.engine = await Engine3D.init({ renderLoop: () => Physics.update() });
 
         let scene = this.scene = new Scene3D();
         scene.addComponent(Stats);
@@ -40,7 +40,6 @@ class Sample_dofSpringConstraint {
         let dl = lightObj3D.addComponent(DirectLight)
         dl.castShadow = true;
         dl.enableCSM = true;
-        dl.shadowCSMBias = 0.005;
         scene.addChild(lightObj3D);
 
         // Initialize sky

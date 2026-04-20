@@ -22,10 +22,13 @@ export class Sample_Shape3DPath2D {
         Matrix4.maxCount = 10000;
         Matrix4.allocCount = 10000;
 
-        const engine = this.engine = await Engine3D.create({ beforeRender: () => this.update() });
-
-        Engine3D.setting.render.debug = true;
-        Engine3D.setting.shadow.shadowBound = 5;
+        const engine = this.engine = await Engine3D.init({
+            beforeRender: () => this.update(),
+            setting: {
+                render: { debug: true },
+                shadow: { },
+            },
+        });
 
         GUIHelp.init();
 

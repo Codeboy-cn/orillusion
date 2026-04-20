@@ -23,7 +23,7 @@ class Sample_MeshLines {
 
     async run() {
         // init engine
-        const engine = await Engine3D.create();
+        const engine = await Engine3D.init();
         // create new Scene
         let scene = new Scene3D();
         scene.addComponent(Stats)

@@ -12,12 +12,14 @@ export class Sample_TAA {
 	scene: Scene3D;
 
 	async run() {
-		Engine3D.setting.shadow.enable = true;
-		Engine3D.setting.shadow.shadowSize = 2048;
-		Engine3D.setting.shadow.shadowBound = 40;
-		Engine3D.setting.shadow.shadowBias = 0.005;
-
-		const engine = await Engine3D.create();
+		const engine = await Engine3D.init({
+			setting: {
+				shadow: {
+					enable: true,
+					shadowSize: 2048,
+				},
+			},
+		});
 
 		this.scene = new Scene3D();
 		let sky = this.scene.addComponent(AtmosphericComponent);
@@ -54,7 +56,6 @@ export class Sample_TAA {
 			lc.castShadow = true;
 			lc.intensity = 4;
 			lc.enableCSM = true;
-			lc.shadowCSMBias = 0.004;
 			this.scene.addChild(this.lightObj);
 		}
 

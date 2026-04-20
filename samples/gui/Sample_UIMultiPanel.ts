@@ -10,11 +10,14 @@ export class Sample_UIMultiPanel {
     view: View3D;
 
     async run() {
-        Engine3D.setting.shadow.autoUpdate = true;
-
         GUIHelp.init();
 
-        const engine = this.engine = await Engine3D.create({ renderLoop: () => { this.renderUpdate(); } });
+        const engine = this.engine = await Engine3D.init({
+            renderLoop: () => { this.renderUpdate(); },
+            setting: {
+                shadow: { autoUpdate: true },
+            },
+        });
 
         let sceneData = createSceneParam();
         sceneData.camera.distance = 160;

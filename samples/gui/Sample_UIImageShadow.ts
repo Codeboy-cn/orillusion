@@ -7,11 +7,13 @@ class Sample_UIImageShadow {
     private img: UIImage;
 
     async run() {
-        Engine3D.setting.shadow.autoUpdate = true;
-
         GUIHelp.init();
 
-        const engine = await Engine3D.create();
+        const engine = await Engine3D.init({
+            setting: {
+                shadow: { autoUpdate: true },
+            },
+        });
         let exampleScene = createExampleScene(engine);
         engine.startRenderView(exampleScene.view);
 

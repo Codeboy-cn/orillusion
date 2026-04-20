@@ -7,7 +7,7 @@ class Sample_UnlitMaterial {
     engine: Engine3D;
 
     async run() {
-        this.engine = await Engine3D.create();
+        this.engine = await Engine3D.init();
         const engine = this.engine;
 
         this.scene = new Scene3D();

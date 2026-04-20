@@ -10,16 +10,18 @@ export class Demo_Fluid {
     protected mVelocity: Vector3 = new Vector3();
 
     async run() {
-        Engine3D.setting.material.materialChannelDebug = true;
-        Engine3D.setting.pick.enable = true;
-        Engine3D.setting.pick.mode = `pixel`;
-        Engine3D.setting.render.postProcessing.ssao.radius = 0.1;
-        Engine3D.setting.render.postProcessing.ssao.aoPower = 4.2;
-
-        Engine3D.setting.render.postProcessing.gtao.usePosFloat32 = false;
-        Engine3D.setting.render.postProcessing.gtao.maxDistance = 0.65;
-        Engine3D.setting.render.postProcessing.gtao.maxPixel = 10;
-        const engine = await Engine3D.create({});
+        const engine = await Engine3D.init({
+            setting: {
+                material: { materialChannelDebug: true },
+                pick: { enable: true, mode: `pixel` },
+                render: {
+                    postProcessing: {
+                        ssao: { radius: 0.1, aoPower: 4.2 },
+                        gtao: { usePosFloat32: false, maxDistance: 0.65, maxPixel: 10 },
+                    },
+                },
+            },
+        });
 
         GUIHelp.init();
 

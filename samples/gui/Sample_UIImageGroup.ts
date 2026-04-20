@@ -10,11 +10,13 @@ export class Sample_UIImageGroup {
     engine: Engine3D;
 
     async run() {
-        Engine3D.setting.shadow.autoUpdate = true;
-
         GUIHelp.init();
 
-        const engine = this.engine = await Engine3D.create();
+        const engine = this.engine = await Engine3D.init({
+            setting: {
+                shadow: { autoUpdate: true },
+            },
+        });
         let exampleScene = createExampleScene(engine);
         this.scene = exampleScene.scene;
         this.scene.addComponent(Stats);

@@ -19,16 +19,18 @@ class Sample_EatTheBox {
     async run() {
         //init physics and engine
         await Physics.init();
-        const engine = await Engine3D.create({
-            renderLoop: () => this.loop()
+        const engine = await Engine3D.init({
+            renderLoop: () => this.loop(),
+            //set shadow
+            setting: {
+                shadow: {
+                    updateFrameRate: 1,
+                    shadowSize: 2048,
+                },
+            },
         });
         await GUIHelp.init();
 
-        //set shadow
-        Engine3D.setting.shadow.updateFrameRate = 1;
-        Engine3D.setting.shadow.shadowSize = 2048;
-        Engine3D.setting.shadow.shadowBound = 100;
-        Engine3D.setting.shadow.shadowBias = 0.01;
         //get original ammo world for processing more custom function
         this.ammoWorld = Physics.world;
 
@@ -40,7 +42,6 @@ class Sample_EatTheBox {
         //create camera
         let cameraObj = new Object3D();
         let camera = cameraObj.addComponent(Camera3D);
-        // camera.enableCSM = true;
         camera.perspective(60, engine.aspect, 1, 5000);
         camera.lookAt(new Vector3(0, 40, 35), new Vector3());
         scene.addChild(cameraObj);
@@ -51,7 +52,6 @@ class Sample_EatTheBox {
         let light = lightObj.addComponent(DirectLight);
         light.intensity = 8;
         light.castShadow = true;
-        light.shadowBias = 0.35;
         lightObj.rotationX = 60;
         lightObj.rotationY = 80;
         GUIUtil.renderDirLight(light);

@@ -5,12 +5,14 @@ import { GUIUtil } from '@samples/utils/GUIUtil';
 
 class Sample_MatrixAllocation {
     async run() {
-        Engine3D.setting.doublePrecision = true;
-        
         Matrix4.allocCount = 10;
         Matrix4.allocOnceCount = 5;
 
-        const engine = await Engine3D.create();
+        const engine = await Engine3D.init({
+            setting: {
+                doublePrecision: true,
+            },
+        });
 
         let scene = new Scene3D();
 

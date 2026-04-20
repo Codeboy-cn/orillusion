@@ -4,8 +4,13 @@ import { GUIHelp } from "@orillusion/debug/GUIHelp";
 export class Sample_LogDepth {
     engine: Engine3D;
     async run() {
-        Engine3D.setting.render.useLogDepth = sessionStorage.logdepth === 'false' ? false : true;
-        const engine = this.engine = await Engine3D.create();
+        const engine = this.engine = await Engine3D.init({
+            setting: {
+                render: {
+                    useLogDepth: sessionStorage.logdepth === 'false' ? false : true,
+                },
+            },
+        });
         GUIHelp.init();
 
         let scene = new Scene3D();
@@ -25,7 +30,7 @@ export class Sample_LogDepth {
         engine.startRenderView(view);
 
         // change cull mode by click dropdown box
-        GUIHelp.add(Engine3D.setting.render, 'useLogDepth').onChange((v) => {
+        GUIHelp.add(engine.setting.render, 'useLogDepth').onChange((v) => {
             sessionStorage.logdepth = v
             location.reload()
         });

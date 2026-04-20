@@ -8,11 +8,14 @@ class Sample_GraphicLine {
     view: View3D;
     graphic3D: Graphic3D;
     async run() {
-
-        Engine3D.setting.material.materialChannelDebug = true;
-        Engine3D.setting.material.materialDebug = false;
-
-        const engine = await Engine3D.create({});
+        const engine = await Engine3D.init({
+            setting: {
+                material: {
+                    materialChannelDebug: true,
+                    materialDebug: false,
+                },
+            },
+        });
         GUIHelp.init();
         let param = createSceneParam();
         param.camera.distance = 200;

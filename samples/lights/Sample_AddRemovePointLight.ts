@@ -10,7 +10,7 @@ class Sample_AddRemovePointLight {
 
     async run() {
 
-        const engine = await Engine3D.create({});
+        const engine = await Engine3D.init({});
 
         GUIHelp.init();
 

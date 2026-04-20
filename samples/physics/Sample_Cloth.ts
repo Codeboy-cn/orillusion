@@ -9,7 +9,7 @@ class Sample_Cloth {
     engine: Engine3D;
     async run() {
         await Physics.init({ useSoftBody: true });
-        const engine = this.engine = await Engine3D.create({ renderLoop: () => Physics.update() });
+        const engine = this.engine = await Engine3D.init({ renderLoop: () => Physics.update() });
         await GUIHelp.init();
         let view = new View3D();
         view.scene = new Scene3D();
@@ -26,7 +26,6 @@ class Sample_Cloth {
         let sunLight = lightObj3D.addComponent(DirectLight);
         sunLight.intensity = 2;
         sunLight.castShadow = true;
-        sunLight.shadowBias = 0.4;
         sunLight.shadowBoundWidth = 32;
         sunLight.shadowBoundHeight = 32;
         sunLight.shadowBoundFar = 32;

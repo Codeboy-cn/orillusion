@@ -9,36 +9,39 @@ class Sample_GI {
     view: View3D;
     async run() {
 
-        Engine3D.setting.material.materialChannelDebug = true;
-        Engine3D.setting.material.materialDebug = false;
-
-        Engine3D.setting.gi.enable = true;
-        Engine3D.setting.gi.debug = true;
-        Engine3D.setting.render.debug = true;
-
-        Engine3D.setting.gi.probeYCount = 3;
-        Engine3D.setting.gi.probeXCount = 6;
-        Engine3D.setting.gi.probeZCount = 6;
-        Engine3D.setting.gi.probeSpace = 60;
-        Engine3D.setting.gi.offsetX = 0;
-        Engine3D.setting.gi.offsetY = 60;
-        Engine3D.setting.gi.offsetZ = 0;
-        Engine3D.setting.gi.indirectIntensity = 1;
-        Engine3D.setting.gi.probeSize = 64;
-        Engine3D.setting.gi.octRTSideSize = 64;
-        Engine3D.setting.gi.octRTMaxSize = 2048;
-        Engine3D.setting.gi.ddgiGamma = 1;
-        Engine3D.setting.gi.autoRenderProbe = true;
-
-        Engine3D.setting.shadow.shadowBound = 400;
-        Engine3D.setting.shadow.shadowSize = 2048;
-        Engine3D.setting.shadow.shadowBias = 0.05;
-        Engine3D.setting.shadow.debug = true;
-
-        Engine3D.setting.shadow.autoUpdate = true;
-        Engine3D.setting.shadow.updateFrameRate = 1;
-
-        const engine = this.engine = await Engine3D.create({
+        const engine = this.engine = await Engine3D.init({
+            setting: {
+                material: {
+                    materialChannelDebug: true,
+                    materialDebug: false,
+                },
+                gi: {
+                    enable: true,
+                    debug: true,
+                    probeYCount: 3,
+                    probeXCount: 6,
+                    probeZCount: 6,
+                    probeSpace: 60,
+                    offsetX: 0,
+                    offsetY: 60,
+                    offsetZ: 0,
+                    indirectIntensity: 1,
+                    probeSize: 64,
+                    octRTSideSize: 64,
+                    octRTMaxSize: 2048,
+                    ddgiGamma: 1,
+                    autoRenderProbe: true,
+                },
+                render: {
+                    debug: true,
+                },
+                shadow: {
+                    shadowSize: 2048,
+                    debug: true,
+                    autoUpdate: true,
+                    updateFrameRate: 1,
+                },
+            },
             renderLoop: () => {
                 if (this.giComponent?.isStart) {
                     GUIUtil.renderGIComponent(this.giComponent, this.view);
@@ -64,9 +67,12 @@ class Sample_GI {
 
         await this.initScene();
 
-        this.addGIProbes(view);
-
+        // startRenderView binds view.engine3D — must precede addGIProbes,
+        // since GlobalIlluminationComponent.init reaches scene.view.engine3D
+        // to size light/GI buffers.
         engine.startRenderView(view);
+
+        this.addGIProbes(view);
 
         let postCom = this.scene.addComponent(PostProcessingComponent);
         postCom.addPost(FXAAPost);
@@ -84,7 +90,6 @@ class Sample_GI {
             directLight.lightColor = KelvinUtil.color_temperature_to_rgb(5355);
             directLight.castShadow = true;
             directLight.intensity = 3;
-            directLight.shadowBias = 1;
             directLight.shadowBoundWidth = 512;
             directLight.shadowBoundHeight = 512;
             directLight.shadowBoundFar = 512;

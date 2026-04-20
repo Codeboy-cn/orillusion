@@ -6,21 +6,23 @@ class Sample_AddRemove {
     engine: Engine3D;
     view: View3D;
     async run() {
-        Engine3D.setting.shadow.shadowSize = 2048
-        Engine3D.setting.shadow.shadowBound = 175;
-        Engine3D.setting.shadow.shadowBias = 0.0061;
-
-        Engine3D.setting.shadow.shadowBound = 550;
-        Engine3D.setting.shadow.shadowBias = 0.018;
-        Engine3D.setting.render.useCompressGBuffer = true;
-
-        Engine3D.setting.reflectionSetting.reflectionProbeMaxCount = 8;
-        Engine3D.setting.reflectionSetting.reflectionProbeSize = 128;
-        Engine3D.setting.reflectionSetting.enable = true;
-
-        Engine3D.setting.render.hdrExposure = 1.0;
         // init engine
-        const engine = this.engine = await Engine3D.create();
+        const engine = this.engine = await Engine3D.init({
+            setting: {
+                shadow: {
+                    shadowSize: 2048,
+                },
+                render: {
+                    useCompressGBuffer: true,
+                    hdrExposure: 1.0,
+                },
+                reflectionSetting: {
+                    reflectionProbeMaxCount: 8,
+                    reflectionProbeSize: 128,
+                    enable: true,
+                },
+            },
+        });
         // create new Scene
         let scene = new Scene3D();
         // add atmospheric sky

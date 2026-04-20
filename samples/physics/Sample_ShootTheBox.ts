@@ -10,19 +10,21 @@ class Sample_ShootTheBox {
     async run() {
         //init Physics System
         await Physics.init();
-        const engine = this.engine = await Engine3D.create({
+        const engine = this.engine = await Engine3D.init({
             //make Physics System continuously effective
             renderLoop: () => {
                 if (Physics.isInited) {
                     Physics.update();
                 }
-            }
+            },
+            //set shadow
+            setting: {
+                shadow: {
+                    updateFrameRate: 1,
+                    shadowSize: 2048,
+                },
+            },
         });
-        //set shadow
-        Engine3D.setting.shadow.updateFrameRate = 1;
-        Engine3D.setting.shadow.shadowSize = 2048;
-        Engine3D.setting.shadow.shadowBound = 50;
-        Engine3D.setting.shadow.shadowBias = 0.005;
 
         //add mouse event listener
         engine.inputSystem.addEventListener(PointerEvent3D.POINTER_DOWN, this.MouseDown, this);
@@ -34,7 +36,6 @@ class Sample_ShootTheBox {
 
         //create camera
         let camera = CameraUtil.createCamera3DObject(scene);
-        // camera.enableCSM = true;
         camera.perspective(60, engine.aspect, 1, 5000);
         let controller = camera.object3D.addComponent(HoverCameraController);
         //disable controller move
@@ -47,7 +48,6 @@ class Sample_ShootTheBox {
         light.intensity = 4;
         light.castShadow = true;
         light.enableCSM = true;
-        light.shadowCSMBias = 0.005;
         lightObj.rotationX = 60;
         lightObj.rotationY = 140;
         sky.relativeTransform = light.transform;

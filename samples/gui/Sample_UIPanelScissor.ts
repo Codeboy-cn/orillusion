@@ -9,11 +9,14 @@ class Sample_UIPanelScissor {
 
     videoTexture: VideoTexture;
     async run() {
-        Engine3D.setting.shadow.autoUpdate = true;
-
         GUIHelp.init();
 
-        const engine = this.engine = await Engine3D.create({ renderLoop: () => { this.loop(); } });
+        const engine = this.engine = await Engine3D.init({
+            renderLoop: () => { this.loop(); },
+            setting: {
+                shadow: { autoUpdate: true },
+            },
+        });
 
         let param = createSceneParam();
         param.camera.distance = 50;

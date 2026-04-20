@@ -7,11 +7,17 @@ export class Sample_LogDepth {
     groundCoord: Vector3;
     engine: Engine3D;
     async run() {
-        Engine3D.setting.render.useLogDepth = true;
-        Engine3D.setting.doublePrecision = sessionStorage.doublePrecision !== 'false';
-        Engine3D.setting.useRTE = sessionStorage.useRTE !== 'false';
-        console.log('doublePrecision:', Engine3D.setting.doublePrecision, ' useRTE:', Engine3D.setting.useRTE);
-        const engine = await Engine3D.create({
+        const doublePrecision = sessionStorage.doublePrecision !== 'false';
+        const useRTE = sessionStorage.useRTE !== 'false';
+        console.log('doublePrecision:', doublePrecision, ' useRTE:', useRTE);
+        const engine = await Engine3D.init({
+            setting: {
+                render: {
+                    useLogDepth: true,
+                },
+                doublePrecision: doublePrecision,
+                useRTE: useRTE,
+            },
             renderLoop: () => this.renderLoop()
         });
         this.engine = engine;
@@ -41,11 +47,11 @@ export class Sample_LogDepth {
         this.engine.startRenderView(view);
 
         // change cull mode by click dropdown box
-        GUIHelp.add(Engine3D.setting, 'doublePrecision').onChange((v: boolean) => {
+        GUIHelp.add(engine.setting, 'doublePrecision').onChange((v: boolean) => {
             sessionStorage.doublePrecision = v
             location.reload()
         });
-        GUIHelp.add(Engine3D.setting, 'useRTE').onChange((v: boolean) => {
+        GUIHelp.add(engine.setting, 'useRTE').onChange((v: boolean) => {
             sessionStorage.useRTE = v
             location.reload()
         });

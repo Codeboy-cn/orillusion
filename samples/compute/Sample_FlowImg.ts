@@ -6,7 +6,7 @@ export class Demo_FlowImg {
     constructor() { }
 
     async run() {
-        const engine = await Engine3D.create({});
+        const engine = await Engine3D.init({});
         let scene = new Scene3D();
         let sky = scene.addComponent(AtmosphericComponent);
         await this.initScene(scene);

@@ -7,7 +7,7 @@ export class Sample_LoadJson {
     scene: Scene3D;
 
     async run() {
-        const engine = this.engine = await Engine3D.create();
+        const engine = this.engine = await Engine3D.init();
         let param = createSceneParam();
         param.camera.distance = 10;
         let exampleScene = createExampleScene(engine, param);

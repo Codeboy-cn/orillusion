@@ -9,10 +9,13 @@ class Sample_ChangeMaterial {
     scene: Scene3D;
     lightObj: Object3D;
     async run() {
-        const engine = this.engine = await Engine3D.create();
+        const engine = this.engine = await Engine3D.init({
+            setting: {
+                material: { materialChannelDebug: true },
+                shadow: { },
+            },
+        });
 
-        Engine3D.setting.material.materialChannelDebug = true;
-        Engine3D.setting.shadow.shadowBound = 5;
         this.scene = new Scene3D();
         let sky = this.scene.addComponent(AtmosphericComponent);
 

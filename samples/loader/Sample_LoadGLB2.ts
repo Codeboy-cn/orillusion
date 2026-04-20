@@ -10,11 +10,14 @@ export class Sample_LoadGLB2 {
     scene: Scene3D;
 
     async run() {
-        Engine3D.setting.render.debug = true;
-        Engine3D.setting.shadow.autoUpdate = true;
-        Engine3D.setting.shadow.shadowBound = 10;
-        Engine3D.setting.shadow.shadowBias = 0.005;
-        const engine = this.engine = await Engine3D.create();
+        const engine = this.engine = await Engine3D.init({
+            setting: {
+                render: { debug: true },
+                shadow: {
+                    autoUpdate: true,
+                },
+            },
+        });
         let exampleScene = createExampleScene(engine);
         exampleScene.atmosphericSky.displaySun = false;
         exampleScene.atmosphericSky.sunRadiance = 1;

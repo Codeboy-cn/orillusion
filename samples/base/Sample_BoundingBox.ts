@@ -12,7 +12,7 @@ class Sample_BoundingBox {
     graphic3D: Graphic3D
     async run() {
         // init engine
-        const engine = await Engine3D.create({ renderLoop: () => { this.loop() } });
+        const engine = await Engine3D.init({ renderLoop: () => { this.loop() } });
         GUIHelp.init();
         let param = createSceneParam();
         param.camera.near = 0.01;

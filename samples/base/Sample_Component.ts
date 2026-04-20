@@ -6,7 +6,7 @@ import { GUIUtil } from "@samples/utils/GUIUtil";
 class Sample_UseComponent {
     async run() {
         // init engine
-        const engine = await Engine3D.create();
+        const engine = await Engine3D.init();
         // create new Scene
         let scene = new Scene3D();
         // add atmospheric sky

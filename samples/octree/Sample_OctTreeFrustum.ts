@@ -19,11 +19,13 @@ export class Sample_OctTreeFrustum {
 
     camera: Camera3D;
     async run() {
-
-        Engine3D.setting.occlusionQuery.octree = { width: 1000, height: 1000, depth: 1000, x: 0, y: 0, z: 0 }
-
         // init engine
-        const engine = await Engine3D.create({ renderLoop: () => { this.loop() } });
+        const engine = await Engine3D.init({
+            renderLoop: () => { this.loop() },
+            setting: {
+                occlusionQuery: { octree: { width: 1000, height: 1000, depth: 1000, x: 0, y: 0, z: 0 } },
+            },
+        });
         GUIHelp.init();
         let param = createSceneParam();
         param.camera.distance = 400;

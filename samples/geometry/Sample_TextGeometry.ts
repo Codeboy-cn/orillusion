@@ -7,7 +7,7 @@ class Sample_TextGeometry {
     engine: Engine3D;
     lightObj: Object3D;
     async run() {
-        const engine = this.engine = await Engine3D.create();
+        const engine = this.engine = await Engine3D.init();
         let view = new View3D();
         view.scene = new Scene3D();
         let sky = view.scene.addComponent(AtmosphericComponent);
@@ -59,7 +59,6 @@ class Sample_TextGeometry {
         sunLight.intensity = 3;
         sunLight.lightColor = KelvinUtil.color_temperature_to_rgb(6553);
         sunLight.castShadow = true;
-        sunLight.shadowBias = 0.5;
         scene.addChild(lightObj3D);
     }
 }

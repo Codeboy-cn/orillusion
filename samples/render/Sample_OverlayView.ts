@@ -8,11 +8,15 @@ export class Sample_OverlayView {
     mainCamera: Camera3D;
     
     async run() {
-        Engine3D.setting.shadow.autoUpdate = true;
-        Engine3D.setting.shadow.shadowBound = 200;
         GUIHelp.init();
 
-        const engine = await Engine3D.create();
+        const engine = await Engine3D.init({
+            setting: {
+                shadow: {
+                    autoUpdate: true,
+                },
+            },
+        });
 
         let view = new View3D();
         view.scene = new Scene3D();

@@ -12,11 +12,15 @@ export class Static_Audio {
     constructor() { }
 
     async run() {
-        Engine3D.setting.shadow.autoUpdate = true;
-        Engine3D.setting.shadow.updateFrameRate = 1;
-        Engine3D.setting.shadow.type = 'HARD';
-
-        const engine = this.engine = await Engine3D.create();
+        const engine = this.engine = await Engine3D.init({
+            setting: {
+                shadow: {
+                    autoUpdate: true,
+                    updateFrameRate: 1,
+                    type: 'HARD',
+                },
+            },
+        });
         this.scene = new Scene3D();
         this.scene.addComponent(AtmosphericComponent);
 
@@ -102,7 +106,6 @@ export class Static_Audio {
             directLight.lightColor = KelvinUtil.color_temperature_to_rgb(5355);
             directLight.castShadow = true;
             directLight.intensity = 3;
-            directLight.shadowBias = 0.4;
             directLight.shadowBoundWidth = 512;
             directLight.shadowBoundHeight = 512;
             directLight.shadowBoundFar = 512;

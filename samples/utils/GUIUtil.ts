@@ -1,6 +1,6 @@
 import { GUIHelp } from "@orillusion/debug/GUIHelp";
 import { UVMoveComponent } from "@samples/material/script/UVMoveComponent";
-import { ProfilerDraw, PassType, OutlinePost, GBufferPost, Engine3D, AtmosphericComponent, GlobalFog, Transform, BloomPost, GodRayPost, Object3D, DirectLight, PointLight, SpotLight, GlobalIlluminationComponent, View3D, UIShadow, Color, UIPanel, GPUCullMode, BillboardType, LitMaterial, BlendMode, MorphTargetBlender, SkinnedMeshRenderer2, AnimatorComponent, GTAOPost, TAAPost, DepthOfFieldPost, Vector4, Vector2 } from "@orillusion/core";
+import { ProfilerDraw, PassType, OutlinePost, GBufferPost, Engine3D, AtmosphericComponent, GlobalFog, Transform, BloomPost, GodRayPost, Object3D, DirectLight, PointLight, SpotLight, GlobalIlluminationComponent, View3D, UIShadow, Color, UIPanel, GPUCullMode, BillboardType, LitMaterial, BlendMode, MorphTargetBlender, SkinnedMeshRenderer2, AnimatorComponent, GTAOPost, TAAPost, DepthOfFieldPost, Vector3, Vector4, Vector2 } from "@orillusion/core";
 import { Graphic3D } from "@orillusion/graphic";
 
 export class GUIUtil {
@@ -53,12 +53,11 @@ export class GUIUtil {
         GUIHelp.endFolder();
     }
 
-    public static renderShadowSetting(open: boolean = true) {
+    public static renderShadowSetting(engine: Engine3D, open: boolean = true) {
         GUIHelp.addFolder('ShadowSetting');
-        let setting = Engine3D.setting.shadow;
+        let setting = engine.setting.shadow;
 
-        GUIHelp.add(setting, 'shadowBound', 0, 2048, 1);
-        GUIHelp.add(setting, 'shadowBias', 0.0001, 0.2, 0.00001);
+        GUIHelp.add(setting, 'shadowSize', 256, 4096, 1);
         open && GUIHelp.open();
         GUIHelp.endFolder();
     }
@@ -196,8 +195,8 @@ export class GUIUtil {
         GUIHelp.add(light.transform, 'rotationY', 0.0, 360.0, 0.01);
         GUIHelp.add(light.transform, 'rotationZ', 0.0, 360.0, 0.01);
 
-        GUIHelp.add(light, 'shadowBias', 0.00001, 1);
-        GUIHelp.add(light, 'shadowCSMBias', 0.00001, 1);
+        // shadowBias / normalBias default to 'auto' (RFC-003) — explicit GUI
+        // controls omitted; samples can override directly if needed.
         GUIHelp.add(light, 'shadowBoundWidth', 0, 1000, 0.1);
         GUIHelp.add(light, 'shadowBoundHeight', 0, 1000, 0.1);
         GUIHelp.add(light, 'shadowBoundNear', 0.01, 1000)
@@ -210,9 +209,8 @@ export class GUIUtil {
 
         GUIHelp.add(light, 'enableCSM');
         GUIHelp.add(light, 'csmAutoUpdate');
-        GUIHelp.add(light, 'showDebug').onChange((v)=>{
-            this.debugDirectLight(light, v);
-        });
+        GUIHelp.add(light, 'debugCSM').onChange(() => this.refreshDirectLightDebug(light));
+        GUIHelp.add(light, 'debugShadowBound').onChange(() => this.refreshDirectLightDebug(light));
 
         open && GUIHelp.open();
         GUIHelp.endFolder();
@@ -234,39 +232,51 @@ export class GUIUtil {
         }
     }
 
-    public static debugDirectLight(light: DirectLight, enable: boolean) {
+    /**
+     * Refresh the light's debug visualization based on the two independent toggles
+     * (debugCSM, debugShadowBound). Either flag installs a single bindOnChange
+     * closure that redraws on light transform / shadow bound changes.
+     */
+    public static refreshDirectLightDebug(light: DirectLight) {
         const debugId = `DirectLight_${light.object3D.instanceID}`;
-        if (enable) {
-            light.bindOnChange = ()=> {
-                if (!light.csmAutoUpdate) return;
-                // debug draw
-                if (light.object3D && light.transform.view3D && light.transform.view3D.scene) {
-                    let g = light.transform.view3D.scene.getChildByName('graphic3D') as Graphic3D;
-                    if (!g) { g = new Graphic3D(); light.transform.view3D.scene.addChild(g); }
-                    this._clearDebugDirectLight(light);
-                    g.drawAxis(debugId, light.transform.worldPosition, 10);
-                    if (light.enableCSM) {
-                        g.drawCameraFrustum(light.object3D.transform.scene3D.view.camera, new Color(1, 1, 0));
-                        for (let i = 0; i < light.cascadeNum; i++) {
-                            // g.drawAxis(`DirectLight_${light.object3D.instanceID}_cms${i}`, light.transform.worldPosition, 10);
-                            g.drawBoundingBox(`${debugId}_cms${i}`, light.frustumCSM.children[i].bound);
-                            g.drawCameraFrustum(light.csmShadowCamera[i], light.lightColor);
-
-                            const corners = light.frustumCSM.sections[i + 1].corners;
-                            g.drawLines(`${debugId}_cms${i}_corners`, [
-                                corners[0], corners[2], corners[1], corners[3]
-                            ], Color.COLOR_GREEN);
-                        }
-                    } else {
-                        g.drawCameraFrustum(light.shadowCamera, light.lightColor);
-                    }
-                }
-            }
-            light.bindOnChange();
+        this._clearDebugDirectLight(light);
+        if (!light.debugCSM && !light.debugShadowBound) {
+            light.bindOnChange = null;
             return;
         }
-        light.bindOnChange = null;
-        this._clearDebugDirectLight(light);
+        light.bindOnChange = () => {
+            // csmAutoUpdate gate only matters in CSM mode (frustum follows render
+            // camera). Non-CSM shadow camera follows the light alone.
+            if (light.enableCSM && !light.csmAutoUpdate) return;
+            if (!(light.object3D && light.transform.view3D && light.transform.view3D.scene)) return;
+            let g = light.transform.view3D.scene.getChildByName('graphic3D') as Graphic3D;
+            if (!g) { g = new Graphic3D(); light.transform.view3D.scene.addChild(g); }
+            this._clearDebugDirectLight(light);
+            g.drawAxis(debugId, light.transform.worldPosition, 10);
+            if (light.debugCSM && light.enableCSM) {
+                g.drawCameraFrustum(light.object3D.transform.scene3D.view.camera, new Color(1, 1, 0));
+                for (let i = 0; i < light.cascadeNum; i++) {
+                    g.drawBoundingBox(`${debugId}_cms${i}`, light.frustumCSM.children[i].bound);
+                    g.drawCameraFrustum(light.csmShadowCamera[i], light.lightColor);
+
+                    const corners = light.frustumCSM.sections[i + 1].corners;
+                    g.drawLines(`${debugId}_cms${i}_corners`, [
+                        corners[0], corners[2], corners[1], corners[3]
+                    ], Color.COLOR_GREEN);
+                }
+            }
+            if (light.debugShadowBound && !light.enableCSM) {
+                // Pose the shadow camera from the light's current transform so the
+                // rectangle tracks xyz / rotation changes immediately. poseShadowCamera
+                // in the render pass only runs at frame time, which would lag behind
+                // a GUI slider drag.
+                const eye = light.transform.worldPosition;
+                const target = new Vector3().copyFrom(light.direction).add(eye);
+                light.shadowCamera.transform.lookAt(eye, target);
+                g.drawCameraFrustum(light.shadowCamera, light.lightColor);
+            }
+        };
+        light.bindOnChange();
     }
 
     //show point light gui controller
@@ -320,6 +330,7 @@ export class GUIUtil {
         let volume = component['_volume'];
         let giSetting = volume.setting;
         let renderJob = view.engine3D.getRenderJob(view);
+        let engine = view.engine3D;
 
         function onProbesChange(): void {
             component['changeProbesPosition']();
@@ -387,7 +398,7 @@ export class GUIUtil {
         let ddgiProbeRenderer = renderJob.ddgiProbeRenderer;
         GUIHelp.addButton('showRays', () => {
             let array = ddgiProbeRenderer.irradianceComputePass['depthRaysBuffer'].readBuffer();
-            let count = Engine3D.setting.gi.probeXCount * Engine3D.setting.gi.probeYCount * Engine3D.setting.gi.probeZCount
+            let count = engine.setting.gi.probeXCount * engine.setting.gi.probeYCount * engine.setting.gi.probeZCount
             for (let j = 0; j < count; j++) {
                 let probeIndex = j;
                 debugProbeRay(probeIndex, array);
@@ -396,10 +407,10 @@ export class GUIUtil {
         });
 
         GUIHelp.addButton('hideRays', () => {
-            let count = Engine3D.setting.gi.probeXCount * Engine3D.setting.gi.probeYCount * Engine3D.setting.gi.probeZCount
+            let count = engine.setting.gi.probeXCount * engine.setting.gi.probeYCount * engine.setting.gi.probeZCount
             for (let j = 0; j < count; j++) {
                 let probeIndex = j;
-                const rayNumber = Engine3D.setting.gi.rayNumber;
+                const rayNumber = engine.setting.gi.rayNumber;
                 for (let i = 0; i < rayNumber; i++) {
                     let id = `showRays${probeIndex}${i}`;
                     (view as any).graphic3D?.Clear(id);
@@ -521,13 +532,12 @@ export class GUIUtil {
 
 
     static renderDebug(view: View3D) {
-        // if (Engine3D.setting.render.debug) {
-
         GUIHelp.removeFolder(`RenderPerformance`);
         //debug
         let f = GUIHelp.addFolder('RenderPerformance');
         f.open();
         let renderJob = view.engine3D.getRenderJob(view);
+        let engine = view.engine3D;
         if (renderJob.postRenderer) {
             let debugTextures = renderJob.postRenderer.debugTextures;
             let debugTextureObj = { normalRender: -1 };
@@ -535,7 +545,7 @@ export class GUIUtil {
                 const tex = debugTextures[i];
                 debugTextureObj[tex.name] = i;
             }
-            GUIHelp.add(Engine3D.setting.render, 'debugQuad', debugTextureObj);
+            GUIHelp.add(engine.setting.render, 'debugQuad', debugTextureObj);
         }
         let debugChanel = {
             PositionView: 0,
@@ -556,11 +566,11 @@ export class GUIUtil {
             debugClusterBox: 15,
             debugClusterLightCount: 16,
         }
-        GUIHelp.add(Engine3D.setting.render, 'renderState_left', debugChanel);
-        GUIHelp.add(Engine3D.setting.render, 'renderState_right', debugChanel);
-        GUIHelp.add(Engine3D.setting.render, 'renderState_split', 0.0, 2048, 0.001);
-        GUIHelp.add(Engine3D.setting.render, 'drawOpMin', 0.0, 10000, 1);
-        GUIHelp.add(Engine3D.setting.render, 'drawOpMax', 0.0, 10000, 1);
+        GUIHelp.add(engine.setting.render, 'renderState_left', debugChanel);
+        GUIHelp.add(engine.setting.render, 'renderState_right', debugChanel);
+        GUIHelp.add(engine.setting.render, 'renderState_split', 0.0, 2048, 0.001);
+        GUIHelp.add(engine.setting.render, 'drawOpMin', 0.0, 10000, 1);
+        GUIHelp.add(engine.setting.render, 'drawOpMax', 0.0, 10000, 1);
         GUIHelp.endFolder();
     }
 

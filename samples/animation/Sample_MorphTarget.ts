@@ -10,10 +10,12 @@ export class Sample_MorphTarget {
     influenceData: { [key: string]: number } = {};
 
     async run() {
-        Engine3D.setting.shadow.shadowBound = 100;
-        Engine3D.setting.shadow.shadowBias = 0.05;
-
-        const engine = this.engine = await Engine3D.create();
+        const engine = this.engine = await Engine3D.init({
+            setting: {
+                shadow: {
+                },
+            },
+        });
         GUIHelp.init();
 
         this.scene = new Scene3D();

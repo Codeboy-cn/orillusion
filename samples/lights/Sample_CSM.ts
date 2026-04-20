@@ -13,10 +13,15 @@ class Sample_CSM {
     viewCamera: Camera3D;
     graphic3D: Graphic3D;
     async run() {
-        Engine3D.setting.shadow.autoUpdate = true;
-        Engine3D.setting.shadow.shadowSize = 2048;
-        Engine3D.setting.shadow.shadowBound = 512;
-        const engine = this.engine = await Engine3D.create({ renderLoop: () => { this.loop(); } });
+        const engine = this.engine = await Engine3D.init({
+            setting: {
+                shadow: {
+                    autoUpdate: true,
+                    shadowSize: 2048,
+                },
+            },
+            renderLoop: () => { this.loop(); }
+        });
 
         GUIHelp.init();
 
@@ -43,12 +48,10 @@ class Sample_CSM {
         this.graphic3D = new Graphic3D();
         this.scene.addChild(this.graphic3D);
 
-        mainCamera.enableCSM = true;
         GUIHelp.addFolder('CSM')
-        GUIHelp.add(mainCamera, 'enableCSM');
-        GUIHelp.add(Engine3D.setting.shadow, 'csmScatteringExp', 0.5, 1.0, 0.01);
-        GUIHelp.add(Engine3D.setting.shadow, 'csmMargin', 0.01, 0.5, 0.01);
-        GUIHelp.add(Engine3D.setting.shadow, 'csmAreaScale', 0.1, 1, 0.01);
+        GUIHelp.add(engine.setting.shadow, 'csmScatteringExp', 0.5, 1.0, 0.01);
+        GUIHelp.add(engine.setting.shadow, 'csmMargin', 0.01, 0.5, 0.01);
+        GUIHelp.add(engine.setting.shadow, 'csmAreaScale', 0.1, 1, 0.01);
         GUIHelp.open();
         GUIHelp.endFolder();
         engine.startRenderView(view);
@@ -66,7 +69,6 @@ class Sample_CSM {
         sunLight.lightColor = KelvinUtil.color_temperature_to_rgb(6553);
         sunLight.castShadow = true;
         sunLight.enableCSM = enableCSM;
-        sunLight.shadowCSMBias = 0.005;
 
         GUIUtil.renderDirLight(sunLight);
         this.scene.addChild(lightObj3D);

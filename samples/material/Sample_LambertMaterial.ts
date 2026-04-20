@@ -7,7 +7,7 @@ class Sample_LambertMaterial {
     scene: Scene3D;
 
     async run() {
-        const engine = await Engine3D.create();
+        const engine = await Engine3D.init();
         await GUIHelp.init();
 
         this.scene = new Scene3D();

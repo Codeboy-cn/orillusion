@@ -6,7 +6,7 @@ import { SolidColorSky, Engine3D, SkyRenderer, Color, Object3DUtil, GridObject }
 class HDRSkyMap {
     async run() {
         // init engine
-        const engine = await Engine3D.create({});
+        const engine = await Engine3D.init({});
         GUIHelp.init();
         // init scene
         let scene = createExampleScene(engine).scene;

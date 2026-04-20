@@ -16,10 +16,14 @@ export class Sample_OctTreeRay {
     white = new Color(1, 1, 1, 1)
 
     async run() {
-        Engine3D.setting.shadow.enable = false;
-        Engine3D.setting.occlusionQuery.octree = { width: 400, height: 400, depth: 400, x: 0, y: 0, z: 0 }
         // init engine
-        const engine = await Engine3D.create({ renderLoop: () => { this.loop() } });
+        const engine = await Engine3D.init({
+            renderLoop: () => { this.loop() },
+            setting: {
+                shadow: { enable: false },
+                occlusionQuery: { octree: { width: 400, height: 400, depth: 400, x: 0, y: 0, z: 0 } },
+            },
+        });
         GUIHelp.init();
         let param = createSceneParam();
         param.camera.distance = 400;

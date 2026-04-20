@@ -8,12 +8,15 @@ export class Demo_Softbody {
 
     async run() {
 
-        Engine3D.setting.shadow.autoUpdate = true;
-        Engine3D.setting.shadow.updateFrameRate = 1;
-        Engine3D.setting.shadow.shadowBound = 8;
-        //Engine3D.setting.shadow.shadowBias = 0.000001;
-
-        const engine = this.engine = await Engine3D.create({});
+        const engine = this.engine = await Engine3D.init({
+            setting: {
+                shadow: {
+                    autoUpdate: true,
+                    updateFrameRate: 1,
+                    //shadowBias: 0.000001,
+                },
+            },
+        });
 
         GUIHelp.init();
 
@@ -87,7 +90,6 @@ export class Demo_Softbody {
             let lc = lightObj.addComponent(DirectLight);
             lc.intensity = 3;
             lc.castShadow = true;
-            lc.shadowBias = 0.2;
             lc.shadowBoundWidth = 16;
             lc.shadowBoundHeight = 16;
             lc.shadowBoundFar = 16;

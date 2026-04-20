@@ -10,10 +10,12 @@ class Sample_PBR {
     constructor() { }
 
     async run() {
-        const engine = this.engine = await Engine3D.create({});
-
-        Engine3D.setting.render.debug = true;
-        Engine3D.setting.shadow.shadowBound = 5;
+        const engine = this.engine = await Engine3D.init({
+            setting: {
+                render: { debug: true },
+                shadow: { },
+            },
+        });
 
         GUIHelp.init();
 

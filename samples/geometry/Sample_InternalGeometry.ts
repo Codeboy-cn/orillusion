@@ -6,12 +6,16 @@ import { GUIUtil } from "@samples/utils/GUIUtil";
 class Sample_InternalGeometry {
     lightObj: Object3D;
     async run() {
-        Engine3D.setting.shadow.autoUpdate = true;
-        Engine3D.setting.shadow.shadowBound = 200;
-        Engine3D.setting.shadow.shadowSize = 2048;
         GUIHelp.init();
 
-        const engine = await Engine3D.create();
+        const engine = await Engine3D.init({
+            setting: {
+                shadow: {
+                    autoUpdate: true,
+                    shadowSize: 2048,
+                },
+            },
+        });
         let view = new View3D();
         view.scene = new Scene3D();
         let sky = view.scene.addComponent(AtmosphericComponent);
@@ -38,7 +42,6 @@ class Sample_InternalGeometry {
         sunLight.intensity = 3;
         sunLight.lightColor = KelvinUtil.color_temperature_to_rgb(6553);
         sunLight.castShadow = true;
-        sunLight.shadowBias = 0.5;
         sunLight.shadowBoundWidth = 256;
         sunLight.shadowBoundHeight = 256;
         sunLight.shadowBoundFar = 256;

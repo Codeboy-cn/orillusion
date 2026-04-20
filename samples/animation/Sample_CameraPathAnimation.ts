@@ -53,10 +53,15 @@ class Sample_CameraPathAnimation {
     lookAtUp = new Vector3(0.03, 1, 0.03);
 
     async run() {
-        Engine3D.setting.pick.enable = true;
-        Engine3D.setting.pick.mode = `pixel`;
-
-        const engine = this.engine = await Engine3D.create({ renderLoop: () => this.loop() });
+        const engine = this.engine = await Engine3D.init({
+            renderLoop: () => this.loop(),
+            setting: {
+                pick: {
+                    enable: true,
+                    mode: `pixel`,
+                },
+            },
+        });
 
         let scene = new Scene3D();
         scene.addComponent(Stats);
@@ -64,7 +69,6 @@ class Sample_CameraPathAnimation {
         let camera = CameraUtil.createCamera3DObject(scene);
         camera.perspective(60, engine.aspect, 1, 1000.0);
         camera.transform.rotationX = 90;
-        camera.enableCSM = true;
 
         let hoverCtrl = camera.object3D.addComponent(HoverCameraController);
         hoverCtrl.setCamera(-40, -25, 250);

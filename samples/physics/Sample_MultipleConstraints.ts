@@ -17,7 +17,7 @@ class Sample_MultipleConstraints {
     async run() {
         // init physics and engine
         await Physics.init({ useSoftBody: true });
-        const engine = this.engine = await Engine3D.create({ renderLoop: () => Physics.update() });
+        const engine = this.engine = await Engine3D.init({ renderLoop: () => Physics.update() });
         await GUIHelp.init();
 
         this.gui = new dat.GUI();
@@ -45,7 +45,6 @@ class Sample_MultipleConstraints {
         dl.castShadow = true;
         dl.intensity = 3;
         dl.enableCSM = true;
-        dl.shadowCSMBias = 0.002;
         GUIUtil.renderDirLight(dl);
         this.scene.addChild(light);
 

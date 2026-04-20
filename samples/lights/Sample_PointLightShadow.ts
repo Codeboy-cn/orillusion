@@ -8,14 +8,21 @@ export class Sample_PointLightShadow {
     lightObj: Object3D;
     async run() {
 
-        Engine3D.setting.shadow.enable = true;
-        Engine3D.setting.shadow.debug = true;
-        Engine3D.setting.shadow.pointShadowBias = 0.0005;
-        Engine3D.setting.render.debug = true;
-        Engine3D.setting.material.materialChannelDebug = true;
-        Engine3D.setting.material.materialDebug = true;
-
-        const engine = await Engine3D.create({});
+        const engine = await Engine3D.init({
+            setting: {
+                shadow: {
+                    enable: true,
+                    debug: true,
+                },
+                render: {
+                    debug: true,
+                },
+                material: {
+                    materialChannelDebug: true,
+                    materialDebug: true,
+                },
+            },
+        });
 
         this.scene = new Scene3D();
         let sky = this.scene.addComponent(AtmosphericComponent);

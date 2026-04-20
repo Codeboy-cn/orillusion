@@ -9,11 +9,14 @@ class Sample_PBRMaterial {
 
     async run() {
 
-        //config settings
-        Engine3D.setting.render.debug = true;
-        Engine3D.setting.shadow.shadowBound = 50;
-        Engine3D.setting.shadow.shadowBias = 0.02;
-        const engine = this.engine = await Engine3D.create({ canvasConfig: { alpha: true, zIndex: 11, backgroundImage: '/logo/bg.webp' } });
+        const engine = this.engine = await Engine3D.init({
+            canvasConfig: { alpha: true, zIndex: 11, backgroundImage: '/logo/bg.webp' },
+            //config settings
+            setting: {
+                render: { debug: true },
+                shadow: { },
+            },
+        });
 
         GUIHelp.init(999);
 

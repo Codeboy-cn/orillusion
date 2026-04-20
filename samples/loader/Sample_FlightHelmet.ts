@@ -10,20 +10,24 @@ class Sample_FlightHelmet {
     flightHelmetObj: Object3D;
 
     async run() {
-        const engine = this.engine = await Engine3D.create({
+        const engine = this.engine = await Engine3D.init({
             canvasConfig: {
                 alpha: true,
                 zIndex: 0,
                 backgroundImage: '/logo/bg.webp'
             },
             renderLoop: () => this.loop(),
+            setting: {
+                shadow: {
+                    autoUpdate: true,
+                },
+                render: {
+                    postProcessing: {
+                        ssao: { radius: 0.018, aoPower: 1 },
+                    },
+                },
+            },
         });
-
-        Engine3D.setting.shadow.autoUpdate = true;
-        Engine3D.setting.shadow.shadowBound = 20;
-        Engine3D.setting.shadow.shadowBias = 0.001;
-        Engine3D.setting.render.postProcessing.ssao.radius = 0.018;
-        Engine3D.setting.render.postProcessing.ssao.aoPower = 1;
 
         this.scene = new Scene3D();
         let camera = CameraUtil.createCamera3DObject(this.scene);
@@ -41,7 +45,7 @@ class Sample_FlightHelmet {
         postCom.addPost(FXAAPost);
         await this.initScene();
 
-        GUIUtil.renderShadowSetting();
+        GUIUtil.renderShadowSetting(this.engine);
     }
 
     async initScene() {

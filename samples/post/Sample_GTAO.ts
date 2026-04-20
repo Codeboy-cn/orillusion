@@ -13,12 +13,16 @@ export class Sample_GTAO {
 	scene: Scene3D;
 
 	async run() {
-		Engine3D.setting.shadow.shadowSize = 2048
-		Engine3D.setting.shadow.shadowBound = 500;
-		Engine3D.setting.shadow.shadowBias = 0.05;
-		Engine3D.setting.render.debug = true;
-
-		const engine = this.engine = await Engine3D.create();
+		const engine = this.engine = await Engine3D.init({
+			setting: {
+				shadow: {
+					shadowSize: 2048,
+				},
+				render: {
+					debug: true,
+				},
+			},
+		});
 		GUIHelp.init();
 
 		this.scene = new Scene3D();
@@ -47,7 +51,6 @@ export class Sample_GTAO {
 		lc.intensity = 5;
 		lc.indirect = 0.3;
 		lc.enableCSM = true;
-		lc.shadowCSMBias = 0.003;
 		this.scene.addChild(this.lightObj);
 		GUIUtil.renderDirLight(lc);
 		sky.relativeTransform = this.lightObj.transform;
@@ -58,7 +61,7 @@ export class Sample_GTAO {
 		post.maxPixel = 15;
 		GUIUtil.renderGTAO(post);
 
-		GUIUtil.renderShadowSetting();
+		GUIUtil.renderShadowSetting(engine);
 	}
 
 	async initScene() {

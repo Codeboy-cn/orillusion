@@ -13,14 +13,16 @@ export class Sample_AnimCurve {
     curve4: AnimationCurve;
 
     async run() {
-
-        Engine3D.setting.shadow.autoUpdate = true;
-        Engine3D.setting.shadow.updateFrameRate = 1;
-        Engine3D.setting.shadow.shadowBound = 150;
-        Engine3D.setting.shadow.shadowBias = 0.02;
-
         GUIHelp.init();
-        const engine = this.engine = await Engine3D.create({ renderLoop: () => { this.renderUpdate() } });
+        const engine = this.engine = await Engine3D.init({
+            renderLoop: () => { this.renderUpdate() },
+            setting: {
+                shadow: {
+                    autoUpdate: true,
+                    updateFrameRate: 1,
+                },
+            },
+        });
 
         this.scene = new Scene3D();
         let sky = this.scene.addComponent(AtmosphericComponent);
@@ -59,7 +61,6 @@ export class Sample_AnimCurve {
             directLight.lightColor = KelvinUtil.color_temperature_to_rgb(5355);
             directLight.castShadow = true;
             directLight.intensity = 3;
-            directLight.shadowBias = 1;
             this.scene.addChild(this.lightObj3D);
 
             GUIUtil.renderDirLight(directLight);

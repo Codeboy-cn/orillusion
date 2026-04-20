@@ -8,10 +8,13 @@ class Sample_Fog {
     scene: Scene3D;
 
     async run() {
-        Engine3D.setting.shadow.shadowSize = 2048
-        Engine3D.setting.shadow.shadowBound = 1000;
-
-        const engine = await Engine3D.create();
+        const engine = await Engine3D.init({
+            setting: {
+                shadow: {
+                    shadowSize: 2048,
+                },
+            },
+        });
         await GUIHelp.init();
 
         this.scene = new Scene3D();
@@ -47,7 +50,6 @@ class Sample_Fog {
             lc.castShadow = true;
             lc.intensity = 5;
             lc.enableCSM = true;
-            lc.shadowCSMBias = 0.007;
             GUIUtil.renderDirLight(lc);
             this.scene.addChild(this.lightObj);
         }

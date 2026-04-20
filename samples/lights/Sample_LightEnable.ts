@@ -9,9 +9,12 @@ class Sample_LightEnable {
     constructor() { }
 
     async run() {
-        Engine3D.setting.shadow.pointShadowBias = 0.002;
-
-        const engine = await Engine3D.create({});
+        const engine = await Engine3D.init({
+            setting: {
+                shadow: {
+                },
+            },
+        });
 
         GUIHelp.init();
 

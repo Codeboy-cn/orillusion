@@ -14,7 +14,7 @@ class Sample_Dominoes {
     async run() {
         // init physics and engine
         await Physics.init();
-        this.engine = await Engine3D.create({ renderLoop: () => Physics.update() });
+        this.engine = await Engine3D.init({ renderLoop: () => Physics.update() });
         const engine = this.engine;
         await GUIHelp.init();
 
@@ -37,7 +37,6 @@ class Sample_Dominoes {
         let directLight = lightObj3D.addComponent(DirectLight);
         directLight.castShadow = true;
         directLight.intensity = 2;
-        directLight.shadowBias = 0.5;
         GUIUtil.renderDirLight(directLight);
         scene.addChild(lightObj3D);
 

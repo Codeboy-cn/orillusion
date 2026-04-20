@@ -6,10 +6,15 @@ class Sample_BlendMode2 {
     scene: Scene3D;
     lightObj: Object3D;
     async run() {
-        const engine = this.engine = await Engine3D.create();
-
-        Engine3D.setting.material.materialChannelDebug = true;
-        Engine3D.setting.shadow.shadowBound = 5;
+        const engine = this.engine = await Engine3D.init({
+            setting: {
+                material: {
+                    materialChannelDebug: true,
+                },
+                shadow: {
+                },
+            },
+        });
 
         this.scene = new Scene3D();
         let sky = this.scene.addComponent(AtmosphericComponent);

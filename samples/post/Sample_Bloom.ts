@@ -13,10 +13,13 @@ class Sample_Bloom {
 	scene: Scene3D;
 
 	async run() {
-		Engine3D.setting.shadow.shadowSize = 2048
-		Engine3D.setting.shadow.shadowBound = 500;
-
-		const engine = await Engine3D.create();
+		const engine = await Engine3D.init({
+			setting: {
+				shadow: {
+					shadowSize: 2048,
+				},
+			},
+		});
 
 		this.scene = new Scene3D();
 		let sky = this.scene.addComponent(AtmosphericComponent);
@@ -52,7 +55,6 @@ class Sample_Bloom {
 			lc.castShadow = true;
 			lc.intensity = 3;
 			lc.enableCSM = true;
-			lc.shadowCSMBias = 0.003;
 			this.scene.addChild(this.lightObj);
 		}
 

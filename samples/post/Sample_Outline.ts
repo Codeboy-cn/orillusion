@@ -10,14 +10,15 @@ export class Sample_Outline {
     constructor() { }
 
     async run() {
-        Engine3D.setting.shadow.enable = true;
-        Engine3D.setting.shadow.shadowSize = 2048
-        Engine3D.setting.shadow.shadowBound = 50;
-        Engine3D.setting.shadow.shadowBias = 0.05;
-
-        const engine = await Engine3D.create({
+        const engine = await Engine3D.init({
             canvasConfig: {
                 devicePixelRatio: 1
+            },
+            setting: {
+                shadow: {
+                    enable: true,
+                    shadowSize: 2048,
+                },
             },
             renderLoop: () => this.loop()
         })
@@ -71,7 +72,6 @@ export class Sample_Outline {
             lc.castShadow = true
             lc.intensity = 5
             lc.enableCSM = true;
-            lc.shadowCSMBias = 0.005;
             scene.addChild(this.lightObj)
             GUIUtil.renderDirLight(lc);
         }

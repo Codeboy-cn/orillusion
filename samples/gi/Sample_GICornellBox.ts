@@ -9,39 +9,43 @@ class Sample_GICornellBox {
     view: View3D;
     async run() {
 
-        Engine3D.setting.material.materialChannelDebug = true;
-        Engine3D.setting.material.materialDebug = false;
-
-        Engine3D.setting.gi.enable = true;
-        Engine3D.setting.gi.debug = true;
-        Engine3D.setting.gi.probeYCount = 6;
-        Engine3D.setting.gi.probeXCount = 6;
-        Engine3D.setting.gi.probeZCount = 6;
-        Engine3D.setting.gi.offsetX = 0;
-        Engine3D.setting.gi.offsetY = 10;
-        Engine3D.setting.gi.offsetZ = 0;
-        Engine3D.setting.gi.indirectIntensity = 1;
-        Engine3D.setting.gi.lerpHysteresis = 0.004;//default value is 0.01
-        Engine3D.setting.gi.maxDistance = 16;
-        Engine3D.setting.gi.probeSpace = 6;
-        Engine3D.setting.gi.normalBias = 0;
-        Engine3D.setting.gi.probeSize = 32;
-        Engine3D.setting.gi.octRTSideSize = 16;
-        Engine3D.setting.gi.octRTMaxSize = 2048;
-        Engine3D.setting.gi.ddgiGamma = 2.2;
-        Engine3D.setting.gi.depthSharpness = 1;
-        Engine3D.setting.gi.autoRenderProbe = true;
-
-        Engine3D.setting.shadow.debug = true;
-        Engine3D.setting.shadow.shadowBound = 80;
-        Engine3D.setting.shadow.shadowSize = 2048;
-        Engine3D.setting.shadow.shadowBias = 0.02;
-        Engine3D.setting.shadow.autoUpdate = true;
-        Engine3D.setting.shadow.updateFrameRate = 1;
-
-        Engine3D.setting.render.debug = true;
-
-        const engine = this.engine = await Engine3D.create({
+        const engine = this.engine = await Engine3D.init({
+            setting: {
+                material: {
+                    materialChannelDebug: true,
+                    materialDebug: false,
+                },
+                gi: {
+                    enable: true,
+                    debug: true,
+                    probeYCount: 6,
+                    probeXCount: 6,
+                    probeZCount: 6,
+                    offsetX: 0,
+                    offsetY: 10,
+                    offsetZ: 0,
+                    indirectIntensity: 1,
+                    lerpHysteresis: 0.004,//default value is 0.01
+                    maxDistance: 16,
+                    probeSpace: 6,
+                    normalBias: 0,
+                    probeSize: 32,
+                    octRTSideSize: 16,
+                    octRTMaxSize: 2048,
+                    ddgiGamma: 2.2,
+                    depthSharpness: 1,
+                    autoRenderProbe: true,
+                },
+                shadow: {
+                    debug: true,
+                    shadowSize: 2048,
+                    autoUpdate: true,
+                    updateFrameRate: 1,
+                },
+                render: {
+                    debug: true,
+                },
+            },
             renderLoop: () => {
                 if (this.giComponent?.isStart) {
                     GUIUtil.renderGIComponent(this.giComponent, this.view);
@@ -54,11 +58,13 @@ class Sample_GICornellBox {
 
         let exampleScene = createExampleScene(engine, param);
         exampleScene.hoverCtrl.setCamera(0, 0, 50, new Vector3(0, 10, 0));
-        // exampleScene.camera.enableCSM = true;
         this.scene = exampleScene.scene;
         this.view = exampleScene.view;
-        this.addGIProbes(this.view);
+        // startRenderViews binds view.engine3D — must precede addGIProbes,
+        // since GlobalIlluminationComponent.init reaches scene.view.engine3D
+        // to size light/GI buffers.
         engine.startRenderViews([exampleScene.view]);
+        this.addGIProbes(this.view);
 
         let postProcessing = this.scene.addComponent(PostProcessingComponent);
         postProcessing.addPost(BloomPost);

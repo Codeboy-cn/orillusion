@@ -4,11 +4,14 @@ import { Engine3D, Object3DUtil, Object3D, ViewPanel, UIImage, ImageType, UIPane
 
 export class Sample_UIChangeParent {
     async run() {
-        Engine3D.setting.shadow.autoUpdate = true;
-
         GUIHelp.init();
 
-        const engine = await Engine3D.create({ renderLoop: () => { this.loop(); } });
+        const engine = await Engine3D.init({
+            renderLoop: () => { this.loop(); },
+            setting: {
+                shadow: { autoUpdate: true },
+            },
+        });
         let exampleScene = createExampleScene(engine);
         engine.startRenderView(exampleScene.view);
 

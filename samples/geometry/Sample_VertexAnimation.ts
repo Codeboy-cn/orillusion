@@ -11,7 +11,7 @@ class Smaple_VertexAnimation {
     lightObj: Object3D;
     async run() {
 
-        const engine = await Engine3D.create({ beforeRender: () => this.update() });
+        const engine = await Engine3D.init({ beforeRender: () => this.update() });
 
         let view = new View3D();
 
@@ -43,7 +43,6 @@ class Smaple_VertexAnimation {
         directLight.intensity = 3;
         directLight.lightColor = KelvinUtil.color_temperature_to_rgb(5355);
         directLight.castShadow = true;
-        directLight.shadowBias = 0.5;
         GUIUtil.renderDirLight(directLight);
 
         this.scene.addChild(lightObj3D);

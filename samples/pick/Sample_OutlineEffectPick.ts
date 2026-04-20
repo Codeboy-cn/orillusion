@@ -16,19 +16,27 @@ export class Sample_OutlineEffectPick {
     }
 
     async run() {
-        Engine3D.setting.shadow.enable = true;
-        Engine3D.setting.shadow.shadowSize = 2048
-        Engine3D.setting.shadow.shadowBound = 50;
-        Engine3D.setting.shadow.shadowBias = 0.05;
-
-        Engine3D.setting.pick.mode = `pixel`;
-
-        Engine3D.setting.render.postProcessing.outline.outlinePixel = 3;
-        Engine3D.setting.render.postProcessing.outline.fadeOutlinePixel = 6;
-        Engine3D.setting.render.postProcessing.outline.strength = 1;
-
         // init Engine3D
-        const engine = this.engine = await Engine3D.create({});
+        const engine = this.engine = await Engine3D.init({
+            setting: {
+                shadow: {
+                    enable: true,
+                    shadowSize: 2048,
+                },
+                pick: {
+                    mode: `pixel`,
+                },
+                render: {
+                    postProcessing: {
+                        outline: {
+                            outlinePixel: 3,
+                            fadeOutlinePixel: 6,
+                            strength: 1,
+                        },
+                    },
+                },
+            },
+        });
 
         let exampleScene = createExampleScene(engine);
         this.scene = exampleScene.scene;

@@ -16,17 +16,19 @@ class Sample_MultipleShapes {
     async run() {
         // init physics and engine
         await Physics.init();
-        const engine = this.engine = await Engine3D.create({
-            renderLoop: () => Physics.update()
+        const engine = this.engine = await Engine3D.init({
+            renderLoop: () => Physics.update(),
+            // shadow settings
+            setting: {
+                shadow: {
+                    shadowSize: 1024 * 4,
+                    updateFrameRate: 1,
+                },
+            },
         });
         await GUIHelp.init();
 
         this.gui = new dat.GUI();
-
-        // shadow settings
-        Engine3D.setting.shadow.shadowBias = 0.01;
-        Engine3D.setting.shadow.shadowSize = 1024 * 4;
-        Engine3D.setting.shadow.updateFrameRate = 1;
 
         this.scene = new Scene3D();
         this.scene.addComponent(Stats);
@@ -41,7 +43,6 @@ class Sample_MultipleShapes {
         // Setup camera
         let camera = CameraUtil.createCamera3DObject(this.scene);
         camera.perspective(60, engine.aspect, 0.1, 800.0);
-        camera.enableCSM = true;
 
         let hoverCtrl = camera.object3D.addComponent(HoverCameraController);
         hoverCtrl.setCamera(0, -25, 100);
@@ -55,7 +56,6 @@ class Sample_MultipleShapes {
         light.lightColor = Color.COLOR_WHITE;
         light.castShadow = true;
         light.intensity = 2.2;
-        light.shadowBias = 0.005;
         light.enableCSM = true;
         // light.cascadeNum = 1;
         GUIUtil.renderDirLight(light);

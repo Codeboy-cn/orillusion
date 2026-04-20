@@ -8,7 +8,7 @@ class Sample_DirectLight {
     lightObj3D: any;
 
     async run() {
-        const engine = this.engine = await Engine3D.create({});
+        const engine = this.engine = await Engine3D.init({});
 
         GUIHelp.init();
 

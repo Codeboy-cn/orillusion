@@ -7,7 +7,7 @@ class Sample_TextBarrage {
 
     async run() {
         // init engine
-        const engine = this.engine = await Engine3D.create();
+        const engine = this.engine = await Engine3D.init();
         // create new Scene
         let scene = new Scene3D();
         this.scene = scene;

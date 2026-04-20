@@ -4,9 +4,11 @@ import { Engine3D, Object3DUtil, Object3D, UIImage, ImageType, Color, UIPanel, V
 class Sample_UIMultiCanvas {
     engine: Engine3D;
     async run() {
-        Engine3D.setting.shadow.autoUpdate = true;
-
-        const engine = this.engine = await Engine3D.create();
+        const engine = this.engine = await Engine3D.init({
+            setting: {
+                shadow: { autoUpdate: true },
+            },
+        });
         await this.engine.res.loadFont('fnt/0.fnt');
 
         let exampleScene = createExampleScene(engine);

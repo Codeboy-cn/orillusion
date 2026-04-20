@@ -6,12 +6,17 @@ class Sample_MovebleLight {
     private light: PointLight;
     async run() {
         //set shadow and pick mode
-        Engine3D.setting.shadow.pointShadowBias = 0.0001;
-        Engine3D.setting.shadow.type = "HARD";
-        Engine3D.setting.pick.mode = "pixel";
-
         //Engine init
-        const engine = await Engine3D.create();
+        const engine = await Engine3D.init({
+            setting: {
+                shadow: {
+                    type: "HARD",
+                },
+                pick: {
+                    mode: "pixel",
+                },
+            },
+        });
 
         //create scene and add FPS
         let scene = new Scene3D();

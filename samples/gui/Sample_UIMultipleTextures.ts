@@ -3,7 +3,7 @@ import { Engine3D, Scene3D, Object3D, Camera3D, View3D, UIImage, HoverCameraCont
 class Sample_UIMultipleTextures {
     async run() {
         // initializa engine
-        const engine = await Engine3D.create()
+        const engine = await Engine3D.init()
         // create new scene as root node
         let scene3D: Scene3D = new Scene3D()
         scene3D.addComponent(AtmosphericComponent)

@@ -11,14 +11,16 @@ export class Sample_LoadGLB {
 
     async run() {
         GUIHelp.init();
-        const engine = this.engine = await Engine3D.create();
-        Engine3D.setting.shadow.autoUpdate = true;
-        Engine3D.setting.shadow.shadowBound = 150;
-        Engine3D.setting.shadow.shadowBias = 0.1;
+        const engine = this.engine = await Engine3D.init({
+            setting: {
+                shadow: {
+                    autoUpdate: true,
+                },
+            },
+        });
 
         let param = createSceneParam();
         param.camera.near = 10;
-        param.light.shadowCSMBias = 0.01;
         let ex = createExampleScene(engine, param);
         this.scene = ex.scene;
         this.scene.removeComponent(AtmosphericComponent);

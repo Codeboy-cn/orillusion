@@ -16,22 +16,23 @@ export class Sample_SSGI {
 	view: View3D;
 
 	async run() {
-		Engine3D.setting.shadow.shadowSize = 2048
-		Engine3D.setting.shadow.shadowBound = 175;
-		Engine3D.setting.shadow.shadowBias = 0.0061;
-
-		Engine3D.setting.shadow.shadowBound = 250;
-		Engine3D.setting.shadow.shadowBias = 0.018;
-		Engine3D.setting.render.useCompressGBuffer = true;
-
-		Engine3D.setting.reflectionSetting.reflectionProbeMaxCount = 8;
-		Engine3D.setting.reflectionSetting.reflectionProbeSize = 128;
-		Engine3D.setting.reflectionSetting.enable = true;
-
-		Engine3D.setting.render.hdrExposure = 1.0;
-
 		GUIHelp.init();
-		const engine = this.engine = await Engine3D.create();
+		const engine = this.engine = await Engine3D.init({
+			setting: {
+				shadow: {
+					shadowSize: 2048,
+				},
+				render: {
+					useCompressGBuffer: true,
+					hdrExposure: 1.0,
+				},
+				reflectionSetting: {
+					reflectionProbeMaxCount: 8,
+					reflectionProbeSize: 128,
+					enable: true,
+				},
+			},
+		});
 
 		this.scene = new Scene3D();
 		// this.scene.addComponent(Stats);
@@ -42,7 +43,6 @@ export class Sample_SSGI {
 		sky.exposure = 1.0;
 
 		let mainCamera = CameraUtil.createCamera3DObject(this.scene, 'camera');
-		// mainCamera.enableCSM = true;
 		mainCamera.perspective(60, engine.context3D.aspect, 1, 5000.0);
 		let ctrl = mainCamera.object3D.addComponent(HoverCameraController);
 		ctrl.setCamera(-90, -25, 200);
@@ -83,11 +83,11 @@ export class Sample_SSGI {
 		// ssgi = postProcessing.addPost(SSGIPost);
 		// GUIUtil.renderDirLight(this.lightObj.getComponent(DirectLight));
 
-		GUIUtil.renderShadowSetting();
+		GUIUtil.renderShadowSetting(engine);
 		let f = GUIHelp.addFolder("SSGI");
 		f.open();
-		GUIHelp.add(Engine3D.setting.sky, 'skyExposure', 0.0, 5.0, 0.0001);
-		GUIHelp.add(Engine3D.setting.render, 'hdrExposure', 0.0, 5.0, 0.0001);
+		GUIHelp.add(engine.setting.sky, 'skyExposure', 0.0, 5.0, 0.0001);
+		GUIHelp.add(engine.setting.render, 'hdrExposure', 0.0, 5.0, 0.0001);
 		GUIHelp.endFolder();
 	}
 

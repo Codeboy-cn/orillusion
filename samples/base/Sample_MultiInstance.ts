@@ -59,7 +59,7 @@ class Sample_MultiInstance {
 
         // ---------- Engine A builder ----------
         const buildEngineA = async (): Promise<Instance> => {
-            const engine = await Engine3D.create({ canvasConfig: { canvas: a.canvas } });
+            const engine = await Engine3D.init({ canvasConfig: { canvas: a.canvas } });
             a.title.textContent = `Engine A (id=${engine.id}) — red box + direct light`;
 
             const scene = new Scene3D();
@@ -95,7 +95,7 @@ class Sample_MultiInstance {
 
         // ---------- Engine B builder ----------
         const buildEngineB = async (): Promise<Instance> => {
-            const engine = await Engine3D.create({ canvasConfig: { canvas: b.canvas } });
+            const engine = await Engine3D.init({ canvasConfig: { canvas: b.canvas } });
             b.title.textContent = `Engine B (id=${engine.id}) — blue sphere + point light`;
 
             const scene = new Scene3D();

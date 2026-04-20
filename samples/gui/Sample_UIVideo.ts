@@ -6,11 +6,13 @@ import { Engine3D, Object3DUtil, Object3D, ViewPanel, UIImage, ImageType, makeAl
 export class Sample_UIVideo {
 
     async run() {
-        Engine3D.setting.shadow.autoUpdate = true;
-
         GUIHelp.init();
 
-        const engine = await Engine3D.create();
+        const engine = await Engine3D.init({
+            setting: {
+                shadow: { autoUpdate: true },
+            },
+        });
 
         let exampleScene = createExampleScene(engine);
         engine.startRenderView(exampleScene.view);

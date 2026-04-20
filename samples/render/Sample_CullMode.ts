@@ -3,7 +3,7 @@ import { Engine3D, Scene3D, AtmosphericComponent, Object3D, OrbitController, Dir
 
 class Sample_CullMode {
     async run() {
-        const engine = await Engine3D.create();
+        const engine = await Engine3D.init();
         GUIHelp.init();
 
         let scene = new Scene3D();

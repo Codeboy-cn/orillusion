@@ -9,8 +9,12 @@ class Sample_SphereDraw {
     public anim: boolean = false;
     async run() {
         // init engine
-        Engine3D.setting.pick.enable = false;
-        const engine = await Engine3D.create({ renderLoop: () => this.renderLoop() });
+        const engine = await Engine3D.init({
+            renderLoop: () => this.renderLoop(),
+            setting: {
+                pick: { enable: false },
+            },
+        });
         // create new Scene
         this.scene = new Scene3D();
 
