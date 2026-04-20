@@ -18,6 +18,11 @@ export class PointLight extends LightBase {
     private _shadowBias: 'auto' | number = 'auto';
     private _normalBias: 'auto' | number = 'auto';
 
+    // Debug visualization: when true, GUIUtil draws a wireframe sphere at
+    // `range` showing the point light's shadow-affected volume (analog of
+    // DirectLight.debugShadowBound).
+    public debugShadowRange: boolean = false;
+
     public get shadowBias(): 'auto' | number {
         return this._shadowBias;
     }

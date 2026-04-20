@@ -21,6 +21,9 @@ export class SpotLight extends LightBase {
     private _shadowBias: 'auto' | number = 'auto';
     private _normalBias: 'auto' | number = 'auto';
 
+    // Debug visualization: wireframe cone showing the spot's range / cone angle.
+    public debugShadowRange: boolean = false;
+
     public get shadowBias(): 'auto' | number {
         return this._shadowBias;
     }

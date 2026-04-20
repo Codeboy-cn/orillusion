@@ -344,7 +344,9 @@ export class GUIUtil {
         GUIHelp.add(light, 'range', 0.0, 1000.0, 0.001);
         GUIHelp.add(light, 'quadratic', 0.0, 2.0, 0.001);
         GUIHelp.add(light, 'castShadow');
+        GUIHelp.add(light, 'debugShadowRange').onChange(() => this.refreshPointLightDebug(light));
 
+        GUIUtil._addShadowCalcReadout(light);
         GUIUtil._addBiasReadout(light);
 
         GUIHelp.open();
@@ -370,11 +372,112 @@ export class GUIUtil {
         GUIHelp.add(light, 'outerAngle', 0.0, 180.0, 0.001);
         GUIHelp.add(light, 'innerAngle', 0.0, 100.0, 0.001);
         GUIHelp.add(light, 'castShadow');
+        GUIHelp.add(light, 'debugShadowRange').onChange(() => this.refreshPointLightDebug(light));
 
+        GUIUtil._addShadowCalcReadout(light);
         GUIUtil._addBiasReadout(light);
 
         GUIHelp.open();
         GUIHelp.endFolder();
+    }
+
+    /**
+     * Live readout of the inputs that feed the host ShadowBiasCalculator, plus
+     * what the formula *would* produce if it ran. Useful for comparing against
+     * what `lightData.shadowBias[0]` actually contains (see _addBiasReadout)
+     * — if the formula-output row shows a sensible value but lightData.shadowBias
+     * shows 0, the host writeback path is broken.
+     */
+    private static _addShadowCalcReadout(light: DirectLight | PointLight | SpotLight) {
+        const isDirect = light instanceof DirectLight;
+        const readout: any = {};
+        const rows: { key: string; step: number }[] = [];
+        const addRO = (key: string, getter: () => number, step = 1e-6) => {
+            Object.defineProperty(readout, key, {
+                enumerable: true,
+                get: getter,
+                set: () => { /* read-only: next frame's listen() poll resets the input */ },
+            });
+            rows.push({ key, step });
+        };
+        if (isDirect) {
+            const dl = light as DirectLight;
+            addRO('calc_mapWidth', () => dl.shadowMapWidth, 1);
+            addRO('calc_extent', () => {
+                const cam = (dl.enableCSM && dl.csmShadowCamera?.length ? dl.csmShadowCamera[0] : dl.shadowCamera);
+                return cam ? (cam.right - cam.left) : 0;
+            }, 0.001);
+            addRO('calc_depthRange', () => {
+                const cam = (dl.enableCSM && dl.csmShadowCamera?.length ? dl.csmShadowCamera[0] : dl.shadowCamera);
+                return cam ? (cam.far - cam.near) : 0;
+            }, 0.001);
+            addRO('calc_texelSize', () => {
+                const cam = (dl.enableCSM && dl.csmShadowCamera?.length ? dl.csmShadowCamera[0] : dl.shadowCamera);
+                if (!cam) return 0;
+                return (cam.right - cam.left) / Math.max(dl.shadowMapWidth || 1, 1);
+            });
+            addRO('calc_formulaBias', () => {
+                const cam = (dl.enableCSM && dl.csmShadowCamera?.length ? dl.csmShadowCamera[0] : dl.shadowCamera);
+                if (!cam) return 0;
+                const extent = cam.right - cam.left;
+                const depth = Math.max(cam.far - cam.near, 1e-6);
+                const texel = extent / Math.max(dl.shadowMapWidth || 1, 1);
+                return (texel * 1.5) / depth;
+            });
+        } else {
+            const pl = light as PointLight | SpotLight;
+            addRO('calc_mapSize', () => {
+                return pl.transform.view3D?.engine3D?.setting.shadow.pointShadowSize ?? 0;
+            }, 1);
+            addRO('calc_range', () => pl.lightData.range ?? 0, 0.001);
+            addRO('calc_texelSize', () => {
+                const size = pl.transform.view3D?.engine3D?.setting.shadow.pointShadowSize ?? 1;
+                return (2 * (pl.lightData.range || 1)) / Math.max(size, 1);
+            });
+            addRO('calc_formulaBias', () => {
+                const size = pl.transform.view3D?.engine3D?.setting.shadow.pointShadowSize ?? 1;
+                const texel = (2 * (pl.lightData.range || 1)) / Math.max(size, 1);
+                return texel * 1.5;
+            });
+        }
+        for (const row of rows) GUIHelp.add(readout, row.key).step(row.step).listen();
+    }
+
+    /**
+     * Draw a wireframe representation of a point / spot light's shadow-affected
+     * volume. Installed via light.bindOnChange so it tracks position changes.
+     * Cleared when `debugShadowRange` is toggled off.
+     */
+    public static refreshPointLightDebug(light: PointLight | SpotLight) {
+        const debugId = `PointLight_${light.object3D.instanceID}`;
+        this._clearDebugPointLight(light, debugId);
+        if (!light.debugShadowRange) {
+            light.bindOnChange = null;
+            return;
+        }
+        light.bindOnChange = () => {
+            if (!(light.object3D && light.transform.view3D && light.transform.view3D.scene)) return;
+            let g = light.transform.view3D.scene.getChildByName('graphic3D') as Graphic3D;
+            if (!g) { g = new Graphic3D(); light.transform.view3D.scene.addChild(g); }
+            this._clearDebugPointLight(light, debugId);
+            const pos = light.transform.worldPosition;
+            g.drawAxis(debugId, pos, 10);
+            // Three orthogonal great circles approximate the range sphere.
+            g.drawCircle(`${debugId}_cx`, pos, light.lightData.range, 48, Vector3.X_AXIS, light.lightColor);
+            g.drawCircle(`${debugId}_cy`, pos, light.lightData.range, 48, Vector3.Y_AXIS, light.lightColor);
+            g.drawCircle(`${debugId}_cz`, pos, light.lightData.range, 48, Vector3.Z_AXIS, light.lightColor);
+        };
+        light.bindOnChange();
+    }
+
+    private static _clearDebugPointLight(light: PointLight | SpotLight, debugId: string) {
+        if (!(light.object3D && light.transform.view3D && light.transform.view3D.scene)) return;
+        const g = light.transform.view3D.scene.getChildByName('graphic3D') as Graphic3D;
+        if (!g) return;
+        g.Clear(debugId);
+        g.Clear(`${debugId}_cx`);
+        g.Clear(`${debugId}_cy`);
+        g.Clear(`${debugId}_cz`);
     }
 
     public static renderGIComponent(component: GlobalIlluminationComponent, view: View3D): void {
