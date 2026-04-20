@@ -159,7 +159,17 @@ export let ShadowMapping_frag: string = /*wgsl*/ `
               // measured fragment-to-light distance; normalBias offsets the receiver
               // along its normal first to mitigate acne on grazing surfaces.
               let N = normalize(ORI_ShadingInput.Normal);
-              let receiverPos = worldPos + N * light.normalBias[0];
+              // Cube-face texelSize grows linearly with fragment-to-light distance:
+              // texelSize(len) = (2 × len) / pointShadowMapSize. Host writes the
+              // worst-case value (at len=range); scale down by len/range per fragment
+              // so close receivers get proportionally less bias. Without this, close
+              // receivers near a wall base get peter-panning (the wall interior is
+              // grazed by the light ray, producing a tiny depth gap that the full
+              // worst-case bias overshoots). Uses unshifted worldPos so normalBias
+              // doesn't feed back into the scale.
+              let unshiftedLen = length(worldPos - lightPos.xyz);
+              let lengthScale = min(unshiftedLen / max(light.range, 1.0), 1.0);
+              let receiverPos = worldPos + N * (light.normalBias[0] * lengthScale);
               let frgToLight = receiverPos - lightPos.xyz;
               var dir: vec3<f32> = normalize(frgToLight);
               var len = length(frgToLight);
@@ -167,7 +177,7 @@ export let ShadowMapping_frag: string = /*wgsl*/ `
               // direction toward the light is -dir. Floor NoL at 0.1 to cap the
               // 1/NoL multiplier at 10x (matches the directional path).
               let NoL = max(dot(N, -dir), 0.1);
-              let bias = light.shadowBias[0] / NoL;
+              let bias = (light.shadowBias[0] * lengthScale) / NoL;
 
           #if USE_PCF_SHADOW
               let samples = 4.0;
