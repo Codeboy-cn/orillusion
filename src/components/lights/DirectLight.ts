@@ -5,7 +5,7 @@ import { LightBase } from './LightBase';
 import { LightType } from './LightData';
 import { CameraUtil } from '../../util/CameraUtil';
 import { Vector3 } from '../../math/Vector3';
-import { Engine3D, FrustumCSM } from '../..';
+import { FrustumCSM } from '../..';
 /**
  *
  *Directional light source.
@@ -15,7 +15,10 @@ import { Engine3D, FrustumCSM } from '../..';
 @RegisterComponent(DirectLight, 'DirectLight')
 export class DirectLight extends LightBase {
     public shadowCamera: Camera3D;
-    public showDebug: boolean = false;
+    // Debug visualization toggles (wired from GUIUtil). Split so CSM cascade draw
+    // and non-CSM orthographic shadow-bound draw can be toggled independently.
+    public debugCSM: boolean = false;
+    public debugShadowBound: boolean = false;
     public csmShadowCamera: Camera3D[] = [];
     public frustumCSM: FrustumCSM;
     public csmAutoUpdate: boolean = true;
@@ -27,16 +30,31 @@ export class DirectLight extends LightBase {
         this.shadowCamera = CameraUtil.createCamera3DObject(null, 'shadowCamera');
         this.shadowCamera.shadowLight = this;
         this.shadowCamera.isShadowCamera = true;
-        this.shadowBoundWidth = Engine3D.setting.shadow.shadowBound;
-        this.shadowBoundHeight = Engine3D.setting.shadow.shadowBound;
-        this.shadowBoundNear = 0.01;
-        this.shadowBoundFar = Engine3D.setting.shadow.shadowBound;
+        // Initialize the shadow camera frustum to a usable default cube
+        // (covers a [-bound/2, bound/2] world-space box) so the GUI shows
+        // meaningful numbers even before any sample tweaks them. Writes go
+        // through the underlying camera/field directly to bypass the CSM
+        // gate in the public setters — when CSM is on these are inert anyway.
+        const bound = LightBase.DEFAULT_SHADOW_BOUND;
+        this._shadowBoundWidth = bound;
+        this._shadowBoundHeight = bound;
+        this.shadowCamera.left = -bound * 0.5;
+        this.shadowCamera.right = bound * 0.5;
+        this.shadowCamera.bottom = -bound * 0.5;
+        this.shadowCamera.top = bound * 0.5;
+        this.shadowCamera.near = 0.01;
+        this.shadowCamera.far = bound;
+    }
+
+    public start(): void {
+        super.start();
+        this.castGI = true;
     }
 
     public updateShadowCameraCSM(renderCamera: Camera3D) {
         if (!this.csmAutoUpdate) return;
 
-        this.frustumCSM.update(renderCamera.projectionMatrix, renderCamera.pvMatrixInv, renderCamera.near, renderCamera.far, Engine3D.setting.shadow, this.csmSplitFunction);
+        this.frustumCSM.update(renderCamera.projectionMatrix, renderCamera.pvMatrixInv, renderCamera.near, renderCamera.far, this.transform.view3D!.engine3D.setting.shadow, this.csmSplitFunction);
 
         for (let i = 0; i < this.cascadeNum; i++) {
             const lookAt = this.frustumCSM.children[i].bound.center;
@@ -57,8 +75,11 @@ export class DirectLight extends LightBase {
         }
     }
 
-    private _shadowBias: number = 0.01;
-    private _shadowCSMBias: number = 0.01;
+    // RFC-003 Layer C: 'auto' lets ShadowBiasCalculator derive a texelSize-based
+    // value from the cascade frustum + shadow map size. Setting a number overrides
+    // it (NDC depth units for shadowBias, world units for normalBias).
+    private _shadowBias: 'auto' | number = 'auto';
+    private _normalBias: 'auto' | number = 'auto';
 
     public get enableCSM(): boolean{
         return this._enableCSM;
@@ -97,24 +118,24 @@ export class DirectLight extends LightBase {
         }
     }
 
-    public get shadowCSMBias(): number {
-        return this._shadowCSMBias;
+    public get shadowBias(): 'auto' | number {
+        return this._shadowBias;
     }
-    
-    public set shadowCSMBias(value: number) {
-        if (this.shadowCSMBias != value) {
-            this._shadowCSMBias = value;
+
+    public set shadowBias(value: 'auto' | number) {
+        if (this._shadowBias != value) {
+            this._shadowBias = value;
             this.onChange();
         }
     }
 
-    public get shadowBias(): number {
-        return this._shadowBias;
+    public get normalBias(): 'auto' | number {
+        return this._normalBias;
     }
 
-    public set shadowBias(value: number) {
-        if (this.shadowBias != value) {
-            this._shadowBias = value;
+    public set normalBias(value: 'auto' | number) {
+        if (this._normalBias != value) {
+            this._normalBias = value;
             this.onChange();
         }
     }
@@ -180,11 +201,6 @@ export class DirectLight extends LightBase {
         this.lightData.quadratic = 0.3;
     }
 
-    public start(): void {
-        super.start();
-        this.castGI = true;
-    }
-
     /**
      *
      * Get the radius of a directional light source
@@ -238,11 +254,8 @@ export class DirectLight extends LightBase {
 
     protected onChange() {
         super.onChange();
-        if (this.object3D && this.lightData) {
-            let depth = this.shadowBoundFar - this.shadowBoundNear;
-            let sizeOnePixel = this.shadowBoundWidth / this.shadowMapWidth;
-            this.lightData.shadowBias[0] = sizeOnePixel / depth - this.shadowBias * 0.01;
-        }
+        // Bias arrays are recomputed each frame in GlobalUniformGroup.setCamera()
+        // via ShadowBiasCalculator; no per-light cache needed here.
     }
 
     public destroy(force?: boolean): void {

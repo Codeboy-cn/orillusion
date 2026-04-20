@@ -1,4 +1,3 @@
-import { Engine3D } from '../..';
 import { Color } from '../../math/Color';
 import { Vector3 } from '../../math/Vector3';
 import { Struct } from '../../util/struct/Struct';
@@ -106,7 +105,10 @@ export class LightData extends Struct {
      */
     public iesIndex: number = -1;
 
-    public shadowBias: number[] = [Engine3D.setting.shadow.shadowBias];
+    // shadowBias / normalBias arrays are sized and initialized in LightBase.start()
+    // once the owning engine's setting.shadow.maxCascades is known.
+    public shadowBias: number[] = [];
+    public normalBias: number[] = [];
 
     public csmShadowMapNum: number = 0;
     public csmShadowMapIndex: number = -1;

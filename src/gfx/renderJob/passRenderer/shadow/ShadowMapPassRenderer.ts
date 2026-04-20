@@ -1,4 +1,3 @@
-import { Engine3D } from "../../../../Engine3D";
 import { DirectLight } from "../../../../components/lights/DirectLight";
 import { RenderNode } from "../../../../components/renderer/RenderNode";
 import { Camera3D } from "../../../../core/Camera3D";
@@ -34,16 +33,17 @@ export class ShadowMapPassRenderer extends RendererBase {
 
     constructor(ctx: Context3D) {
         super();
+        const shadow = ctx.engine!.setting.shadow;
         this.setShadowMap(
             ctx,
-            Engine3D.setting.shadow.maxShadowMapWidth,
-            Engine3D.setting.shadow.maxShadowMapHeight
+            shadow.maxShadowMapWidth,
+            shadow.maxShadowMapHeight
         );
         this.passType = PassType.SHADOW;
     }
 
     setShadowMap(ctx: Context3D, sizeWidth: number, sizeHeight: number) {
-        const maxShadowMapNum = Engine3D.setting.shadow.maxShadowMapNum;
+        const maxShadowMapNum = ctx.engine!.setting.shadow.maxShadowMapNum;
         this.rendererPassStates = [];
         this.depth2DArrayTexture = new Depth2DTextureArray(sizeWidth, sizeHeight, GPUTextureFormat.depth32float, maxShadowMapNum, ctx);
         Reference.getInstance().attached(this.depth2DArrayTexture, this);
@@ -62,7 +62,7 @@ export class ShadowMapPassRenderer extends RendererBase {
     }
 
     render(view: View3D, occlusionSystem: OcclusionSystem) {
-        let shadowSetting = Engine3D.setting.shadow;
+        let shadowSetting = view.engine3D.setting.shadow;
         if (!shadowSetting.enable)
             return;
         let camera = view.camera;
@@ -260,7 +260,8 @@ export class ShadowMapPassRenderer extends RendererBase {
         GlobalBindGroup.updateCameraGroup(shadowCamera);
         view.engine3D.context3D.gpuContext.bindCamera(encoder, shadowCamera);
         if (nodes) {
-            for (let i = Engine3D.setting.render.drawOpMin; i < Math.min(nodes.length, Engine3D.setting.render.drawOpMax); ++i) {
+            const render = view.engine3D.setting.render;
+            for (let i = render.drawOpMin; i < Math.min(nodes.length, render.drawOpMax); ++i) {
                 let renderNode = nodes[i];
                 // let matrixIndex = renderNode.transform.worldMatrix.index;
                 // if (!occlusionSystem.renderCommitTesting(camera,renderNode) ) continue;

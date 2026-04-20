@@ -1,5 +1,4 @@
 import { BoundingBox } from '../../core/bound/BoundingBox';
-import { Engine3D } from '../../Engine3D';
 import { EntityCollect } from '../../gfx/renderJob/collect/EntityCollect';
 import { Color } from '../../math/Color';
 import { Vector3 } from '../../math/Vector3';
@@ -16,6 +15,7 @@ import { ILight } from './ILight';
  * @group Lights
  */
 export class LightBase extends ComponentBase implements ILight {
+    public static readonly DEFAULT_SHADOW_BOUND: number = 100;
     /**
      * light name
      */
@@ -27,8 +27,8 @@ export class LightBase extends ComponentBase implements ILight {
     /**
      * light shadow map size
      */
-    public shadowMapWidth: number = Engine3D.setting.shadow.shadowSize;
-    public shadowMapHeight: number = Engine3D.setting.shadow.shadowSize;
+    public shadowMapWidth: number = 0;
+    public shadowMapHeight: number = 0;
 
     /**
      * light source data
@@ -54,8 +54,8 @@ export class LightBase extends ComponentBase implements ILight {
 
     protected _castGI: boolean = false;
     protected _castShadow: boolean = false;
-    protected _shadowBoundWidth: number = Engine3D.setting.shadow.shadowBound;
-    protected _shadowBoundHeight: number = Engine3D.setting.shadow.shadowBound;
+    protected _shadowBoundWidth: number = 0;
+    protected _shadowBoundHeight: number = 0;
     private _iesProfiles: IESProfiles;
 
     constructor() {
@@ -67,7 +67,8 @@ export class LightBase extends ComponentBase implements ILight {
 
         this.lightData = new LightData();
         this.lightData.lightMatrixIndex = this.transform.worldMatrix.index;
-        this.lightData.shadowBias = new Array<number>(Engine3D.setting.shadow.maxCascades);
+        // shadowBias sized at start() once transform.view3D is available so
+        // we can read maxCascades from the owning engine's setting.
     }
 
     protected onChange() {
@@ -94,6 +95,19 @@ export class LightBase extends ComponentBase implements ILight {
     }
 
     public start(): void {
+        // Now that the light is attached to a scene/view we can resolve the
+        // owning engine's setting and size the per-cascade shadow bias array.
+        const shadow = this.transform.view3D?.engine3D?.setting.shadow;
+        if (shadow) {
+            if (!this.shadowMapWidth) this.shadowMapWidth = shadow.shadowSize;
+            if (!this.shadowMapHeight) this.shadowMapHeight = shadow.shadowSize;
+            if (!this.lightData.shadowBias || this.lightData.shadowBias.length === 0) {
+                this.lightData.shadowBias = new Array<number>(shadow.maxCascades).fill(0);
+            }
+            if (!this.lightData.normalBias || this.lightData.normalBias.length === 0) {
+                this.lightData.normalBias = new Array<number>(shadow.maxCascades).fill(0);
+            }
+        }
         this.transform.onPositionChange = () => this.onPositionChange();
         // this.transform.onScaleChange = () => this.onScaleChange();
         this.transform.onRotationChange = () => this.onRotChange();

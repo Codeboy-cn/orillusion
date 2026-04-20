@@ -18,6 +18,11 @@ export class CastPointShadowMaterialPass extends RenderShaderPass {
         this.shaderState.castShadow = false;
         this.shaderState.acceptShadow = false;
 
+        // GPU slope-scaled depth bias on the shadow rasterizer (RFC-003 Layer A).
+        this.shaderState.depthBias = 1;
+        this.shaderState.depthBiasSlopeScale = 1.75;
+        this.shaderState.depthBiasClamp = 0.001;
+
         this.setDefine(`USE_ALPHACUT`, true);
     }
 }

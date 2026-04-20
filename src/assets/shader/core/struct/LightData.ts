@@ -29,6 +29,7 @@ export function getLightData(maxCascades: number): string {
         _retain1: f32,
 
         shadowBias: array<f32, ${maxCascades}>,
+        normalBias: array<f32, ${maxCascades}>,
     };
 `
 }

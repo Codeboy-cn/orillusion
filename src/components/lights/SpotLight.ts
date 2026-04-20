@@ -15,6 +15,34 @@ import { LightType } from './LightData';
  */
 @RegisterComponent(SpotLight, 'SpotLight')
 export class SpotLight extends LightBase {
+
+    // RFC-003 Layer C: 'auto' lets ShadowBiasCalculator derive the bias from
+    // light range + cube map size. Setting a number overrides it (world units).
+    private _shadowBias: 'auto' | number = 'auto';
+    private _normalBias: 'auto' | number = 'auto';
+
+    public get shadowBias(): 'auto' | number {
+        return this._shadowBias;
+    }
+
+    public set shadowBias(value: 'auto' | number) {
+        if (this._shadowBias != value) {
+            this._shadowBias = value;
+            this.onChange();
+        }
+    }
+
+    public get normalBias(): 'auto' | number {
+        return this._normalBias;
+    }
+
+    public set normalBias(value: 'auto' | number) {
+        if (this._normalBias != value) {
+            this._normalBias = value;
+            this.onChange();
+        }
+    }
+
     constructor() {
         super();
     }

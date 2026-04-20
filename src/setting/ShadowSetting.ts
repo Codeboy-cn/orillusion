@@ -30,26 +30,14 @@ export type ShadowSetting = {
      or the occluded place where the sunlight cannot reach.
      */
     type: `PCF` | `HARD` | `SOFT`;
-    /**
-    * Offset of point light shadow
-    */
-    pointShadowBias: number;
     // /**
     //  * Shadow quality
     //  */
     // shadowQuality: number;
     /**
-     * shadow boundary
-     */
-    shadowBound?: number;
-    /**
      * shadow mapping Size
      */
     shadowSize: number;
-    /**
-     * shadow depth offset bias 
-     */
-    shadowBias: number;
     /**
      * Shadow softness
      */
