@@ -23,6 +23,14 @@ export class PointLight extends LightBase {
     // DirectLight.debugShadowBound).
     public debugShadowRange: boolean = false;
 
+    // Cube shadow camera near/far (world units). Far also normalizes the stored
+    // depth: stored = length(worldPos - lightPos) / shadowCameraFar. A value of
+    // 0 means "auto": PointLightShadowRenderer derives shadowCameraFar from
+    // light.range. Exposing these lets the user shrink the depth range to the
+    // light's actual reach and gain precision without touching the main camera.
+    public shadowCameraNear: number = 0.01;
+    public shadowCameraFar: number = 0;  // 0 = auto (use range)
+
     public get shadowBias(): 'auto' | number {
         return this._shadowBias;
     }

@@ -346,6 +346,13 @@ export class GUIUtil {
         GUIHelp.add(light, 'castShadow');
         GUIHelp.add(light, 'debugShadowRange').onChange(() => this.refreshPointLightDebug(light));
 
+        // Cube shadow camera controls: shadowCameraFar=0 means auto=range.
+        // Changing these directly affects the shadow-map depth normalization
+        // (via lightData.shadowFar) — lets you tighten depth precision by
+        // shrinking far to just cover your scene.
+        GUIHelp.add(light, 'shadowCameraNear', 0.001, 10, 0.001);
+        GUIHelp.add(light, 'shadowCameraFar', 0, 2000, 0.1);
+
         GUIUtil._addShadowCalcReadout(light);
         GUIUtil._addBiasReadout(light);
 
@@ -373,6 +380,9 @@ export class GUIUtil {
         GUIHelp.add(light, 'innerAngle', 0.0, 100.0, 0.001);
         GUIHelp.add(light, 'castShadow');
         GUIHelp.add(light, 'debugShadowRange').onChange(() => this.refreshPointLightDebug(light));
+
+        GUIHelp.add(light, 'shadowCameraNear', 0.001, 10, 0.001);
+        GUIHelp.add(light, 'shadowCameraFar', 0, 2000, 0.1);
 
         GUIUtil._addShadowCalcReadout(light);
         GUIUtil._addBiasReadout(light);
@@ -430,6 +440,10 @@ export class GUIUtil {
                 return pl.transform.view3D?.engine3D?.setting.shadow.pointShadowSize ?? 0;
             }, 1);
             addRO('calc_range', () => pl.lightData.range ?? 0, 0.001);
+            // Live view of the shadowFar actually sent to the GPU — reflects
+            // the shadowCameraFar override (or range if 0 = auto). Lets the
+            // user confirm their GUI slider change took effect.
+            addRO('calc_shadowFar', () => pl.lightData.shadowFar ?? 0, 0.001);
             addRO('calc_texelSize', () => {
                 const size = pl.transform.view3D?.engine3D?.setting.shadow.pointShadowSize ?? 1;
                 return (2 * (pl.lightData.range || 1)) / Math.max(size, 1);

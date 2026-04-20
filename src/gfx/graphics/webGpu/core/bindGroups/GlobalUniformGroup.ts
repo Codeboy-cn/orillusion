@@ -225,6 +225,10 @@ export class GlobalUniformGroup {
                     const pLight = pointShadowList[i] as (PointLight | SpotLight);
                     pLight.lightData.shadowBias[0] = ShadowBiasCalculator.resolvePointShadowBias(pLight, pmSize);
                     pLight.lightData.normalBias[0] = ShadowBiasCalculator.resolvePointNormalBias(pLight, pmSize);
+                    // Normalization factor for cube shadow depth. User-overridable
+                    // via shadowCameraFar on the light; 0 = auto = use range.
+                    const sFar = (pLight as any).shadowCameraFar;
+                    pLight.lightData.shadowFar = (sFar && sFar > 0) ? sFar : (pLight.lightData.range || 1);
                 }
             }
         }

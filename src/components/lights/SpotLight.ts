@@ -24,6 +24,10 @@ export class SpotLight extends LightBase {
     // Debug visualization: wireframe cone showing the spot's range / cone angle.
     public debugShadowRange: boolean = false;
 
+    // See PointLight for semantics. shadowCameraFar = 0 means "auto" (use range).
+    public shadowCameraNear: number = 0.01;
+    public shadowCameraFar: number = 0;
+
     public get shadowBias(): 'auto' | number {
         return this._shadowBias;
     }

@@ -178,6 +178,11 @@ export let ShadowMapping_frag: string = /*wgsl*/ `
               // 1/NoL multiplier at 10x (matches the directional path).
               let NoL = max(dot(N, -dir), 0.1);
               let bias = (light.shadowBias[0] * lengthScale) / NoL;
+              // Per-light shadowFar normalizer — matches what the shadow-cast
+              // shader used when writing depth (cube camera's far). Falls back
+              // to main camera far when shadowFar is 0 (legacy / unpopulated).
+              let shadowFarDecode = select(globalUniform.far, light.shadowFar, light.shadowFar > 0.0);
+              let compareZ = (len - bias) / shadowFarDecode;
 
           #if USE_PCF_SHADOW
               let samples = 4.0;
@@ -186,7 +191,6 @@ export let ShadowMapping_frag: string = /*wgsl*/ `
                 for (var y: f32 = -offset; y < offset; y += sampleOffset) {
                   for (var z: f32 = -offset; z < offset; z += sampleOffset) {
                     let offsetDir = normalize(dir.xyz + vec3<f32>(x, y, z));
-                    let compareZ = (len - bias) / globalUniform.far;
                     var depth = textureSampleCompareLevel(pointShadowMap, pointShadowMapSampler, offsetDir, light.castShadow, compareZ);
                     if (depth < 0.5) {
                       shadow += 1.0 * dot(offsetDir, dir.xyz);
@@ -203,7 +207,6 @@ export let ShadowMapping_frag: string = /*wgsl*/ `
               let samples = 20;
               for (var j: i32 = 0; j < samples; j += 1) {
                 let offsetDir = normalize(dir.xyz + sampleOffsetDir[j] * sampleRadies);
-                let compareZ = (len - bias) / globalUniform.far;
                 var depth = textureSampleCompareLevel(pointShadowMap, pointShadowMapSampler, offsetDir, light.castShadow, compareZ);
                 if (depth < 0.5) {
                   shadow += 1.0 * dot(offsetDir, dir.xyz);
@@ -213,7 +216,6 @@ export let ShadowMapping_frag: string = /*wgsl*/ `
           #endif
 
           #if USE_HARD_SHADOW
-                let compareZ = (len - bias) / globalUniform.far;
                 var depth = textureSampleCompareLevel(pointShadowMap, pointShadowMapSampler, dir.xyz, light.castShadow, compareZ);
                 if (depth < 0.5) {
                   shadow = 1.0;

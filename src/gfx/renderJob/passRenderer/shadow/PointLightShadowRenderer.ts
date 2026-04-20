@@ -55,10 +55,30 @@ export class PointLightShadowRenderer extends RendererBase {
 
     public getShadowCamera(view: View3D, lightBase: ILight): CubeShadowMapInfo {
         let cubeShadowMapInfo: CubeShadowMapInfo;
+        // Resolve the cube camera's near/far from the light's own settings:
+        // shadowCameraFar = 0 → auto (use range). Falls back to main camera
+        // far when nothing is set. Far is also the shadow-map depth normalizer
+        // (see lightData.shadowFar), so both sides stay consistent.
+        const lbAny = lightBase as any;
+        const near = (lbAny.shadowCameraNear && lbAny.shadowCameraNear > 0) ? lbAny.shadowCameraNear : 0.01;
+        const farOverride = lbAny.shadowCameraFar;
+        const lightRange = lightBase.lightData?.range;
+        const far = (farOverride && farOverride > 0) ? farOverride
+                  : (lightRange && lightRange > 0) ? lightRange
+                  : view.camera.far;
         if (this._shadowCameraDic.has(lightBase)) {
             cubeShadowMapInfo = this._shadowCameraDic.get(lightBase);
+            // Refresh projection each frame so GUI changes to near/far take
+            // effect immediately without recreating the 6 depth textures.
+            const cam = cubeShadowMapInfo.cubeCamera as any;
+            const faces = [cam.right_camera, cam.left_camera, cam.up_camera, cam.down_camera, cam.front_camera, cam.back_camera];
+            for (const f of faces) {
+                if (f && (f.near !== near || f.far !== far)) {
+                    f.perspective(90, 1.0, near, far);
+                }
+            }
         } else {
-            let camera = new PointShadowCubeCamera(view.camera.near, view.camera.far, 90, true);
+            let camera = new PointShadowCubeCamera(near, far, 90, true);
             camera.bindCtx(view.engine3D.context3D);
             camera.label = lightBase.name;
             let depths: VirtualTexture[] = [];

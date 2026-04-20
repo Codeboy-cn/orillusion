@@ -110,6 +110,12 @@ export class LightData extends Struct {
     public shadowBias: number[] = [];
     public normalBias: number[] = [];
 
+    // Cube shadow-map depth normalization factor (world units). Writer stores
+    // `length(worldPos - lightPos) / shadowFar` into the shadow map; sampler
+    // uses the same value to decode. Populated by GlobalUniformGroup from the
+    // PointLight/SpotLight's shadowCameraFar (fallback = range).
+    public shadowFar: number = 0;
+
     public csmShadowMapNum: number = 0;
     public csmShadowMapIndex: number = -1;
 }
