@@ -44,7 +44,8 @@ export class BoundingSphere implements IBound {
     }
 
     public containsPoint(point: Vector3) {
-        var lenSq = this.tmpVecA.subtract(point, this.center).lengthSquared;
+        Vector3.sub(this.tmpVecA, point, this.center);
+        var lenSq = this.center.lengthSquared;
         var r = this.radius;
         return lenSq < r * r;
     }
@@ -86,7 +87,7 @@ export class BoundingSphere implements IBound {
      * @returns {Boolean} true if the Bounding Sphere is overlapping, enveloping, or inside this Bounding Sphere and false otherwise.
      */
     public intersectsBoundingSphere(sphere: BoundingSphere) {
-        this.tmpVecA.subtract(sphere.center, this.center);
+        Vector3.sub(this.tmpVecA, sphere.center, this.center);
         var totalRadius = sphere.radius + this.radius;
         if (this.tmpVecA.lengthSquared <= totalRadius * totalRadius) {
             return true;
@@ -109,7 +110,7 @@ export class BoundingSphere implements IBound {
 
     public update(obj: Object3D) {
         this.owner = obj;
-        this._center.add(obj.transform.worldMatrix.position, this.center);
+        Vector3.add(this._center, obj.transform.worldMatrix.position, this.center);
         this.forward = obj.transform.forward;
     }
     /**

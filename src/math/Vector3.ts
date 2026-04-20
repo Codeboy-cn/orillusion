@@ -595,24 +595,12 @@ export class Vector3 {
     }
 
     /**
-     * The vector is added to the vector
+     * Add another vector to this vector. Returns a new Vector3.
      * @param a Additive vector
-     * @param target Return vector
      * @returns result
     */
-    public add(a: Vector3, target: Vector3 = null): Vector3 {
-        target ||= new Vector3();
-
-        var a0x: number = this.x;
-        var a0y: number = this.y;
-        var a0z: number = this.z;
-        var a0w: number = this.w;
-        var a1x: number = a.x;
-        var a1y: number = a.y;
-        var a1z: number = a.z;
-        var a1w: number = a.w;
-        target.setTo(a0x + a1x, a0y + a1y, a0z + a1z, a0w + a1w);
-        return target;
+    public add(a: Vector3): Vector3 {
+        return new Vector3(this.x + a.x, this.y + a.y, this.z + a.z, this.w + a.w);
     }
 
     public subVectors(a: Vector3, b: Vector3): this {
@@ -636,18 +624,18 @@ export class Vector3 {
         return this;
     }
 
-    public min(v: Vector3, target: Vector3 = this): Vector3 {
-        target.x = Math.min(this.x, v.x);
-        target.y = Math.min(this.y, v.y);
-        target.z = Math.min(this.z, v.z);
-        return target;
+    /**
+     * Component-wise minimum. Returns a new Vector3.
+     */
+    public min(v: Vector3): Vector3 {
+        return new Vector3(Math.min(this.x, v.x), Math.min(this.y, v.y), Math.min(this.z, v.z));
     }
 
-    public max(v: Vector3, target: Vector3 = this): Vector3 {
-        target.x = Math.max(this.x, v.x);
-        target.y = Math.max(this.y, v.y);
-        target.z = Math.max(this.z, v.z);
-        return target;
+    /**
+     * Component-wise maximum. Returns a new Vector3.
+     */
+    public max(v: Vector3): Vector3 {
+        return new Vector3(Math.max(this.x, v.x), Math.max(this.y, v.y), Math.max(this.z, v.z));
     }
 
     public distanceToSquared(v: Vector3): number {
@@ -657,19 +645,11 @@ export class Vector3 {
         return dx * dx + dy * dy + dz * dz;
     }
 
-    public addXYZW(x: number, y: number, z: number, w: number, target: Vector3 = null): Vector3 {
-        target ||= new Vector3();
-
-        var a0x: number = this.x;
-        var a0y: number = this.y;
-        var a0z: number = this.z;
-        var a0w: number = this.w;
-        var a1x: number = x;
-        var a1y: number = y;
-        var a1z: number = z;
-        var a1w: number = w;
-        target.setTo(a0x + a1x, a0y + a1y, a0z + a1z, a0w + a1w);
-        return target;
+    /**
+     * Add (x, y, z, w) to each component. Returns a new Vector3.
+     */
+    public addXYZW(x: number, y: number, z: number, w: number): Vector3 {
+        return new Vector3(this.x + x, this.y + y, this.z + z, this.w + w);
     }
 
     /**
@@ -761,18 +741,12 @@ export class Vector3 {
 
 
     /**
-     * The current vector divided by the vector or component
-     * @param v The vector or component that you want to divide
+     * Component-wise divide the current vector by the given vector. Returns a new Vector3.
+     * @param v The vector that you want to divide by
      * @returns Vector3 Returns the result of the calculation
      */
-    public divide(v): Vector3 {
-        if (v instanceof Vector3) return new Vector3(this.x / v.x, this.y / v.y, this.z / v.z);
-        else {
-            this.x = this.x / v;
-            this.y = this.y / v;
-            this.z = this.z / v;
-        }
-        return this;
+    public divide(v: Vector3): Vector3 {
+        return new Vector3(this.x / v.x, this.y / v.y, this.z / v.z);
     }
 
 
@@ -923,87 +897,24 @@ export class Vector3 {
      * @language en_US
      * Subtracts the value of the x, y, and z elements of the current
      * Vector3 object from the values of the x, y, and z elements of
-     * another Vector3 object. The <code>subtract()</code> method does not
-     * change the current Vector3 object. Instead, this method returns a
-     * new Vector3 object with the new values.
+     * another Vector3 object. Returns a new Vector3.
      *
      * @param a The Vector3 object to be subtracted from the current
      *          Vector3 object.
      * @returns A new Vector3 object that is the difference between the
      *          current Vector3 and the specified Vector3 object.
      */
-    public subtract(a: Vector3, target: Vector3 = null): Vector3 {
-        if (!target) {
-            target = new Vector3();
-        }
-        target.setTo(this.x - a.x, this.y - a.y, this.z - a.z);
-        return target;
+    public subtract(a: Vector3): Vector3 {
+        return new Vector3(this.x - a.x, this.y - a.y, this.z - a.z);
     }
 
     /**
-     * Let's multiply that vector times that vector.
-     * @param other Multiplied vectors
-     * @param target Returned vector
-     * @returns 
+     * Component-wise multiply this vector by another vector. Returns a new Vector3.
+     * @param other Multiplied vector
+     * @returns result
      */
-    public multiply(other: Vector3, target: Vector3 = null): Vector3 {
-        if (!target) {
-            target = new Vector3();
-        }
-
-        var x0: number = this.x;
-        var y0: number = this.y;
-        var z0: number = this.z;
-
-        var x1: number = other.x;
-        var y1: number = other.y;
-        var z1: number = other.z;
-
-        target.setTo(x0 * x1, y0 * y1, z0 * z1);
-        return target;
-    }
-
-    /**
-     * Let's divide this vector by this vector.
-     * @param other The vector that divides
-     * @param target Returned vector
-     * @returns 
-     */
-    public divided(other: Vector3, target: Vector3 = null): Vector3 {
-        if (!target) {
-            target = new Vector3();
-        }
-
-        var x0: number = this.x;
-        var y0: number = this.y;
-        var z0: number = this.z;
-
-        var x1: number = other.x;
-        var y1: number = other.y;
-        var z1: number = other.z;
-
-        target.setTo(x0 / x1, y0 / y1, z0 / z1);
-        return target;
-    }
-
-    /**
-     * Divide that vector by the scalar
-     * @param v The scalar that divides
-     * @param target Output a Vector3 vector
-     * @returns 
-     */
-    public div(v: number, target?: Vector3): Vector3 {
-        if (!target) {
-            target = new Vector3();
-        }
-
-        var x0: number = this.x;
-        var y0: number = this.y;
-        var z0: number = this.z;
-        var w0: number = this.w;
-
-        target.setTo(x0 / v, y0 / v, z0 / v, w0 / v);
-        return target;
+    public multiply(other: Vector3): Vector3 {
+        return new Vector3(this.x * other.x, this.y * other.y, this.z * other.z);
     }
 
     /**
@@ -1150,17 +1061,20 @@ export class Vector3 {
      * @param a Take the cross product of another vector
      * @returns Vector3 returns the cross product vector
      */
-    public crossProduct(a: Vector3, target: Vector3 = null): Vector3 {
-        target = target || new Vector3();
-        target.x = this.y * a.z - this.z * a.y;
-        target.y = this.z * a.x - this.x * a.z;
-        target.z = this.x * a.y - this.y * a.x;
-        target.w = 1;
-        return target;
+    /**
+     * Cross product with another vector. Returns a new Vector3.
+     */
+    public crossProduct(a: Vector3): Vector3 {
+        return new Vector3(
+            this.y * a.z - this.z * a.y,
+            this.z * a.x - this.x * a.z,
+            this.x * a.y - this.y * a.x,
+            1
+        );
     }
 
     public crossVectors(a: Vector3, b: Vector3): this {
-        a.crossProduct(b, this);
+        Vector3.cross(a, b, this);
         return this;
     }
 
@@ -1178,11 +1092,14 @@ export class Vector3 {
         this.z = array[firstElementPos + 2];
     }
 
-    public divideScalar(scalar) {
-        return this.multiplyScalar(1 / scalar);
+    /**
+     * Divide by a scalar. Returns a new Vector3.
+     */
+    public divideScalar(scalar: number): Vector3 {
+        return new Vector3(this.x / scalar, this.y / scalar, this.z / scalar, this.w / scalar);
     }
 
-    public clampLength(min: number, max: number) {
+    public clampLength(min: number, max: number): Vector3 {
         let length = this.length;
         return this.divideScalar(length || 1).multiplyScalar(Math.max(min, Math.min(max, length)));
     }

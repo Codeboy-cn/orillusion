@@ -48,7 +48,7 @@ export class Line {
 
     public getCenter(): Vector3 {
         let help = Vector3.HELP_0;
-        this.start.subtract(this.end, help);
+        Vector3.sub(this.start, this.end, help);
         help.scaleBy(0.5);
         help.add(this.end);
         return help;
@@ -265,7 +265,7 @@ export class Line {
         tmpP1.copyFrom(ray.direction);
 
         tmpP1.scaleBy(9999);
-        tmpP1.add(tmpP0, tmpP1);
+        Vector3.add(tmpP1, tmpP0, tmpP1);
         Line.cacluteLine0.set(tmpP0, tmpP1);
         Line.cacluteLine1.copyFrom(this);
 

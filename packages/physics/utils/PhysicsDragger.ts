@@ -93,7 +93,8 @@ export class PhysicsDragger {
             let ray = camera.screenPointToRay(e.mouseX, e.mouseY);
 
             let adjustedDirection = ray.direction.normalize();
-            let endPos = ray.origin.add(adjustedDirection.multiplyScalar(1000), ray.origin);
+            Vector3.add(ray.origin, adjustedDirection.multiplyScalar(1000), ray.origin);
+            let endPos = ray.origin;
 
             this.resetRayCallback(this._raycastResult);
             this.castRay(camera.object3D.localPosition, endPos);
@@ -168,7 +169,8 @@ export class PhysicsDragger {
         let pos = this._view.camera.screenPointToWorld(input.mouseX, input.mouseY, this._interactionDepth);
 
         // 结合偏移量的新位置
-        let newPos = pos.add(this._offset, pos);
+        Vector3.add(pos, this._offset, pos);
+        let newPos = pos;
 
         // 更新位置
         this._rigidBody.getMotionState().getWorldTransform(Physics.TEMP_TRANSFORM);

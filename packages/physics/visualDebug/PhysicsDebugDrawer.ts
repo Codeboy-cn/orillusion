@@ -137,7 +137,7 @@ export class PhysicsDebugDrawer {
         const lineColor = this._tmpCor.copyFromVector(TempPhyMath.fromBtVec(colorVector, this._tmpVecA));
         const p0 = TempPhyMath.fromBtVec(pointOnBVector, this._tmpVecA);
         const normal = TempPhyMath.fromBtVec(normalOnBVector, this._tmpVecB);
-        const p1 = p0.add(normal.multiplyScalar(distance), this._tmpVecB);
+        const p1 = Vector3.add(p0, normal.multiplyScalar(distance), this._tmpVecB);
 
         const name = `AmmoContactPoint_${GetCountInstanceID()}`;
         this.lineNameList.push(name);

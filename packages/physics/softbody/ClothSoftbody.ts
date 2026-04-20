@@ -138,7 +138,7 @@ export class ClothSoftbody extends SoftbodyBase {
 
         let tm = this._btRigidbody.getWorldTransform();
         TempPhyMath.fromBtVec(tm.getOrigin(), Vector3.HELP_0);
-        Vector3.HELP_0.add(this.anchorPosition, Vector3.HELP_1);
+        Vector3.add(Vector3.HELP_0, this.anchorPosition, Vector3.HELP_1);
 
         TempPhyMath.fromBtQua(tm.getRotation(), Quaternion.HELP_0);
         Quaternion.HELP_1.fromEulerAngles(this.anchorRotation.x, this.anchorRotation.y, this.anchorRotation.z);

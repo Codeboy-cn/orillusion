@@ -58,7 +58,7 @@ export class Demo_Fluid {
             function (e: PointerEvent3D) {
                 let point = e.data.worldPos;
                 if (point.y >= 0 && (this.mLastPoint.x != point.x && this.mLastPoint.y != point.y && this.mLastPoint.z != point.z)) {
-                    point.subtract(this.mLastPoint, this.mVelocity);
+                    Vector3.sub(point, this.mLastPoint, this.mVelocity);
                     this.mLastPoint.copy(point);
                     let r = scene.view.camera;
                     let ray = r.screenPointToRay(scene.view.engine3D.inputSystem.mouseX, scene.view.engine3D.inputSystem.mouseY);

@@ -498,8 +498,8 @@ export class GUIUtil {
                 const helper = Math.abs(axis.y) > 0.9 ? Vector3.X_AXIS : Vector3.Y_AXIS;
                 const perpA = new Vector3();
                 const perpB = new Vector3();
-                axis.crossProduct(helper, perpA); perpA.normalize();
-                axis.crossProduct(perpA, perpB); perpB.normalize();
+                Vector3.cross(axis, helper, perpA); perpA.normalize();
+                Vector3.cross(axis, perpA, perpB); perpB.normalize();
                 const p = (a: number, b: number) => new Vector3(
                     baseCenter.x + perpA.x * baseR * a + perpB.x * baseR * b,
                     baseCenter.y + perpA.y * baseR * a + perpB.y * baseR * b,

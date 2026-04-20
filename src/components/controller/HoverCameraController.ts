@@ -260,7 +260,7 @@ export class HoverCameraController extends ComponentBase {
 
         if (this._flowTarget) {
             Vector3.HELP_0.copyFrom(this._flowTarget.transform.worldPosition);
-            Vector3.HELP_0.add(this._flowOffset, Vector3.HELP_0);
+            Vector3.add(Vector3.HELP_0, this._flowOffset, Vector3.HELP_0);
             this.target = Vector3.HELP_0;
         }
 
@@ -292,7 +292,7 @@ export class HoverCameraController extends ComponentBase {
         this._tempDir.applyQuaternion(q);
 
         this._tempPos = Vector3Ex.mulScale(this._tempDir, this._distance, this._tempPos);
-        this._tempPos.add(this._currentPos.transform.localPosition, this._tempPos);
+        Vector3.add(this._tempPos, this._currentPos.transform.localPosition, this._tempPos);
 
         this.camera.lookAt(this._tempPos, this._currentPos.transform.localPosition, Vector3.UP);
     }

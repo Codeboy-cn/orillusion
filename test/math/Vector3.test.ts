@@ -65,10 +65,10 @@ await test('Vector3 scaleBy', async () => {
     expect(a.z).toEqual(0);
 })
 
-await test('Vector3 divide', async () => {
+await test('Vector3 divideScalar', async () => {
     let a = new Vector3(20, 10, 0);
 
-    let result = a.divide(10);
+    let result = a.divideScalar(10);
 
     expect(result.x).toSubequal(2);
     expect(result.y).toSubequal(1);

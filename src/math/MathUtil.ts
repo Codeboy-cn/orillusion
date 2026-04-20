@@ -202,7 +202,7 @@ export class MathUtil {
      */
     public static angle_360(from: Vector3, to: Vector3) {
         let v3 = Vector3.HELP_0;
-        from.crossProduct(to, v3);
+        Vector3.cross(from, to, v3);
         if (v3.z > 0) {
             return MathUtil.angle(from, to);
         }
@@ -440,7 +440,8 @@ export function magnitude(inV: Vector2 | Vector3 | Quaternion) {
 export function normalizeSafe(inV: Vector2 | Vector3 | Quaternion, defaultV?: Vector2 | Vector3 | Quaternion) {
     let mag = magnitude(inV);
     if (mag > Vector3.EPSILON) {
-        return inV.divide(magnitude(inV));
+        if (inV instanceof Vector2) return inV.divide(mag);
+        if (inV instanceof Vector3) return inV.divideScalar(mag);
     }
     else {
         if (inV instanceof Vector2) {

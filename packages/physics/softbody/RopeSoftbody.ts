@@ -49,12 +49,12 @@ export class RopeSoftbody extends SoftbodyBase {
         if (this.anchorRigidbodyHead) {
             const bodyA = await this.anchorRigidbodyHead.wait();
             this._positionHead = TempPhyMath.fromBtVec(bodyA.getWorldTransform().getOrigin());
-            this._positionHead.add(this.anchorOffsetHead, this._positionHead);
+            Vector3.add(this._positionHead, this.anchorOffsetHead, this._positionHead);
         }
         if (this.anchorRigidbodyTail) {
             const bodyB = await this.anchorRigidbodyTail.wait();
             this._positionTail = TempPhyMath.fromBtVec(bodyB.getWorldTransform().getOrigin());
-            this._positionTail.add(this.anchorOffsetTail, this._positionTail);
+            Vector3.add(this._positionTail, this.anchorOffsetTail, this._positionTail);
         }
         super.start();
     }

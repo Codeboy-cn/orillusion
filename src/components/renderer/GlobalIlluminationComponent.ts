@@ -108,7 +108,7 @@ export class GlobalIlluminationComponent extends ComponentBase {
 
             let start = this._probes[probeIndex].transform.worldPosition.clone();
             let end = dir.scaleBy(len);
-            end.add(start, end);
+            Vector3.add(end, start, end);
 
             //view.graphic3D.Clear(id);
             //view.graphic3D..drawLines(id, [start, end], [new Color(0, 0, 0, 0), new Color(1.0, 1.0, 1.0, 1.0)]);

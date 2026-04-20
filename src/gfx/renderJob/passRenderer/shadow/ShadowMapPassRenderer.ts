@@ -155,7 +155,7 @@ export class ShadowMapPassRenderer extends RendererBase {
     private poseShadowCamera(dirLight: DirectLight, viewCamera: Camera3D, direction: Vector3, shadowCamera: Camera3D, extents: number, lookAt: Vector3) {
         this._shadowPos.copyFrom(dirLight.transform.worldPosition);
         this._shadowCameraTarget.copy(direction).normalize(viewCamera.far);
-        this._shadowCameraTarget.add(this._shadowPos, this._shadowCameraTarget);
+        Vector3.add(this._shadowCameraTarget, this._shadowPos, this._shadowCameraTarget);
         shadowCamera.transform.lookAt(this._shadowPos, this._shadowCameraTarget);
         shadowCamera.orthoOffCenter(shadowCamera.left, shadowCamera.right, shadowCamera.bottom, shadowCamera.top, shadowCamera.near, shadowCamera.far);
     }

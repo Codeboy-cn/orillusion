@@ -58,9 +58,13 @@ export class Graphic3D extends Object3D {
             const p3 = points[Math.min(i + 2, points.length - 1)];
 
             // let u = (p2 - p0) * (tension / 3.0) + p1;
-            p2.subtract(p0, u).multiplyScalar(tension / 3.0).add(p1, u);
+            Vector3.sub(p2, p0, u);
+            u.multiplyScalar(tension / 3.0);
+            Vector3.add(u, p1, u);
             // let v = (p1 - p3) * (tension / 3.0) + p2;
-            p1.subtract(p3, v).multiplyScalar(tension / 3.0).add(p2, v);
+            Vector3.sub(p1, p3, v);
+            v.multiplyScalar(tension / 3.0);
+            Vector3.add(v, p2, v);
 
             result.push(...this.calculateBezierCurve(p1, u, v, p2, samples));
         }

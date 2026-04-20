@@ -57,7 +57,7 @@ export class PickCompute {
         target.set(x, y, z);
 
         if (Camera3D.mainCamera._boundCtx?.engine?.setting.useRTE) {
-            target.add(Camera3D.mainCamera.transform.worldPosition, target);
+            Vector3.add(target, Camera3D.mainCamera.transform.worldPosition, target);
         }
         
         return target;

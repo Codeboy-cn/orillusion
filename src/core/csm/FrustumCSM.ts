@@ -116,7 +116,7 @@ export class FrustumCSM {
                     cornerIndex++;
                     pt.set(2.0 * x - 1.0, 2.0 * y - 1.0, depth, 1.0);
                     pvInv.transformVector4(pt, pt);
-                    pt.div(pt.w, pt);
+                    pt.multiplyScalar(1 / pt.w);
                 }
             }
         }

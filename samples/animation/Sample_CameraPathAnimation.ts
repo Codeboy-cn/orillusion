@@ -236,8 +236,12 @@ class Sample_CameraPathAnimation {
                 const p2 = points[i + 1];
                 const p3 = points[Math.min(i + 2, points.length - 1)];
 
-                p2.subtract(p0, u).multiplyScalar(tension / 3.0).add(p1, u);
-                p1.subtract(p3, v).multiplyScalar(tension / 3.0).add(p2, v);
+                Vector3.sub(p2, p0, u);
+                u.multiplyScalar(tension / 3.0);
+                Vector3.add(u, p1, u);
+                Vector3.sub(p1, p3, v);
+                v.multiplyScalar(tension / 3.0);
+                Vector3.add(v, p2, v);
 
                 curveData.push(p1);
                 curveData.push(...this.calculateBezierCurve(p1, u, v, p2, samples));

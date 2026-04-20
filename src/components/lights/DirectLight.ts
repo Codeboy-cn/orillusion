@@ -63,8 +63,8 @@ export class DirectLight extends LightBase {
             shadowPos.copy(this.direction).normalize(renderCamera.far);
 
             const shadowCameraTarget = Vector3.HELP_1;
-            lookAt.add(shadowPos, shadowCameraTarget);
-            lookAt.subtract(shadowPos, shadowPos);
+            Vector3.add(lookAt, shadowPos, shadowCameraTarget);
+            Vector3.sub(lookAt, shadowPos, shadowPos);
 
             this.csmShadowCamera[i].near = renderCamera.near;
             this.csmShadowCamera[i].far = renderCamera.far * 2;

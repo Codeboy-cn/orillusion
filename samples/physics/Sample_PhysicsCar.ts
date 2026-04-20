@@ -400,7 +400,7 @@ class fixedCameraController extends ComponentBase {
             this.distance,
             this._tempPos
         );
-        this._tempPos = position.add(this._tempPos, this._tempPos);
+        this._tempPos = Vector3.add(position, this._tempPos, this._tempPos);
         this.camera.lookAt(this._tempPos, this._target.transform.worldPosition);
     }
 }

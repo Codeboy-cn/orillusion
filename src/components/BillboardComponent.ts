@@ -28,7 +28,7 @@ export class BillboardComponent extends ComponentBase {
             this._cameraPosition.y = 0;
         }
         this._cameraPosition.normalize();
-        this._cameraPosition.add(this.object3D.localPosition, this._cameraPosition);
+        Vector3.add(this._cameraPosition, this.object3D.localPosition, this._cameraPosition);
         this.transform.lookAt(this.object3D.localPosition, this._cameraPosition, camera.transform.up);
     }
 

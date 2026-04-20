@@ -367,12 +367,12 @@ export class Matrix4 {
      */
     public lookAt(eye: Vector3, at: Vector3, up: Vector3 = Vector3.Y_AXIS): void {
         let data = this.rawData;
-        let zAxis: Vector3 = at.subtract(eye, Vector3.HELP_0);
+        let zAxis: Vector3 = Vector3.sub(at, eye, Vector3.HELP_0);
         if (zAxis.length === 0) {
             zAxis.z = 1;
         }
         zAxis.normalize();
-        let xAxis: Vector3 = up.crossProduct(zAxis, Vector3.HELP_1);
+        let xAxis: Vector3 = Vector3.cross(up, zAxis, Vector3.HELP_1);
         if (xAxis.length === 0) {
             if (Math.abs(up.z) === 1) {
                 zAxis.x += 0.0001;
@@ -380,11 +380,11 @@ export class Matrix4 {
                 zAxis.z -= 0.0001;
             }
             zAxis.normalize();
-            xAxis = up.crossProduct(zAxis, Vector3.HELP_1)
+            xAxis = Vector3.cross(up, zAxis, Vector3.HELP_1);
         }
 
         xAxis.normalize();
-        let yAxis = zAxis.crossProduct(xAxis, Vector3.HELP_2)
+        let yAxis = Vector3.cross(zAxis, xAxis, Vector3.HELP_2);
 
         data[0] = xAxis.x;
         data[1] = yAxis.x;
@@ -783,7 +783,7 @@ export class Matrix4 {
         let data = this.rawData;
 
         let zero: Vector3 = Matrix4._zero2.set(0, 0, 0);
-        toDirection.crossProduct(fromDirection, zero);
+        Vector3.cross(toDirection, fromDirection, zero);
         let e: number = toDirection.dotProduct(fromDirection);
 
         if (e > 1.0 - epsilon) {
@@ -826,7 +826,7 @@ export class Matrix4 {
             left.y *= invLen;
             left.z *= invLen;
 
-            left.crossProduct(fromDirection, up);
+            Vector3.cross(left, fromDirection, up);
 
             fxx = -fromDirection.x * fromDirection.x;
             fyy = -fromDirection.y * fromDirection.y;

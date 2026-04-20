@@ -115,7 +115,7 @@ export class CubicBezierPath {
 
                     if (aLen > 0.0 && bLen > 0.0) {
                         let abLen = (aLen + bLen) / 8.0;
-                        let ab = b.div(bLen).subtract(a.div(aLen));
+                        let ab = b.divideScalar(bLen).subtract(a.divideScalar(aLen));
                         ab.normalize();
                         ab = ab.mul(abLen);
 
@@ -159,7 +159,7 @@ export class CubicBezierPath {
                     let mod3kp1 = (3 * k + 1) % (this.numControlVertices - 1);
                     if (aLen > 0.0 && bLen > 0.0) {
                         let abLen = (aLen + bLen) / 8.0;
-                        let ab = b.div(bLen).subtract(a.div(aLen));
+                        let ab = b.divideScalar(bLen).subtract(a.divideScalar(aLen));
                         ab.normalize();
                         ab = ab.mul(abLen);
 
