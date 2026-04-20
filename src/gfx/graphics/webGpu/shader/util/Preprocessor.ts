@@ -34,109 +34,44 @@ export class Preprocessor {
     }
 
     protected static parseAutoBindingForAllGroup(code: string): string {
-        let offset = 0;
-        let result = '';
-        let group = new Map<number, number>();
-        while (offset < code.length) {
-            let nLeftIndex = code.indexOf('@group(', offset);
-            if (nLeftIndex == -1) {
-                result += code.substring(offset);
-                break;
+        const group = new Map<number, number>();
+        return code.replace(/@group\((\d+)\)([\s\S]*?)@binding\((auto|\d+)\)/g, (_m, groupStr, between, bindingStr) => {
+            const groupID = Number.parseInt(groupStr);
+            if (bindingStr === 'auto') {
+                const nextBinding = group.has(groupID) ? group.get(groupID) + 1 : 0;
+                group.set(groupID, nextBinding);
+                return `@group(${groupStr})${between}@binding(${nextBinding})`;
             }
-            let nRightIndex = code.indexOf(')', nLeftIndex);
-            let groupID = Number.parseInt(code.substring(nLeftIndex + 7, nRightIndex));
-            nLeftIndex = code.indexOf('@binding(', nRightIndex);
-            nRightIndex = code.indexOf(')', nLeftIndex);
-
-            let bindingID = code.substring(nLeftIndex + 9, nRightIndex);
-
-            result += code.substring(offset, nLeftIndex);
-            if (bindingID.includes(`auto`)) {
-                if (group.has(groupID)) {
-                    let lastBindingId = group.get(groupID) + 1;
-                    result += `@binding(${lastBindingId})`;
-                    group.set(groupID, lastBindingId);
-                } else {
-                    result += '@binding(0)';
-                    group.set(groupID, 0);
-                }
-            } else {
-                let nBindingID = Number.parseInt(bindingID);
-                if (!group.has(groupID) || group.get(groupID) < nBindingID) {
-                    group.set(groupID, nBindingID);
-                }
-                result += `@binding(${bindingID})`;
+            const nBindingID = Number.parseInt(bindingStr);
+            if (!group.has(groupID) || group.get(groupID) < nBindingID) {
+                group.set(groupID, nBindingID);
             }
-            offset = nRightIndex + 1;
-        }
-
-        return result;
+            return `@group(${groupStr})${between}@binding(${bindingStr})`;
+        });
     }
 
     protected static parseAutoBindingForGroupX(code: string, nGroup: number): string {
-        let offset = 0;
-        let result = '';
-        let group = new Map<number, number>();
-        while (offset < code.length) {
-            let nLeftIndex = code.indexOf('@group(', offset);
-            if (nLeftIndex == -1) {
-                result += code.substring(offset);
-                break;
-            }
-            let nRightIndex = code.indexOf(')', nLeftIndex);
-            let groupID = Number.parseInt(code.substring(nLeftIndex + 7, nRightIndex));
-            nLeftIndex = code.indexOf('@binding(', nRightIndex);
-            nRightIndex = code.indexOf(')', nLeftIndex);
-
-            // let bindingID = code.substring(nLeftIndex + 9, nRightIndex);
-
-            result += code.substring(offset, nLeftIndex);
-            if (groupID == nGroup) {
-                if (group.has(groupID)) {
-                    let lastBindingId = group.get(groupID) + 1;
-                    result += `@binding(${lastBindingId})`;
-                    group.set(groupID, lastBindingId);
-                } else {
-                    result += '@binding(0)';
-                    group.set(groupID, 0);
-                }
-            } else {
-                result += code.substring(nLeftIndex, nRightIndex + 1);
-            }
-            offset = nRightIndex + 1;
-        }
-
-        return result;
+        const group = new Map<number, number>();
+        return code.replace(/@group\((\d+)\)([\s\S]*?)@binding\(([^)]*)\)/g, (match, groupStr, between, _bindingStr) => {
+            const groupID = Number.parseInt(groupStr);
+            if (groupID !== nGroup) return match;
+            const nextBinding = group.has(groupID) ? group.get(groupID) + 1 : 0;
+            group.set(groupID, nextBinding);
+            return `@group(${groupStr})${between}@binding(${nextBinding})`;
+        });
     }
 
     protected static parseAutoLocation(code: string): string {
-        let offset = 0;
-        let result = '';
-        let lastBindingId = 0;
-        while (offset < code.length) {
-            let nLeftIndex = code.indexOf('@location(', offset);
-            if (nLeftIndex == -1) {
-                result += code.substring(offset);
-                break;
-            }
-            let nRightIndex = code.indexOf(')', nLeftIndex);
-            let id = code.substring(nLeftIndex + 10, nRightIndex);
-            result += code.substring(offset, nLeftIndex);
-            if (id === 'auto') {
-                result += `@location(${lastBindingId})`;
-                lastBindingId++;
-            } else {
-                result += code.substring(nLeftIndex, nRightIndex + 1);
-            }
-            offset = nRightIndex + 1;
-        }
-        return result;
+        let nextId = 0;
+        return code.replace(/@location\((auto|\d+)\)/g, (match, id) => {
+            if (id !== 'auto') return match;
+            return `@location(${nextId++})`;
+        });
     }
 
     protected static parseAutoLocationBlock(code: string): string {
         let offset = 0;
         let result = '';
-        let lastBindingId = 0;
         while (offset < code.length) {
             let nLeftIndex = code.indexOf('@location(', offset);
             if (nLeftIndex == -1) {
@@ -265,41 +200,7 @@ export class Preprocessor {
     }
 
     public static filterComment(code: string): string {
-        let result = '';
-        let findSingleComment = true;
-        let findMultiComment = true;
-        for (let offset = 0; offset < code.length;) {
-            let index1 = findSingleComment ? code.indexOf('//', offset) : -1;
-            let index2 = findMultiComment ? code.indexOf('/*', offset) : -1;
-
-            if (index1 == -1 && index2 == -1) {
-                result += code.substring(offset);
-                break;
-            }
-
-            findSingleComment = index1 != -1;
-            findMultiComment = index2 != -1;
-
-            if (index1 != -1 && index2 != -1) {
-                if (index1 < index2) {
-                    index2 = -1;
-                } else {
-                    index1 = -1;
-                }
-            }
-
-            if (index1 != -1) {
-                index2 = code.indexOf('\n', index1);
-                result += code.substring(offset, index1);
-                offset = index2 != -1 ? index2 : code.length;
-            } else if (index2 != -1) {
-                index1 = code.indexOf('*/', index2);
-                result += code.substring(offset, index2);
-                offset = index1 + 2;
-            }
-        }
-
-        return result;
+        return code.replace(/\/\/[^\n]*|\/\*[\s\S]*?\*\//g, '');
     }
 
     protected static extract(str: string, leftStr: string, rightStr: string): string {
