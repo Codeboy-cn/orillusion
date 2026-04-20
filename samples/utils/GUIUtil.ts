@@ -350,7 +350,11 @@ export class GUIUtil {
         // Changing these directly affects the shadow-map depth normalization
         // (via lightData.shadowFar) — lets you tighten depth precision by
         // shrinking far to just cover your scene.
-        GUIHelp.add(light, 'shadowCameraNear', 0.001, 10, 0.001);
+        // Slider range intentionally wide: shadowCameraNear only affects
+        // geometry closer than `near` to the light; for large scenes that
+        // value may need to be hundreds of world units. shadowCameraFar = 0
+        // means auto (use range).
+        GUIHelp.add(light, 'shadowCameraNear', 0.001, 1000, 0.01);
         GUIHelp.add(light, 'shadowCameraFar', 0, 2000, 0.1);
 
         GUIUtil._addShadowCalcReadout(light);
@@ -381,7 +385,11 @@ export class GUIUtil {
         GUIHelp.add(light, 'castShadow');
         GUIHelp.add(light, 'debugShadowRange').onChange(() => this.refreshPointLightDebug(light));
 
-        GUIHelp.add(light, 'shadowCameraNear', 0.001, 10, 0.001);
+        // Slider range intentionally wide: shadowCameraNear only affects
+        // geometry closer than `near` to the light; for large scenes that
+        // value may need to be hundreds of world units. shadowCameraFar = 0
+        // means auto (use range).
+        GUIHelp.add(light, 'shadowCameraNear', 0.001, 1000, 0.01);
         GUIHelp.add(light, 'shadowCameraFar', 0, 2000, 0.1);
 
         GUIUtil._addShadowCalcReadout(light);
