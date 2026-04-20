@@ -437,7 +437,7 @@ export class GUIUtil {
             addRO('calc_formulaBias', () => {
                 const size = pl.transform.view3D?.engine3D?.setting.shadow.pointShadowSize ?? 1;
                 const texel = (2 * (pl.lightData.range || 1)) / Math.max(size, 1);
-                return texel * 0.1;
+                return texel * 0.25;
             });
         }
         for (const row of rows) GUIHelp.add(readout, row.key).step(row.step).listen();

@@ -45,14 +45,11 @@ export class ShadowBiasCalculator {
         const v = (light as any)._shadowBias;
         if (typeof v === 'number') return v;
         // One cube face is 90° FOV; at distance r the face spans ~2r.
-        // Coefficient 0.1× post-back-face shadow rendering: mesh thickness is
-        // the primary bias, and the shader additionally scales by len/range to
-        // shrink bias further for close receivers. Small base + per-fragment
-        // scaling leaves just enough to cover fp-precision noise without
-        // peter-panning at the wall-floor interface (where the grazing light
-        // ray produces a near-zero actual depth gap).
+        // Coefficient 0.25× post-back-face shadow rendering: mesh thickness is
+        // the primary bias, host only covers fp-precision residuals. Shader
+        // additionally scales by len/range per fragment.
         const texelSize = (2 * (light.lightData.range || 1)) / Math.max(pointShadowMapSize, 1);
-        return texelSize * 0.1;
+        return texelSize * 0.25;
     }
 
     /**
@@ -62,7 +59,7 @@ export class ShadowBiasCalculator {
         const v = (light as any)._normalBias;
         if (typeof v === 'number') return v;
         const texelSize = (2 * (light.lightData.range || 1)) / Math.max(pointShadowMapSize, 1);
-        return texelSize * 0.02;
+        return texelSize * 0.05;
     }
 
     private static directBaselineBias(light: DirectLight): number {
