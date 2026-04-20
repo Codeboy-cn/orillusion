@@ -220,20 +220,24 @@ export class GUIUtil {
 
     /**
      * Live readout of the per-frame auto-resolved shadowBias / normalBias
-     * (RFC-003 ShadowBiasCalculator output). The values live in
+     * (RFC-003 ShadowBiasCalculator output). Values live in
      * `light.lightData.shadowBias[i]` / `light.lightData.normalBias[i]` and are
      * rewritten every frame in GlobalUniformGroup.setCamera, so we expose
      * getters and mark the dat.gui control `.listen()` to poll.
      *
-     * - DirectLight with CSM: one row per cascade.
-     * - DirectLight without CSM, PointLight, SpotLight: single row (cascade 0).
+     * Calling `.step()` is required: when bias starts at 0, dat.gui derives
+     * `__impliedStep = 1` from the initial value and rounds everything to
+     * whole numbers — the display would stay stuck at "0". Explicit step
+     * fixes the display precision so sub-unit values render correctly.
      */
     private static _addBiasReadout(light: DirectLight | PointLight | SpotLight) {
-        const maxCascades = light.transform.view3D?.engine3D?.setting.shadow.maxCascades ?? 4;
         const isDirect = light instanceof DirectLight;
+        const cascadeNum = isDirect && (light as DirectLight).enableCSM
+            ? (light.transform.view3D?.engine3D?.setting.shadow.maxCascades ?? 4)
+            : 1;
         const readout: any = {};
         const rows: { sKey: string; nKey: string; idx: number }[] = [];
-        const pushRow = (suffix: string, idx: number) => {
+        const addRow = (suffix: string, idx: number) => {
             const sKey = `shadowBias${suffix}`;
             const nKey = `normalBias${suffix}`;
             Object.defineProperty(readout, sKey, {
@@ -248,14 +252,14 @@ export class GUIUtil {
             });
             rows.push({ sKey, nKey, idx });
         };
-        if (isDirect) {
-            for (let i = 0; i < maxCascades; i++) pushRow(`[${i}]`, i);
-        } else {
-            pushRow('', 0);
+        for (let i = 0; i < cascadeNum; i++) {
+            addRow(cascadeNum > 1 ? `[${i}]` : '', i);
         }
+        // 1e-6 covers the shadowBias (NDC) scale of ~1e-5..1e-3; normalBias
+        // (world units) is larger but still prints cleanly at this precision.
         for (const row of rows) {
-            GUIHelp.add(readout, row.sKey).listen();
-            GUIHelp.add(readout, row.nKey).listen();
+            GUIHelp.add(readout, row.sKey).step(1e-6).listen();
+            GUIHelp.add(readout, row.nKey).step(1e-6).listen();
         }
     }
 
