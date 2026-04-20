@@ -97,7 +97,6 @@ export class TextureMipmapGenerator {
     public static webGPUGenerateMipmap(texture: Texture) {
         const ctx = texture._boundCtx!;
         let gpuDevice = ctx.device;
-        const gpu = ctx.gpuContext;
         let textureDescriptor = texture.textureDescriptor;
         // let pipeline = TextureMipmapGenerator.pipeline;
         let pipeline = TextureMipmapGenerator.getMipmapPipeline(texture);
@@ -107,8 +106,15 @@ export class TextureMipmapGenerator {
             mipLevelCount: 1,
         });
 
-        // Loop through each mip level and renders the previous level's contents into it.
-        const commandEncoder = gpu.beginCommandEncoder();
+        // Mipmap gen can fire lazily from a `gpuTexture` getter that happens
+        // to resolve in the middle of a main-loop render pass (e.g. a texture
+        // materializes inside a bind-group walk). The shared
+        // GPUContextInstance.LastCommand encoder would get auto-finished here
+        // and the live RenderPassEncoder would then fail its end() with
+        // "parent encoder already finished". Use a standalone encoder so
+        // mipmap upload is serialized at queue level without touching the
+        // in-flight main-loop encoder.
+        const commandEncoder = gpuDevice.createCommandEncoder();
         for (let i = 1; i < textureDescriptor.mipLevelCount; ++i) {
             const dstView = texture.getGPUTexture().createView({
                 baseMipLevel: i, // Make sure we're getting the right mip level...
@@ -171,7 +177,7 @@ export class TextureMipmapGenerator {
             // destination view for this one.
             srcView = dstView;
         }
-        gpu.endCommandEncoder(commandEncoder);
+        gpuDevice.queue.submit([commandEncoder.finish()]);
     }
 
     public static getMipmapCount(width: number, height: number) {

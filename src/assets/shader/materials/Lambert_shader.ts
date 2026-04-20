@@ -10,9 +10,9 @@ export let Lambert_shader: string = /*wgsl*/ `
     #include "EnvMap_frag"
     #include "ReflectionCG"
 
-    @group(1) @binding(0)
+    @group(1) @binding(auto)
     var baseMapSampler: sampler;
-    @group(1) @binding(1)
+    @group(1) @binding(auto)
     var baseMap: texture_2d<f32>;
 
     fn vert(inputData:VertexAttributes) -> VertexOutput {

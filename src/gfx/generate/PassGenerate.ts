@@ -5,7 +5,6 @@ import { GLTFType } from '../../loader/parser/gltf/GLTFType';
 import { Shader } from '../graphics/webGpu/shader/Shader';
 import { SkyGBufferPass } from '../../materials/multiPass/SkyGBufferPass';
 import { GBufferPass } from '../../materials/multiPass/GBufferPass';
-import { VertexAttributeName } from '../../core/geometry/VertexAttributeName';
 import { CastShadowMaterialPass } from '../../materials/multiPass/CastShadowMaterialPass';
 import { CastPointShadowMaterialPass } from '../../materials/multiPass/CastPointShadowMaterialPass';
 import { DepthMaterialPass } from '../../materials/multiPass/DepthMaterialPass';
@@ -72,13 +71,21 @@ export class PassGenerate {
 
     public static createShadowPass(renderNode: RenderNode, shader: Shader) {
         let use_skeleton = RendererMaskUtil.hasMask(renderNode.rendererMask, RendererMask.SkinnedMesh);
-        let useTangent = renderNode.geometry.hasAttribute(VertexAttributeName.TANGENT);
         let useMorphTargets = renderNode.geometry.hasAttribute(GLTFType.MORPH_POSITION_PREFIX + '0');
         let useMorphNormals = renderNode.geometry.hasAttribute(GLTFType.MORPH_NORMAL_PREFIX + '0');
 
         let colorPassList = shader.getSubShaders(PassType.COLOR);
         for (let i = 0; i < colorPassList.length; i++) {
             const colorPass = colorPassList[i];
+            // Mirror the color pass's USE_TANGENT rather than asking geometry.
+            // The geometry's vertexBufferLayouts are generated once against the
+            // color pass's shader reflection (GeometryBase.generate is gated by
+            // _onChange); if the shadow pass disagrees and declares TANGENT at
+            // slot 4 while the color pass didn't, the pipeline's VertexState is
+            // missing slot 4 and WebGPU rejects the shadow pipeline with
+            // "Vertex attribute slot 4 used in shadowcastmap_vert is not
+            // present in the VertexState".
+            let useTangent = colorPass.defineValue[`USE_TANGENT`] === true;
             let shadowPassList = shader.getSubShaders(PassType.SHADOW);
             if (!shadowPassList || shadowPassList.length < (i + 1)) {
                 let shadowPass = new CastShadowMaterialPass();
@@ -144,13 +151,14 @@ export class PassGenerate {
 
     public static createDepthPass(renderNode: RenderNode, shader: Shader) {
         let colorListPass = shader.getSubShaders(PassType.COLOR);
-        let useTangent = renderNode.geometry.hasAttribute('TANGENT');
         let useMorphTargets = renderNode.geometry.hasAttribute(GLTFType.MORPH_POSITION_PREFIX + '0');
         let useMorphNormals = renderNode.geometry.hasAttribute(GLTFType.MORPH_NORMAL_PREFIX + '0');
         let use_skeleton = RendererMaskUtil.hasMask(renderNode.rendererMask, RendererMask.SkinnedMesh);
 
         for (let i = 0; i < colorListPass.length; i++) {
             const colorPass = colorListPass[i];
+            // Mirror color pass's USE_TANGENT (see createShadowPass for rationale).
+            let useTangent = colorPass.defineValue[`USE_TANGENT`] === true;
             let depthPassList = shader.getSubShaders(PassType.DEPTH);
             if (!depthPassList && colorPass.shaderState.useZ) {
                 if (!depthPassList || depthPassList.length < i) {
