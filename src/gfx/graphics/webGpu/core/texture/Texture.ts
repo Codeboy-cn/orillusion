@@ -52,11 +52,16 @@ export class Texture implements GPUSamplerDescriptor {
             this._ensureBound();
             this._gpuTexture = this._boundCtx!.device.createTexture(this.textureDescriptor);
             this._uploadSourceImage(this._gpuTexture);
-            // Mipmap generation needs the GPUTexture to exist and re-enters
-            // this getter (TextureMipmapGenerator reads getGPUTexture()); use
-            // a latch so that re-entry returns the freshly created texture
-            // rather than recursing.
-            if (this.useMipmap && !this._mipmapMaterialized) {
+            // Auto-mipmap only for single-layer 2D textures. Cube / 2d-array
+            // / cube-array textures have their own mipmap pipeline (e.g.
+            // TextureCubeFaceData.generateMipmap → IBLEnvMapCreator). The
+            // generic 2D `webGPUGenerateMipmap` creates default-dimension
+            // views (defaults to `2d-array` on a 6-layer texture) and binds
+            // them into a shader layout that declares `Cube` — which emits
+            // the "dimension doesn't match Cube" and "layer count > 1"
+            // WebGPU validation warnings. Also re-enters this getter, so a
+            // latch guards against recursion on the 2D path.
+            if (this.useMipmap && !this._mipmapMaterialized && this._isAutoMipmappable()) {
                 this._mipmapMaterialized = true;
                 TextureMipmapGenerator.webGPUGenerateMipmap(this);
             }
@@ -65,6 +70,17 @@ export class Texture implements GPUSamplerDescriptor {
     }
     protected set gpuTexture(v: GPUTexture) {
         this._gpuTexture = v ?? null;
+    }
+
+    /**
+     * Single-layer 2D textures can go through the generic render-to-mip
+     * pipeline. Anything else (cube, 2d-array, cube-array, 3d) manages its
+     * own mipmap chain.
+     */
+    protected _isAutoMipmappable(): boolean {
+        const layers = this.textureDescriptor?.size?.['depthOrArrayLayers'] ?? 1;
+        const dim = this.textureDescriptor?.dimension ?? '2d';
+        return dim === '2d' && layers === 1;
     }
 
     /**
