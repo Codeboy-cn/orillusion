@@ -63,15 +63,18 @@ export class ShadowBiasCalculator {
         const v = (light as any)._shadowBias;
         if (typeof v === 'number') return v;
         // Use cascade 0 (the tightest, most-detailed cascade) as the auto baseline.
-        // Base covers pure texel quantization only — shader divides by max(NoL, 0.1)
-        // so grazing-angle amplification happens per fragment instead of in this
-        // host formula (which can't see per-fragment N·L).
+        // Shader divides by max(NoL, 0.1) to handle grazing-angle slope amplification
+        // per fragment. The 1.5× here is a fp-precision margin (NOT slope) — near-
+        // perpendicular receivers (NoL≈1) get zero slope amplification, so the host
+        // must leave ~1.5 texels worth of NDC headroom for matrix-multiply and
+        // UNORM24 round-trip noise. Without it, subtle acne reappears on flat
+        // ground lit from overhead.
         const cam = (light.enableCSM && light.csmShadowCamera?.length ? light.csmShadowCamera[0] : light.shadowCamera);
         if (!cam) return 0.0005;
         const extent = cam.right - cam.left;
         const depth = Math.max(cam.far - cam.near, 1e-6);
         const texelSize = extent / Math.max(light.shadowMapWidth || 1, 1);
-        return texelSize / depth;
+        return (texelSize * 1.5) / depth;
     }
 
     private static directBaselineNormalBias(light: DirectLight): number {

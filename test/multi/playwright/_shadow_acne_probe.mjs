@@ -44,17 +44,17 @@ const setup = await inner.evaluate(async () => {
         if (list && list.length) { light = list[0]; break; }
     }
     if (!light) return { ok: false };
-    // User-reported params
-    light.transform.x = -36;
-    light.transform.y = 62.17;
-    light.transform.z = -126.61;
-    light.transform.rotationX = 144;
+    // User-reported params (second scene — near-perpendicular light, large bound)
+    light.transform.x = 0;
+    light.transform.y = 100;
+    light.transform.z = 0;
+    light.transform.rotationX = 177.74;
     light.transform.rotationY = 0;
     light.transform.rotationZ = 0;
-    light.shadowBoundWidth = 124.2;
-    light.shadowBoundHeight = 184.6;
+    light.shadowBoundWidth = 121.1;
+    light.shadowBoundHeight = 219.7;
     light.shadowBoundNear = 0.01;
-    light.shadowBoundFar = 19;
+    light.shadowBoundFar = 200;
     light.intensity = 3;
     light.castShadow = true;
     light.enableCSM = false;
