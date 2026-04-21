@@ -246,11 +246,20 @@ export class RendererJob {
 
         this.postRenderer.render(view);
 
-        // Final composite straight to canvas from the color-pass GBuffer.
-        // The old GUI pass (copy + UI-mask render) was removed along with
-        // the legacy UI subsystem — sprites and overlays run through the
-        // standard forward / overlay paths.
-        let lastTexture = GBufferFrame.getGBufferFrame(GBufferFrame.colorPass_GBuffer, view.engine3D.context3D).getColorTexture();
+        // Present whatever texture the last render pass wrote to. Each
+        // PostBase updates `gpuContext.lastRenderPassState` at the end of
+        // its frame work, so this resolves to the final post output when
+        // post effects are enabled, and to ColorPassRenderer's output
+        // when they're not. The old code routed through a gui_GBuffer
+        // copy + UI render pass; both were dropped with the legacy GUI
+        // subsystem, but this hand-off was the critical part that carried
+        // the post chain's output through to the canvas — reading
+        // colorPass_GBuffer directly discarded every post effect.
+        const ctx = view.engine3D.context3D;
+        const gpu = ctx.gpuContext;
+        let lastTexture = gpu.lastRenderPassState
+            ? gpu.lastRenderPassState.getLastRenderTexture(ctx)
+            : GBufferFrame.getGBufferFrame(GBufferFrame.colorPass_GBuffer, ctx).getColorTexture();
         this.postRenderer.presentContent(view, lastTexture);
     }
 
