@@ -111,9 +111,13 @@ export class View3D extends CEventListener {
 
         overlayView.scene = camera.overlayScene;
         overlayView.camera = camera;
-        camera.attachToView(overlayView);
 
+        // Engine must be wired to the view BEFORE attachToView runs the
+        // ortho projection setup — `_applyScreenOrtho` reads the canvas
+        // size off `view.engine3D.context3D`, which is only set inside
+        // addOverlayView.
         this.engine3D.addOverlayView(overlayView);
+        camera.attachToView(overlayView);
         return camera;
     }
 

@@ -10,11 +10,17 @@ app.commandLine.appendSwitch('enable-features', 'Vulkan,UseSkiaRenderer');
 const HOST = 'http://localhost:4000';
 const WAIT_MS = 4000;
 
-const sample = process.argv[process.argv.length - 1];
-if (!sample || !sample.endsWith('.ts')) {
+const sampleArg = process.argv[process.argv.length - 1];
+if (!sampleArg || !sampleArg.endsWith('.ts')) {
     process.stdout.write(`usage: electron sample_check_one.mjs <rel-path-ending-in.ts>\n`);
     process.exit(2);
 }
+// samples/index.ts uses `import.meta.glob('./*/*.ts')` whose keys are
+// prefixed with './'. The menu's <a> ids are those keys verbatim, and the
+// load-on-refresh resolver does `document.querySelector('[id="${target}"]')`.
+// Without the './' prefix the lookup fails silently and no iframe is created
+// — the sample never runs.
+const sample = sampleArg.startsWith('./') ? sampleArg : './' + sampleArg;
 
 const errors = [];
 const logs = [];

@@ -820,13 +820,35 @@ export class RenderShaderPass extends ShaderPassBase {
         }
 
         const ctx = this._boundCtx!;
-        let pipeline = PipelinePool.getSharePipeline(ctx, this.shaderVariant);
+        // Pipeline cache key must include the renderPass's color/depth
+        // attachment formats — `shaderVariant` alone only describes the
+        // shader source/defines/state. Two passes with the same shader but
+        // different render targets (e.g. main GBuffer vs overlay BGRA8Unorm
+        // canvas) produce incompatible pipelines, so they must cache
+        // separately.
+        const pipelineKey = `${this.shaderVariant}|${RenderShaderPass._attachmentKey(renderPassState)}`;
+        let pipeline = PipelinePool.getSharePipeline(ctx, pipelineKey);
         if (pipeline) {
             this.pipeline = pipeline;
         } else {
             this.pipeline = ctx.gpuContext.createPipeline(renderPipelineDescriptor as GPURenderPipelineDescriptor);
-            PipelinePool.setSharePipeline(ctx, this.shaderVariant, this.pipeline);
+            PipelinePool.setSharePipeline(ctx, pipelineKey, this.pipeline);
         }
+    }
+
+    private static _attachmentKey(rps: RendererPassState): string {
+        let k = '[';
+        const targets = rps.renderTargets;
+        if (targets && targets.length > 0) {
+            for (const t of targets) k += (t?.format ?? '_') + ',';
+        } else if (rps.renderTargetTextures && rps.renderTargetTextures.length > 0) {
+            for (const t of rps.renderTargetTextures) k += (t?.format ?? '_') + ',';
+        } else {
+            k += '_';
+        }
+        k += ']:' + (rps.depthTexture?.format ?? '_');
+        if (rps.multisample) k += ':ms' + rps.multisample;
+        return k;
     }
 
     private createGroupLayouts() {
