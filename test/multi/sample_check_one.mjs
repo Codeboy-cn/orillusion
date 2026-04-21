@@ -1,6 +1,6 @@
 // Probe a single sample against vite :4000. Usage:
 //   electron test/multi/sample_check_one.mjs <sample-rel-path>
-// e.g. sprite/Sample_Sprite_Quad.ts
+// e.g. sprite/Sample_World.ts
 
 import { app, BrowserWindow } from 'electron/main';
 

@@ -17,13 +17,12 @@ import {
     Vector2,
     View3D,
 } from "@orillusion/core";
-import { GUIUtil } from "@samples/utils/GUIUtil";
 
 /**
  * Clickable, hoverable, draggable sprites with live event counters in the
  * right-hand GUI panel.
  */
-class Sample_Sprite_Interactive {
+class Sample_Interactive {
     engine: Engine3D;
     scene: Scene3D;
     view: View3D;
@@ -40,10 +39,20 @@ class Sample_Sprite_Interactive {
     private readonly hover = new Color(0.9, 0.95, 1, 1);
     private readonly press = new Color(0.4, 0.5, 0.9, 1);
 
-    private readonly counters = { hover: 0, click: 0, drags: 0, lastClickAt: '' };
+    private readonly counters = { hover: 0, click: 0, drags: 0, lastClickAt: '-' };
+    private readonly readout = { events: this._formatEvents(0, 0, 0, '-') };
     private readonly dragState = { x: 220, y: 120 };
     private dragStartX = 0;
     private dragStartY = 0;
+
+    private _formatEvents(hover: number, click: number, drags: number, last: string): string {
+        return `hover ${hover} · click ${click} · drags ${drags} · last@${last}`;
+    }
+
+    private _refreshReadout() {
+        const c = this.counters;
+        this.readout.events = this._formatEvents(c.hover, c.click, c.drags, c.lastClickAt);
+    }
 
     async run() {
         GUIHelp.init();
@@ -101,13 +110,18 @@ class Sample_Sprite_Interactive {
             this.button.color = this.normal;
 
             this.buttonObj.addComponent(Interactive);
-            this.buttonObj.addEventListener(InteractiveEvent.OVER, () => { this.button.color = this.hover; this.counters.hover++; }, null);
+            this.buttonObj.addEventListener(InteractiveEvent.OVER, () => {
+                this.button.color = this.hover;
+                this.counters.hover++;
+                this._refreshReadout();
+            }, null);
             this.buttonObj.addEventListener(InteractiveEvent.OUT, () => { this.button.color = this.normal; }, null);
             this.buttonObj.addEventListener(InteractiveEvent.DOWN, () => { this.button.color = this.press; }, null);
             this.buttonObj.addEventListener(InteractiveEvent.UP, () => { this.button.color = this.hover; }, null);
             this.buttonObj.addEventListener(InteractiveEvent.CLICK, (e: InteractiveEvent) => {
                 this.counters.click++;
                 this.counters.lastClickAt = `(${e.mouseX | 0}, ${e.mouseY | 0})`;
+                this._refreshReadout();
             }, null);
 
             this.buttonObj.x = 40;
@@ -136,7 +150,10 @@ class Sample_Sprite_Interactive {
                 this.dragState.x = this.dragObj.x;
                 this.dragState.y = this.dragObj.y;
             }, null);
-            this.dragObj.addEventListener(InteractiveEvent.DRAG_END, () => { this.counters.drags++; }, null);
+            this.dragObj.addEventListener(InteractiveEvent.DRAG_END, () => {
+                this.counters.drags++;
+                this._refreshReadout();
+            }, null);
 
             this.dragObj.x = this.dragState.x;
             this.dragObj.y = this.dragState.y;
@@ -145,11 +162,11 @@ class Sample_Sprite_Interactive {
     }
 
     private initGUI() {
-        GUIHelp.addFolder('Counters');
-        GUIHelp.add(this.counters, 'hover', 0, 999).listen();
-        GUIHelp.add(this.counters, 'click', 0, 999).listen();
-        GUIHelp.add(this.counters, 'drags', 0, 999).listen();
-        GUIHelp.add(this.counters, 'lastClickAt').listen();
+        // Single live-updating status line — avoids dat.gui's numeric slider
+        // widget (which looks editable) for what's really a read-only event
+        // counter readout.
+        GUIHelp.addFolder('Events (read-only)');
+        GUIHelp.add(this.readout, 'events').listen();
         GUIHelp.open();
         GUIHelp.endFolder();
 
@@ -158,8 +175,7 @@ class Sample_Sprite_Interactive {
         GUIHelp.add(this.dragState, 'y', 0, 800, 1).listen().onChange(v => this.dragObj.y = v);
         GUIHelp.endFolder();
 
-        GUIUtil.renderDirLight(this.lightObj.getComponent(DirectLight));
     }
 }
 
-new Sample_Sprite_Interactive().run();
+new Sample_Interactive().run();

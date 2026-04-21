@@ -15,13 +15,12 @@ import {
     Vector2,
     View3D,
 } from "@orillusion/core";
-import { GUIUtil } from "@samples/utils/GUIUtil";
 
 /**
  * Load an atlas, render three named sub-regions as sprites on an overlay.
  * GUI exposes a per-slot region picker so you can swap sub-images live.
  */
-class Sample_Sprite_Atlas {
+class Sample_Atlas {
     engine: Engine3D;
     scene: Scene3D;
     view: View3D;
@@ -114,8 +113,7 @@ class Sample_Sprite_Atlas {
             GUIHelp.endFolder();
         }
 
-        GUIUtil.renderDirLight(this.lightObj.getComponent(DirectLight));
     }
 }
 
-new Sample_Sprite_Atlas().run();
+new Sample_Atlas().run();

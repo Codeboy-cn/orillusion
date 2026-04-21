@@ -15,7 +15,6 @@ import {
     Vector2,
     View3D,
 } from "@orillusion/core";
-import { GUIUtil } from "@samples/utils/GUIUtil";
 
 /**
  * Screen-space sprites rendered through an `OverlayCamera`:
@@ -24,7 +23,7 @@ import { GUIUtil } from "@samples/utils/GUIUtil";
  * Both positioned in canvas pixels so the OverlayCamera's top-left origin
  * is visibly correct.
  */
-class Sample_Sprite_Overlay {
+class Sample_Overlay {
     engine: Engine3D;
     scene: Scene3D;
     view: View3D;
@@ -149,8 +148,7 @@ class Sample_Sprite_Overlay {
         GUIHelp.open();
         GUIHelp.endFolder();
 
-        GUIUtil.renderDirLight(this.lightObj.getComponent(DirectLight));
     }
 }
 
-new Sample_Sprite_Overlay().run();
+new Sample_Overlay().run();

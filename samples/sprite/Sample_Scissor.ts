@@ -16,14 +16,13 @@ import {
     Vector4,
     View3D,
 } from "@orillusion/core";
-import { GUIUtil } from "@samples/utils/GUIUtil";
 
 /**
  * SpriteMaterial scissor (UV-space clip + corner radius + fade-out edge).
  * One sprite is fully tunable from the GUI; the second runs an animated
  * wipe so the dynamic-update path is exercised in real time.
  */
-class Sample_Sprite_Scissor {
+class Sample_Scissor {
     engine: Engine3D;
     scene: Scene3D;
     view: View3D;
@@ -158,8 +157,7 @@ class Sample_Sprite_Scissor {
         GUIHelp.open();
         GUIHelp.endFolder();
 
-        GUIUtil.renderDirLight(this.lightObj.getComponent(DirectLight));
     }
 }
 
-new Sample_Sprite_Scissor().run();
+new Sample_Scissor().run();

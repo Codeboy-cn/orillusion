@@ -38,14 +38,21 @@ export enum SpriteDrawMode {
  */
 @RegisterComponent(SpriteRenderer, 'SpriteRenderer')
 export class SpriteRenderer extends RenderNode {
+    /** Bound Sprite asset. Never mutated by this renderer — per-instance tweaks live in the override fields below. */
     private _sprite: Sprite | null = null;
-    /** `true` when the sprite was auto-created by a shortcut setter (texture/pivot/border). */
-    private _ownsSprite: boolean = false;
+    /** Auto-managed Sprite backing the `setTexture()` ergonomics — created lazily when the user assigns a bare texture. */
+    private _autoSprite: Sprite | null = null;
     /** Bound change listener reference so we can unbind cleanly. */
     private _spriteListener: (flags: SpriteModifyFlags) => void;
 
+    // Per-renderer overrides that survive sprite-asset swaps. `null` = fall
+    // through to the bound sprite's own field. Without these, `set pivot(v)`
+    // / `set uvRect(v)` would have to mutate the asset (clone-on-write),
+    // which resets every time `this.sprite = otherAtlasRegion` rebinds.
+    private _pivotOverride: Vector2 | null = null;
+    private _uvRectOverride: Vector4 | null = null;
+
     private _pendingColor: Color | null = null;
-    private _pendingSize: Vector2 | null = null;
     private _pendingFillRatio: number | null = null;
     private _pendingFillDirection: number | null = null;
     private _pendingCornerRadius: number | null = null;
@@ -105,71 +112,69 @@ export class SpriteRenderer extends RenderNode {
         if (this._sprite === value) return;
         if (this._sprite) this._sprite.offChange(this._spriteListener);
         this._sprite = value;
-        this._ownsSprite = false;
         if (value) {
             value.onChange(this._spriteListener);
-            // If no explicit render size, adopt sprite's native size.
-            if (!this._customSize) this._pendingSize = null;
         }
+        // NOTE: per-renderer overrides (_pivotOverride / _uvRectOverride /
+        // _customSize / flipX / flipY / _drawMode / color / etc) intentionally
+        // survive an asset swap. Swapping atlas regions should not reset the
+        // renderer's anchor, UV sub-region, or size.
         this._applySpriteToMaterial();
     }
 
     /**
-     * Shortcut: bind a bare texture as the sprite. Creates a private
-     * `Sprite` with default pivot and no border. Use the `sprite` setter
-     * directly for shareable / atlas-driven sprites.
+     * Shortcut: bind a bare texture as the sprite. The first call creates a
+     * private auto-managed `Sprite`; subsequent calls update its texture in
+     * place without allocating a new Sprite.
      */
     public setTexture(texture: Texture): void {
-        if (this._sprite && this._ownsSprite) {
-            this._sprite.texture = texture;
+        if (!this._autoSprite) {
+            this._autoSprite = new Sprite({ texture });
         } else {
-            const s = new Sprite({ texture });
-            this.sprite = s;
-            this._ownsSprite = true;
+            this._autoSprite.texture = texture;
         }
+        // Bind (or re-bind) to the auto sprite. Any user-explicit `sprite`
+        // assignment pointing elsewhere is overwritten — that's the intended
+        // semantic of "set texture on this renderer".
+        if (this._sprite !== this._autoSprite) this.sprite = this._autoSprite;
     }
 
-    /** Shortcut: anchor point. Mutates the bound sprite's pivot (auto-creates one if none is bound). */
+    /**
+     * Anchor point in [0,1]². Stored as a per-renderer override; the bound
+     * sprite asset stays untouched. Swapping `sprite` preserves this.
+     */
     public get pivot(): Vector2 {
-        return this._sprite?.pivot ?? new Vector2(0.5, 0.5);
+        return this._pivotOverride ?? this._sprite?.pivot ?? new Vector2(0.5, 0.5);
     }
 
     public set pivot(value: Vector2) {
-        this._ensureOwnedSprite();
-        this._sprite!.pivot = value;
+        if (!this._pivotOverride) this._pivotOverride = new Vector2();
+        this._pivotOverride.set(value.x, value.y);
+        this._applyPivotToMaterial();
     }
 
-    /** Shortcut: UV sub-region. Mutates the bound sprite's region (auto-creates one if none is bound). */
+    /**
+     * UV sub-region as normalized `(offsetX, offsetY, scaleX, scaleY)`.
+     * Stored as a per-renderer override; the bound sprite asset stays
+     * untouched. Swapping `sprite` preserves this.
+     */
     public get uvRect(): Vector4 {
-        return this._sprite?.region ?? new Vector4(0, 0, 1, 1);
+        return this._uvRectOverride ?? this._sprite?.region ?? new Vector4(0, 0, 1, 1);
     }
 
     public set uvRect(value: Vector4) {
-        this._ensureOwnedSprite();
-        this._sprite!.region = value;
+        if (!this._uvRectOverride) this._uvRectOverride = new Vector4();
+        this._uvRectOverride.set(value.x, value.y, value.z, value.w);
+        this._applyUVRectToMaterial();
     }
 
-    /** Shortcut: assign a `Sprite` from a texture (one-off private sprite). */
+    /** Shortcut: assign a `Sprite` from a texture (auto-managed private sprite). */
     public set texture(tex: Texture) {
         this.setTexture(tex);
     }
 
     public get texture(): Texture | null {
         return this._sprite?.texture ?? null;
-    }
-
-    private _ensureOwnedSprite(): void {
-        if (!this._sprite) {
-            this.sprite = new Sprite();
-            this._ownsSprite = true;
-        } else if (!this._ownsSprite) {
-            // Clone-on-write: mutating a shared sprite via a shortcut would
-            // silently affect every other renderer bound to it. Clone so
-            // this renderer's pivot/region edits stay local.
-            const cloned = this._sprite.clone();
-            this.sprite = cloned;
-            this._ownsSprite = true;
-        }
     }
 
     // ---------- Per-renderer overrides ----------
@@ -293,17 +298,26 @@ export class SpriteRenderer extends RenderNode {
             mat.baseMap = sprite.texture;
         }
 
-        // UV region
-        mat.uvRect = new Vector4(sprite.region.x, sprite.region.y, sprite.region.z, sprite.region.w);
-
-        // Pivot
-        mat.pivot = new Vector2(sprite.pivot.x, sprite.pivot.y);
-
-        // Size (from custom override or sprite native)
+        this._applyUVRectToMaterial();
+        this._applyPivotToMaterial();
         this._applySize();
-
-        // 9-slice border / drawMode
         this._applyDrawMode();
+    }
+
+    private _applyPivotToMaterial() {
+        const mat = this._spriteMaterial();
+        if (!mat) return;
+        const p = this._pivotOverride ?? this._sprite?.pivot;
+        if (!p) return;
+        mat.pivot = new Vector2(p.x, p.y);
+    }
+
+    private _applyUVRectToMaterial() {
+        const mat = this._spriteMaterial();
+        if (!mat) return;
+        const r = this._uvRectOverride ?? this._sprite?.region;
+        if (!r) return;
+        mat.uvRect = new Vector4(r.x, r.y, r.z, r.w);
     }
 
     private _applyOverridesToMaterial() {
@@ -313,6 +327,8 @@ export class SpriteRenderer extends RenderNode {
         if (this._pendingFillRatio !== null) mat.fillRatio = this._pendingFillRatio;
         if (this._pendingFillDirection !== null) mat.fillDirection = this._pendingFillDirection;
         if (this._pendingCornerRadius !== null) mat.cornerRadius = this._pendingCornerRadius;
+        // Pivot / uvRect overrides are pushed through _applySpriteToMaterial
+        // during _ensureResources, so no duplicate write here.
     }
 
     private _applySize() {
@@ -346,9 +362,10 @@ export class SpriteRenderer extends RenderNode {
         }
     }
 
-    private _onSpriteChange(flags: SpriteModifyFlags) {
+    private _onSpriteChange(_flags: SpriteModifyFlags) {
         if (!this._spriteMaterial()) return;
-        // Blanket re-apply — cheap enough for occasional sprite mutations.
+        // Asset mutations re-apply everything except fields masked by a
+        // per-renderer override — those stay locked to the override value.
         this._applySpriteToMaterial();
     }
 
@@ -360,6 +377,8 @@ export class SpriteRenderer extends RenderNode {
     public copyComponent(from: this): this {
         super.copyComponent(from);
         if (from._sprite) this.sprite = from._sprite;
+        if (from._pivotOverride) this.pivot = from._pivotOverride;
+        if (from._uvRectOverride) this.uvRect = from._uvRectOverride;
         if (from._customSize) this.size = from._customSize;
         if (from.color) this.color = from.color.clone();
         this.flipX = from._flipX;

@@ -4,6 +4,7 @@ import { GeometryBase } from '../../core/geometry/GeometryBase';
 import { VertexAttributeName } from '../../core/geometry/VertexAttributeName';
 import { Context3D } from '../../gfx/graphics/webGpu/Context3D';
 import { Texture } from '../../gfx/graphics/webGpu/core/texture/Texture';
+import { PassType } from '../../gfx/renderJob/passRenderer/state/PassType';
 import { Color } from '../../math/Color';
 import { Vector2 } from '../../math/Vector2';
 import { Vector3 } from '../../math/Vector3';
@@ -168,19 +169,28 @@ export class SpriteBatcher extends RenderNode {
 
     private _rebuild(_ctx: Context3D) {
         const n = this._entries.length;
-        // Always keep at least one quad's worth of backing store so empty
-        // batchers still satisfy the pipeline vertex layout requirement.
-        const capacity = Math.max(n, 1);
-        const needNewGeom = !this._batcherGeometry || capacity > this._capacity;
 
-        const vCount = capacity * 4;
-        const positions = new Float32Array(vCount * 3);
-        const normals = new Float32Array(vCount * 3);
-        const uvs = new Float32Array(vCount * 2);
-        const totalIndices = capacity * 6;
-        const indices: Uint16Array | Uint32Array = vCount > 65535
-            ? new Uint32Array(totalIndices)
-            : new Uint16Array(totalIndices);
+        // Grow the backing store in generous steps so typical slider tweaks
+        // (count 1000 → 1500 → 2500) keep reusing the same GeometryBase and
+        // pipeline rather than swapping them every frame. A geometry swap on
+        // a live RenderNode races the next draw: `_readyPipeline` flips but
+        // `_passInit` stays true, so `apply()` skips the re-generate, the
+        // new geometry's `vertexBufferLayouts` stays empty, and
+        // `bindGeometryBuffer` binds zero slots to a cached pipeline that
+        // still expects all 4 — WebGPU reports `slot N not set`.
+        const growing = !this._batcherGeometry || n > this._capacity;
+        if (growing) {
+            const newCap = Math.max(n, this._capacity * 2, 1);
+            this._allocArrays(newCap);
+        }
+
+        // Typed arrays are sized to `_capacity * 4` vertices after
+        // `_allocArrays`. Populate them with entry data first — on a growth
+        // path `_materializeGeometry` will read these arrays when it calls
+        // `generate()`, so the GPU buffer lands fully populated in one shot.
+        const positions = this._cpuPositions!;
+        const uvs = this._cpuUVs!;
+        const indices = this._cpuIndices!;
 
         for (let i = 0; i < n; i++) {
             const e = this._entries[i];
@@ -198,12 +208,6 @@ export class SpriteBatcher extends RenderNode {
             positions[vOff + 6] = left;  positions[vOff + 7] = bottom; positions[vOff + 8] = 0;
             positions[vOff + 9] = right; positions[vOff + 10] = bottom;positions[vOff + 11] = 0;
 
-            for (let k = 0; k < 4; k++) {
-                normals[vOff + k * 3 + 0] = 0;
-                normals[vOff + k * 3 + 1] = 0;
-                normals[vOff + k * 3 + 2] = 1;
-            }
-
             // uvRect stores (offsetX, offsetY, scaleX, scaleY). Bake per-corner UV.
             const u0 = e.uvRect.x;
             const v0 = e.uvRect.y;
@@ -215,10 +219,7 @@ export class SpriteBatcher extends RenderNode {
             uvs[uvOff + 4] = u0; uvs[uvOff + 5] = v1;   // BL
             uvs[uvOff + 6] = u1; uvs[uvOff + 7] = v1;   // BR
 
-            // Two triangles: (TL, BL, TR), (TR, BL, BR) — front face = CCW
-            // seen from +Z because our coord system has +Y going down in the
-            // overlay use case; the cullMode is NONE on the shared material
-            // below so orientation doesn't matter anyway.
+            // Two triangles: (TL, BL, TR), (TR, BL, BR).
             const iOff = i * 6;
             const baseV = i * 4;
             indices[iOff + 0] = baseV + 0;
@@ -229,47 +230,96 @@ export class SpriteBatcher extends RenderNode {
             indices[iOff + 5] = baseV + 3;
         }
 
-        // Fill empty capacity with degenerate triangles so the pipeline has
-        // something to draw even when the batch is momentarily empty.
-        for (let i = n; i < capacity; i++) {
-            const iOff = i * 6;
-            const baseV = i * 4;
-            indices[iOff + 0] = baseV;
-            indices[iOff + 1] = baseV;
-            indices[iOff + 2] = baseV;
-            indices[iOff + 3] = baseV;
-            indices[iOff + 4] = baseV;
-            indices[iOff + 5] = baseV;
+        if (growing) {
+            // Build the new GeometryBase and eagerly generate its GPU layout
+            // using the current shader reflection so its
+            // `vertexBufferLayouts` is fully populated before the next draw
+            // binds it.
+            this._materializeGeometry();
+        } else {
+            // Same GeometryBase, same pipeline — just rewrite the GPU buffers
+            // in place. `GeometryBase.setAttribute` would only mutate the CPU
+            // map and silently skip GPU re-upload on subsequent calls, so we
+            // go through the vertex / index buffer's `upload` methods
+            // directly.
+            const geom = this._batcherGeometry!;
+            const vb = geom.vertexBuffer;
+            vb.upload(VertexAttributeName.position, { attribute: VertexAttributeName.position, data: positions });
+            vb.upload(VertexAttributeName.uv,       { attribute: VertexAttributeName.uv,       data: uvs });
+            vb.upload(VertexAttributeName.TEXCOORD_1, { attribute: VertexAttributeName.TEXCOORD_1, data: uvs });
+            geom.indicesBuffer.upload(indices);
         }
 
-        if (needNewGeom) {
-            const geom = new GeometryBase();
-            geom.bounds = new BoundingBox(new Vector3(0, 0, 0), new Vector3(1, 1, 0.1));
-            geom.setIndices(indices);
-            geom.setAttribute(VertexAttributeName.position, positions);
-            geom.setAttribute(VertexAttributeName.normal, normals);
-            geom.setAttribute(VertexAttributeName.uv, uvs);
-            geom.setAttribute(VertexAttributeName.TEXCOORD_1, uvs);
-            geom.addSubGeometry({
-                indexStart: 0,
-                indexCount: indices.length,
-                vertexStart: 0,
-                vertexCount: 0,
-                firstStart: 0,
-                index: 0,
-                topology: 0,
-            });
-            geom.instanceID = `spriteBatcher_${GetCountInstanceID()}`;
-            this._batcherGeometry = geom;
-            this._capacity = capacity;
-            this.geometry = geom;
-        } else {
-            // Reuse geometry and rewrite the vertex / index attribute buffers in place.
-            this._batcherGeometry!.setIndices(indices);
-            this._batcherGeometry!.setAttribute(VertexAttributeName.position, positions);
-            this._batcherGeometry!.setAttribute(VertexAttributeName.normal, normals);
-            this._batcherGeometry!.setAttribute(VertexAttributeName.uv, uvs);
-            this._batcherGeometry!.setAttribute(VertexAttributeName.TEXCOORD_1, uvs);
+        // Only draw the real entries — the tail of the index buffer is stale
+        // from previous rebuilds. Update the LOD descriptor so `drawIndexed`
+        // stops at n*6.
+        this._batcherGeometry!.subGeometries[0].lodLevels[0].indexCount = Math.max(n * 6, 0);
+    }
+
+    private _cpuPositions: Float32Array | null = null;
+    private _cpuNormals: Float32Array | null = null;
+    private _cpuUVs: Float32Array | null = null;
+    private _cpuIndices: Uint16Array | Uint32Array | null = null;
+
+    /** Allocate CPU-side typed arrays for a given capacity. No GPU work. */
+    private _allocArrays(capacity: number) {
+        const vCount = capacity * 4;
+        const positions = new Float32Array(vCount * 3);
+        const normals = new Float32Array(vCount * 3);
+        const uvs = new Float32Array(vCount * 2);
+        const indices = (vCount > 65535 ? new Uint32Array(capacity * 6) : new Uint16Array(capacity * 6)) as Uint16Array | Uint32Array;
+        for (let k = 0; k < vCount; k++) normals[k * 3 + 2] = 1;
+
+        this._capacity = capacity;
+        this._cpuPositions = positions;
+        this._cpuNormals = normals;
+        this._cpuUVs = uvs;
+        this._cpuIndices = indices;
+    }
+
+    /**
+     * Materialize the CPU arrays into a fresh `GeometryBase` with a fully
+     * populated GPU vertex buffer layout. Must be called AFTER entry data has
+     * been written into the CPU arrays so the initial generate() uploads real
+     * data and not zero-filled placeholders.
+     */
+    private _materializeGeometry() {
+        const positions = this._cpuPositions!;
+        const normals = this._cpuNormals!;
+        const uvs = this._cpuUVs!;
+        const indices = this._cpuIndices!;
+
+        const geom = new GeometryBase();
+        geom.bounds = new BoundingBox(new Vector3(0, 0, 0), new Vector3(1, 1, 0.1));
+        geom.setIndices(indices);
+        geom.setAttribute(VertexAttributeName.position, positions);
+        geom.setAttribute(VertexAttributeName.normal, normals);
+        geom.setAttribute(VertexAttributeName.uv, uvs);
+        geom.setAttribute(VertexAttributeName.TEXCOORD_1, uvs);
+        geom.addSubGeometry({
+            indexStart: 0,
+            indexCount: indices.length,
+            vertexStart: 0,
+            vertexCount: 0,
+            firstStart: 0,
+            index: 0,
+            topology: 0,
+        });
+        geom.instanceID = `spriteBatcher_${GetCountInstanceID()}`;
+
+        // Crucial: call generate() with the material's shader reflection
+        // BEFORE assigning to `this.geometry`. Otherwise the new geometry's
+        // `vertexBufferLayouts` stays empty until the render path's `apply()`
+        // happens to re-run, but `apply()` guards on `_valueChange || !pipeline`
+        // and neither flips on a geometry swap — so the first draw after the
+        // swap binds zero vertex buffers against a pipeline that still expects
+        // 4 slots, triggering `Vertex buffer slot 3 ... was not set`.
+        const pass = this._batcherMaterial?.getPass(PassType.COLOR)?.[0];
+        if (pass?.shaderReflection) {
+            geom.generate(pass.shaderReflection);
         }
+
+        this._batcherGeometry = geom;
+        this.geometry = geom;
     }
 }

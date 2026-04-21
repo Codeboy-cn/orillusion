@@ -15,14 +15,13 @@ import {
     Vector2,
     View3D,
 } from "@orillusion/core";
-import { GUIUtil } from "@samples/utils/GUIUtil";
 
 /**
  * Two overlay layers with different priorities — back (100) and front (200).
  * The higher-priority overlay renders on top. GUI lets you drag each sprite
  * around to observe the z-ordering.
  */
-class Sample_Sprite_MultiOverlay {
+class Sample_MultiOverlay {
     engine: Engine3D;
     scene: Scene3D;
     view: View3D;
@@ -131,8 +130,7 @@ class Sample_Sprite_MultiOverlay {
         GUIHelp.open();
         GUIHelp.endFolder();
 
-        GUIUtil.renderDirLight(this.lightObj.getComponent(DirectLight));
     }
 }
 
-new Sample_Sprite_MultiOverlay().run();
+new Sample_MultiOverlay().run();

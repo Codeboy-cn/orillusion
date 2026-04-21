@@ -14,7 +14,6 @@ import {
     View3D,
 } from "@orillusion/core";
 import { VideoTexture } from "@orillusion/media-extention";
-import { GUIUtil } from "@samples/utils/GUIUtil";
 
 /**
  * Sprite renders a `VideoTexture` (WebGPU `texture_external`). The
@@ -22,7 +21,7 @@ import { GUIUtil } from "@samples/utils/GUIUtil";
  * `USE_VIDEO_TEXTURE` on the material, swapping the sampling code path
  * at compile time.
  */
-class Sample_Sprite_Video {
+class Sample_Video {
     engine: Engine3D;
     scene: Scene3D;
     view: View3D;
@@ -109,8 +108,7 @@ class Sample_Sprite_Video {
         GUIHelp.open();
         GUIHelp.endFolder();
 
-        GUIUtil.renderDirLight(this.lightObj.getComponent(DirectLight));
     }
 }
 
-new Sample_Sprite_Video().run();
+new Sample_Video().run();

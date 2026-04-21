@@ -15,13 +15,12 @@ import {
     Vector4,
     View3D,
 } from "@orillusion/core";
-import { GUIUtil } from "@samples/utils/GUIUtil";
 
 /**
  * World-space sprite grid (3D scene, not overlay). GUI rebuilds the grid
  * with tunable rows/cols/cell-size + master tint.
  */
-class Sample_Sprite_World {
+class Sample_World {
     engine: Engine3D;
     scene: Scene3D;
     view: View3D;
@@ -128,8 +127,7 @@ class Sample_Sprite_World {
         GUIHelp.open();
         GUIHelp.endFolder();
 
-        GUIUtil.renderDirLight(this.lightObj.getComponent(DirectLight));
     }
 }
 
-new Sample_Sprite_World().run();
+new Sample_World().run();

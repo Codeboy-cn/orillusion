@@ -13,7 +13,7 @@ const OUT = join(__dirname, '_out');
 const HOST = 'http://localhost:4000';
 const sampleArg = process.argv[process.argv.length - 1].endsWith('.ts')
     ? process.argv[process.argv.length - 1]
-    : 'sprite/Sample_Sprite_Overlay.ts';
+    : 'sprite/Sample_Overlay.ts';
 const sample = sampleArg.startsWith('./') ? sampleArg : './' + sampleArg;
 const WAIT_MS = 3500;
 

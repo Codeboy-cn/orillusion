@@ -16,14 +16,13 @@ import {
     Vector4,
     View3D,
 } from "@orillusion/core";
-import { GUIUtil } from "@samples/utils/GUIUtil";
 
 /**
  * SpriteBatcher demo — N entries in a single `drawIndexed` call. Compare
- * the frame time against Sample_Sprite_Performance which uses the
+ * the frame time against Sample_Performance which uses the
  * per-Sprite path.
  */
-class Sample_Sprite_Batcher {
+class Sample_Batcher {
     engine: Engine3D;
     scene: Scene3D;
     view: View3D;
@@ -126,8 +125,7 @@ class Sample_Sprite_Batcher {
         GUIHelp.open();
         GUIHelp.endFolder();
 
-        GUIUtil.renderDirLight(this.lightObj.getComponent(DirectLight));
     }
 }
 
-new Sample_Sprite_Batcher().run();
+new Sample_Batcher().run();

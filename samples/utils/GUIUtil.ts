@@ -696,10 +696,8 @@ export class GUIUtil {
 
     static renderLitMaterial(mat: LitMaterial, open?: boolean) {
         GUIHelp.addFolder(mat.name);
-        GUIHelp.addColor(mat, 'baseColor').onChange((v) => {
-            let color = mat.baseColor;
-            color.copyFromArray(v);
-            mat.baseColor = color;
+        GUIHelp.addColor(mat, 'baseColor').onChange((c) => {
+            mat.baseColor = c;
         });
 
         GUIHelp.add(mat.baseColor, 'a').onChange((v) => {
@@ -735,10 +733,8 @@ export class GUIUtil {
             mat.metallic = v;
         });
 
-        GUIHelp.addColor(mat, 'clearcoatColor').onChange((v) => {
-            let color = mat.clearcoatColor;
-            color.copyFromArray(v);
-            mat.clearcoatColor = color;
+        GUIHelp.addColor(mat, 'clearcoatColor').onChange((c) => {
+            mat.clearcoatColor = c;
         });
 
         GUIHelp.add(mat, 'clearcoatFactor', 0.0, 1.0, 0.0001).onChange((v) => {
@@ -864,9 +860,8 @@ export class GUIUtil {
     }
 
     static RenderColor(target: Object, name: string) {
-        GUIHelp.addColor(target, name).onChange(v => {
-            let [r, g, b, a] = v;
-            target[name] = new Color(r / 255, g / 255, b / 255, a / 255)
+        GUIHelp.addColor(target, name).onChange(c => {
+            target[name] = c;
         })
     }
 

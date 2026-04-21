@@ -15,14 +15,13 @@ import {
     Vector2,
     View3D,
 } from "@orillusion/core";
-import { GUIUtil } from "@samples/utils/GUIUtil";
 
 /**
  * Per-Sprite baseline (no batching) — one draw per sprite. Compare the
- * frame time against Sample_Sprite_Batcher which renders the same shape
+ * frame time against Sample_Batcher which renders the same shape
  * set in a single draw call.
  */
-class Sample_Sprite_Performance {
+class Sample_Performance {
     engine: Engine3D;
     scene: Scene3D;
     view: View3D;
@@ -113,15 +112,18 @@ class Sample_Sprite_Performance {
     }
 
     private initGUI() {
+        // `.onFinishChange` fires once when the slider is released, not on every
+        // drag tick. The per-sprite path tears down + rebuilds thousands of
+        // Object3D + SpriteRenderer pairs per rebuild, so `.onChange` would
+        // queue a rebuild per drag frame and saturate the main thread.
         GUIHelp.addFolder('Sprite count (baseline)');
-        GUIHelp.add(this.state, 'count', 1, 2000, 1).onChange(() => this.rebuild());
-        GUIHelp.add(this.state, 'tileSize', 4, 64, 1).onChange(() => this.rebuild());
-        GUIHelp.add(this.state, 'spacing', 6, 80, 1).onChange(() => this.rebuild());
+        GUIHelp.add(this.state, 'count', 1, 2000, 1).onFinishChange(() => this.rebuild());
+        GUIHelp.add(this.state, 'tileSize', 4, 64, 1).onFinishChange(() => this.rebuild());
+        GUIHelp.add(this.state, 'spacing', 6, 80, 1).onFinishChange(() => this.rebuild());
         GUIHelp.open();
         GUIHelp.endFolder();
 
-        GUIUtil.renderDirLight(this.lightObj.getComponent(DirectLight));
     }
 }
 
-new Sample_Sprite_Performance().run();
+new Sample_Performance().run();

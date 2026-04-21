@@ -347,7 +347,17 @@ async function main() {
     const BATCH = Number(args.batch ?? 30);
     process.stdout.write(`[pw] ${samples.length} samples to probe (batch=${BATCH})\n`);
 
-    const vite = await startVite();
+    // Reuse an existing vite on :4000 if one is already serving — lets the
+    // runner cooperate with an interactive dev session instead of fighting it
+    // over the port.
+    let vite = null;
+    try {
+        const probe = await fetch(HOST + '/');
+        if (probe.ok) process.stdout.write('[pw] reusing existing vite on :4000\n');
+        else throw new Error('probe not ok');
+    } catch {
+        vite = await startVite();
+    }
     let { app: electronApp, page } = await launchElectron();
 
     const results = [];

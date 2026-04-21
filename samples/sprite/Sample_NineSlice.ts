@@ -16,14 +16,13 @@ import {
     Vector2,
     View3D,
 } from "@orillusion/core";
-import { GUIUtil } from "@samples/utils/GUIUtil";
 
 /**
  * 9-slice border scaling driven by the atlas's `border` field. Tweak the
  * `width` / `height` in GUI to watch the corners stay at native size
  * while the center stretches.
  */
-class Sample_Sprite_NineSlice {
+class Sample_NineSlice {
     engine: Engine3D;
     scene: Scene3D;
     view: View3D;
@@ -123,8 +122,7 @@ class Sample_Sprite_NineSlice {
         GUIHelp.open();
         GUIHelp.endFolder();
 
-        GUIUtil.renderDirLight(this.lightObj.getComponent(DirectLight));
     }
 }
 
-new Sample_Sprite_NineSlice().run();
+new Sample_NineSlice().run();
