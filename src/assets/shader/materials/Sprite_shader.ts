@@ -1,14 +1,17 @@
 /**
  * @internal
- * Sprite shader — textured quad with tint, uv-rect, linear fill mask,
- * rounded-corner SDF, optional 9-slice border remap, optional UV-space
- * scissor clip (with corner radius / fade-out edge), and an optional
- * `USE_VIDEO_TEXTURE` branch that samples a `texture_external` (WebGPU
- * video pipeline) instead of a static `texture_2d<f32>`.
+ * Sprite shader — a textured, tinted quad in world space with an optional
+ * distance-invariant size mode and an optional `USE_VIDEO_TEXTURE` branch
+ * that samples a `texture_external` (WebGPU video pipeline) instead of a
+ * static `texture_2d<f32>`.
  *
  * Runs through the standard `Common_vert` / `Common_frag` / `UnLit_frag`
- * pipeline so it participates in the normal forward pass (world-space
- * or, with an `OverlayCamera`, screen-space).
+ * pipeline so the sprite participates in the forward pass alongside
+ * regular 3D meshes (transparent bucket, depth-test on, depth-write off).
+ *
+ * RFC-005 removed the UI-only features (9-slice / fillRatio / cornerRadius /
+ * UV scissor) — sprites are now a pure 3D-scene primitive, not a mini UI
+ * framework.
  */
 export let Sprite_shader: string = /*wgsl*/ `
     #include "Common_vert"
@@ -20,20 +23,12 @@ export let Sprite_shader: string = /*wgsl*/ `
         struct MaterialUniform {
             color: vec4<f32>,
             uvRect: vec4<f32>,
-            sliceBorder: vec4<f32>,
-            scissorRect: vec4<f32>,
             size: vec2<f32>,
             pivot: vec2<f32>,
-            sliceScale: vec2<f32>,
-            spritePad0: vec2<f32>,
-            fillRatio: f32,
-            fillDirection: f32,
-            cornerRadius: f32,
-            sliceEnable: f32,
-            scissorEnable: f32,
-            scissorCornerRadius: f32,
-            scissorFadeOutSize: f32,
+            distanceInvariant: f32,
+            spritePad0: f32,
             spritePad1: f32,
+            spritePad2: f32,
         };
     #endif
 
@@ -51,114 +46,34 @@ export let Sprite_shader: string = /*wgsl*/ `
     #endif
 
     fn vert(inputData: VertexAttributes) -> VertexOutput {
-        // Shared unit-quad geometry has positions in [-0.5, +0.5].
-        // Apply pivot (0..1, 0.5 = centered) then scale by size.
+        // Shared unit-quad has positions in [-0.5, +0.5].
+        // Apply pivot (0..1, 0.5 = centered) then scale by size (world units).
         var v = inputData;
         let shift = vec2<f32>(0.5 - materialUniform.pivot.x, 0.5 - materialUniform.pivot.y);
+        var scale = materialUniform.size;
+        if (materialUniform.distanceInvariant > 0.5) {
+            // Keep on-screen size constant as the camera moves by scaling the
+            // quad's local extent with camera distance. Reference distance is
+            // hard-coded to 10 m — the size value is "meters at 10 m depth".
+            // ORI_MATRIX_M is the per-node model matrix, already populated by
+            // Inline_vert by the time our vert() is called.
+            let worldOrigin = (ORI_MATRIX_M * vec4<f32>(0.0, 0.0, 0.0, 1.0)).xyz;
+            let camDist = distance(worldOrigin, globalUniform.CameraPos);
+            scale = scale * (camDist / 10.0);
+        }
         v.position = vec3<f32>(
-            (inputData.position.x + shift.x) * materialUniform.size.x,
-            (inputData.position.y + shift.y) * materialUniform.size.y,
+            (inputData.position.x + shift.x) * scale.x,
+            (inputData.position.y + shift.y) * scale.y,
             inputData.position.z
         );
         ORI_Vert(v);
         return ORI_VertexOut;
     }
 
-    // 9-slice remap: scaleAxis = displaySize/sourceSize along this axis,
-    // border = (near, far) as normalized source-UV fractions. Given an input
-    // display-UV in [0,1], returns the source-UV in [0,1] that preserves the
-    // two border strips at 1:1 and stretches the center.
-    fn spriteSliceBorder(uv: f32, scaleAxis: f32, border: vec2<f32>) -> f32 {
-        var s = uv * scaleAxis;
-        if (s > border.x) {
-            s = s - border.x;
-            let centerPartMax = max(scaleAxis - border.x - border.y, 0.0001);
-            let centerPartMin = max(1.0 - border.x - border.y, 0.0001);
-            if (s < centerPartMax) {
-                s = border.x + (s / centerPartMax) * centerPartMin;
-            } else {
-                s = s - centerPartMax + border.x + centerPartMin;
-            }
-        }
-        return s;
-    }
-
-    fn spriteCornerMask(local: vec2<f32>, radius: f32) -> f32 {
-        let half = materialUniform.size * 0.5;
-        let p = (local - vec2<f32>(0.5)) * materialUniform.size;
-        let r = min(radius, min(half.x, half.y));
-        let q = abs(p) - half + vec2<f32>(r);
-        let d = length(max(q, vec2<f32>(0.0))) + min(max(q.x, q.y), 0.0) - r;
-        return 1.0 - smoothstep(-1.0, 1.0, d);
-    }
-
-    // UV-space scissor. scissorRect = (left, top, right, bottom) in local UV.
-    // scissorFadeOutSize > 0 gives a soft edge; 0 = hard clip.
-    fn spriteScissorAlpha(local: vec2<f32>) -> f32 {
-        let rect = materialUniform.scissorRect;
-        let minX = min(rect.x, rect.z);
-        let maxX = max(rect.x, rect.z);
-        let minY = min(rect.y, rect.w);
-        let maxY = max(rect.y, rect.w);
-
-        // Outside bbox → 0
-        if (local.x < minX || local.x > maxX || local.y < minY || local.y > maxY) {
-            return 0.0;
-        }
-
-        let fade = materialUniform.scissorFadeOutSize;
-        let cr = materialUniform.scissorCornerRadius;
-        if (fade <= 0.0 && cr <= 0.0) {
-            return 1.0;
-        }
-
-        // Distance (inside, positive) to closest edge.
-        let dxMin = local.x - minX;
-        let dxMax = maxX - local.x;
-        let dyMin = local.y - minY;
-        let dyMax = maxY - local.y;
-        let edgeDist = min(min(dxMin, dxMax), min(dyMin, dyMax));
-
-        var alpha = 1.0;
-        if (fade > 0.0) {
-            alpha = smoothstep(0.0, fade, edgeDist);
-        }
-        // Corner rounding: if point lies in a corner region (dist < cr along
-        // both axes), clip by circular SDF.
-        if (cr > 0.0) {
-            let dx = min(dxMin, dxMax);
-            let dy = min(dyMin, dyMax);
-            if (dx < cr && dy < cr) {
-                let cornerDist = length(vec2<f32>(cr - dx, cr - dy));
-                alpha = min(alpha, 1.0 - smoothstep(cr - max(fade, 0.001), cr, cornerDist));
-            }
-        }
-        return clamp(alpha, 0.0, 1.0);
-    }
-
     fn frag() {
         let local = ORI_VertexVarying.fragUV0;
+        let uv = materialUniform.uvRect.xy + local * materialUniform.uvRect.zw;
 
-        // --- Scissor (UV-space) -------------------------------------------
-        var scissorAlpha = 1.0;
-        if (materialUniform.scissorEnable > 0.5) {
-            scissorAlpha = spriteScissorAlpha(local);
-            if (scissorAlpha <= 0.0) {
-                discard;
-            }
-        }
-
-        // --- UV remap (9-slice or uvRect) ---------------------------------
-        var sourceUV = local;
-        if (materialUniform.sliceEnable > 0.5) {
-            sourceUV.x = spriteSliceBorder(local.x, max(materialUniform.sliceScale.x, 0.0001),
-                                           vec2<f32>(materialUniform.sliceBorder.x, materialUniform.sliceBorder.z));
-            sourceUV.y = spriteSliceBorder(local.y, max(materialUniform.sliceScale.y, 0.0001),
-                                           vec2<f32>(materialUniform.sliceBorder.y, materialUniform.sliceBorder.w));
-        }
-        let uv = materialUniform.uvRect.xy + sourceUV * materialUniform.uvRect.zw;
-
-        // --- Sampling -----------------------------------------------------
         #if USE_VIDEO_TEXTURE
             let vsize = textureDimensions(baseMap).xy - 1;
             let iuv = vec2<i32>(uv * vec2<f32>(vsize));
@@ -167,26 +82,6 @@ export let Sprite_shader: string = /*wgsl*/ `
             var sampled = textureSample(baseMap, baseMapSampler, uv);
         #endif
         sampled = sampled * materialUniform.color;
-
-        // --- Fill mask ----------------------------------------------------
-        var mask: f32 = 1.0;
-        let fr = clamp(materialUniform.fillRatio, 0.0, 1.0);
-        let dir = materialUniform.fillDirection;
-        if (dir < 0.5) {
-            mask = step(local.x, fr);
-        } else if (dir < 1.5) {
-            mask = step(1.0 - fr, local.x);
-        } else if (dir < 2.5) {
-            mask = step(local.y, fr);
-        } else {
-            mask = step(1.0 - fr, local.y);
-        }
-        sampled.a = sampled.a * mask * scissorAlpha;
-
-        // --- Corner radius (sprite outline) -------------------------------
-        if (materialUniform.cornerRadius > 0.0) {
-            sampled.a = sampled.a * spriteCornerMask(local, materialUniform.cornerRadius);
-        }
 
         if (sampled.a <= 0.0) {
             discard;

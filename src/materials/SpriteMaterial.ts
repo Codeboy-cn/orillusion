@@ -8,10 +8,12 @@ import { Vector4 } from '../math/Vector4';
 import { Material } from './Material';
 
 /**
- * Material for `Sprite` (textured quad). Writes a single textured, tinted
- * quad with optional fill-ratio mask and rounded-corner alpha. No lighting,
- * no shadow, no reflection — depth-test on, depth-write off, two-sided,
- * blendMode NORMAL.
+ * Material for `SpriteRenderer` — a single textured, tinted quad in world
+ * space. No lighting, no shadow, no reflection — depth-test on,
+ * depth-write off, two-sided, blendMode NORMAL. Supports a
+ * `distanceInvariant` flag so sprites can keep a constant on-screen size
+ * as the camera moves.
+ *
  * @group Material
  */
 export class SpriteMaterial extends Material {
@@ -48,7 +50,7 @@ export class SpriteMaterial extends Material {
         return this.shader.getUniformVector4(`uvRect`);
     }
 
-    /** Quad size in local units. Used by the corner-radius SDF to size pixels. */
+    /** Quad size in world units (meters). */
     public set size(value: Vector2) {
         this.shader.setUniformVector2(`size`, value);
     }
@@ -65,95 +67,22 @@ export class SpriteMaterial extends Material {
         return this.shader.getUniformVector2(`pivot`);
     }
 
-    /** 0..1 portion of the quad that shows through. 1 = fully visible. */
-    public set fillRatio(value: number) {
-        this.shader.setUniformFloat(`fillRatio`, value);
+    /**
+     * When true, the sprite's on-screen size stays constant regardless of
+     * camera distance (the vertex shader scales local position by the
+     * distance from camera to the sprite's origin, divided by a reference
+     * distance). Useful for world-space UI labels that need to stay
+     * readable as the camera pans/zooms.
+     */
+    public set distanceInvariantSize(value: boolean) {
+        this.shader.setUniformFloat(`distanceInvariant`, value ? 1.0 : 0.0);
     }
 
-    public get fillRatio(): number {
-        return this.shader.getUniformFloat(`fillRatio`);
+    public get distanceInvariantSize(): boolean {
+        return this.shader.getUniformFloat(`distanceInvariant`) > 0.5;
     }
 
-    /** 0 = horizontal right, 1 = horizontal left, 2 = vertical up, 3 = vertical down. */
-    public set fillDirection(value: number) {
-        this.shader.setUniformFloat(`fillDirection`, value);
-    }
-
-    public get fillDirection(): number {
-        return this.shader.getUniformFloat(`fillDirection`);
-    }
-
-    /** Rounded-corner radius in the same units as `size`. 0 disables. */
-    public set cornerRadius(value: number) {
-        this.shader.setUniformFloat(`cornerRadius`, value);
-    }
-
-    public get cornerRadius(): number {
-        return this.shader.getUniformFloat(`cornerRadius`);
-    }
-
-    /** 9-slice border in source-UV space: (left, top, right, bottom). Feed `sliceEnable=true` to activate. */
-    public set sliceBorder(value: Vector4) {
-        this.shader.setUniformVector4(`sliceBorder`, value);
-    }
-
-    public get sliceBorder(): Vector4 {
-        return this.shader.getUniformVector4(`sliceBorder`);
-    }
-
-    /** Ratio of displaySize to source texture size, per axis. Set alongside `sliceBorder` + `sliceEnable`. */
-    public set sliceScale(value: Vector2) {
-        this.shader.setUniformVector2(`sliceScale`, value);
-    }
-
-    public get sliceScale(): Vector2 {
-        return this.shader.getUniformVector2(`sliceScale`);
-    }
-
-    public set sliceEnable(value: boolean) {
-        this.shader.setUniformFloat(`sliceEnable`, value ? 1.0 : 0.0);
-    }
-
-    public get sliceEnable(): boolean {
-        return this.shader.getUniformFloat(`sliceEnable`) > 0.5;
-    }
-
-    /** Scissor rect in local UV space: (left, top, right, bottom), each in [0,1]. */
-    public set scissorRect(value: Vector4) {
-        this.shader.setUniformVector4(`scissorRect`, value);
-    }
-
-    public get scissorRect(): Vector4 {
-        return this.shader.getUniformVector4(`scissorRect`);
-    }
-
-    public set scissorEnable(value: boolean) {
-        this.shader.setUniformFloat(`scissorEnable`, value ? 1.0 : 0.0);
-    }
-
-    public get scissorEnable(): boolean {
-        return this.shader.getUniformFloat(`scissorEnable`) > 0.5;
-    }
-
-    /** Corner rounding inside the scissor rect (in local UV). 0 = sharp corners. */
-    public set scissorCornerRadius(value: number) {
-        this.shader.setUniformFloat(`scissorCornerRadius`, value);
-    }
-
-    public get scissorCornerRadius(): number {
-        return this.shader.getUniformFloat(`scissorCornerRadius`);
-    }
-
-    /** Fade-out width at the scissor edge in local UV (e.g. 0.02). 0 = hard clip. */
-    public set scissorFadeOutSize(value: number) {
-        this.shader.setUniformFloat(`scissorFadeOutSize`, value);
-    }
-
-    public get scissorFadeOutSize(): number {
-        return this.shader.getUniformFloat(`scissorFadeOutSize`);
-    }
-
-    /** Toggle the video-texture code path. Sprite component sets this automatically when the texture is a `VideoTexture`. */
+    /** Toggle the video-texture code path. SpriteRenderer sets this automatically when the texture is a `VideoTexture`. */
     public set useVideoTexture(value: boolean) {
         this.shader.setDefine(`USE_VIDEO_TEXTURE`, value);
     }

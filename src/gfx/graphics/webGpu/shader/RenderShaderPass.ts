@@ -980,7 +980,21 @@ export class RenderShaderPass extends ShaderPassBase {
         this.shaderVariant = ShaderReflection.genRenderShaderVariant(this);
         let reflection = ShaderReflection.poolGetReflection(this.shaderVariant);
         if (!reflection) {
-            //TODO: key check shader compile info
+            // The shaderReflection instance is shared across re-runs on the
+            // same ShaderPassBase. Re-parsing with a changed define (e.g.
+            // USE_VIDEO_TEXTURE flipping from false → true after the video
+            // texture loads) produces a new variable type at the same
+            // binding slot. Without clearing the previous groups[]/variables{}
+            // entries, `combineShaderReflectionVarInfo` sees aInfo (stale)
+            // vs bInfo (new) and emits `dataType not match` even though the
+            // pipeline actually builds correctly from the fresh parse.
+            if (this.shaderReflection) {
+                this.shaderReflection.groups = [];
+                this.shaderReflection.variables = {};
+                this.shaderReflection.vs_variables = [];
+                this.shaderReflection.fs_variables = [];
+            }
+
             let vsPreShader = Preprocessor.parse(this._destVS, this.defineValue);
             vsPreShader = Preprocessor.parse(vsPreShader, this.defineValue);
             ShaderReflection.getShaderReflection2(vsPreShader, this);

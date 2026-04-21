@@ -17,8 +17,9 @@ import {
 } from "@orillusion/core";
 
 /**
- * World-space sprite grid (3D scene, not overlay). GUI rebuilds the grid
- * with tunable rows/cols/cell-size + master tint.
+ * World-space sprite grid. Demonstrates `SpriteRenderer` as a textured
+ * quad in the 3D scene — positioned in world units (meters), participates
+ * in the normal forward pass alongside 3D meshes.
  */
 class Sample_World {
     engine: Engine3D;
@@ -32,10 +33,9 @@ class Sample_World {
     private readonly state = {
         cols: 5,
         rows: 5,
-        cell: 18,
-        margin: 2,
+        cell: 1.5,
+        margin: 0.3,
         tint: new Color(1, 1, 1, 1),
-        cornerRadius: 0,
     };
 
     async run() {
@@ -48,7 +48,7 @@ class Sample_World {
 
         let camera = CameraUtil.createCamera3DObject(this.scene);
         camera.perspective(60, this.engine.aspect, 0.1, 5000.0);
-        camera.object3D.addComponent(HoverCameraController).setCamera(0, -15, 150);
+        camera.object3D.addComponent(HoverCameraController).setCamera(0, -15, 20);
 
         this.view = new View3D();
         this.view.scene = this.scene;
@@ -90,25 +90,23 @@ class Sample_World {
         this.objects.length = 0;
 
         const s = this.state;
-        const offsetX = -(s.cols - 1) * (s.cell + s.margin) / 2;
-        const offsetY = -(s.rows - 1) * (s.cell + s.margin) / 2;
+        const step = s.cell + s.margin;
+        const offsetX = -(s.cols - 1) * step / 2;
+        const offsetY = -(s.rows - 1) * step / 2;
 
         for (let r = 0; r < s.rows; r++) {
             for (let c = 0; c < s.cols; c++) {
-                const idx = r * s.cols + c;
                 const obj = new Object3D();
                 const sprite = obj.addComponent(SpriteRenderer);
                 sprite.texture = this.texture;
                 sprite.size = new Vector2(s.cell, s.cell);
+                sprite.pivot = new Vector2(0.5, 0.5);
                 const baseR = 0.4 + 0.6 * (c / Math.max(s.cols - 1, 1));
                 const baseG = 0.4 + 0.6 * (r / Math.max(s.rows - 1, 1));
                 sprite.color = new Color(baseR * s.tint.r, baseG * s.tint.g, 0.6 * s.tint.b, s.tint.a);
-                sprite.fillRatio = 0.2 + 0.8 * (c / Math.max(s.cols - 1, 1));
-                sprite.fillDirection = r % 4;
-                sprite.cornerRadius = idx % 3 === 0 ? s.cornerRadius : 0;
                 sprite.uvRect = new Vector4(0, 0, 1, 1);
-                obj.x = offsetX + c * (s.cell + s.margin);
-                obj.y = offsetY + r * (s.cell + s.margin) + 20;
+                obj.x = offsetX + c * step;
+                obj.y = offsetY + r * step + 2;
                 obj.z = 0;
                 this.scene.addChild(obj);
                 this.objects.push(obj);
@@ -118,11 +116,10 @@ class Sample_World {
 
     private initGUI() {
         GUIHelp.addFolder('World grid');
-        GUIHelp.add(this.state, 'cols', 1, 10, 1).onChange(() => this.rebuildGrid());
-        GUIHelp.add(this.state, 'rows', 1, 10, 1).onChange(() => this.rebuildGrid());
-        GUIHelp.add(this.state, 'cell', 4, 60, 1).onChange(() => this.rebuildGrid());
-        GUIHelp.add(this.state, 'margin', 0, 20, 1).onChange(() => this.rebuildGrid());
-        GUIHelp.add(this.state, 'cornerRadius', 0, 16, 0.5).onChange(() => this.rebuildGrid());
+        GUIHelp.add(this.state, 'cols', 1, 10, 1).onFinishChange(() => this.rebuildGrid());
+        GUIHelp.add(this.state, 'rows', 1, 10, 1).onFinishChange(() => this.rebuildGrid());
+        GUIHelp.add(this.state, 'cell', 0.2, 5, 0.1).onFinishChange(() => this.rebuildGrid());
+        GUIHelp.add(this.state, 'margin', 0, 2, 0.05).onFinishChange(() => this.rebuildGrid());
         GUIHelp.addColor(this.state, 'tint').onChange(() => this.rebuildGrid());
         GUIHelp.open();
         GUIHelp.endFolder();

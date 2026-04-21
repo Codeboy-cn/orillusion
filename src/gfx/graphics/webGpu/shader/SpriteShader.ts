@@ -10,8 +10,8 @@ import { Shader } from "./Shader";
 
 /**
  * Default shader backing `SpriteMaterial`. One COLOR pass, no shadow /
- * reflection / GI / lighting — sprites are a flat textured quad with a
- * fill mask and corner-radius SDF alpha.
+ * reflection / GI / lighting — sprites are a flat textured quad in
+ * world space.
  */
 @RegisterShader
 export class SpriteShader extends Shader {
@@ -38,20 +38,12 @@ export class SpriteShader extends Shader {
     public setDefault() {
         this.setUniformColor(`color`, new Color(1, 1, 1, 1));
         this.setUniformVector4(`uvRect`, new Vector4(0, 0, 1, 1));
-        this.setUniformVector4(`sliceBorder`, new Vector4(0, 0, 0, 0));
-        this.setUniformVector4(`scissorRect`, new Vector4(0, 0, 1, 1));
         this.setUniformVector2(`size`, new Vector2(1, 1));
         this.setUniformVector2(`pivot`, new Vector2(0.5, 0.5));
-        this.setUniformVector2(`sliceScale`, new Vector2(1, 1));
-        this.setUniformVector2(`spritePad0`, new Vector2(0, 0));
-        this.setUniformFloat(`fillRatio`, 1.0);
-        this.setUniformFloat(`fillDirection`, 0.0);
-        this.setUniformFloat(`cornerRadius`, 0.0);
-        this.setUniformFloat(`sliceEnable`, 0.0);
-        this.setUniformFloat(`scissorEnable`, 0.0);
-        this.setUniformFloat(`scissorCornerRadius`, 0.0);
-        this.setUniformFloat(`scissorFadeOutSize`, 0.0);
+        this.setUniformFloat(`distanceInvariant`, 0.0);
+        this.setUniformFloat(`spritePad0`, 0.0);
         this.setUniformFloat(`spritePad1`, 0.0);
+        this.setUniformFloat(`spritePad2`, 0.0);
     }
 
     public set baseMap(value: Texture) {

@@ -1,7 +1,6 @@
 import { Engine3D } from "../../Engine3D";
 import { TextureAtlas } from "../../assets/TextureAtlas";
 import { Texture } from "../../gfx/graphics/webGpu/core/texture/Texture";
-import { Vector2 } from "../../math/Vector2";
 import { Vector4 } from "../../math/Vector4";
 import { ParserBase } from "../../loader/parser/ParserBase";
 import { ParserFormat } from "./ParserFormat";
@@ -49,24 +48,10 @@ export class AtlasParser extends ParserBase {
                 rect.z / atlasW,
                 rect.w / atlasH,
             );
-            const nativeSize = new Vector2(entry.size?.x ?? rect.z, entry.size?.y ?? rect.w);
-            // atlas JSON border is (left, bottom, right, top) in pixels of the
-            // source sub-rect. Convert to normalized region-UV fractions
-            // expected by SpriteShader (left, top, right, bottom).
-            let border: Vector4 | undefined = undefined;
-            if (entry.border) {
-                const regionW = Math.max(rect.z, 0.0001);
-                const regionH = Math.max(rect.w, 0.0001);
-                const tiny = 0.0001;
-                const bx = (entry.border.x ?? 0) / regionW;
-                const by = (entry.border.w ?? 0) / regionH; // top  → .w
-                const bz = (entry.border.z ?? 0) / regionW;
-                const bw = (entry.border.y ?? 0) / regionH; // bot  → .y
-                if (bx > tiny || by > tiny || bz > tiny || bw > tiny) {
-                    border = new Vector4(bx, by, bz, bw);
-                }
-            }
-            textureAtlas.add(key, region, nativeSize, border);
+            // RFC-005: 9-slice border and native-size fields were removed
+            // from Sprite/TextureAtlas (UI-only features handled by DOM now).
+            // Any `entry.border` / `entry.size` in the atlas JSON is ignored.
+            textureAtlas.add(key, region);
         }
         this.data = textureAtlas;
     }

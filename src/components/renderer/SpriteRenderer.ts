@@ -13,26 +13,15 @@ import { RegisterComponent } from '../../util/SerializeDecoration';
 import { RenderNode } from './RenderNode';
 
 /**
- * How a `SpriteRenderer` builds its quad geometry.
- * - `simple` — single quad scaled to `size` (default)
- * - `sliced` — 9-slice border remap driven by `sprite.border`
- * - `tiled` — reserved, not implemented; falls back to `simple`
+ * Component that renders a `Sprite` asset as a textured quad in world
+ * space. Pair with a `BillboardComponent` on the same Object3D if the
+ * quad should face the camera (name tags, HP bars, POI icons). For
+ * screen-space UI use DOM / HTML instead — sprites are intentionally
+ * scoped to the 3D scene (RFC-005).
  *
- * @group Components
- */
-export enum SpriteDrawMode {
-    simple = 0,
-    sliced = 1,
-    tiled = 2,
-}
-
-/**
- * Component that renders a `Sprite` asset. Mount on any `Object3D`,
- * bind a Sprite via `renderer.sprite = mySprite` (or use the shortcut
- * `renderer.setTexture(tex)` for a one-off private sprite). Each
- * renderer adds per-instance `color` / `size` / `flipX` / `flipY` /
- * advanced effects (`fillRatio`, `cornerRadius`, `scissor*`) on top of
- * the shared sprite asset.
+ * Size is expressed in world units (meters). Optional
+ * `distanceInvariantSize` keeps on-screen size constant as the camera
+ * moves, useful for labels that need to stay readable.
  *
  * @group Components
  */
@@ -40,26 +29,22 @@ export enum SpriteDrawMode {
 export class SpriteRenderer extends RenderNode {
     /** Bound Sprite asset. Never mutated by this renderer — per-instance tweaks live in the override fields below. */
     private _sprite: Sprite | null = null;
-    /** Auto-managed Sprite backing the `setTexture()` ergonomics — created lazily when the user assigns a bare texture. */
+    /** Auto-managed Sprite backing the `setTexture()` ergonomics. Created lazily when the user assigns a bare texture. */
     private _autoSprite: Sprite | null = null;
     /** Bound change listener reference so we can unbind cleanly. */
     private _spriteListener: (flags: SpriteModifyFlags) => void;
 
     // Per-renderer overrides that survive sprite-asset swaps. `null` = fall
-    // through to the bound sprite's own field. Without these, `set pivot(v)`
-    // / `set uvRect(v)` would have to mutate the asset (clone-on-write),
-    // which resets every time `this.sprite = otherAtlasRegion` rebinds.
+    // through to the bound sprite's own field. This is how `set pivot(v)` /
+    // `set uvRect(v)` remain local to a renderer even when `this.sprite =
+    // otherAsset` re-binds.
     private _pivotOverride: Vector2 | null = null;
     private _uvRectOverride: Vector4 | null = null;
 
     private _pendingColor: Color | null = null;
-    private _pendingFillRatio: number | null = null;
-    private _pendingFillDirection: number | null = null;
-    private _pendingCornerRadius: number | null = null;
-    private _customSize: Vector2 | null = null;
-    private _flipX: boolean = false;
-    private _flipY: boolean = false;
-    private _drawMode: SpriteDrawMode = SpriteDrawMode.simple;
+    /** Quad size in world units (meters). Defaults to (1, 1). */
+    private _size: Vector2 = new Vector2(1, 1);
+    private _distanceInvariantSize: boolean = false;
 
     constructor() {
         super();
@@ -115,10 +100,8 @@ export class SpriteRenderer extends RenderNode {
         if (value) {
             value.onChange(this._spriteListener);
         }
-        // NOTE: per-renderer overrides (_pivotOverride / _uvRectOverride /
-        // _customSize / flipX / flipY / _drawMode / color / etc) intentionally
-        // survive an asset swap. Swapping atlas regions should not reset the
-        // renderer's anchor, UV sub-region, or size.
+        // NOTE: per-renderer overrides (_pivotOverride / _uvRectOverride / _size
+        // / color / distanceInvariantSize) intentionally survive an asset swap.
         this._applySpriteToMaterial();
     }
 
@@ -133,10 +116,16 @@ export class SpriteRenderer extends RenderNode {
         } else {
             this._autoSprite.texture = texture;
         }
-        // Bind (or re-bind) to the auto sprite. Any user-explicit `sprite`
-        // assignment pointing elsewhere is overwritten — that's the intended
-        // semantic of "set texture on this renderer".
         if (this._sprite !== this._autoSprite) this.sprite = this._autoSprite;
+    }
+
+    /** Shortcut: assign a `Sprite` from a texture (auto-managed private sprite). */
+    public set texture(tex: Texture) {
+        this.setTexture(tex);
+    }
+
+    public get texture(): Texture | null {
+        return this._sprite?.texture ?? null;
     }
 
     /**
@@ -155,8 +144,7 @@ export class SpriteRenderer extends RenderNode {
 
     /**
      * UV sub-region as normalized `(offsetX, offsetY, scaleX, scaleY)`.
-     * Stored as a per-renderer override; the bound sprite asset stays
-     * untouched. Swapping `sprite` preserves this.
+     * Stored as a per-renderer override.
      */
     public get uvRect(): Vector4 {
         return this._uvRectOverride ?? this._sprite?.region ?? new Vector4(0, 0, 1, 1);
@@ -168,18 +156,9 @@ export class SpriteRenderer extends RenderNode {
         this._applyUVRectToMaterial();
     }
 
-    /** Shortcut: assign a `Sprite` from a texture (auto-managed private sprite). */
-    public set texture(tex: Texture) {
-        this.setTexture(tex);
-    }
-
-    public get texture(): Texture | null {
-        return this._sprite?.texture ?? null;
-    }
-
     // ---------- Per-renderer overrides ----------
 
-    /** Rendering color (multiplied with the sprite's sampled texel). */
+    /** Rendering color (multiplied with the sampled texel). */
     public get color(): Color | null {
         return this._spriteMaterial()?.color ?? this._pendingColor;
     }
@@ -189,79 +168,29 @@ export class SpriteRenderer extends RenderNode {
         if (mat) mat.color = value; else this._pendingColor = value;
     }
 
-    /** Render size in pixels. When unset, uses `sprite.nativeSize`. */
-    public get size(): Vector2 | null {
-        if (this._customSize) return this._customSize;
-        return this._sprite?.nativeSize ?? null;
+    /** Render size in world units (meters). */
+    public get size(): Vector2 {
+        return this._size;
     }
 
     public set size(value: Vector2) {
-        this._customSize = (this._customSize ?? new Vector2()).set(value.x, value.y) as Vector2;
+        this._size.set(value.x, value.y);
         this._applySize();
     }
 
-    public get flipX(): boolean { return this._flipX; }
-    public set flipX(v: boolean) {
-        if (this._flipX !== v) { this._flipX = v; this._applySize(); }
+    /**
+     * When true, the quad's on-screen size stays constant regardless of
+     * camera distance. Works by scaling local vertex position with the
+     * camera-to-sprite distance in the vertex shader.
+     */
+    public get distanceInvariantSize(): boolean {
+        return this._distanceInvariantSize;
     }
 
-    public get flipY(): boolean { return this._flipY; }
-    public set flipY(v: boolean) {
-        if (this._flipY !== v) { this._flipY = v; this._applySize(); }
-    }
-
-    public get drawMode(): SpriteDrawMode { return this._drawMode; }
-    public set drawMode(value: SpriteDrawMode) {
-        if (this._drawMode === value) return;
-        this._drawMode = value;
-        this._applyDrawMode();
-    }
-
-    // ---------- Advanced per-renderer effects ----------
-
-    public get fillRatio(): number {
+    public set distanceInvariantSize(value: boolean) {
+        this._distanceInvariantSize = value;
         const mat = this._spriteMaterial();
-        return mat ? mat.fillRatio : (this._pendingFillRatio ?? 1.0);
-    }
-
-    public set fillRatio(value: number) {
-        const mat = this._spriteMaterial();
-        if (mat) mat.fillRatio = value; else this._pendingFillRatio = value;
-    }
-
-    public get fillDirection(): number {
-        const mat = this._spriteMaterial();
-        return mat ? mat.fillDirection : (this._pendingFillDirection ?? 0.0);
-    }
-
-    public set fillDirection(value: number) {
-        const mat = this._spriteMaterial();
-        if (mat) mat.fillDirection = value; else this._pendingFillDirection = value;
-    }
-
-    public get cornerRadius(): number {
-        const mat = this._spriteMaterial();
-        return mat ? mat.cornerRadius : (this._pendingCornerRadius ?? 0.0);
-    }
-
-    public set cornerRadius(value: number) {
-        const mat = this._spriteMaterial();
-        if (mat) mat.cornerRadius = value; else this._pendingCornerRadius = value;
-    }
-
-    /** UV-space scissor clip. See `SpriteMaterial.setScissor` for semantics. */
-    public setScissor(rect: Vector4, cornerRadius: number = 0, fadeOutSize: number = 0) {
-        const mat = this._spriteMaterial();
-        if (!mat) return;
-        mat.scissorRect = rect;
-        mat.scissorCornerRadius = cornerRadius;
-        mat.scissorFadeOutSize = fadeOutSize;
-        mat.scissorEnable = true;
-    }
-
-    public clearScissor() {
-        const mat = this._spriteMaterial();
-        if (mat) mat.scissorEnable = false;
+        if (mat) mat.distanceInvariantSize = value;
     }
 
     // ---------- Material / visibility ----------
@@ -291,7 +220,6 @@ export class SpriteRenderer extends RenderNode {
         if (!mat || !this._sprite) return;
         const sprite = this._sprite;
 
-        // Texture + video-texture define branch
         if (sprite.texture) {
             const isVideo = (sprite.texture as any)?.isVideoTexture === true;
             if (mat.useVideoTexture !== isVideo) mat.useVideoTexture = isVideo;
@@ -301,7 +229,6 @@ export class SpriteRenderer extends RenderNode {
         this._applyUVRectToMaterial();
         this._applyPivotToMaterial();
         this._applySize();
-        this._applyDrawMode();
     }
 
     private _applyPivotToMaterial() {
@@ -324,42 +251,13 @@ export class SpriteRenderer extends RenderNode {
         const mat = this._spriteMaterial();
         if (!mat) return;
         if (this._pendingColor) mat.color = this._pendingColor;
-        if (this._pendingFillRatio !== null) mat.fillRatio = this._pendingFillRatio;
-        if (this._pendingFillDirection !== null) mat.fillDirection = this._pendingFillDirection;
-        if (this._pendingCornerRadius !== null) mat.cornerRadius = this._pendingCornerRadius;
-        // Pivot / uvRect overrides are pushed through _applySpriteToMaterial
-        // during _ensureResources, so no duplicate write here.
+        mat.distanceInvariantSize = this._distanceInvariantSize;
     }
 
     private _applySize() {
         const mat = this._spriteMaterial();
         if (!mat) return;
-        const size = this._customSize ?? this._sprite?.nativeSize;
-        if (!size) return;
-        const sx = this._flipX ? -size.x : size.x;
-        const sy = this._flipY ? -size.y : size.y;
-        mat.size = new Vector2(sx, sy);
-    }
-
-    private _applyDrawMode() {
-        const mat = this._spriteMaterial();
-        if (!mat || !this._sprite) return;
-        const border = this._sprite.border;
-        const sliced = this._drawMode === SpriteDrawMode.sliced
-            && (border.x > 0 || border.y > 0 || border.z > 0 || border.w > 0);
-        if (sliced) {
-            mat.sliceBorder = new Vector4(border.x, border.y, border.z, border.w);
-            const native = this._sprite.nativeSize;
-            const displaySize = this._customSize ?? native;
-            const scale = new Vector2(
-                displaySize.x / Math.max(native.x, 0.0001),
-                displaySize.y / Math.max(native.y, 0.0001),
-            );
-            mat.sliceScale = scale;
-            mat.sliceEnable = true;
-        } else {
-            mat.sliceEnable = false;
-        }
+        mat.size = new Vector2(this._size.x, this._size.y);
     }
 
     private _onSpriteChange(_flags: SpriteModifyFlags) {
@@ -379,14 +277,9 @@ export class SpriteRenderer extends RenderNode {
         if (from._sprite) this.sprite = from._sprite;
         if (from._pivotOverride) this.pivot = from._pivotOverride;
         if (from._uvRectOverride) this.uvRect = from._uvRectOverride;
-        if (from._customSize) this.size = from._customSize;
+        this.size = from._size;
         if (from.color) this.color = from.color.clone();
-        this.flipX = from._flipX;
-        this.flipY = from._flipY;
-        this._drawMode = from._drawMode;
-        this.fillRatio = from.fillRatio;
-        this.fillDirection = from.fillDirection;
-        this.cornerRadius = from.cornerRadius;
+        this.distanceInvariantSize = from._distanceInvariantSize;
         return this;
     }
 }
