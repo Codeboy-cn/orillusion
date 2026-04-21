@@ -45,6 +45,7 @@ import { ClusterLight } from './core/struct/ClusterLight';
 import { Hair_frag } from './lighting/Hair_frag';
 import { BsDF_frag } from './lighting/BsDF_frag';
 import { UnLit } from './materials/UnLit';
+import { Sprite_shader } from './materials/Sprite_shader';
 import { Lambert_shader } from './materials/Lambert_shader';
 import { QuadGlsl_fs, QuadGlsl_vs } from './glsl/Quad_glsl';
 import { SkyGBuffer_pass } from './core/pass/SkyGBuffer_pass';
@@ -119,6 +120,7 @@ export class ShaderLib {
         ShaderLib.register('BsDF_frag', BsDF_frag);
         ShaderLib.register('UnLit_frag', UnLit_frag);
         ShaderLib.register('UnLit', UnLit);
+        ShaderLib.register('Sprite', Sprite_shader);
 
         ShaderLib.register('ReflectionCG', ReflectionCG);
         ShaderLib.register('ReflectionShader_shader', ReflectionShader_shader);

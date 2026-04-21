@@ -8,7 +8,6 @@ import { RenderContext } from "../RenderContext";
 import { RendererBase } from "../RendererBase";
 import { ClusterLightingBuffer } from "../cluster/ClusterLightingBuffer";
 import { PassType } from "../state/PassType";
-import { RendererMask } from "../state/RendererMask";
 
 /**
  *  @internal
@@ -133,8 +132,6 @@ export class ColorPassRenderer extends RendererBase {
                 if (!renderNode.transform.enable)
                     continue;
                 if (!renderNode.enable)
-                    continue;
-                if (renderNode.hasMask(RendererMask.UI) && !renderNode.isRecievePostEffectUI)
                     continue;
                 if (renderNode.isDestroyed)
                     continue;

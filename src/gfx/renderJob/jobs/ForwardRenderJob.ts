@@ -4,10 +4,6 @@ import { ColorPassRenderer } from '../passRenderer/color/ColorPassRenderer';
 import { GBufferFrame } from '../frame/GBufferFrame';
 import { RendererJob } from './RendererJob';
 import { DDGIProbeRenderer } from '../passRenderer/ddgi/DDGIProbeRenderer';
-import { RTResourceConfig } from '../config/RTResourceConfig';
-import { RTResourceMap } from '../frame/RTResourceMap';
-import { GPUTextureFormat } from '../../graphics/webGpu/WebGPUConst';
-import { GUIPassRenderer } from '../passRenderer/color/GUIPassRenderer';
 /**
  * Forward+
  * Every time a forward rendering is performed, 
@@ -48,13 +44,6 @@ export class ForwardRenderJob extends RendererJob {
             }
 
             this.rendererMap.addRenderer(colorPassRenderer);
-        }
-
-        {
-            let guiFrame = GBufferFrame.getGUIBufferFrame(ctx);
-            let guiPassRenderer = new GUIPassRenderer();
-            guiPassRenderer.setRenderStates(ctx, guiFrame);
-            this.rendererMap.addRenderer(guiPassRenderer);
         }
 
         if (setting.render.debug) {

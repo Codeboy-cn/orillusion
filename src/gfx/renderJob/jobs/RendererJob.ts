@@ -246,13 +246,11 @@ export class RendererJob {
 
         this.postRenderer.render(view);
 
-        //GUI
-        let guiRenderer = this.rendererMap.getRenderer(PassType.UI);
-        guiRenderer.compute(view, this.occlusionSystem);
-        guiRenderer.render(view, this.occlusionSystem, this.clusterLightingRender.clusterLightingBuffer, false);
-
-        //output
-        let lastTexture = GBufferFrame.getGUIBufferFrame(view.engine3D.context3D).getColorTexture();
+        // Final composite straight to canvas from the color-pass GBuffer.
+        // The old GUI pass (copy + UI-mask render) was removed along with
+        // the legacy UI subsystem — sprites and overlays run through the
+        // standard forward / overlay paths.
+        let lastTexture = GBufferFrame.getGBufferFrame(GBufferFrame.colorPass_GBuffer, view.engine3D.context3D).getColorTexture();
         this.postRenderer.presentContent(view, lastTexture);
     }
 

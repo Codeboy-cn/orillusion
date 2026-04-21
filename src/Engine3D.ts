@@ -450,8 +450,27 @@ export class Engine3D {
         this.views.push(view);
         let renderJob = new OverlayRenderJob(view);
         this.renderJobs.set(view, renderJob);
+        // Keep overlay views sorted by their camera's `priority` (lower = earlier)
+        // so `OverlayCamera` instances render in a predictable back-to-front order.
+        // Non-overlay cameras are treated as priority 0, preserving the original
+        // main-view-first layering.
+        this._resortViewsByPriority();
         Engine3D._ensureLoop();
         return renderJob;
+    }
+
+    private _resortViewsByPriority() {
+        const priorityOf = (v: View3D): number => {
+            const c: any = v.camera;
+            return typeof c?.priority === 'number' ? c.priority : 0;
+        };
+        this.views.sort((a, b) => priorityOf(a) - priorityOf(b));
+        const ordered: Map<View3D, RendererJob> = new Map();
+        for (const v of this.views) {
+            const job = this.renderJobs.get(v);
+            if (job) ordered.set(v, job);
+        }
+        this.renderJobs = ordered;
     }
 
     public static pause() {

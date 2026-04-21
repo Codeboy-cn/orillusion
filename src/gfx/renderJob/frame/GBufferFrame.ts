@@ -10,7 +10,6 @@ import { RTResourceMap } from "./RTResourceMap";
 export class GBufferFrame extends RTFrame {
     public static colorPass_GBuffer: string = "ColorPassGBuffer";
     public static reflections_GBuffer: string = "reflections_GBuffer";
-    public static gui_GBuffer: string = "gui_GBuffer";
     public static gBufferMap: Map<string, GBufferFrame> = new Map<string, GBufferFrame>();
     private static _perContext: WeakMap<Context3D, Map<string, GBufferFrame>> = new WeakMap();
 
@@ -100,12 +99,6 @@ export class GBufferFrame extends RTFrame {
         return gBuffer;
     }
 
-
-    public static getGUIBufferFrame(ctx: Context3D) {
-        let colorRTFrame = this.getGBufferFrame(this.colorPass_GBuffer, ctx);
-        let rtFrame = GBufferFrame.getGBufferFrame(GBufferFrame.gui_GBuffer, ctx, 0, 0, true, colorRTFrame.depthTexture);
-        return rtFrame;
-    }
 
     public clone() {
         let gBufferFrame = new GBufferFrame();

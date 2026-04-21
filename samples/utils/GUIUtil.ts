@@ -1,6 +1,6 @@
 import { GUIHelp } from "@orillusion/debug/GUIHelp";
 import { UVMoveComponent } from "@samples/material/script/UVMoveComponent";
-import { ProfilerDraw, PassType, OutlinePost, GBufferPost, Engine3D, AtmosphericComponent, GlobalFog, Transform, BloomPost, GodRayPost, Object3D, DirectLight, PointLight, SpotLight, GlobalIlluminationComponent, View3D, UIShadow, Color, UIPanel, GPUCullMode, BillboardType, LitMaterial, BlendMode, MorphTargetBlender, SkinnedMeshRenderer2, AnimatorComponent, GTAOPost, TAAPost, DepthOfFieldPost, Vector3, Vector4, Vector2 } from "@orillusion/core";
+import { ProfilerDraw, PassType, OutlinePost, GBufferPost, Engine3D, AtmosphericComponent, GlobalFog, Transform, BloomPost, GodRayPost, Object3D, DirectLight, PointLight, SpotLight, GlobalIlluminationComponent, View3D, Color, LitMaterial, BlendMode, MorphTargetBlender, SkinnedMeshRenderer2, AnimatorComponent, GTAOPost, TAAPost, DepthOfFieldPost, Vector3, Vector4, Vector2 } from "@orillusion/core";
 import { Graphic3D } from "@orillusion/graphic";
 
 export class GUIUtil {
@@ -645,102 +645,6 @@ export class GUIUtil {
         GUIHelp.add(component.speed, 'z', 0.1, 10, 0.01);
         GUIHelp.add(component.speed, 'w', 0.1, 10, 0.01);
         GUIHelp.add(component, 'enable');
-
-        open && GUIHelp.open();
-        GUIHelp.endFolder();
-    }
-
-    public static renderUIShadow(image: UIShadow, open: boolean = true, name?: string) {
-        name ||= 'Image Shadow';
-        GUIHelp.addFolder(name);
-        GUIHelp.add(image, 'shadowQuality', 0, 4, 1);
-
-        GUIHelp.add(image, 'shadowRadius', 0.00, 10, 0.01);
-        //shadow color
-        image.shadowColor = new Color(0.1, 0.1, 0.1, 0.6);
-        GUIHelp.addColor(image, 'shadowColor');
-
-        let changeOffset = () => {
-            image.shadowOffset = image.shadowOffset;
-        }
-        GUIHelp.add(image.shadowOffset, 'x', -100, 100, 0.01).onChange(v => changeOffset());
-        GUIHelp.add(image.shadowOffset, 'y', -100, 100, 0.01).onChange(v => changeOffset());
-        GUIHelp.addButton('Destroy', () => { image.object3D.removeComponent(UIShadow); })
-        open && GUIHelp.open();
-        GUIHelp.endFolder();
-    }
-
-    public static renderUIPanel(panel: UIPanel, open: boolean = true, name?: string) {
-        name ||= 'GUI Panel';
-        GUIHelp.addFolder(name);
-        //cull mode
-        let cullMode = {};
-        cullMode[GPUCullMode.none] = GPUCullMode.none;
-        cullMode[GPUCullMode.front] = GPUCullMode.front;
-        cullMode[GPUCullMode.back] = GPUCullMode.back;
-
-        // change cull mode by click dropdown box
-        GUIHelp.add({ cullMode: GPUCullMode.none }, 'cullMode', cullMode).onChange((v) => {
-            panel.cullMode = v;
-        });
-
-        //billboard
-        let billboard = {};
-        billboard['None'] = BillboardType.None;
-        billboard['Y'] = BillboardType.BillboardY;
-        billboard['XYZ'] = BillboardType.BillboardXYZ;
-
-        // change billboard by click dropdown box
-        GUIHelp.add({ billboard: panel.billboard }, 'billboard', billboard).onChange((v) => {
-            panel.billboard = v;
-        });
-
-        let scissorData = {
-            scissorCornerRadius: panel.scissorCornerRadius,
-            scissorFadeOutSize: panel.scissorFadeOutSize,
-            panelWidth: 400,
-            panelHeight: 300,
-            backGroundVisible: panel.visible,
-            backGroundColor: panel.color,
-            scissorEnable: panel.scissorEnable
-
-        };
-        let changeSissor = () => {
-            panel.scissorCornerRadius = scissorData.scissorCornerRadius;
-            panel.scissorEnable = scissorData.scissorEnable;
-            panel.scissorFadeOutSize = scissorData.scissorFadeOutSize;
-            panel.color = scissorData.backGroundColor;
-            panel.visible = scissorData.backGroundVisible;
-            panel.uiTransform.resize(scissorData.panelWidth, scissorData.panelHeight);
-        }
-        GUIHelp.add(scissorData, 'scissorCornerRadius', 0, 100, 0.1).onChange(() => {
-            changeSissor();
-        });
-        GUIHelp.add(scissorData, 'scissorFadeOutSize', 0, 100, 0.1).onChange(() => {
-            changeSissor();
-        });
-        GUIHelp.add(scissorData, 'panelWidth', 1, 400, 1).onChange(() => {
-            changeSissor();
-        });
-        GUIHelp.add(scissorData, 'panelHeight', 1, 300, 1).onChange(() => {
-            changeSissor();
-        });
-        GUIHelp.add(scissorData, 'backGroundVisible').onChange(() => {
-            changeSissor();
-        });
-
-        GUIHelp.addColor(scissorData, 'backGroundColor').onChange(() => {
-            changeSissor();
-        });
-
-        GUIHelp.add(scissorData, 'scissorEnable').onChange(() => {
-            changeSissor();
-        });
-
-        //depth test
-        if (panel['isWorldPanel']) {
-            GUIHelp.add(panel, 'depthTest');
-        }
 
         open && GUIHelp.open();
         GUIHelp.endFolder();

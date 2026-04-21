@@ -16,19 +16,15 @@ import { HDRTexture } from '../textures/HDRTexture';
 import { LDRTextureCube } from '../textures/LDRTextureCube';
 import { BRDFLUTGenerate } from '../gfx/generate/BrdfLUTGenerate';
 import { Uint8ArrayTexture } from '../textures/Uint8ArrayTexture';
-import { GUISprite } from '../components/gui/core/GUISprite';
-import { GUITexture } from '../components/gui/core/GUITexture';
-import { GUIAtlasTexture } from '../components/gui/core/GUIAtlasTexture';
-import { FontParser, FontInfo } from '../loader/parser/FontParser';
-import { fonts } from './Fonts';
 import { AtlasParser } from '../loader/parser/AtlasParser';
 import { Reference } from '../util/Reference';
 import { Material } from '../materials/Material';
-import { Ctor, Parser } from '../util/Global';
+import { Parser } from '../util/Global';
 import { ParserBase } from '../loader/parser/ParserBase';
 import { GeometryBase } from '../core/geometry/GeometryBase';
 import { LitMaterial } from '../materials/LitMaterial';
 import { Context3D } from '../gfx/graphics/webGpu/Context3D';
+import { TextureAtlas } from './TextureAtlas';
 
 /**
  * Resource management classes for textures, materials, models, and preset bodies.
@@ -42,7 +38,6 @@ export class Res {
     // private _prefabLoaderPool: Map<string, PrefabLoader>;
     private _gltfPool: Map<string, GLTF_Info>;
     private _geometryPool: Map<string, GeometryBase>;
-    private _atlasList: Map<string, GUIAtlasTexture>;
     private _obj: Map<string, any>;
     /** Context this Res instance is bound to. Parsers launched via this Res
      *  thread this ctx through so their default-texture lookups resolve
@@ -60,7 +55,6 @@ export class Res {
         this._geometryPool = new Map<string, GeometryBase>();
         // this._prefabLoaderPool = new Map<string, PrefabLoader>;
         this._gltfPool = new Map<string, GLTF_Info>;
-        this._atlasList = new Map<string, GUIAtlasTexture>();
         this._obj = new Map<string, any>();
         // this.initDefault();
     }
@@ -149,24 +143,6 @@ export class Res {
         return this._prefabPool.get(name).instantiate();
     }
 
-
-    public addAtlas(name: string, atlas: GUIAtlasTexture) {
-        atlas.name = name;
-        this._atlasList.set(name, atlas);
-    }
-
-    public getAtlas(name: string) {
-        return this._atlasList.get(name);
-    }
-
-    public getGUISprite(id: string): GUISprite {
-        for (let item of this._atlasList.values()) {
-            let sprite = item.getSprite(id);
-            if (sprite)
-                return sprite;
-        }
-        return null;
-    }
 
     public async load<T extends ParserBase>(url: string, c: Parser<T>, loaderFunctions?: LoaderFunctions) {
         let loader = new FileLoader(this._ctx);
@@ -410,29 +386,14 @@ export class Res {
 
 
     /**
-     * load font file by url
-     * @param url font file url
-     * @param loaderFunctions callback
-     * @returns
+     * Load a texture atlas (PNG + JSON) by URL. Returns a {@link TextureAtlas}
+     * whose `get(id)` yields `TextureAtlasRegion` instances — feed those
+     * directly into `Sprite.texture = region` to render a sub-image.
      */
-    public async loadFont(url: string, loaderFunctions?: LoaderFunctions, userData?: any): Promise<FontInfo> {
-        let loader = new FileLoader(this._ctx);
-        let parser = await loader.load(url, FontParser, loaderFunctions, userData);
-        let data = parser.data as FontInfo;
-        fonts.addFontData(data.face, data.size, data)
-        return parser.data;
-    }
-
-    /**
-     * load a atlas file by url
-     * @param url file path
-     * @param loaderFunctions callback
-     * @returns
-     */
-    public async loadAtlas(url: string, loaderFunctions?: LoaderFunctions): Promise<FontInfo> {
+    public async loadAtlas(url: string, loaderFunctions?: LoaderFunctions): Promise<TextureAtlas> {
         let loader = new FileLoader(this._ctx);
         let parser = await loader.load(url, AtlasParser, loaderFunctions, url);
-        return parser.data;
+        return parser.data as any as TextureAtlas;
     }
 
     /**
@@ -450,8 +411,6 @@ export class Res {
 
     public defaultSky: HDRTextureCube;
 
-    public defaultGUITexture: GUITexture;
-    public defaultGUISprite: GUISprite;
     public defaultMaterial: LitMaterial;
 
     /**
@@ -543,9 +502,6 @@ export class Res {
         Reference.getInstance().attached(this.greenTexture, this);
         Reference.getInstance().attached(this.yellowTexture, this);
         Reference.getInstance().attached(this.grayTexture, this);
-        this.defaultGUITexture = new GUITexture(this.whiteTexture, ctx);
-        this.defaultGUISprite = new GUISprite(this.defaultGUITexture, ctx);
-        this.defaultGUISprite.trimSize.set(4, 4)
 
         this.defaultMaterial = new LitMaterial(ctx);
     }

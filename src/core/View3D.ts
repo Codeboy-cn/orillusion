@@ -1,11 +1,11 @@
 import { Object3D } from "..";
-import { GUIPick } from "../components/gui/GUIPick";
-import { GUICanvas } from "../components/gui/core/GUICanvas";
 import { CEventListener } from "../event/CEventListener";
 import { ShadowLightsCollect } from "../gfx/renderJob/collect/ShadowLightsCollect";
+import { InteractiveDispatcher } from "../io/InteractiveDispatcher";
 import { PickFire } from "../io/PickFire";
 import { Vector4 } from "../math/Vector4";
 import { Camera3D } from "./Camera3D";
+import { OverlayCamera } from "./OverlayCamera";
 import { Scene3D } from "./Scene3D";
 
 export class View3D extends CEventListener {
@@ -15,8 +15,13 @@ export class View3D extends CEventListener {
     private _enablePick: boolean = false;
     private _enable: boolean = true;
     public pickFire: PickFire;
-    public guiPick: GUIPick;
-    public readonly canvasList: GUICanvas[];
+    /**
+     * Per-view 2D interaction dispatcher. Created lazily by the first
+     * `Interactive` component on this view (see `Interactive.onEnable`).
+     * `PickFire` consults it so `Interactive.blocking=true` hits can
+     * short-circuit 3D raycast picking.
+     */
+    public interactiveDispatcher: InteractiveDispatcher | null = null;
     /**
      * Reference to the Engine3D instance that owns this view. Set by
      * `engine.startRenderView(view)`. Components that need per-instance state
@@ -27,7 +32,6 @@ export class View3D extends CEventListener {
 
     constructor(x: number = 0, y: number = 0, width: number = 0, height: number = 0) {
         super();
-        this.canvasList = [];
         this._viewPort = new Vector4(x, y, width, height);
     }
 
@@ -60,12 +64,6 @@ export class View3D extends CEventListener {
         value.view = this;
 
         ShadowLightsCollect.createBuffer(this);
-
-        if (value) {
-            this.canvasList.forEach(canvas => {
-                canvas && value.addChild(canvas.object3D);
-            });
-        }
     }
 
     public get camera(): Camera3D {
@@ -84,31 +82,39 @@ export class View3D extends CEventListener {
         this._viewPort = value;
     }
 
-    public enableUICanvas(index: number = 0): GUICanvas {
-        let canvas = this.canvasList[index];
-        if (!canvas) {
-            let obj = new Object3D();
-            obj.name = 'Canvas ' + index;
-            canvas = obj.addComponent(GUICanvas);
-            canvas.index = index;
-            this.canvasList[index] = canvas;
+    /**
+     * Create a sibling overlay view driven by an `OverlayCamera` and hook it
+     * into this view's engine. Returns the camera so callers can immediately
+     * `attach()` sprites/objects to it.
+     *
+     * The new view owns its own `Scene3D` (the camera's `overlayScene`) so
+     * overlay content never mixes into the main scene graph. The overlay view
+     * is added to the engine via `engine.addOverlayView()` — requires this
+     * view to already be wired to an engine (call after `engine.startRenderView(view)`).
+     *
+     * @param priority sort key among overlay views. Lower renders first.
+     */
+    public createOverlayCamera(priority: number = 100): OverlayCamera {
+        if (!this.engine3D) {
+            throw new Error(
+                `View3D.createOverlayCamera: view is not attached to an engine yet. Call engine.startRenderView(view) first.`,
+            );
         }
+        const overlayView = new View3D(this._viewPort.x, this._viewPort.y, this._viewPort.z, this._viewPort.w);
+        const host = new Object3D();
+        const camera = host.addComponent(OverlayCamera);
+        camera.priority = priority;
 
-        this.scene.addChild(canvas.object3D);
+        // The camera owns its overlay scene; the camera's host needs to live
+        // inside that scene so its world transform resolves.
+        camera.overlayScene.addChild(host);
 
-        if (!this.guiPick) {
-            this.guiPick = new GUIPick();
-            this.guiPick.init(this);
-        }
+        overlayView.scene = camera.overlayScene;
+        overlayView.camera = camera;
+        camera.attachToView(overlayView);
 
-        return canvas;
-    }
-
-    public disableUICanvas(index: number = 0) {
-        let canvas = this.canvasList[index];
-        if (canvas && canvas.object3D) {
-            canvas.object3D.removeFromParent();
-        }
+        this.engine3D.addOverlayView(overlayView);
+        return camera;
     }
 
 }
