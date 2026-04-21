@@ -2,12 +2,12 @@ import { GUIHelp } from "@orillusion/debug/GUIHelp";
 import {
     AtmosphericComponent,
     CameraUtil,
+    Color,
     DirectLight,
     Engine3D,
     HoverCameraController,
     KelvinUtil,
     Object3D,
-    OverlayCamera,
     Scene3D,
     SpriteRenderer,
     Vector2,
@@ -16,10 +16,11 @@ import {
 import { VideoTexture } from "@orillusion/media-extention";
 
 /**
- * Sprite renders a `VideoTexture` (WebGPU `texture_external`). The
- * Sprite component auto-detects the video texture and flips
- * `USE_VIDEO_TEXTURE` on the material, swapping the sampling code path
- * at compile time.
+ * Sprite renders a `VideoTexture` (WebGPU `texture_external`) in **world
+ * space** — a textured quad floating in the 3D scene, like an in-world
+ * advertising billboard or a cinematic cut-scene surface. The SpriteRenderer
+ * component auto-detects the video texture and flips `USE_VIDEO_TEXTURE` on
+ * the material, swapping the sampling code path at shader compile time.
  */
 class Sample_Video {
     engine: Engine3D;
@@ -27,17 +28,14 @@ class Sample_Video {
     view: View3D;
     lightObj: Object3D;
 
-    private overlay: OverlayCamera;
     private obj: Object3D;
     private sprite: SpriteRenderer;
     private video: VideoTexture;
 
     private readonly state = {
-        width: 320,
-        height: 180,
-        x: 40,
-        y: 40,
-        corner: 12,
+        width: 16,
+        height: 9,
+        color: new Color(1, 1, 1, 1),
     };
 
     async run() {
@@ -50,7 +48,7 @@ class Sample_Video {
 
         let camera = CameraUtil.createCamera3DObject(this.scene);
         camera.perspective(60, this.engine.aspect, 0.1, 5000.0);
-        camera.object3D.addComponent(HoverCameraController).setCamera(0, -15, 80);
+        camera.object3D.addComponent(HoverCameraController).setCamera(0, -10, 40);
 
         this.view = new View3D();
         this.view.scene = this.scene;
@@ -76,35 +74,25 @@ class Sample_Video {
             this.scene.addChild(this.lightObj);
         }
 
-        /******** overlay + video *******/
-        {
-            this.video = new VideoTexture(this.engine.context3D);
-            await this.video.load('video/chicken.mp4');
+        /******** video texture *******/
+        this.video = new VideoTexture(this.engine.context3D);
+        await this.video.load('video/chicken.mp4');
 
-            this.overlay = this.view.createOverlayCamera(100);
-        }
-
-        /******** video sprite *******/
-        {
-            this.obj = new Object3D();
-            this.sprite = this.obj.addComponent(SpriteRenderer);
-            this.sprite.size = new Vector2(this.state.width, this.state.height);
-            this.sprite.pivot = new Vector2(0, 0);
-            this.sprite.cornerRadius = this.state.corner;
-            this.sprite.texture = this.video;    // auto-flips USE_VIDEO_TEXTURE define
-            this.obj.x = this.state.x;
-            this.obj.y = this.state.y;
-            this.overlay.attach(this.obj);
-        }
+        /******** video sprite in world space *******/
+        this.obj = new Object3D();
+        this.sprite = this.obj.addComponent(SpriteRenderer);
+        this.sprite.size = new Vector2(this.state.width, this.state.height);
+        this.sprite.pivot = new Vector2(0.5, 0.5);
+        this.sprite.color = this.state.color;
+        this.sprite.texture = this.video;    // auto-flips USE_VIDEO_TEXTURE define
+        this.scene.addChild(this.obj);
     }
 
     private initGUI() {
         GUIHelp.addFolder('Video sprite');
-        GUIHelp.add(this.state, 'width', 80, 800, 1).onChange(v => this.sprite.size = new Vector2(v, this.state.height));
-        GUIHelp.add(this.state, 'height', 60, 600, 1).onChange(v => this.sprite.size = new Vector2(this.state.width, v));
-        GUIHelp.add(this.state, 'x', 0, 1200, 1).onChange(v => this.obj.x = v);
-        GUIHelp.add(this.state, 'y', 0, 1200, 1).onChange(v => this.obj.y = v);
-        GUIHelp.add(this.state, 'corner', 0, 60, 0.5).onChange(v => this.sprite.cornerRadius = v);
+        GUIHelp.add(this.state, 'width', 2, 40, 0.5).onChange(v => this.sprite.size = new Vector2(v, this.state.height));
+        GUIHelp.add(this.state, 'height', 2, 40, 0.5).onChange(v => this.sprite.size = new Vector2(this.state.width, v));
+        GUIHelp.addColor(this.state, 'color').onChange(c => this.sprite.color = c);
         GUIHelp.open();
         GUIHelp.endFolder();
 

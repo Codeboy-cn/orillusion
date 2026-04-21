@@ -9,7 +9,6 @@ import { version } from '../package.json';
 import { Context3D } from './gfx/graphics/webGpu/Context3D';
 
 import { ForwardRenderJob } from './gfx/renderJob/jobs/ForwardRenderJob';
-import { OverlayRenderJob } from './gfx/renderJob/jobs/OverlayRenderJob';
 import { GlobalBindGroup } from './gfx/graphics/webGpu/core/bindGroups/GlobalBindGroup';
 import { Interpolator } from './math/TimeInterpolator';
 import { RendererJob } from './gfx/renderJob/jobs/RendererJob';
@@ -435,42 +434,6 @@ export class Engine3D {
 
     public getRenderJob(view: View3D): RendererJob {
         return this.renderJobs.get(view);
-    }
-
-    /**
-     * Add an overlay view that renders on top of existing views.
-     * Preserves the color buffer but clears depth — ideal for UI, axis
-     * helpers, gizmos that should always be visible.
-     */
-    public addOverlayView(view: View3D): OverlayRenderJob {
-        view.engine3D = this;
-        if (view.camera) {
-            (view.camera as any)._boundCtx ||= this.context3D;
-        }
-        this.views.push(view);
-        let renderJob = new OverlayRenderJob(view);
-        this.renderJobs.set(view, renderJob);
-        // Keep overlay views sorted by their camera's `priority` (lower = earlier)
-        // so `OverlayCamera` instances render in a predictable back-to-front order.
-        // Non-overlay cameras are treated as priority 0, preserving the original
-        // main-view-first layering.
-        this._resortViewsByPriority();
-        Engine3D._ensureLoop();
-        return renderJob;
-    }
-
-    private _resortViewsByPriority() {
-        const priorityOf = (v: View3D): number => {
-            const c: any = v.camera;
-            return typeof c?.priority === 'number' ? c.priority : 0;
-        };
-        this.views.sort((a, b) => priorityOf(a) - priorityOf(b));
-        const ordered: Map<View3D, RendererJob> = new Map();
-        for (const v of this.views) {
-            const job = this.renderJobs.get(v);
-            if (job) ordered.set(v, job);
-        }
-        this.renderJobs = ordered;
     }
 
     public static pause() {

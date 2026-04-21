@@ -107,18 +107,8 @@ export class PickFire extends CEventDispatcher {
         input.removeEventListener(PointerEvent3D.POINTER_MOVE, this.onTouchMove, this);
     }
 
-    /**
-     * Short-circuit when an Interactive marked `blocking=true` consumed the
-     * pointer at (mx, my). Keeps 2D UI hit tests from double-firing as 3D pick.
-     */
-    private _blockedByUI(mx: number, my: number): boolean {
-        const d = this._view.interactiveDispatcher;
-        return !!(d && (d.isBlocked || d.hitWouldBlock(mx, my)));
-    }
-
     private onTouchStart(e: PointerEvent3D) {
         // console.log(e)
-        if (this._blockedByUI(e.mouseX, e.mouseY)) return;
         this.isTouching = true;
         this._mouseCode = e.mouseCode;
 
@@ -140,7 +130,6 @@ export class PickFire extends CEventDispatcher {
     }
 
     private onTouchEnd(e: PointerEvent3D) {
-        if (this._blockedByUI(e.mouseX, e.mouseY)) return;
         this.isTouching = false;
         this._mouseCode = e.mouseCode;
 
@@ -190,7 +179,6 @@ export class PickFire extends CEventDispatcher {
     }
 
     private onTouchMove(e: PointerEvent3D) {
-        if (this._blockedByUI(e.mouseX, e.mouseY)) return;
         this.isTouching = true;
         this._mouseCode = e.mouseCode;
         this.pick(this._view.camera);
@@ -234,7 +222,6 @@ export class PickFire extends CEventDispatcher {
     }
 
     private onTouchOnce(e: PointerEvent3D) {
-        if (this._blockedByUI(e.mouseX, e.mouseY)) return;
         this.isTouching = true;
         this._mouseCode = e.mouseCode;
         this.pick(this._view.camera);

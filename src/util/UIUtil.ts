@@ -1,19 +1,14 @@
-import { Interactive } from '../components/Interactive';
-import { SpriteRenderer } from '../components/renderer/SpriteRenderer';
-import { Sprite } from '../assets/Sprite';
-import { Object3D } from '../core/entities/Object3D';
-import { InteractiveEvent } from '../event/eventConst/InteractiveEvent';
 import { Context3D } from '../gfx/graphics/webGpu/Context3D';
-import { Texture } from '../gfx/graphics/webGpu/core/texture/Texture';
-import { Color } from '../math/Color';
-import { Vector2 } from '../math/Vector2';
 import { BitmapTexture2D } from '../textures/BitmapTexture2D';
 
 /**
- * Utility helpers for sprite-based UI: text-to-texture and quick button
- * construction. Designed for **static / low-frequency** UI (fewer than ~10
- * updates per second, fewer than ~50 simultaneous text elements). For
- * high-frequency animated text, build a dedicated atlas.
+ * Utility helpers for building sprite textures from Canvas2D output —
+ * primarily `textToTexture` for rendering labels (name tags, HP text,
+ * damage numbers) that live in the 3D world via `SpriteRenderer`.
+ *
+ * Designed for **static / low-frequency** updates (fewer than ~10 Hz,
+ * fewer than ~50 simultaneous text elements). For high-frequency animated
+ * text, build a dedicated atlas.
  *
  * @group Util
  */
@@ -76,83 +71,6 @@ export class UIUtil {
         const { width, height } = UIUtil.measureText(text, o);
         const bitmap = await UIUtil._renderText(text, width, height, o);
         (texture as any).source = bitmap;
-    }
-
-    /**
-     * Drop-shadow helper: mounts a sibling `Sprite` behind `target` sharing
-     * the same texture, tinted dark and alpha-reduced, offset by `offset`.
-     * Covers the 80%-case UIShadow use (tab/button shadow, label halo) without
-     * a dedicated shader. Returns the shadow Object3D so the caller can tweak.
-     *
-     * Requires `target` to already have a `Sprite` with `texture` + `size`
-     * set, and to be attached to a parent (overlay or scene).
-     */
-    public static wrapShadow(
-        target: Object3D,
-        opts: { offset?: Vector2; color?: Color; alphaScale?: number } = {},
-    ): Object3D | null {
-        const parent = target.parentObject;
-        if (!parent) return null;
-        const srcRenderer = target.getComponent(SpriteRenderer) as SpriteRenderer | null;
-        const srcSprite = srcRenderer?.sprite;
-        if (!srcRenderer || !srcSprite || !srcSprite.texture || !srcRenderer.size) return null;
-
-        const offset = opts.offset ?? new Vector2(4, 4);
-        const baseColor = opts.color ?? new Color(0, 0, 0, 1);
-        const alphaScale = opts.alphaScale ?? 0.45;
-
-        const shadowObj = new Object3D();
-        const shadowRenderer = shadowObj.addComponent(SpriteRenderer);
-        shadowRenderer.sprite = srcSprite; // share the sprite asset
-        if (srcRenderer.size) shadowRenderer.size = srcRenderer.size.clone();
-        shadowRenderer.cornerRadius = srcRenderer.cornerRadius;
-        shadowRenderer.color = new Color(baseColor.r, baseColor.g, baseColor.b, baseColor.a * alphaScale);
-        shadowObj.x = target.x + offset.x;
-        shadowObj.y = target.y + offset.y;
-        shadowObj.z = target.z;
-        // Sprites live in the transparent bucket; lower renderOrder so the
-        // shadow renders first (behind the original).
-        (shadowRenderer as any).renderOrder = (srcRenderer as any).renderOrder - 1;
-        parent.addChild(shadowObj);
-        return shadowObj;
-    }
-
-    /**
-     * Build a 3-state button: attaches a `SpriteRenderer` + `Interactive`
-     * to `parent` and wires texture swaps on OVER / DOWN / UP. Returns the
-     * renderer and interactive so callers can fine-tune.
-     */
-    public static createButton(
-        parent: Object3D,
-        opts: {
-            normalTexture: Texture;
-            hoverTexture?: Texture;
-            pressedTexture?: Texture;
-            disabledTexture?: Texture;
-            onClick?: () => void;
-        },
-    ): { renderer: SpriteRenderer; sprite: SpriteRenderer; interactive: Interactive } {
-        const renderer = parent.addComponent(SpriteRenderer);
-        renderer.setTexture(opts.normalTexture);
-        const interactive = parent.addComponent(Interactive);
-
-        if (opts.hoverTexture) {
-            parent.addEventListener(InteractiveEvent.OVER, () => { renderer.setTexture(opts.hoverTexture!); }, null);
-            parent.addEventListener(InteractiveEvent.OUT, () => { renderer.setTexture(opts.normalTexture); }, null);
-        }
-        if (opts.pressedTexture) {
-            parent.addEventListener(InteractiveEvent.DOWN, () => { renderer.setTexture(opts.pressedTexture!); }, null);
-            parent.addEventListener(InteractiveEvent.UP, () => {
-                renderer.setTexture(opts.hoverTexture ?? opts.normalTexture);
-            }, null);
-        }
-        if (opts.onClick) {
-            parent.addEventListener(InteractiveEvent.CLICK, opts.onClick, null);
-        }
-        // Expose disabled texture as a helper — callers toggle via interactive.enable.
-        (interactive as any).disabledTexture = opts.disabledTexture;
-        // Return both `sprite` (legacy alias) and `renderer` so migration is easy.
-        return { renderer, sprite: renderer, interactive };
     }
 
     // ---------- private helpers ----------
@@ -251,5 +169,3 @@ export type TextOptions = {
     dpr?: number;
 };
 
-// Re-export Color for typing convenience from this module.
-export { Color };
