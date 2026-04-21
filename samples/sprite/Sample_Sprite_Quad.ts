@@ -1,24 +1,28 @@
+import { GUIHelp } from "@orillusion/debug/GUIHelp";
 import {
-    Engine3D,
-    Object3D,
-    MeshRenderer,
-    PlaneGeometry,
     BitmapTexture2D,
-    SpriteMaterial,
-    Vector3,
     Color,
-    Vector4,
+    Engine3D,
+    MeshRenderer,
+    Object3D,
+    PlaneGeometry,
+    SpriteMaterial,
     Vector2,
+    Vector3,
+    Vector4,
 } from "@orillusion/core";
 import { createExampleScene } from "@samples/utils/ExampleScene";
 
 /**
- * PR 1 warmup: a minimal quad (PlaneGeometry + SpriteMaterial) parented to
- * a MeshRenderer. Exercises the SpriteShader end-to-end before the Sprite
- * component / OverlayCamera land in PR 2 / PR 3.
+ * Minimal raw-material quad: MeshRenderer + 1×1 PlaneGeometry +
+ * SpriteMaterial. The shader's `size` uniform does the scaling — the
+ * geometry must stay a unit quad (a 30×30 PlaneGeometry would multiply
+ * with the size uniform and produce a 900-unit quad).
  */
 export class Sample_Sprite_Quad {
     async run() {
+        GUIHelp.init();
+
         const engine = await Engine3D.init({});
         const scene = createExampleScene(engine);
         engine.startRenderView(scene.view);
@@ -27,26 +31,37 @@ export class Sample_Sprite_Quad {
         texture.flipY = true;
         await texture.load('textures/KB3D_NTT_Ads_basecolor.png');
 
-        // Three sprites to exercise: tint, uvRect sub-region, corner radius.
-        const variants: Array<{ pos: Vector3, color: Color, uvRect: Vector4, radius: number }> = [
-            { pos: new Vector3(-40, 25, 0), color: new Color(1, 1, 1, 1), uvRect: new Vector4(0, 0, 1, 1), radius: 0 },
-            { pos: new Vector3(0, 25, 0), color: new Color(1, 0.5, 0.5, 1), uvRect: new Vector4(0.25, 0.25, 0.5, 0.5), radius: 0 },
-            { pos: new Vector3(40, 25, 0), color: new Color(0.6, 1, 0.8, 1), uvRect: new Vector4(0, 0, 1, 1), radius: 6 },
-        ];
+        const obj = new Object3D();
+        const mr = obj.addComponent(MeshRenderer);
+        mr.geometry = new PlaneGeometry(1, 1, 1, 1, Vector3.Z_AXIS);
+        const mat = new SpriteMaterial(engine.context3D);
+        mat.baseMap = texture;
+        mat.color = new Color(1, 1, 1, 1);
+        mat.uvRect = new Vector4(0, 0, 1, 1);
+        mat.size = new Vector2(40, 40);
+        mr.material = mat;
+        obj.x = 0;
+        obj.y = 30;
+        obj.z = 0;
+        scene.scene.addChild(obj);
 
-        for (const v of variants) {
-            const obj = new Object3D();
-            const mr = obj.addComponent(MeshRenderer);
-            mr.geometry = new PlaneGeometry(30, 30, 1, 1, Vector3.Z_AXIS);
-            const mat = new SpriteMaterial(engine.context3D);
-            mat.baseMap = texture;
-            mat.color = v.color;
-            mat.uvRect = v.uvRect;
-            mat.size = new Vector2(30, 30);
-            mat.cornerRadius = v.radius;
-            mr.material = mat;
-            obj.localPosition = v.pos;
-            scene.scene.addChild(obj);
-        }
+        const state = {
+            sizeX: 40,
+            sizeY: 40,
+            color: new Color(1, 1, 1, 1),
+            uvX: 0, uvY: 0, uvW: 1, uvH: 1,
+            cornerRadius: 0,
+        };
+        GUIHelp.addFolder('Quad');
+        GUIHelp.add(state, 'sizeX', 4, 200, 1).onChange(v => mat.size = new Vector2(v, state.sizeY));
+        GUIHelp.add(state, 'sizeY', 4, 200, 1).onChange(v => mat.size = new Vector2(state.sizeX, v));
+        GUIHelp.addColor(state, 'color').onChange(c => mat.color = c);
+        GUIHelp.add(state, 'uvX', 0, 1, 0.01).onChange(() => mat.uvRect = new Vector4(state.uvX, state.uvY, state.uvW, state.uvH));
+        GUIHelp.add(state, 'uvY', 0, 1, 0.01).onChange(() => mat.uvRect = new Vector4(state.uvX, state.uvY, state.uvW, state.uvH));
+        GUIHelp.add(state, 'uvW', 0.01, 1, 0.01).onChange(() => mat.uvRect = new Vector4(state.uvX, state.uvY, state.uvW, state.uvH));
+        GUIHelp.add(state, 'uvH', 0.01, 1, 0.01).onChange(() => mat.uvRect = new Vector4(state.uvX, state.uvY, state.uvW, state.uvH));
+        GUIHelp.add(state, 'cornerRadius', 0, 16, 0.5).onChange(v => mat.cornerRadius = v);
+        GUIHelp.open();
+        GUIHelp.endFolder();
     }
 }

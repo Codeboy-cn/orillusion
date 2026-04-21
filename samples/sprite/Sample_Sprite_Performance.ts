@@ -1,3 +1,4 @@
+import { GUIHelp } from "@orillusion/debug/GUIHelp";
 import {
     BitmapTexture2D,
     Color,
@@ -9,13 +10,13 @@ import {
 import { createExampleScene } from "@samples/utils/ExampleScene";
 
 /**
- * PR 7 migration: replaces Sample_UIPerformance. Spawns ~200 sprites on an
- * overlay to exercise the per-sprite pipeline throughput. Each sprite uses a
- * distinct position/color so we can eyeball variety. No batching — this is
- * the Sprite-as-primitive baseline; PR 8 phase 2 may add a SpriteBatcher.
+ * Per-Sprite baseline (no batching). Tweak `count` to see when individual
+ * sprite draws start to bottleneck the frame.
  */
 export class Sample_Sprite_Performance {
     async run() {
+        GUIHelp.init();
+
         const engine = await Engine3D.init({});
         const scene = createExampleScene(engine);
         engine.startRenderView(scene.view);
@@ -25,24 +26,42 @@ export class Sample_Sprite_Performance {
         await texture.load('textures/KB3D_NTT_Ads_basecolor.png');
 
         const overlay = scene.view.createOverlayCamera(100);
+        const objects: Object3D[] = [];
 
-        const COUNT = 200;
-        const cols = 20;
-        for (let i = 0; i < COUNT; i++) {
-            const obj = new Object3D();
-            const sprite = obj.addComponent(Sprite);
-            sprite.texture = texture;
-            sprite.size = new Vector2(24, 24);
-            sprite.pivot = new Vector2(0.5, 0.5);
-            sprite.color = new Color(
-                0.3 + 0.7 * ((i * 37) % 100) / 100,
-                0.3 + 0.7 * ((i * 91) % 100) / 100,
-                0.3 + 0.7 * ((i * 53) % 100) / 100,
-                1,
-            );
-            obj.x = 24 + (i % cols) * 30;
-            obj.y = 24 + Math.floor(i / cols) * 30;
-            overlay.attach(obj);
-        }
+        const state = {
+            count: 200,
+            tileSize: 24,
+            spacing: 30,
+        };
+
+        const rebuild = () => {
+            for (const o of objects) o.removeFromParent();
+            objects.length = 0;
+            const cols = Math.max(4, Math.floor(800 / state.spacing));
+            for (let i = 0; i < state.count; i++) {
+                const obj = new Object3D();
+                const sprite = obj.addComponent(Sprite);
+                sprite.texture = texture;
+                sprite.size = new Vector2(state.tileSize, state.tileSize);
+                sprite.pivot = new Vector2(0.5, 0.5);
+                sprite.color = new Color(
+                    0.3 + 0.7 * ((i * 37) % 100) / 100,
+                    0.3 + 0.7 * ((i * 91) % 100) / 100,
+                    0.3 + 0.7 * ((i * 53) % 100) / 100,
+                    1,
+                );
+                obj.x = 24 + (i % cols) * state.spacing;
+                obj.y = 24 + Math.floor(i / cols) * state.spacing;
+                overlay.attach(obj);
+                objects.push(obj);
+            }
+        };
+        rebuild();
+
+        GUIHelp.addFolder('Sprite count (baseline)');
+        GUIHelp.add(state, 'count', 1, 2000, 1).onChange(rebuild);
+        GUIHelp.add(state, 'tileSize', 4, 64, 1).onChange(rebuild);
+        GUIHelp.add(state, 'spacing', 6, 80, 1).onChange(rebuild);
+        GUIHelp.open();
     }
 }
