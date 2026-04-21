@@ -1,6 +1,8 @@
 import { GUIHelp } from "@orillusion/debug/GUIHelp";
 import {
     AtmosphericComponent,
+    BillboardComponent,
+    BillboardType,
     BitmapTexture2D,
     CameraUtil,
     Color,
@@ -18,8 +20,9 @@ import {
 
 /**
  * World-space sprite grid. Demonstrates `SpriteRenderer` as a textured
- * quad in the 3D scene — positioned in world units (meters), participates
- * in the normal forward pass alongside 3D meshes.
+ * quad in 3D space — positioned in world units (meters), participates
+ * in the normal forward pass alongside 3D meshes. Optional billboard +
+ * distance-invariant size.
  */
 class Sample_World {
     engine: Engine3D;
@@ -36,6 +39,8 @@ class Sample_World {
         cell: 1.5,
         margin: 0.3,
         tint: new Color(1, 1, 1, 1),
+        billboard: BillboardType.None,
+        distanceInvariant: false,
     };
 
     async run() {
@@ -105,6 +110,12 @@ class Sample_World {
                 const baseG = 0.4 + 0.6 * (r / Math.max(s.rows - 1, 1));
                 sprite.color = new Color(baseR * s.tint.r, baseG * s.tint.g, 0.6 * s.tint.b, s.tint.a);
                 sprite.uvRect = new Vector4(0, 0, 1, 1);
+                sprite.distanceInvariantSize = s.distanceInvariant;
+
+                if (s.billboard !== BillboardType.None) {
+                    obj.addComponent(BillboardComponent).type = s.billboard;
+                }
+
                 obj.x = offsetX + c * step;
                 obj.y = offsetY + r * step + 2;
                 obj.z = 0;
@@ -121,6 +132,17 @@ class Sample_World {
         GUIHelp.add(this.state, 'cell', 0.2, 5, 0.1).onFinishChange(() => this.rebuildGrid());
         GUIHelp.add(this.state, 'margin', 0, 2, 0.05).onFinishChange(() => this.rebuildGrid());
         GUIHelp.addColor(this.state, 'tint').onChange(() => this.rebuildGrid());
+        GUIHelp.add(this.state, 'billboard', {
+            None: BillboardType.None,
+            'Billboard Y': BillboardType.BillboardY,
+            'Billboard XYZ': BillboardType.BillboardXYZ,
+        }).onChange(() => this.rebuildGrid());
+        GUIHelp.add(this.state, 'distanceInvariant').onChange((v: boolean) => {
+            for (const o of this.objects) {
+                const sprite = o.getComponent(SpriteRenderer) as SpriteRenderer | null;
+                if (sprite) sprite.distanceInvariantSize = v;
+            }
+        });
         GUIHelp.open();
         GUIHelp.endFolder();
 

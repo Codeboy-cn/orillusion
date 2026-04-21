@@ -44,6 +44,16 @@ export class BitmapTexture2D extends Texture {
     public set source(value: HTMLCanvasElement | ImageBitmap | OffscreenCanvas | HTMLImageElement) {
         this._source = value;
 
+        // `generate()` ultimately reaches `createTexture` via `gpuTexture`,
+        // which requires `this.format` to be set. `load()` sets it before
+        // calling `generate()`; we mirror that here so the `.source = bitmap`
+        // path (used by UIUtil.textToTexture and other Canvas2D producers)
+        // doesn't hit "Required member 'format' is undefined" when assigning
+        // to a freshly-constructed BitmapTexture2D.
+        if (!this.format) {
+            this.format = GPUTextureFormat.rgba8unorm;
+        }
+
         if (this._source instanceof HTMLImageElement) {
             this._source.decode().then(async () => {
                 if (this._source instanceof HTMLImageElement) {
