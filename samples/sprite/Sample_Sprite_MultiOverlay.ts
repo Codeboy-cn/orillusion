@@ -11,7 +11,7 @@ import {
     Object3D,
     OverlayCamera,
     Scene3D,
-    Sprite,
+    SpriteRenderer,
     Vector2,
     View3D,
 } from "@orillusion/core";
@@ -32,9 +32,9 @@ class Sample_Sprite_MultiOverlay {
     private backOverlay: OverlayCamera;
     private frontOverlay: OverlayCamera;
     private backObj: Object3D;
-    private backSprite: Sprite;
+    private backSprite: SpriteRenderer;
     private frontObj: Object3D;
-    private frontSprite: Sprite;
+    private frontSprite: SpriteRenderer;
 
     async run() {
         GUIHelp.init();
@@ -84,7 +84,7 @@ class Sample_Sprite_MultiOverlay {
             this.backOverlay = this.view.createOverlayCamera(100);
 
             this.backObj = new Object3D();
-            this.backSprite = this.backObj.addComponent(Sprite);
+            this.backSprite = this.backObj.addComponent(SpriteRenderer);
             this.backSprite.texture = this.texture;
             this.backSprite.size = new Vector2(280, 180);
             this.backSprite.pivot = new Vector2(0.5, 0.5);
@@ -100,7 +100,7 @@ class Sample_Sprite_MultiOverlay {
             this.frontOverlay = this.view.createOverlayCamera(200);
 
             this.frontObj = new Object3D();
-            this.frontSprite = this.frontObj.addComponent(Sprite);
+            this.frontSprite = this.frontObj.addComponent(SpriteRenderer);
             this.frontSprite.texture = this.texture;
             this.frontSprite.size = new Vector2(160, 100);
             this.frontSprite.pivot = new Vector2(0.5, 0.5);

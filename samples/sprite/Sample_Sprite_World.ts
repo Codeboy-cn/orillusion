@@ -10,7 +10,7 @@ import {
     KelvinUtil,
     Object3D,
     Scene3D,
-    Sprite,
+    SpriteRenderer,
     Vector2,
     Vector4,
     View3D,
@@ -98,7 +98,7 @@ class Sample_Sprite_World {
             for (let c = 0; c < s.cols; c++) {
                 const idx = r * s.cols + c;
                 const obj = new Object3D();
-                const sprite = obj.addComponent(Sprite);
+                const sprite = obj.addComponent(SpriteRenderer);
                 sprite.texture = this.texture;
                 sprite.size = new Vector2(s.cell, s.cell);
                 const baseR = 0.4 + 0.6 * (c / Math.max(s.cols - 1, 1));

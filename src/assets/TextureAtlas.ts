@@ -1,77 +1,55 @@
 import { Texture } from "../gfx/graphics/webGpu/core/texture/Texture";
 import { Vector2 } from "../math/Vector2";
 import { Vector4 } from "../math/Vector4";
+import { Sprite } from "./Sprite";
 
 /**
- * A single sub-region inside a `TextureAtlas`. Feeds directly into
- * `Sprite.texture = region` — the setter pulls `atlas.texture`, `uv`, and
- * `size` from the region to configure the sprite's material.
+ * Texture atlas — a base texture plus a dictionary of named `Sprite`
+ * assets. Returned by `Engine3D.resFor(ctx).loadAtlas(url)`.
  *
- * @group Assets
- */
-export class TextureAtlasRegion {
-    public readonly atlas: TextureAtlas;
-    /** UV sub-rect in [0,1] texture space as (offsetX, offsetY, scaleX, scaleY). */
-    public readonly uv: Vector4;
-    /** Display size of the region in pixels. */
-    public readonly size: Vector2;
-    public readonly id: string;
-    /**
-     * 9-slice border in normalized source-UV fractions (left, top, right, bottom).
-     * Each component in [0, 1] relative to the region's own size. `(0,0,0,0)` → solid sprite (no slicing).
-     */
-    public border: Vector4;
-
-    constructor(atlas: TextureAtlas, id: string, uv: Vector4, size: Vector2, border?: Vector4) {
-        this.atlas = atlas;
-        this.id = id;
-        this.uv = uv;
-        this.size = size;
-        this.border = border ?? new Vector4(0, 0, 0, 0);
-    }
-}
-
-/**
- * Texture atlas — a base texture plus named sub-regions. Returned by
- * `Engine3D.resFor(ctx).loadAtlas(url)`. Pair with `Sprite.texture = region`
- * to render a single sub-image as a sprite.
- *
- * Regions are plain data (no GPU state) — the texture itself is the only
- * device-bound resource. Safe to share across engines if the backing texture
- * has been cloned (see Plan B docs).
+ * Each region parsed from the atlas JSON becomes a `Sprite` that shares
+ * the atlas's texture and carries its own UV region / pivot / 9-slice
+ * border. Pair with `SpriteRenderer.sprite = atlas.get('name')` to render.
  *
  * @group Assets
  */
 export class TextureAtlas {
     public texture: Texture;
-    public readonly regions: Map<string, TextureAtlasRegion>;
+    public readonly sprites: Map<string, Sprite>;
     public name: string = '';
 
     constructor(texture: Texture) {
         this.texture = texture;
-        this.regions = new Map<string, TextureAtlasRegion>();
+        this.sprites = new Map<string, Sprite>();
     }
 
-    public get(id: string): TextureAtlasRegion | undefined {
-        return this.regions.get(id);
+    /** Look up a named sprite. Returns `undefined` if the atlas has no such region. */
+    public get(id: string): Sprite | undefined {
+        return this.sprites.get(id);
     }
 
-    /** Register a region. `uv` is normalized in [0,1]; `size` in pixels; `border` (optional) in normalized region-UV fractions. */
-    public add(id: string, uv: Vector4, size: Vector2, border?: Vector4): TextureAtlasRegion {
-        const region = new TextureAtlasRegion(this, id, uv, size, border);
-        this.regions.set(id, region);
-        return region;
+    /** Register a sprite. `region` is normalized UV; `nativeSize` is display size in pixels. */
+    public add(id: string, region: Vector4, nativeSize?: Vector2, border?: Vector4): Sprite {
+        const sprite = new Sprite({
+            texture: this.texture,
+            region,
+            nativeSize,
+            border,
+            name: id,
+        });
+        this.sprites.set(id, sprite);
+        return sprite;
     }
 
-    /** Add a region from pixel-space rect (x, y, w, h) inside the source texture. */
-    public addPixelRect(id: string, pixelRect: { x: number; y: number; w: number; h: number }, atlasWidth: number, atlasHeight: number, displaySize?: Vector2): TextureAtlasRegion {
-        const uv = new Vector4(
+    /** Register a sprite from a pixel-space rect in the source texture. */
+    public addPixelRect(id: string, pixelRect: { x: number; y: number; w: number; h: number }, atlasWidth: number, atlasHeight: number, displaySize?: Vector2, border?: Vector4): Sprite {
+        const region = new Vector4(
             pixelRect.x / atlasWidth,
             pixelRect.y / atlasHeight,
             pixelRect.w / atlasWidth,
             pixelRect.h / atlasHeight,
         );
         const size = displaySize ?? new Vector2(pixelRect.w, pixelRect.h);
-        return this.add(id, uv, size);
+        return this.add(id, region, size, border);
     }
 }

@@ -106,7 +106,7 @@ class Sample_Sprite_Batcher {
         for (let i = 0; i < s.count; i++) {
             const region = regions[i % Math.max(1, regions.length)];
             const uv = region
-                ? new Vector4(region.uv.x, region.uv.y, region.uv.z, region.uv.w)
+                ? new Vector4(region.region.x, region.region.y, region.region.z, region.region.w)
                 : new Vector4(0, 0, 1, 1);
             this.batcher.add({
                 position: new Vector2(10 + (i % cols) * s.spacing, 10 + Math.floor(i / cols) * s.spacing),

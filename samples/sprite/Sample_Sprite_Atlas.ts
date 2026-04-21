@@ -10,7 +10,7 @@ import {
     Object3D,
     OverlayCamera,
     Scene3D,
-    Sprite,
+    SpriteRenderer,
     TextureAtlas,
     Vector2,
     View3D,
@@ -29,7 +29,7 @@ class Sample_Sprite_Atlas {
 
     private overlay: OverlayCamera;
     private atlas: TextureAtlas;
-    private sprites: Sprite[] = [];
+    private sprites: SpriteRenderer[] = [];
     private pickStates: Array<{ region: string; color: Color }> = [];
 
     private readonly initialPicks = ['button-up', 'button-over', 'button-down'];
@@ -82,22 +82,22 @@ class Sample_Sprite_Atlas {
             if (!region) continue;
 
             const obj = new Object3D();
-            const sprite = obj.addComponent(Sprite);
-            sprite.pivot = new Vector2(0, 0);
+            const sprite = obj.addComponent(SpriteRenderer);
+            sprite.sprite = region;           // bind the atlas Sprite asset
+            sprite.pivot = new Vector2(0, 0); // clone-on-write local pivot
             sprite.color = new Color(1, 1, 1, 1);
-            sprite.texture = region;
-            obj.x = 40 + i * (region.size.x + 16);
+            obj.x = 40 + i * (region.nativeSize.x + 16);
             obj.y = 60;
             this.overlay.attach(obj);
 
             this.sprites.push(sprite);
-            this.pickStates.push({ region: region.id, color: new Color(1, 1, 1, 1) });
+            this.pickStates.push({ region: region.name, color: new Color(1, 1, 1, 1) });
         }
     }
 
     private initGUI() {
         const allRegions: string[] = [];
-        this.atlas.regions.forEach((_r, id) => allRegions.push(id));
+        this.atlas.sprites.forEach((_r, id) => allRegions.push(id));
         const regionDict: Record<string, string> = {};
         for (const id of allRegions) regionDict[id] = id;
 
@@ -107,7 +107,7 @@ class Sample_Sprite_Atlas {
             GUIHelp.addFolder(`Sprite ${i + 1}`);
             GUIHelp.add(state, 'region', regionDict).onChange(id => {
                 const r = this.atlas.get(id);
-                if (r) sprite.texture = r;
+                if (r) sprite.sprite = r;
             });
             GUIHelp.addColor(state, 'color').onChange(c => sprite.color = c);
             GUIHelp.open();

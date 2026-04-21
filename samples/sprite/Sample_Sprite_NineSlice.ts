@@ -10,7 +10,8 @@ import {
     Object3D,
     OverlayCamera,
     Scene3D,
-    Sprite,
+    SpriteDrawMode,
+    SpriteRenderer,
     TextureAtlas,
     Vector2,
     View3D,
@@ -30,7 +31,7 @@ class Sample_Sprite_NineSlice {
 
     private overlay: OverlayCamera;
     private atlas: TextureAtlas;
-    private sprite: Sprite;
+    private sprite: SpriteRenderer;
 
     private readonly state = {
         region: '',
@@ -84,17 +85,18 @@ class Sample_Sprite_NineSlice {
         /******** sprite (initial region) *******/
         {
             const initialRegion = this.atlas.get('button-up')
-                ?? this.atlas.regions.values().next().value;
+                ?? this.atlas.sprites.values().next().value;
             if (!initialRegion) throw new Error('no atlas regions found');
-            this.state.region = initialRegion.id;
-            this.state.width = initialRegion.size.x;
-            this.state.height = initialRegion.size.y;
+            this.state.region = initialRegion.name;
+            this.state.width = initialRegion.nativeSize.x;
+            this.state.height = initialRegion.nativeSize.y;
 
             const obj = new Object3D();
-            this.sprite = obj.addComponent(Sprite);
+            this.sprite = obj.addComponent(SpriteRenderer);
+            this.sprite.sprite = initialRegion;
+            this.sprite.drawMode = SpriteDrawMode.sliced;
             this.sprite.pivot = new Vector2(0, 0);
             this.sprite.color = this.state.color;
-            this.sprite.texture = initialRegion;
             obj.x = 40;
             obj.y = 40;
             this.overlay.attach(obj);
@@ -103,12 +105,13 @@ class Sample_Sprite_NineSlice {
 
     private initGUI() {
         const regionDict: Record<string, string> = {};
-        this.atlas.regions.forEach((_r, id) => regionDict[id] = id);
+        this.atlas.sprites.forEach((_r, id) => regionDict[id] = id);
 
         const apply = () => {
             const r = this.atlas.get(this.state.region);
             if (!r) return;
-            this.sprite.texture = r;   // resets size to region.size + slice params
+            this.sprite.sprite = r;     // bind the atlas sprite asset
+            this.sprite.drawMode = SpriteDrawMode.sliced;
             this.sprite.size = new Vector2(this.state.width, this.state.height);
         };
 

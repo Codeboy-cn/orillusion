@@ -13,7 +13,7 @@ import {
     Object3D,
     OverlayCamera,
     Scene3D,
-    Sprite,
+    SpriteRenderer,
     Vector2,
     View3D,
 } from "@orillusion/core";
@@ -32,9 +32,9 @@ class Sample_Sprite_Interactive {
 
     private overlay: OverlayCamera;
     private buttonObj: Object3D;
-    private button: Sprite;
+    private button: SpriteRenderer;
     private dragObj: Object3D;
-    private dragSprite: Sprite;
+    private dragSprite: SpriteRenderer;
 
     private readonly normal = new Color(0.7, 0.8, 1, 1);
     private readonly hover = new Color(0.9, 0.95, 1, 1);
@@ -93,7 +93,7 @@ class Sample_Sprite_Interactive {
         /******** button *******/
         {
             this.buttonObj = new Object3D();
-            this.button = this.buttonObj.addComponent(Sprite);
+            this.button = this.buttonObj.addComponent(SpriteRenderer);
             this.button.texture = this.texture;
             this.button.size = new Vector2(160, 48);
             this.button.pivot = new Vector2(0, 0);
@@ -118,7 +118,7 @@ class Sample_Sprite_Interactive {
         /******** draggable tile *******/
         {
             this.dragObj = new Object3D();
-            this.dragSprite = this.dragObj.addComponent(Sprite);
+            this.dragSprite = this.dragObj.addComponent(SpriteRenderer);
             this.dragSprite.texture = this.texture;
             this.dragSprite.size = new Vector2(80, 80);
             this.dragSprite.pivot = new Vector2(0.5, 0.5);

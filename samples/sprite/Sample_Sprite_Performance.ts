@@ -11,7 +11,7 @@ import {
     Object3D,
     OverlayCamera,
     Scene3D,
-    Sprite,
+    SpriteRenderer,
     Vector2,
     View3D,
 } from "@orillusion/core";
@@ -95,7 +95,7 @@ class Sample_Sprite_Performance {
         const cols = Math.max(4, Math.floor(800 / s.spacing));
         for (let i = 0; i < s.count; i++) {
             const obj = new Object3D();
-            const sprite = obj.addComponent(Sprite);
+            const sprite = obj.addComponent(SpriteRenderer);
             sprite.texture = this.texture;
             sprite.size = new Vector2(s.tileSize, s.tileSize);
             sprite.pivot = new Vector2(0.5, 0.5);

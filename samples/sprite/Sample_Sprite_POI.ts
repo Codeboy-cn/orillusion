@@ -12,7 +12,7 @@ import {
     Object3DUtil,
     OverlayCamera,
     Scene3D,
-    Sprite,
+    SpriteRenderer,
     UIUtil,
     Vector2,
     Vector3,
@@ -34,7 +34,7 @@ class Sample_Sprite_POI {
     private overlay: OverlayCamera;
     private target: Object3D;
     private label: Object3D;
-    private labelSprite: Sprite;
+    private labelSprite: SpriteRenderer;
     private labelTex: BitmapTexture2D;
     private pixelRatio: number = 1;
     private _vec: Vector3 = new Vector3();
@@ -107,7 +107,7 @@ class Sample_Sprite_POI {
             const measure = UIUtil.measureText(this.state.text, this.labelOpts);
 
             this.label = new Object3D();
-            this.labelSprite = this.label.addComponent(Sprite);
+            this.labelSprite = this.label.addComponent(SpriteRenderer);
             this.labelSprite.texture = this.labelTex;
             this.labelSprite.size = new Vector2(measure.width, measure.height);
             this.labelSprite.pivot = new Vector2(0.5, 0.5);

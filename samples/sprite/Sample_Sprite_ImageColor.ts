@@ -11,7 +11,7 @@ import {
     Object3D,
     OverlayCamera,
     Scene3D,
-    Sprite,
+    SpriteRenderer,
     Vector2,
     View3D,
 } from "@orillusion/core";
@@ -30,7 +30,7 @@ class Sample_Sprite_ImageColor {
 
     private overlay: OverlayCamera;
     private objs: Object3D[] = [];
-    private sprites: Sprite[] = [];
+    private sprites: SpriteRenderer[] = [];
 
     private readonly state = {
         cols: 4,
@@ -108,7 +108,7 @@ class Sample_Sprite_ImageColor {
         const total = this.state.cols * this.state.rows;
         for (let i = 0; i < total; i++) {
             const obj = new Object3D();
-            const sprite = obj.addComponent(Sprite);
+            const sprite = obj.addComponent(SpriteRenderer);
             sprite.texture = this.texture;
             sprite.size = new Vector2(this.state.tile, this.state.tile);
             sprite.pivot = new Vector2(0, 0);

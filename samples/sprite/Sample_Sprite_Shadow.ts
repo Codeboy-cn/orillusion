@@ -11,7 +11,7 @@ import {
     Object3D,
     OverlayCamera,
     Scene3D,
-    Sprite,
+    SpriteRenderer,
     UIUtil,
     Vector2,
     View3D,
@@ -32,7 +32,7 @@ class Sample_Sprite_Shadow {
 
     private overlay: OverlayCamera;
     private targetObj: Object3D;
-    private targetSprite: Sprite;
+    private targetSprite: SpriteRenderer;
     private shadow: Object3D | null = null;
 
     private readonly state = {
@@ -91,7 +91,7 @@ class Sample_Sprite_Shadow {
         /******** target sprite + initial shadow *******/
         {
             this.targetObj = new Object3D();
-            this.targetSprite = this.targetObj.addComponent(Sprite);
+            this.targetSprite = this.targetObj.addComponent(SpriteRenderer);
             this.targetSprite.texture = this.texture;
             this.targetSprite.size = new Vector2(220, 220);
             this.targetSprite.pivot = new Vector2(0, 0);

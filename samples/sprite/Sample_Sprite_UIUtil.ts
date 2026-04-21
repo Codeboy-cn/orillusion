@@ -11,7 +11,7 @@ import {
     Object3D,
     OverlayCamera,
     Scene3D,
-    Sprite,
+    SpriteRenderer,
     UIUtil,
     Vector2,
     View3D,
@@ -34,9 +34,9 @@ class Sample_Sprite_UIUtil {
 
     private overlay: OverlayCamera;
     private headlineObj: Object3D;
-    private headlineSprite: Sprite;
+    private headlineSprite: SpriteRenderer;
     private headlineTex: BitmapTexture2D;
-    private buttonSprite: Sprite;
+    private buttonSprite: SpriteRenderer;
 
     private readonly headlineState = {
         text: 'BIG HEADLINE',
@@ -102,7 +102,7 @@ class Sample_Sprite_UIUtil {
             const measure = UIUtil.measureText(this.headlineState.text, this.headlineState);
 
             this.headlineObj = new Object3D();
-            this.headlineSprite = this.headlineObj.addComponent(Sprite);
+            this.headlineSprite = this.headlineObj.addComponent(SpriteRenderer);
             this.headlineSprite.texture = this.headlineTex;
             this.headlineSprite.size = new Vector2(measure.width, measure.height);
             this.headlineSprite.pivot = new Vector2(0, 0);

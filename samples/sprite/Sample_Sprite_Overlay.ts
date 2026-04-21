@@ -11,7 +11,7 @@ import {
     Object3D,
     OverlayCamera,
     Scene3D,
-    Sprite,
+    SpriteRenderer,
     Vector2,
     View3D,
 } from "@orillusion/core";
@@ -33,9 +33,9 @@ class Sample_Sprite_Overlay {
 
     private overlay: OverlayCamera;
     private healthObj: Object3D;
-    private health: Sprite;
+    private health: SpriteRenderer;
     private mapObj: Object3D;
-    private map: Sprite;
+    private map: SpriteRenderer;
 
     async run() {
         GUIHelp.init();
@@ -85,7 +85,7 @@ class Sample_Sprite_Overlay {
         /******** health bar (pivot top-left) *******/
         {
             this.healthObj = new Object3D();
-            this.health = this.healthObj.addComponent(Sprite);
+            this.health = this.healthObj.addComponent(SpriteRenderer);
             this.health.texture = this.texture;
             this.health.size = new Vector2(240, 24);
             this.health.pivot = new Vector2(0, 0);
@@ -101,7 +101,7 @@ class Sample_Sprite_Overlay {
         /******** mini-map (pivot bottom-right) *******/
         {
             this.mapObj = new Object3D();
-            this.map = this.mapObj.addComponent(Sprite);
+            this.map = this.mapObj.addComponent(SpriteRenderer);
             this.map.texture = this.texture;
             this.map.size = new Vector2(160, 160);
             this.map.pivot = new Vector2(1, 1);

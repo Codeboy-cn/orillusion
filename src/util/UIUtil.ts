@@ -1,5 +1,6 @@
 import { Interactive } from '../components/Interactive';
-import { Sprite } from '../components/renderer/Sprite';
+import { SpriteRenderer } from '../components/renderer/SpriteRenderer';
+import { Sprite } from '../assets/Sprite';
 import { Object3D } from '../core/entities/Object3D';
 import { InteractiveEvent } from '../event/eventConst/InteractiveEvent';
 import { Context3D } from '../gfx/graphics/webGpu/Context3D';
@@ -92,36 +93,34 @@ export class UIUtil {
     ): Object3D | null {
         const parent = target.parentObject;
         if (!parent) return null;
-        const srcSprite = target.getComponent(Sprite) as Sprite | null;
-        if (!srcSprite || !srcSprite.texture || !srcSprite.size) return null;
+        const srcRenderer = target.getComponent(SpriteRenderer) as SpriteRenderer | null;
+        const srcSprite = srcRenderer?.sprite;
+        if (!srcRenderer || !srcSprite || !srcSprite.texture || !srcRenderer.size) return null;
 
         const offset = opts.offset ?? new Vector2(4, 4);
         const baseColor = opts.color ?? new Color(0, 0, 0, 1);
         const alphaScale = opts.alphaScale ?? 0.45;
 
         const shadowObj = new Object3D();
-        const shadowSprite = shadowObj.addComponent(Sprite);
-        shadowSprite.texture = srcSprite.texture;
-        if (srcSprite.size) shadowSprite.size = srcSprite.size.clone();
-        if (srcSprite.pivot) shadowSprite.pivot = srcSprite.pivot.clone();
-        if (srcSprite.uvRect) shadowSprite.uvRect = srcSprite.uvRect.clone();
-        shadowSprite.cornerRadius = srcSprite.cornerRadius;
-        shadowSprite.color = new Color(baseColor.r, baseColor.g, baseColor.b, baseColor.a * alphaScale);
+        const shadowRenderer = shadowObj.addComponent(SpriteRenderer);
+        shadowRenderer.sprite = srcSprite; // share the sprite asset
+        if (srcRenderer.size) shadowRenderer.size = srcRenderer.size.clone();
+        shadowRenderer.cornerRadius = srcRenderer.cornerRadius;
+        shadowRenderer.color = new Color(baseColor.r, baseColor.g, baseColor.b, baseColor.a * alphaScale);
         shadowObj.x = target.x + offset.x;
         shadowObj.y = target.y + offset.y;
         shadowObj.z = target.z;
-        // Render order: put shadow behind by lowering renderOrder (sprites
-        // sort in transparent bucket by renderOrder). MeshRenderer's default
-        // is 3000 for sprites; use -1 delta so the shadow renders first.
-        (shadowSprite as any).renderOrder = (srcSprite as any).renderOrder - 1;
+        // Sprites live in the transparent bucket; lower renderOrder so the
+        // shadow renders first (behind the original).
+        (shadowRenderer as any).renderOrder = (srcRenderer as any).renderOrder - 1;
         parent.addChild(shadowObj);
         return shadowObj;
     }
 
     /**
-     * Build a 3-state button: attaches a `Sprite` + `Interactive` to `parent`
-     * and wires texture swaps on OVER / DOWN / CLICK. Returns the sprite and
-     * interactive so callers can fine-tune further.
+     * Build a 3-state button: attaches a `SpriteRenderer` + `Interactive`
+     * to `parent` and wires texture swaps on OVER / DOWN / UP. Returns the
+     * renderer and interactive so callers can fine-tune.
      */
     public static createButton(
         parent: Object3D,
@@ -132,19 +131,19 @@ export class UIUtil {
             disabledTexture?: Texture;
             onClick?: () => void;
         },
-    ): { sprite: Sprite; interactive: Interactive } {
-        const sprite = parent.addComponent(Sprite);
-        sprite.texture = opts.normalTexture;
+    ): { renderer: SpriteRenderer; sprite: SpriteRenderer; interactive: Interactive } {
+        const renderer = parent.addComponent(SpriteRenderer);
+        renderer.setTexture(opts.normalTexture);
         const interactive = parent.addComponent(Interactive);
 
         if (opts.hoverTexture) {
-            parent.addEventListener(InteractiveEvent.OVER, () => { sprite.texture = opts.hoverTexture!; }, null);
-            parent.addEventListener(InteractiveEvent.OUT, () => { sprite.texture = opts.normalTexture; }, null);
+            parent.addEventListener(InteractiveEvent.OVER, () => { renderer.setTexture(opts.hoverTexture!); }, null);
+            parent.addEventListener(InteractiveEvent.OUT, () => { renderer.setTexture(opts.normalTexture); }, null);
         }
         if (opts.pressedTexture) {
-            parent.addEventListener(InteractiveEvent.DOWN, () => { sprite.texture = opts.pressedTexture!; }, null);
+            parent.addEventListener(InteractiveEvent.DOWN, () => { renderer.setTexture(opts.pressedTexture!); }, null);
             parent.addEventListener(InteractiveEvent.UP, () => {
-                sprite.texture = opts.hoverTexture ?? opts.normalTexture;
+                renderer.setTexture(opts.hoverTexture ?? opts.normalTexture);
             }, null);
         }
         if (opts.onClick) {
@@ -152,7 +151,8 @@ export class UIUtil {
         }
         // Expose disabled texture as a helper — callers toggle via interactive.enable.
         (interactive as any).disabledTexture = opts.disabledTexture;
-        return { sprite, interactive };
+        // Return both `sprite` (legacy alias) and `renderer` so migration is easy.
+        return { renderer, sprite: renderer, interactive };
     }
 
     // ---------- private helpers ----------

@@ -11,7 +11,7 @@ import {
     Object3D,
     OverlayCamera,
     Scene3D,
-    Sprite,
+    SpriteRenderer,
     Vector2,
     Vector4,
     View3D,
@@ -31,8 +31,8 @@ class Sample_Sprite_Scissor {
     texture: BitmapTexture2D;
 
     private overlay: OverlayCamera;
-    private sprite: Sprite;
-    private wipe: Sprite;
+    private sprite: SpriteRenderer;
+    private wipe: SpriteRenderer;
     private phase: number = 0;
 
     private readonly state = {
@@ -96,7 +96,7 @@ class Sample_Sprite_Scissor {
         /******** tunable sprite *******/
         {
             const obj = new Object3D();
-            this.sprite = obj.addComponent(Sprite);
+            this.sprite = obj.addComponent(SpriteRenderer);
             this.sprite.texture = this.texture;
             this.sprite.size = new Vector2(240, 240);
             this.sprite.pivot = new Vector2(0, 0);
@@ -110,7 +110,7 @@ class Sample_Sprite_Scissor {
         /******** animated wipe *******/
         {
             const obj = new Object3D();
-            this.wipe = obj.addComponent(Sprite);
+            this.wipe = obj.addComponent(SpriteRenderer);
             this.wipe.texture = this.texture;
             this.wipe.size = new Vector2(240, 60);
             this.wipe.pivot = new Vector2(0, 0);

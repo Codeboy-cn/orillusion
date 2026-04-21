@@ -43,16 +43,16 @@ export class AtlasParser extends ParserBase {
             const entry = atlasInfo[key];
             const rect = entry.textureRect;
             // atlas JSON stores textureRect as (x, y, w, h) in pixel units.
-            const uv = new Vector4(
+            const region = new Vector4(
                 rect.x / atlasW,
                 rect.y / atlasH,
                 rect.z / atlasW,
                 rect.w / atlasH,
             );
-            const size = new Vector2(entry.size?.x ?? rect.z, entry.size?.y ?? rect.w);
-            // atlas JSON border is (left, bottom, right, top) in pixels of the source sub-rect.
-            // Convert to normalized source-UV fractions expected by SpriteShader
-            // (left, top, right, bottom).
+            const nativeSize = new Vector2(entry.size?.x ?? rect.z, entry.size?.y ?? rect.w);
+            // atlas JSON border is (left, bottom, right, top) in pixels of the
+            // source sub-rect. Convert to normalized region-UV fractions
+            // expected by SpriteShader (left, top, right, bottom).
             let border: Vector4 | undefined = undefined;
             if (entry.border) {
                 const regionW = Math.max(rect.z, 0.0001);
@@ -66,7 +66,7 @@ export class AtlasParser extends ParserBase {
                     border = new Vector4(bx, by, bz, bw);
                 }
             }
-            textureAtlas.add(key, uv, size, border);
+            textureAtlas.add(key, region, nativeSize, border);
         }
         this.data = textureAtlas;
     }

@@ -9,7 +9,7 @@ import {
     Object3D,
     OverlayCamera,
     Scene3D,
-    Sprite,
+    SpriteRenderer,
     Vector2,
     View3D,
 } from "@orillusion/core";
@@ -30,7 +30,7 @@ class Sample_Sprite_Video {
 
     private overlay: OverlayCamera;
     private obj: Object3D;
-    private sprite: Sprite;
+    private sprite: SpriteRenderer;
     private video: VideoTexture;
 
     private readonly state = {
@@ -88,7 +88,7 @@ class Sample_Sprite_Video {
         /******** video sprite *******/
         {
             this.obj = new Object3D();
-            this.sprite = this.obj.addComponent(Sprite);
+            this.sprite = this.obj.addComponent(SpriteRenderer);
             this.sprite.size = new Vector2(this.state.width, this.state.height);
             this.sprite.pivot = new Vector2(0, 0);
             this.sprite.cornerRadius = this.state.corner;

@@ -1,7 +1,7 @@
 import { View3D } from '../core/View3D';
 import { InteractiveDispatcher } from '../io/InteractiveDispatcher';
 import { ComponentBase } from './ComponentBase';
-import { Sprite } from './renderer/Sprite';
+import { SpriteRenderer } from './renderer/SpriteRenderer';
 import { Vector2 } from '../math/Vector2';
 import { Vector3 } from '../math/Vector3';
 import { RegisterComponent } from '../util/SerializeDecoration';
@@ -93,14 +93,15 @@ export class Interactive extends ComponentBase {
     }
 
     private _effectiveSize(): Vector2 {
-        const sprite = this.object3D?.getComponent(Sprite) as Sprite | null;
-        if (sprite && sprite.size) return sprite.size;
+        const renderer = this.object3D?.getComponent(SpriteRenderer) as SpriteRenderer | null;
+        if (renderer && renderer.size) return renderer.size;
         return this.hitSize;
     }
 
     private _effectivePivot(): Vector2 {
-        const sprite = this.object3D?.getComponent(Sprite) as Sprite | null;
-        if (sprite && sprite.pivot) return sprite.pivot;
+        const renderer = this.object3D?.getComponent(SpriteRenderer) as SpriteRenderer | null;
+        const pivot = renderer?.sprite?.pivot;
+        if (pivot) return pivot;
         return this.hitPivot;
     }
 
