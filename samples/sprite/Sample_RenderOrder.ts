@@ -104,9 +104,13 @@ class Sample_RenderOrder {
             sprite.pivot = new Vector2(0.5, 0.5);
             sprite.cornerRadius = 0.2;
             sprite.color = d.color;
-            sprite.renderOrder = (this.state as any)[d.orderKey];
             obj.localPosition = new Vector3(d.offsetX, d.offsetY + 2, 0);
             this.scene.addChild(obj);
+            // Set renderOrder AFTER addChild. addChild triggers onEnable which
+            // calls `RenderNode.set materials`, and that setter recomputes
+            // renderOrder from the material's pass — any pre-addChild value
+            // is overwritten there. Post-addChild sets apply cleanly.
+            sprite.renderOrder = (this.state as any)[d.orderKey];
             this.cards.push({ sprite, name: d.name });
         }
     }

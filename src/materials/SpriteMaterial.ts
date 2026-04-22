@@ -21,6 +21,14 @@ export class SpriteMaterial extends Material {
     constructor(ctx?: Context3D) {
         super();
         this.shader = new SpriteShader();
+        // Declare transparent so the node lands in the transparent bucket of
+        // EntityCollect. That bucket runs `autoSortRenderNodes` every frame,
+        // which is what makes per-sprite `renderOrder` tweaks actually
+        // restack — the opaque bucket ignores those changes.
+        // `Material.transparent = true` also bumps the pass's renderOrder
+        // to 3000 (the transparent-bucket boundary), so downstream
+        // `RenderNode.set materials` picks up the correct bucket.
+        this.transparent = true;
         // Default sprite is a white quad — callers assign texture/color later.
         this.baseMap = Engine3D.resFor(ctx).whiteTexture;
     }
