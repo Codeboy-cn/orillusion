@@ -21,9 +21,9 @@ import {
  * the sort key the engine uses inside the transparent bucket
  * (renderOrder >= 3000). Higher number renders later, so it ends up on top.
  *
- * Tuning any of the three sliders re-stacks the cards live. The preset
- * buttons cycle which color is in front. Moving a card's renderOrder to
- * the lowest value pushes it behind; to the highest value brings it front.
+ * The preset buttons cycle which color is in front. Each click assigns
+ * 3002 / 3001 / 3000 to the three cards so the named one ends up drawn
+ * last and visibly covers the overlap zone.
  */
 class Sample_RenderOrder {
     engine: Engine3D;
@@ -33,12 +33,6 @@ class Sample_RenderOrder {
     texture: BitmapTexture2D;
 
     private cards: Array<{ sprite: SpriteRenderer; name: string }> = [];
-
-    private readonly state = {
-        redOrder: 3000,
-        greenOrder: 3001,
-        blueOrder: 3002,
-    };
 
     async run() {
         GUIHelp.init();
@@ -91,9 +85,9 @@ class Sample_RenderOrder {
         // decides what's on top.
         //
         const defs = [
-            { name: 'red',   color: new Color(1.0, 0.3, 0.3, 1), offsetX: -0.5, offsetY:  0.4, orderKey: 'redOrder'   },
-            { name: 'green', color: new Color(0.3, 1.0, 0.4, 1), offsetX:  0.5, offsetY:  0.4, orderKey: 'greenOrder' },
-            { name: 'blue',  color: new Color(0.4, 0.5, 1.0, 1), offsetX:  0.0, offsetY: -0.4, orderKey: 'blueOrder'  },
+            { name: 'red',   color: new Color(1.0, 0.3, 0.3, 1), offsetX: -0.5, offsetY:  0.4, order: 3000 },
+            { name: 'green', color: new Color(0.3, 1.0, 0.4, 1), offsetX:  0.5, offsetY:  0.4, order: 3001 },
+            { name: 'blue',  color: new Color(0.4, 0.5, 1.0, 1), offsetX:  0.0, offsetY: -0.4, order: 3002 },
         ] as const;
 
         for (const d of defs) {
@@ -110,37 +104,22 @@ class Sample_RenderOrder {
             // calls `RenderNode.set materials`, and that setter recomputes
             // renderOrder from the material's pass — any pre-addChild value
             // is overwritten there. Post-addChild sets apply cleanly.
-            sprite.renderOrder = (this.state as any)[d.orderKey];
+            sprite.renderOrder = d.order;
             this.cards.push({ sprite, name: d.name });
         }
     }
 
-    private _apply() {
-        this.cards.find(c => c.name === 'red')!.sprite.renderOrder = this.state.redOrder;
-        this.cards.find(c => c.name === 'green')!.sprite.renderOrder = this.state.greenOrder;
-        this.cards.find(c => c.name === 'blue')!.sprite.renderOrder = this.state.blueOrder;
-    }
-
-    private _preset(redOnTop: string) {
-        // Assign orders so the named card is highest (drawn last = on top).
-        // The other two get descending values.
-        const all = ['red', 'green', 'blue'];
-        const others = all.filter(n => n !== redOnTop);
-        this.state.redOrder   = redOnTop === 'red'   ? 3002 : (others.indexOf('red')   === 0 ? 3000 : 3001);
-        this.state.greenOrder = redOnTop === 'green' ? 3002 : (others.indexOf('green') === 0 ? 3000 : 3001);
-        this.state.blueOrder  = redOnTop === 'blue'  ? 3002 : (others.indexOf('blue')  === 0 ? 3000 : 3001);
-        this._apply();
+    private _preset(topName: string) {
+        // Named card gets the highest renderOrder (drawn last = on top).
+        // The other two share 3000 and 3001.
+        const others = this.cards.filter(c => c.name !== topName);
+        others[0].sprite.renderOrder = 3000;
+        others[1].sprite.renderOrder = 3001;
+        this.cards.find(c => c.name === topName)!.sprite.renderOrder = 3002;
     }
 
     private initGUI() {
-        GUIHelp.addFolder('renderOrder per card');
-        GUIHelp.add(this.state, 'redOrder',   3000, 3010, 1).onChange(() => this._apply()).listen();
-        GUIHelp.add(this.state, 'greenOrder', 3000, 3010, 1).onChange(() => this._apply()).listen();
-        GUIHelp.add(this.state, 'blueOrder',  3000, 3010, 1).onChange(() => this._apply()).listen();
-        GUIHelp.open();
-        GUIHelp.endFolder();
-
-        GUIHelp.addFolder('Presets (bring to front)');
+        GUIHelp.addFolder('Bring to front');
         GUIHelp.addButton('Red on top',   () => this._preset('red'));
         GUIHelp.addButton('Green on top', () => this._preset('green'));
         GUIHelp.addButton('Blue on top',  () => this._preset('blue'));
