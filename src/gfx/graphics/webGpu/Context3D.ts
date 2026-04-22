@@ -71,6 +71,36 @@ export class Context3D extends CEventDispatcher {
         if (navigator.gpu === undefined) throw new Error('Your browser does not support WebGPU!');
         this.adapter = await navigator.gpu.requestAdapter({ powerPreference: 'high-performance' });
         if (!this.adapter) throw new Error('Your browser does not support WebGPU!');
+        // Cross-platform shadow debugging: dump adapter backend + features so
+        // Mac (Metal) vs Windows (D3D12/Vulkan) behavior can be triaged from
+        // a single screenshot of the devtools console. `info` is only defined
+        // on recent Chrome; falls back to a stub with an empty backend name.
+        const ainfo: any = (this.adapter as any).info;
+        if (ainfo) {
+            const f = (k: string) => (ainfo[k] !== undefined && ainfo[k] !== '') ? ainfo[k] : '<empty>';
+            console.log(
+                `[Context3D] adapter.info backend=${f('backend')} vendor=${f('vendor')} ` +
+                `architecture=${f('architecture')} device=${f('device')} description=${f('description')}`
+            );
+        } else {
+            // Older Chrome / Electron didn't expose adapter.info synchronously.
+            // Try the deprecated async requestAdapterInfo() as a fallback.
+            try {
+                const infoAsync = await (this.adapter as any).requestAdapterInfo?.();
+                if (infoAsync) {
+                    console.log(
+                        `[Context3D] requestAdapterInfo() vendor=${infoAsync.vendor ?? '?'} ` +
+                        `architecture=${infoAsync.architecture ?? '?'} device=${infoAsync.device ?? '?'}`
+                    );
+                } else {
+                    console.log('[Context3D] adapter.info not exposed by this Chrome/Electron build');
+                }
+            } catch (e: any) {
+                console.log('[Context3D] adapter.info probe failed:', e?.message ?? e);
+            }
+        }
+        const avail = Array.from((this.adapter.features as any) || []);
+        console.log('[Context3D] adapter.features =', avail.join(', '));
         this.device = await this.adapter.requestDevice({
             requiredFeatures: [
                 'bgra8unorm-storage',
@@ -87,6 +117,14 @@ export class Context3D extends CEventDispatcher {
         if (!this.device) throw new Error('Your browser does not support WebGPU!');
         this.device.label = `device-${Context3D._nextLabel++}`;
         this.presentationFormat = navigator.gpu.getPreferredCanvasFormat();
+        console.log(`[Context3D] presentationFormat = ${this.presentationFormat}`);
+        // Catch *every* validation / out-of-memory error from the device so
+        // silent D3D12 failures (e.g. shadow pipeline creation, depth texture
+        // copy) surface in the console instead of just "no shadows".
+        this.device.addEventListener('uncapturederror', (event: any) => {
+            const e = event.error;
+            console.error('[WebGPU uncaptured]', e?.constructor?.name ?? 'Error', e?.message ?? e);
+        });
 
         // Subscribe to device-lost once. Fires on driver reset, tab suspend,
         // explicit `device.destroy()`, or GPU process crash. We don't attempt
