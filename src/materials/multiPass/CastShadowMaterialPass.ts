@@ -11,7 +11,15 @@ export class CastShadowMaterialPass extends RenderShaderPass {
     constructor() {
         super(`shadowCastMap_vert`, `directionShadowCastMap_frag`);
         this.passType = PassType.SHADOW;
-        this.setShaderEntry("main");
+        // Include the fragment stage explicitly (both entry points = "main").
+        // Previously fsEntryPoint was unset, producing a vertex-only pipeline.
+        // On Dawn's D3D12 backend that path appears to silently skip the depth
+        // write (no validation error, adapter is fine, features present), so
+        // the shadow map stayed at its cleared far value and every receiver
+        // tested "fully lit" → no shadows on Windows. Metal handled the same
+        // pipeline correctly, which is why Mac worked. An explicit no-output
+        // fragment stage works on both backends.
+        this.setShaderEntry("main", "main");
         this.setUniformFloat("cameraFar", 5000);
         this.setUniformVector3("lightWorldPos", Vector3.ZERO);
 

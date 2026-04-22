@@ -283,17 +283,15 @@ export let directionShadowCastMap_frag: string = /*wgsl*/ `
       var baseMap: texture_2d<f32>;
     #endif
 
-    // Directional shadow is a DEPTH-ONLY pass: ShadowMapPassRenderer constructs
-    // RTFrame([], []) with no color attachments, so this fragment shader must
-    // declare NO outputs. Declaring @location(auto) o_Target here — even if
-    // zero-written — forced the pipeline to expect a color target that the
-    // render pass never provided; Metal accepted it leniently (Mac looked
-    // correct) but Dawn's D3D12 backend strictly failed pipeline creation,
-    // so the entire shadow pass never ran on Windows → no shadows.
-    // Same reason for not declaring @builtin(frag_depth): let the rasterizer
-    // write NDC z naturally (directional = orthographic, so NDC z IS the
-    // standard shadow depth).
+    // Directional shadow is a DEPTH-ONLY pass: ShadowMapPassRenderer builds
+    // RTFrame([], []) with no color attachments. This fragment shader must
+    // therefore declare NO outputs (no @location and no @builtin(frag_depth))
+    // and only take varyings that the vertex shader actually produces — the
+    // VertexOutput struct only exports fragUV at location 0 plus position.
+    // Even an "unused" extra input like @location(1) would create a binding
+    // that Dawn's D3D12 backend can silently drop rasterized fragments for,
+    // which is the symptom we saw (Mac works, Windows no shadows).
     @fragment
-    fn main(@location(auto) fragUV: vec2<f32> , @location(auto) clipPos:vec3<f32> ) {
+    fn main(@location(auto) fragUV: vec2<f32>) {
     }
 `

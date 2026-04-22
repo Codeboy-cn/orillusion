@@ -60,14 +60,29 @@ export class WebGPUDescriptorCreator {
         } else {
             rps.renderPassDescriptor = WebGPUDescriptorCreator.getRenderPassDescriptor(ctx, rps, loadOp);
             rps.renderBundleEncoderDescriptor = WebGPUDescriptorCreator.getRenderBundleDescriptor(ctx, rps);
-            // if(!rps.customSize){
-            rps.renderTargetTextures = [
-                {
-                    format: ctx.presentationFormat,
-                },
-            ];
-            // }
-            rps.outColor = 0;
+            if (rtFrame && rtFrame.depthTexture) {
+                // Depth-only pass (e.g. directional / CSM shadow uses
+                // RTFrame([], []) with just a depth attachment). Don't
+                // fabricate a phantom bgra8unorm color target — the pipeline
+                // would then be created with a color target that has no
+                // matching fragment output, which Metal silently accepts but
+                // Dawn's D3D12 backend rejects with
+                //   "Color target has no corresponding fragment stage output
+                //    but writeMask is not zero"
+                // The whole shadow render pipeline becomes invalid, the
+                // shadow map never gets written, and every receiver tests as
+                // fully lit → no shadows on Windows.
+                rps.renderTargetTextures = [];
+                rps.outColor = -1;
+            } else {
+                // Presentation-to-canvas default.
+                rps.renderTargetTextures = [
+                    {
+                        format: ctx.presentationFormat,
+                    },
+                ];
+                rps.outColor = 0;
+            }
         }
         return rps;
     }
