@@ -403,6 +403,13 @@ export class Texture implements GPUSamplerDescriptor {
         // bound consumer creates the texture, uploads `_sourceImageData`,
         // and generates mipmaps (see the gpuTexture getter).
         this.updateGPUTexture();
+
+        // Tell downstream consumers (material bind groups) that this texture's
+        // underlying GPU resource is gone and needs rebinding. Without this,
+        // `UIUtil.updateTextTexture(tex, ...)` silently leaves the pipeline
+        // reading the destroyed view — visible on screen as "HP slider
+        // doesn't change the label".
+        this.noticeChange();
     }
 
     /**
