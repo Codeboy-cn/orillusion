@@ -61,10 +61,68 @@ export class ShadowMapPassRenderer extends RendererBase {
         }
     }
 
+    // Diagnostic: one-shot readback of the first shadow VirtualTexture
+    // after frame 60 to confirm whether the shadow depth pass actually writes
+    // anything, or whether the depth attachment stays at its clear value. Only
+    // runs once per session; remove once the Mac/Windows gap is understood.
+    private _debugProbeDone = false;
+    private async _debugProbeShadowMap(view: View3D) {
+        if (this._debugProbeDone || Time.frame < 60) return;
+        const ps = this.rendererPassStates?.[0];
+        const tex: any = ps?.depthTexture;
+        if (!tex) return;
+        this._debugProbeDone = true;
+        try {
+            const ctx = view.engine3D.context3D;
+            const device: GPUDevice = ctx.device;
+            const gpu = ctx.gpuContext;
+            const w = tex.width, h = tex.height;
+            const bytesPerRow = Math.ceil((w * 4) / 256) * 256;
+            const buf = device.createBuffer({
+                size: bytesPerRow * h,
+                usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
+            });
+            const cmd = gpu.beginCommandEncoder();
+            cmd.copyTextureToBuffer(
+                { texture: tex.getGPUTexture(), aspect: 'depth-only' },
+                { buffer: buf, bytesPerRow, rowsPerImage: h },
+                { width: w, height: h, depthOrArrayLayers: 1 },
+            );
+            gpu.endCommandEncoder(cmd);
+            await buf.mapAsync(GPUMapMode.READ);
+            const copy = new Float32Array(buf.getMappedRange().slice(0));
+            buf.unmap();
+            buf.destroy();
+            let mn = Infinity, mx = -Infinity, sum = 0, nonOneCount = 0;
+            const stride = bytesPerRow / 4;
+            for (let y = 0; y < h; y++) {
+                for (let x = 0; x < w; x++) {
+                    const d = copy[y * stride + x];
+                    if (d < mn) mn = d;
+                    if (d > mx) mx = d;
+                    sum += d;
+                    if (d < 0.9999) nonOneCount++;
+                }
+            }
+            const total = w * h;
+            const mean = sum / total;
+            console.log(
+                `[ShadowMapDebug] directional shadow VirtualTexture readback: ` +
+                `size=${w}x${h}  min=${mn.toFixed(5)}  max=${mx.toFixed(5)}  ` +
+                `mean=${mean.toFixed(5)}  non-1.0-texels=${nonOneCount}/${total} (${(100 * nonOneCount / total).toFixed(2)}%)`
+            );
+        } catch (e: any) {
+            console.log('[ShadowMapDebug] readback failed:', e?.message ?? e);
+            this._debugProbeDone = false;
+        }
+    }
+
     render(view: View3D, occlusionSystem: OcclusionSystem) {
         let shadowSetting = view.engine3D.setting.shadow;
         if (!shadowSetting.enable)
             return;
+        // fire-and-forget diagnostic probe
+        void this._debugProbeShadowMap(view);
         let camera = view.camera;
         let scene = view.scene;
         this.shadowPassCount = 0;
