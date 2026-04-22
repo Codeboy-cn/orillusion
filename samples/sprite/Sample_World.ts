@@ -94,7 +94,7 @@ class Sample_World {
 
         /******** texture *******/
         {
-            this.texture = new BitmapTexture2D(true, this.engine.context3D);
+            this.texture = new BitmapTexture2D();
             this.texture.flipY = true;
             await this.texture.load('textures/KB3D_NTT_Ads_basecolor.png');
         }

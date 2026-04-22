@@ -64,7 +64,7 @@ class Sample_Basic {
         sky.relativeTransform = lightObj.transform;
 
         // Load a texture
-        const tex = new BitmapTexture2D(true, engine.context3D);
+        const tex = new BitmapTexture2D();
         tex.flipY = true;
         await tex.load('textures/KB3D_NTT_Ads_basecolor.png');
 
