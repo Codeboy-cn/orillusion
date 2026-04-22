@@ -1,11 +1,17 @@
 import { Scene3D, Engine3D, AtmosphericComponent, CameraUtil, HoverCameraController, View3D, SphereGeometry, Object3D, MeshRenderer, LitMaterial, SpotLight, BoxGeometry, Vector3 } from "@orillusion/core";
 import { GUIHelp } from "@orillusion/debug/GUIHelp";
 import { GUIUtil } from "@samples/utils/GUIUtil";
+import { ShadowLeakLogger } from "./debug/ShadowLeakLogger";
+
+const ENABLE_SHADOW_LOGGER = true;
 
 // sample of SpotLight
 class Sample_SpotLight {
     engine: Engine3D;
     scene: Scene3D;
+    private spotLight: SpotLight;
+    private walls: Object3D[] = [];
+    private logger: ShadowLeakLogger | null = null;
 
     async run() {
         const engine = this.engine = await Engine3D.init({
@@ -17,6 +23,7 @@ class Sample_SpotLight {
                     enable: true,
                 },
             },
+            lateRender: () => this.logger?.tick(),
         });
 
         GUIHelp.init();
@@ -37,6 +44,10 @@ class Sample_SpotLight {
         view.camera = mainCamera;
 
         engine.startRenderView(view);
+
+        if (ENABLE_SHADOW_LOGGER && !(typeof sessionStorage !== 'undefined' && sessionStorage.getItem('spotlightSweep'))) {
+            this.logger = ShadowLeakLogger.install(engine, view, this.spotLight, this.walls, { dumpAtFrame: 30 });
+        }
     }
 
     initScene() {
@@ -50,11 +61,16 @@ class Sample_SpotLight {
         let renderer = lightObj3D.addComponent(MeshRenderer);
         renderer.geometry = new SphereGeometry(5, 30, 30);
         renderer.material = new LitMaterial();
+        // Helper sphere sits AT the light origin. If it casts shadow, with
+        // front-face cube rendering every texel hits the sphere's inner
+        // surface at distance=radius and the entire scene falls into shadow.
+        renderer.castShadow = false;
         this.scene.addChild(lightObj3D);
 
         let spotLight = lightObj3D.addComponent(SpotLight);
         lightObj3D.x = -86;
-        lightObj3D.y = 200;
+        const yOverride = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('spotlightY') : null;
+        lightObj3D.y = yOverride != null ? parseFloat(yOverride) : 200;
         lightObj3D.z = -300;
         lightObj3D.transform.rotationX = 342;
         lightObj3D.transform.rotationY = 360;
@@ -71,6 +87,7 @@ class Sample_SpotLight {
         spotLight.castShadow = true;
 
         GUIUtil.showSpotLightGUI(spotLight);
+        this.spotLight = spotLight;
     }
 
     // Build a slightly complex scene
@@ -86,6 +103,7 @@ class Sample_SpotLight {
 
         let box = new BoxGeometry(1, 1, 1);
         let wall_w = new Object3D();
+        wall_w.name = 'wall_w';
         wall_w.localScale = new Vector3(500, 100, 10);
         wall_w.localPosition = new Vector3(0, 50, 0);
         let mrw = wall_w.addComponent(MeshRenderer);
@@ -99,6 +117,7 @@ class Sample_SpotLight {
         // each corner — that produced a bright line along the corner edge in
         // the shadow map (two back-face depths fighting at the intersection).
         let wall_a = new Object3D();
+        wall_a.name = 'wall_a';
         wall_a.localScale = new Vector3(10, 100, 500);
         wall_a.localPosition = new Vector3(255, 50, 0);
         let mra = wall_a.addComponent(MeshRenderer);
@@ -107,12 +126,15 @@ class Sample_SpotLight {
         this.scene.addChild(wall_a);
 
         let wall_d = new Object3D();
+        wall_d.name = 'wall_d';
         wall_d.localScale = new Vector3(10, 100, 500);
         wall_d.localPosition = new Vector3(-255, 50, 0);
         let mrd = wall_d.addComponent(MeshRenderer);
         mrd.geometry = box;
         mrd.material = mat;
         this.scene.addChild(wall_d);
+
+        this.walls = [wall_w, wall_a, wall_d];
     }
 }
 

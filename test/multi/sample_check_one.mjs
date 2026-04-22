@@ -3,12 +3,15 @@
 // e.g. sprite/Sample_World.ts
 
 import { app, BrowserWindow } from 'electron/main';
+import { promises as fs } from 'fs';
+import { dirname, join } from 'path';
+import { fileURLToPath } from 'url';
 
 app.commandLine.appendSwitch('enable-unsafe-webgpu');
 app.commandLine.appendSwitch('enable-features', 'Vulkan,UseSkiaRenderer');
 
 const HOST = 'http://localhost:4000';
-const WAIT_MS = 4000;
+const WAIT_MS = Number(process.env.SL_WAIT_MS) || 4000;
 
 const sampleArg = process.argv[process.argv.length - 1];
 if (!sampleArg || !sampleArg.endsWith('.ts')) {
@@ -34,8 +37,8 @@ async function main() {
     await app.whenReady();
 
     const win = new BrowserWindow({
-        width: 800,
-        height: 600,
+        width: Number(process.env.SL_W) || 800,
+        height: Number(process.env.SL_H) || 600,
         show: false,
         webPreferences: { offscreen: false, sandbox: false },
     });
@@ -45,7 +48,11 @@ async function main() {
     });
 
     await win.loadURL(HOST + '/samples/');
-    await win.webContents.executeJavaScript(`sessionStorage.setItem('target', '${sample}'); true`);
+    const extra = [`sessionStorage.setItem('target', '${sample}');`];
+    if (process.env.SL_Y) extra.push(`sessionStorage.setItem('spotlightY', '${process.env.SL_Y}');`);
+    if (process.env.SL_SWEEP) extra.push(`sessionStorage.setItem('spotlightSweep', '1');`);
+    extra.push('true');
+    await win.webContents.executeJavaScript(extra.join(' '));
     await win.loadURL(HOST + '/samples/');
     await new Promise((r) => setTimeout(r, WAIT_MS));
 
@@ -59,6 +66,19 @@ async function main() {
             !e.includes('"devtoolsUrl"'),
     );
     const warnLines = logs.filter((l) => l.startsWith('[warning]'));
+
+    // capture a screenshot so we can eyeball the scene when the log isn't
+    // enough. landing spot matches runner.mjs's _out/ convention.
+    try {
+        const __dirname = dirname(fileURLToPath(import.meta.url));
+        const OUT = join(__dirname, '_out');
+        await fs.mkdir(OUT, { recursive: true });
+        const png = await win.webContents.capturePage();
+        await fs.writeFile(join(OUT, 'screenshot.png'), png.toPNG());
+        process.stdout.write(`[info] screenshot: ${join(OUT, 'screenshot.png')}\n`);
+    } catch (e) {
+        process.stdout.write(`[warn] screenshot failed: ${e.message}\n`);
+    }
 
     process.stdout.write(`===== ${sample} =====\n`);
     process.stdout.write(`logs: ${logs.length}   errors: ${fatal.length}   warnings: ${warnLines.length}\n`);

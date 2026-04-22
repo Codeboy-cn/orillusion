@@ -283,34 +283,20 @@ export let directionShadowCastMap_frag: string = /*wgsl*/ `
       var baseMap: texture_2d<f32>;
     #endif
 
+    // Directional shadow stores light-space NDC z (rasterizer-interpolated),
+    // NOT a custom radial distance. Do NOT declare @builtin(frag_depth): if
+    // it's declared but left unwritten, Metal leniently falls back to the
+    // rasterizer depth (scene looks correct on macOS), but Dawn's D3D12
+    // backend strictly treats the unwritten output as 0, which makes every
+    // shadow texel read 0 and directional/CSM/skeleton samples render with
+    // no shadows on Windows. Omitting the builtin entirely lets the
+    // rasterizer write perspective-NDC depth on every platform.
     struct FragmentOutput {
       @location(auto) o_Target: vec4<f32>,
-      @builtin(frag_depth) out_depth: f32
     };
-
-    struct MaterialUniform {
-      lightWorldPos: vec3<f32>,
-      cameraFar: f32,
-    };
-
-    @group(2) @binding(0)
-    var<uniform> materialUniform: MaterialUniform;
 
     @fragment
     fn main(@location(auto) fragUV: vec2<f32> , @location(auto) clipPos:vec3<f32> ) -> FragmentOutput {
-        // var distance = length(worldPos.xyz - materialUniform.lightWorldPos ) ;
-        // distance = distance / materialUniform.cameraFar ;
-        var fragOut:FragmentOutput; 
-
-      // #if USE_ALPHACUT
-      //   let Albedo = textureSample(baseMap,baseMapSampler,fragUV);
-      //   if(Albedo.w > 0.5){
-      //     fragOut = FragmentOutput(vec4<f32>(0.0),distance);
-      //   }
-      // #else
-      //   fragOut = FragmentOutput(vec4<f32>(0.0),distance);
-      // #endif
-      
-        return fragOut ;
+        return FragmentOutput(vec4<f32>(0.0));
     }
 `

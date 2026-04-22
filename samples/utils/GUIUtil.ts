@@ -359,8 +359,10 @@ export class GUIUtil {
         // geometry closer than `near` to the light; for large scenes that
         // value may need to be hundreds of world units. shadowCameraFar = 0
         // means auto (use range).
-        GUIHelp.add(light, 'shadowCameraNear', 0.001, 1000, 0.01);
-        GUIHelp.add(light, 'shadowCameraFar', 0, 2000, 0.1);
+        GUIHelp.add(light, 'shadowCameraNear', 0.001, 1000, 0.01)
+            .onChange(() => this.refreshPointLightDebug(light));
+        GUIHelp.add(light, 'shadowCameraFar', 0, 2000, 0.1)
+            .onChange(() => this.refreshPointLightDebug(light));
 
         GUIUtil._addShadowCalcReadout(light);
         GUIUtil._addBiasReadout(light);
@@ -394,8 +396,10 @@ export class GUIUtil {
         // geometry closer than `near` to the light; for large scenes that
         // value may need to be hundreds of world units. shadowCameraFar = 0
         // means auto (use range).
-        GUIHelp.add(light, 'shadowCameraNear', 0.001, 1000, 0.01);
-        GUIHelp.add(light, 'shadowCameraFar', 0, 2000, 0.1);
+        GUIHelp.add(light, 'shadowCameraNear', 0.001, 1000, 0.01)
+            .onChange(() => this.refreshPointLightDebug(light));
+        GUIHelp.add(light, 'shadowCameraFar', 0, 2000, 0.1)
+            .onChange(() => this.refreshPointLightDebug(light));
 
         GUIUtil._addShadowCalcReadout(light);
         GUIUtil._addBiasReadout(light);
@@ -521,6 +525,29 @@ export class GUIUtil {
                 g.drawCircle(`${debugId}_cy`, pos, light.lightData.range, 48, Vector3.Y_AXIS, light.lightColor);
                 g.drawCircle(`${debugId}_cz`, pos, light.lightData.range, 48, Vector3.Z_AXIS, light.lightColor);
             }
+
+            // Cube-shadow near/far cross-sections. The cube camera's depth is
+            // `length(worldPos - lightPos) / shadowFar`, so radially the
+            // clip volume is a sphere of radius `near` (clipped inward) and
+            // `shadowCameraFar || range` (clipped outward). Draw three
+            // orthogonal great circles for each — green=near, red=far —
+            // so dragging the sliders in dat.gui gives a live bound.
+            const lAny = light as any;
+            const near: number = lAny.shadowCameraNear;
+            const farOverride: number = lAny.shadowCameraFar;
+            const farActual = (farOverride && farOverride > 0) ? farOverride : light.lightData.range;
+            const nearColor = new Color(0, 1, 1, 1);  // cyan
+            const farColor = new Color(1, 0, 0, 1);   // red
+            if (near && near > 0.01) {
+                g.drawCircle(`${debugId}_near_x`, pos, near, 48, Vector3.X_AXIS, nearColor);
+                g.drawCircle(`${debugId}_near_y`, pos, near, 48, Vector3.Y_AXIS, nearColor);
+                g.drawCircle(`${debugId}_near_z`, pos, near, 48, Vector3.Z_AXIS, nearColor);
+            }
+            if (farActual && farActual > 0) {
+                g.drawCircle(`${debugId}_far_x`, pos, farActual, 48, Vector3.X_AXIS, farColor);
+                g.drawCircle(`${debugId}_far_y`, pos, farActual, 48, Vector3.Y_AXIS, farColor);
+                g.drawCircle(`${debugId}_far_z`, pos, farActual, 48, Vector3.Z_AXIS, farColor);
+            }
         };
         light.bindOnChange();
     }
@@ -540,6 +567,13 @@ export class GUIUtil {
         g.Clear(`${debugId}_ray1`);
         g.Clear(`${debugId}_ray2`);
         g.Clear(`${debugId}_ray3`);
+        // Cube shadow near/far spheres (3 great circles each)
+        g.Clear(`${debugId}_near_x`);
+        g.Clear(`${debugId}_near_y`);
+        g.Clear(`${debugId}_near_z`);
+        g.Clear(`${debugId}_far_x`);
+        g.Clear(`${debugId}_far_y`);
+        g.Clear(`${debugId}_far_z`);
     }
 
     public static renderGIComponent(component: GlobalIlluminationComponent, view: View3D): void {
