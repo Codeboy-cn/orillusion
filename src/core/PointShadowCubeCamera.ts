@@ -53,14 +53,12 @@ export class PointShadowCubeCamera extends Object3D {
 
         let aspect = 1.0;
         this.up_camera.perspective(fov, aspect, near, far);
-        this.up_camera.lookAt(Vector3.ZERO, Vector3.UP, Vector3.DOWN);
+        this.up_camera.lookAt(Vector3.ZERO, Vector3.UP, Vector3.BACK);
         this.up_camera.object3D.scaleX = -1;
-        this.up_camera.object3D.rotationY = 180;
 
         this.down_camera.perspective(fov, aspect, near, far);
-        this.down_camera.lookAt(Vector3.ZERO, Vector3.DOWN, Vector3.DOWN);
+        this.down_camera.lookAt(Vector3.ZERO, Vector3.DOWN, Vector3.FORWARD);
         this.down_camera.object3D.scaleX = -1;
-        this.down_camera.object3D.rotationY = 180;
 
         this.left_camera.perspective(fov, aspect, near, far);
         this.left_camera.lookAt(Vector3.ZERO, Vector3.LEFT);
