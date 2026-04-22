@@ -26,6 +26,12 @@ export class BillboardComponent extends ComponentBase {
     }
 
     private updateBillboardMatrix(): void {
+        // `None` means the object keeps whatever rotation its transform
+        // already has — no face-camera logic. Without this early return the
+        // method still runs `lookAt` and behaves identically to XYZ, which
+        // makes the enum member name misleading.
+        if (this.type == BillboardType.None) return;
+
         let camera = this.transform.view3D.camera;
         this._cameraPosition.copyFrom(camera.transform.back);
         if (this.type == BillboardType.BillboardXYZ) {
