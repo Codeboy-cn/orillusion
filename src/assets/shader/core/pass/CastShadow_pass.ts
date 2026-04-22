@@ -283,20 +283,17 @@ export let directionShadowCastMap_frag: string = /*wgsl*/ `
       var baseMap: texture_2d<f32>;
     #endif
 
-    // Directional shadow stores light-space NDC z (rasterizer-interpolated),
-    // NOT a custom radial distance. Do NOT declare @builtin(frag_depth): if
-    // it's declared but left unwritten, Metal leniently falls back to the
-    // rasterizer depth (scene looks correct on macOS), but Dawn's D3D12
-    // backend strictly treats the unwritten output as 0, which makes every
-    // shadow texel read 0 and directional/CSM/skeleton samples render with
-    // no shadows on Windows. Omitting the builtin entirely lets the
-    // rasterizer write perspective-NDC depth on every platform.
-    struct FragmentOutput {
-      @location(auto) o_Target: vec4<f32>,
-    };
-
+    // Directional shadow is a DEPTH-ONLY pass: ShadowMapPassRenderer constructs
+    // RTFrame([], []) with no color attachments, so this fragment shader must
+    // declare NO outputs. Declaring @location(auto) o_Target here — even if
+    // zero-written — forced the pipeline to expect a color target that the
+    // render pass never provided; Metal accepted it leniently (Mac looked
+    // correct) but Dawn's D3D12 backend strictly failed pipeline creation,
+    // so the entire shadow pass never ran on Windows → no shadows.
+    // Same reason for not declaring @builtin(frag_depth): let the rasterizer
+    // write NDC z naturally (directional = orthographic, so NDC z IS the
+    // standard shadow depth).
     @fragment
-    fn main(@location(auto) fragUV: vec2<f32> , @location(auto) clipPos:vec3<f32> ) -> FragmentOutput {
-        return FragmentOutput(vec4<f32>(0.0));
+    fn main(@location(auto) fragUV: vec2<f32> , @location(auto) clipPos:vec3<f32> ) {
     }
 `
