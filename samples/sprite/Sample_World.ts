@@ -47,7 +47,6 @@ class Sample_World {
         height: 1.5,
         margin: 0.3,
         cornerRadius: 0,
-        renderOrder: 3000,
         tint: new Color(1, 1, 1, 1),
         billboard: BillboardType.None,
         distanceInvariant: false,
@@ -137,7 +136,9 @@ class Sample_World {
                     shadowSprite.cornerRadius = s.cornerRadius;
                     shadowSprite.uvRect = new Vector4(0, 0, 1, 1);
                     shadowSprite.distanceInvariantSize = s.distanceInvariant;
-                    shadowSprite.renderOrder = s.renderOrder - 1;
+                    // Shadows render behind foreground cells via a slightly
+                    // lower renderOrder within the transparent bucket.
+                    shadowSprite.renderOrder = 2999;
                     shadowObj.localPosition = new Vector3(
                         cellX + s.shadowOffsetX,
                         cellY + s.shadowOffsetY,
@@ -157,7 +158,6 @@ class Sample_World {
                 sprite.cornerRadius = s.cornerRadius;
                 sprite.uvRect = new Vector4(0, 0, 1, 1);
                 sprite.distanceInvariantSize = s.distanceInvariant;
-                sprite.renderOrder = s.renderOrder;
 
                 if (s.billboard !== BillboardType.None) {
                     obj.addComponent(BillboardComponent).type = s.billboard;
@@ -190,16 +190,6 @@ class Sample_World {
             for (const o of this.shadowObjects) {
                 const sr = o.getComponent(SpriteRenderer) as SpriteRenderer | null;
                 if (sr) sr.cornerRadius = v;
-            }
-        });
-        GUIHelp.add(this.state, 'renderOrder', 1000, 5000, 1).onChange((v: number) => {
-            for (const o of this.objects) {
-                const sr = o.getComponent(SpriteRenderer) as SpriteRenderer | null;
-                if (sr) sr.renderOrder = v;
-            }
-            for (const o of this.shadowObjects) {
-                const sr = o.getComponent(SpriteRenderer) as SpriteRenderer | null;
-                if (sr) sr.renderOrder = v - 1;
             }
         });
         GUIHelp.add(this.state, 'billboard', {
