@@ -74,8 +74,22 @@ export let DirectShadow_frag: string = /*wgsl*/ `
         // 1/max(NoL, 0.1) covers grazing-angle acne (one-texel depth variation
         // grows like tan(grazing)). Floor 0.1 caps the multiplier at 10x so
         // peter-panning stays bounded.
-        let N = normalize(fragData.N);
-        let L = normalize(-light.direction);
+        // IMPORTANT (cross-platform): normalize() of a zero-length vector is
+        // undefined in WGSL. Dawn's Metal backend typically returns (0,0,0)
+        // while Dawn's D3D12 backend can return NaN — which propagates through
+        // dot(), max() picks the non-NaN 0.1 floor, and effectiveShadowBias =
+        // shadowBias / 0.1 = 10× amplification. On receivers close to the
+        // shadow camera that makes compareZ = shadowPos.z - 10×bias negative,
+        // which a 'less' compare sampler turns into "always lit" → the entire
+        // scene renders with no shadows on Windows. Guard against a zero
+        // light.direction / fragment normal by falling back to identity
+        // vectors before dividing.
+        let Nraw = fragData.N;
+        let dirRaw = -light.direction;
+        let N_len2 = dot(Nraw, Nraw);
+        let dir_len2 = dot(dirRaw, dirRaw);
+        let N = select(vec3<f32>(0.0, 1.0, 0.0), Nraw * inverseSqrt(max(N_len2, 1e-30)), N_len2 > 1e-8);
+        let L = select(vec3<f32>(0.0, 0.0, -1.0), dirRaw * inverseSqrt(max(dir_len2, 1e-30)), dir_len2 > 1e-8);
         let NoL = max(dot(N, L), 0.1);
         let effectiveShadowBias = shadowBias / NoL;
         let receiverPos = ORI_VertexVarying.vWorldPos.xyz + N * normalBias;
