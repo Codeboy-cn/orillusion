@@ -82,6 +82,15 @@ export class SpriteMaterial extends Material {
         return this.shader.getUniformFloat(`distanceInvariant`) > 0.5;
     }
 
+    /** Rounded-corner radius in world units (same as `size`). 0 disables. */
+    public set cornerRadius(value: number) {
+        this.shader.setUniformFloat(`cornerRadius`, value);
+    }
+
+    public get cornerRadius(): number {
+        return this.shader.getUniformFloat(`cornerRadius`);
+    }
+
     /** Toggle the video-texture code path. SpriteRenderer sets this automatically when the texture is a `VideoTexture`. */
     public set useVideoTexture(value: boolean) {
         this.shader.setDefine(`USE_VIDEO_TEXTURE`, value);

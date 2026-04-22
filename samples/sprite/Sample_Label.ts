@@ -45,6 +45,9 @@ class Sample_Label {
 
     private readonly state = {
         hpPercent: 100,
+        width: 2.4,
+        height: 0.6,
+        cornerRadius: 0.1,
         distanceInvariant: true,
         billboard: BillboardType.BillboardY,
     };
@@ -111,8 +114,9 @@ class Sample_Label {
                 { fontSize: 28, color: '#ffffff', strokeColor: '#000000', strokeWidth: 2, padding: 6 },
             );
             sprite.texture = tex;
-            sprite.size = new Vector2(2.4, 0.6);
+            sprite.size = new Vector2(this.state.width, this.state.height);
             sprite.pivot = new Vector2(0.5, 0);
+            sprite.cornerRadius = this.state.cornerRadius;
             sprite.distanceInvariantSize = this.state.distanceInvariant;
 
             const bb = labelObj.addComponent(BillboardComponent);
@@ -142,6 +146,15 @@ class Sample_Label {
     private initGUI() {
         GUIHelp.addFolder('Labels');
         GUIHelp.add(this.state, 'hpPercent', 0, 100, 1).onChange(() => this._refreshLabels());
+        GUIHelp.add(this.state, 'width', 0.5, 6, 0.1).onChange((v: number) => {
+            for (const slot of this.labelSlots) slot.sprite.size = new Vector2(v, this.state.height);
+        });
+        GUIHelp.add(this.state, 'height', 0.2, 2, 0.05).onChange((v: number) => {
+            for (const slot of this.labelSlots) slot.sprite.size = new Vector2(this.state.width, v);
+        });
+        GUIHelp.add(this.state, 'cornerRadius', 0, 0.6, 0.01).onChange((v: number) => {
+            for (const slot of this.labelSlots) slot.sprite.cornerRadius = v;
+        });
         GUIHelp.add(this.state, 'distanceInvariant').onChange((v: boolean) => {
             for (const slot of this.labelSlots) slot.sprite.distanceInvariantSize = v;
         });

@@ -42,6 +42,7 @@ export class SpriteRenderer extends RenderNode {
     private _uvRectOverride: Vector4 | null = null;
 
     private _pendingColor: Color | null = null;
+    private _pendingCornerRadius: number | null = null;
     /** Quad size in world units (meters). Defaults to (1, 1). */
     private _size: Vector2 = new Vector2(1, 1);
     private _distanceInvariantSize: boolean = false;
@@ -193,6 +194,21 @@ export class SpriteRenderer extends RenderNode {
         if (mat) mat.distanceInvariantSize = value;
     }
 
+    /**
+     * Rounded-corner radius in the same world units as `size`. 0 disables
+     * the rounding. The quad edge fades to 0 alpha via a signed-distance
+     * mask — useful for card-style labels / icons in world space.
+     */
+    public get cornerRadius(): number {
+        const mat = this._spriteMaterial();
+        return mat ? mat.cornerRadius : (this._pendingCornerRadius ?? 0.0);
+    }
+
+    public set cornerRadius(value: number) {
+        const mat = this._spriteMaterial();
+        if (mat) mat.cornerRadius = value; else this._pendingCornerRadius = value;
+    }
+
     // ---------- Material / visibility ----------
 
     public get material(): SpriteMaterial {
@@ -251,6 +267,7 @@ export class SpriteRenderer extends RenderNode {
         const mat = this._spriteMaterial();
         if (!mat) return;
         if (this._pendingColor) mat.color = this._pendingColor;
+        if (this._pendingCornerRadius !== null) mat.cornerRadius = this._pendingCornerRadius;
         mat.distanceInvariantSize = this._distanceInvariantSize;
     }
 
@@ -279,6 +296,7 @@ export class SpriteRenderer extends RenderNode {
         if (from._uvRectOverride) this.uvRect = from._uvRectOverride;
         this.size = from._size;
         if (from.color) this.color = from.color.clone();
+        this.cornerRadius = from.cornerRadius;
         this.distanceInvariantSize = from._distanceInvariantSize;
         return this;
     }

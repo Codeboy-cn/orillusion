@@ -41,9 +41,9 @@ export class SpriteShader extends Shader {
         this.setUniformVector2(`size`, new Vector2(1, 1));
         this.setUniformVector2(`pivot`, new Vector2(0.5, 0.5));
         this.setUniformFloat(`distanceInvariant`, 0.0);
+        this.setUniformFloat(`cornerRadius`, 0.0);
         this.setUniformFloat(`spritePad0`, 0.0);
         this.setUniformFloat(`spritePad1`, 0.0);
-        this.setUniformFloat(`spritePad2`, 0.0);
     }
 
     public set baseMap(value: Texture) {

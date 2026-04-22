@@ -26,9 +26,9 @@ export let Sprite_shader: string = /*wgsl*/ `
             size: vec2<f32>,
             pivot: vec2<f32>,
             distanceInvariant: f32,
+            cornerRadius: f32,
             spritePad0: f32,
             spritePad1: f32,
-            spritePad2: f32,
         };
     #endif
 
@@ -70,6 +70,18 @@ export let Sprite_shader: string = /*wgsl*/ `
         return ORI_VertexOut;
     }
 
+    // Rounded-corner SDF in local UV space [0,1]². Result is an alpha mask
+    // in [0,1] that's 1.0 well inside, smoothly drops to 0.0 at the rounded
+    // edge. Radius is in world units (matches size).
+    fn spriteCornerMask(local: vec2<f32>, radius: f32) -> f32 {
+        let half = materialUniform.size * 0.5;
+        let p = (local - vec2<f32>(0.5)) * materialUniform.size;
+        let r = min(radius, min(half.x, half.y));
+        let q = abs(p) - half + vec2<f32>(r);
+        let d = length(max(q, vec2<f32>(0.0))) + min(max(q.x, q.y), 0.0) - r;
+        return 1.0 - smoothstep(-1.0, 1.0, d);
+    }
+
     fn frag() {
         let local = ORI_VertexVarying.fragUV0;
         let uv = materialUniform.uvRect.xy + local * materialUniform.uvRect.zw;
@@ -82,6 +94,10 @@ export let Sprite_shader: string = /*wgsl*/ `
             var sampled = textureSample(baseMap, baseMapSampler, uv);
         #endif
         sampled = sampled * materialUniform.color;
+
+        if (materialUniform.cornerRadius > 0.0) {
+            sampled.a = sampled.a * spriteCornerMask(local, materialUniform.cornerRadius);
+        }
 
         if (sampled.a <= 0.0) {
             discard;
