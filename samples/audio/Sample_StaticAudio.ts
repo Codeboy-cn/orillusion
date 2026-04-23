@@ -96,11 +96,11 @@ export class Static_Audio {
         /******** light *******/
         {
             this.lightObj = new Object3D();
-            this.lightObj.x = -200;
-            this.lightObj.y = 200;
+            this.lightObj.x = 0;
+            this.lightObj.y = 100;
             this.lightObj.z = 0;
             this.lightObj.rotationX = 35;
-            this.lightObj.rotationY = 110;
+            this.lightObj.rotationY = 128;
             this.lightObj.rotationZ = 0;
             let directLight = this.lightObj.addComponent(DirectLight);
             directLight.lightColor = KelvinUtil.color_temperature_to_rgb(5355);

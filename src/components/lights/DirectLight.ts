@@ -30,12 +30,18 @@ export class DirectLight extends LightBase {
         this.shadowCamera = CameraUtil.createCamera3DObject(null, 'shadowCamera');
         this.shadowCamera.shadowLight = this;
         this.shadowCamera.isShadowCamera = true;
+    }
+
+    public start(): void {
+        super.start();
+        this.castGI = true;
+
         // Initialize the shadow camera frustum to a usable default cube
         // (covers a [-bound/2, bound/2] world-space box) so the GUI shows
         // meaningful numbers even before any sample tweaks them. Writes go
         // through the underlying camera/field directly to bypass the CSM
         // gate in the public setters — when CSM is on these are inert anyway.
-        const bound = LightBase.DEFAULT_SHADOW_BOUND;
+        const bound = this.transform.view3D?.engine3D.setting.shadow.shadowBound;
         this._shadowBoundWidth = bound;
         this._shadowBoundHeight = bound;
         this.shadowCamera.left = -bound * 0.5;
@@ -44,11 +50,6 @@ export class DirectLight extends LightBase {
         this.shadowCamera.top = bound * 0.5;
         this.shadowCamera.near = 0.01;
         this.shadowCamera.far = bound;
-    }
-
-    public start(): void {
-        super.start();
-        this.castGI = true;
     }
 
     public updateShadowCameraCSM(renderCamera: Camera3D) {

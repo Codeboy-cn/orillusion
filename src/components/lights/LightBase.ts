@@ -15,7 +15,6 @@ import { ILight } from './ILight';
  * @group Lights
  */
 export class LightBase extends ComponentBase implements ILight {
-    public static readonly DEFAULT_SHADOW_BOUND: number = 100;
     /**
      * light name
      */

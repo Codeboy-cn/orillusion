@@ -152,8 +152,9 @@ export class Engine3D {
             shadow: {
                 enable: true, type: 'HARD', shadowSize: 2048, pointShadowSize: 1024,
                 shadowSoft: 0.005, needUpdate: true, autoUpdate: true,
-                updateFrameRate: 2, csmMargin: 0.1, csmScatteringExp: 0.7, csmAreaScale: 0.4,
-                maxCascades: 4, maxShadowMapNum: 8, maxShadowMapWidth: 2048, maxShadowMapHeight: 2048, debug: false,
+                updateFrameRate: 1, csmMargin: 0.1, csmScatteringExp: 0.7, csmAreaScale: 0.4,
+                maxCascades: 4, maxShadowMapNum: 8, maxShadowMapWidth: 2048, maxShadowMapHeight: 2048, shadowBound: 256,
+                debug: false,
             },
             gi: {
                 enable: false, offsetX: 0, offsetY: 0, offsetZ: 0, probeSpace: 64, probeXCount: 4, probeYCount: 2,

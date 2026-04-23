@@ -1,3 +1,4 @@
+import { Engine3D } from "..";
 import { CEventListener } from "../event/CEventListener";
 import { ShadowLightsCollect } from "../gfx/renderJob/collect/ShadowLightsCollect";
 import { PickFire } from "../io/PickFire";
@@ -18,7 +19,7 @@ export class View3D extends CEventListener {
      * (input system, context, etc.) read it via this back-pointer so
      * they work under multi-instance setups.
      */
-    public engine3D: any;
+    public engine3D: Engine3D;
 
     constructor(x: number = 0, y: number = 0, width: number = 0, height: number = 0) {
         super();

@@ -197,10 +197,10 @@ export class GUIUtil {
 
         // shadowBias / normalBias default to 'auto' (RFC-003) — explicit GUI
         // controls omitted; samples can override directly if needed.
-        GUIHelp.add(light, 'shadowBoundWidth', 0, 1000, 0.1);
-        GUIHelp.add(light, 'shadowBoundHeight', 0, 1000, 0.1);
-        GUIHelp.add(light, 'shadowBoundNear', 0.01, 1000)
-        GUIHelp.add(light, 'shadowBoundFar', 1, 1000);
+        GUIHelp.add(light, 'shadowBoundWidth', 0, 1000, 0.1).listen();
+        GUIHelp.add(light, 'shadowBoundHeight', 0, 1000, 0.1).listen();
+        GUIHelp.add(light, 'shadowBoundNear', 0, 1000).listen();
+        GUIHelp.add(light, 'shadowBoundFar', 1, 1000).listen();
 
         GUIHelp.addColor(light, 'lightColor');
         GUIHelp.add(light, 'intensity', 0.0, 50.0, 0.01);

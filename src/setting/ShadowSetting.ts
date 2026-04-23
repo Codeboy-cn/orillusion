@@ -86,4 +86,15 @@ export type ShadowSetting = {
      * max cascades for csm
      */
     maxCascades: number;
+
+    /**
+     * shadow bound, the area of shadow map projection, 
+     * the larger the value, the more area the shadow map covers, 
+     * but the lower the quality. 
+     * The smaller the value, the higher the quality, 
+     * but the smaller the area covered by the shadow map. 
+     * It is recommended to set this value according to the 
+     * scene size and light distance.
+     */
+    shadowBound: number;
 };
