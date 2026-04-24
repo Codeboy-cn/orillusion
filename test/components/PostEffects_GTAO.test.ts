@@ -11,9 +11,15 @@ await test('Post GTAOPost test', async () => {
 
     let postProcessing = view.scene.addComponent(PostProcessingComponent);
     let gtao = postProcessing.addPost(GTAOPost);
-    // gtaoTexture is created lazily on the first render(); poll instead
-    // of racing a fixed delay against the RAF tick.
-    await waitUntil(() => gtao.gtaoTexture)
+    // gtaoTexture is created lazily inside GTAOPost.render() on the
+    // first PostRenderer iteration, which only runs after the RAF
+    // loop has completed one frame AND the compute-shader pipeline
+    // has compiled. Under full-suite CI load (adapter busy from the
+    // previous 5 engines + shader cache cold) 5 s wasn't always
+    // enough on Mac Metal — the test passed in isolation but failed
+    // when queued after Light_*/Component tests. Bump to 15 s to
+    // cover worst-case driver compile latency.
+    await waitUntil(() => gtao.gtaoTexture, 15000)
     let dest = engine.context3D.presentationSize[0];
     let src = gtao.gtaoTexture?.width;
     expect(src).tobe(dest)
