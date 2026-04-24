@@ -99,7 +99,7 @@ export class LightEntries {
         memory.writeFloat(light.csmShadowMapNum);
         memory.writeFloat(light.csmShadowMapIndex);
         memory.writeFloat(light.shadowFar);
-        memory.writeFloat(0);
+        memory.writeFloat(light.softness);
 
         memory.writeArray(light.shadowBias);
         memory.writeArray(light.normalBias);

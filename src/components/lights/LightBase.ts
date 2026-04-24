@@ -24,6 +24,17 @@ export class LightBase extends ComponentBase implements ILight {
      */
     public size: number = 1;
     /**
+     * Per-light PCSS penumbra multiplier. Default -1 means "fall back to the
+     * global `engine.setting.shadow.shadowSoft`". Set a positive value to
+     * override on this light only (e.g. a large area light casts a wider
+     * penumbra than a small spotlight). Live-tunable — the value is
+     * republished to the GPU each frame via LightEntries.
+     */
+    public get softness(): number { return this.lightData?.softness ?? -1; }
+    public set softness(value: number) {
+        if (this.lightData) this.lightData.softness = value;
+    }
+    /**
      * light shadow map size
      */
     public shadowMapWidth: number = 0;

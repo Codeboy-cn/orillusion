@@ -93,20 +93,38 @@ export let DirectShadow_frag: string = /*wgsl*/ `
         let Nraw = fragData.N;
         let N_len2 = dot(Nraw, Nraw);
         let N = select(vec3<f32>(0.0, 1.0, 0.0), Nraw * inverseSqrt(max(N_len2, 1e-30)), N_len2 > 1e-8);
+        // Safe-normalize of the vector pointing from fragment toward the
+        // light. Used both for the NoL-based bias amplifier below and for
+        // the analytic shadow-space slope. D3D12 returns NaN on a zero
+        // vector via normalize(); guard with select() + inverseSqrt.
+        let dirRaw = -light.direction;
+        let dir_len2 = dot(dirRaw, dirRaw);
+        let L = select(vec3<f32>(0.0, 0.0, -1.0), dirRaw * inverseSqrt(max(dir_len2, 1e-30)), dir_len2 > 1e-8);
+        let NoL = max(dot(N, L), 0.1);
+
         let receiverPos = ORI_VertexVarying.vWorldPos.xyz + N * normalBias;
         var shadowPosTmp = shadowMatrix * vec4<f32>(receiverPos, 1.0);
         var shadowPos = shadowPosTmp.xyz / shadowPosTmp.w;
         varying_shadowUV = shadowPos.xy * vec2<f32>(0.5, -0.5) + vec2<f32>(0.5, 0.5);
-        // Analytic shadow-Z slope: directional light uses an ortho projection,
-        // so shadowPos.z = shadowMatrix_row2 · (worldPos, 1). The row-2 vec3
-        // (xyz) is the linear part; derivative follows by chain rule.
+        // Classic receiver-slope bias: shadowBias / NoL. One texel on a
+        // receiver tilted against the light direction stretches by 1/NoL
+        // in the projected-light-direction axis, which is exactly the
+        // direction depth varies along, so bias must grow the same way to
+        // cover one-texel quantization on the receiver plane. Floor NoL
+        // at 0.1 (10x cap) — matches Unity URP / UE behaviour and keeps
+        // silhouette-edge derivative spikes bounded.
+        //
+        // Additionally fold in a screen-space slope term (Plan C analytic
+        // derivative of shadowPos.z via shadowMatrix row 2 and dpdx(worldPos))
+        // so heavily foreshortened main-camera views still get adequate
+        // bias even at non-grazing light NoL. Capped at 32x baseline.
+        let slopeNoL = shadowBias / NoL;
         let zRow = vec3<f32>(shadowMatrix[0].z, shadowMatrix[1].z, shadowMatrix[2].z);
         let dShadowZdx = dot(zRow, dWorldPosDx);
         let dShadowZdy = dot(zRow, dWorldPosDy);
-        let slopeDepth = max(abs(dShadowZdx), abs(dShadowZdy));
-        let maxSlope = shadowBias * 8.0;
-        let slopeBias = min(slopeDepth * 1.5, maxSlope);
-        let effectiveShadowBias = shadowBias + slopeBias;
+        let slopeScreen = max(abs(dShadowZdx), abs(dShadowZdy)) * 1.5;
+        let maxSlope = shadowBias * 32.0;
+        let effectiveShadowBias = min(max(slopeNoL, shadowBias + slopeScreen), maxSlope);
         if (varying_shadowUV.x <= 1.0
           && varying_shadowUV.x >= 0.0
           && varying_shadowUV.y <= 1.0
@@ -121,11 +139,15 @@ export let DirectShadow_frag: string = /*wgsl*/ `
             visibility = sampleHard_Direct(varying_shadowUV, depthTexIndex, refDepth);
           #else
             #if USE_SOFT_SHADOW
-              // PCSS — contact-hardening soft shadow. 'shadowSoft' is the
-              // light-size knob (max penumbra in shadow texels). Falls back
-              // to 4 texels when left at its default 1.0 so the SOFT mode
-              // is visibly softer than PCF out of the box.
-              let pcssLightSize = max(globalUniform.shadowSoft * 4.0, 4.0);
+              // PCSS — contact-hardening soft shadow. Per-light softness
+              // (shader: light.softness) overrides the global knob when set
+              // to a positive value. Global fallback: max(shadowSoft*4, 4)
+              // texels so SOFT mode is visibly softer than PCF by default.
+              let pcssLightSize = select(
+                  max(globalUniform.shadowSoft * 4.0, 4.0),
+                  light.softness,
+                  light.softness > 0.0
+              );
               visibility = samplePCSS_Direct(varying_shadowUV, depthTexIndex, refDepth, uvOnePixel, pcssLightSize);
             #else
               // Default PCF path (USE_PCF_SHADOW, or unset).

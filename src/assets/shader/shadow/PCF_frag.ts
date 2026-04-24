@@ -11,21 +11,22 @@ export let PCF_frag: string = /*wgsl*/ `
         return textureSampleCompareLevel(shadowMap, shadowMapSampler, uv, depthTexIndex, refDepth);
     }
 
-    // 3x3 uniform-weight PCF. Hardware sampler_comparison already does a 2x2
-    // compare-and-filter inside each tap when the sampler is linear, so this
-    // effectively averages 36 sub-samples with low aliasing. Previously this
-    // function used min(length(offset), 1.0) as the per-tap weight, which
-    // made the centre tap weigh 0 and produced a systematic bias toward
-    // darker results at pixel centres — equal weight fixes that.
+    // 3x3 tent-weight PCF. Weights follow Unity URP's tent kernel:
+    // center 4, edges 2, corners 1 (sum 16). Equivalent to (2-|x|)*(2-|y|).
+    // Hardware sampler_comparison is LINEAR so each tap already does a 2x2
+    // compare-and-filter; combined with the tent this gives an effective
+    // ~5x5 footprint at only 9 taps, with smoother falloff than the
+    // previous equal-weight 3x3 box.
     fn samplePCF3x3_Direct(uv: vec2<f32>, depthTexIndex: i32, refDepth: f32, uvOnePixel: vec2<f32>) -> f32 {
         var visibility = 0.0;
         for (var y = -1; y <= 1; y++) {
             for (var x = -1; x <= 1; x++) {
+                let w = f32((2 - abs(x)) * (2 - abs(y)));
                 let offsetUV = vec2<f32>(f32(x), f32(y)) * uvOnePixel;
-                visibility += textureSampleCompareLevel(shadowMap, shadowMapSampler, uv + offsetUV, depthTexIndex, refDepth);
+                visibility += w * textureSampleCompareLevel(shadowMap, shadowMapSampler, uv + offsetUV, depthTexIndex, refDepth);
             }
         }
-        return visibility * (1.0 / 9.0);
+        return visibility * (1.0 / 16.0);
     }
 
     // Percentage-Closer Soft Shadows (Fernando 2005 + NVIDIA GPU Gems 3).

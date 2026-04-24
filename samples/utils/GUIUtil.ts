@@ -224,6 +224,8 @@ export class GUIUtil {
         GUIHelp.add(light, 'intensity', 0.0, 50.0, 0.01);
         GUIHelp.add(light, 'indirect', 0.0, 1.0, 0.01);
         GUIHelp.add(light, 'castShadow');
+        // Per-light PCSS softness knob. -1 = use global shadowSoft.
+        GUIHelp.add(light, 'softness', -1, 32, 0.01);
 
         GUIHelp.add(light, 'enableCSM');
         GUIHelp.add(light, 'csmAutoUpdate');
@@ -367,6 +369,7 @@ export class GUIUtil {
         GUIHelp.add(light, 'range', 0.0, 1000.0, 0.001);
         GUIHelp.add(light, 'quadratic', 0.0, 2.0, 0.001);
         GUIHelp.add(light, 'castShadow');
+        GUIHelp.add(light, 'softness', -1, 32, 0.01);
         GUIHelp.add(light, 'debugShadowRange').onChange(() => this.refreshPointLightDebug(light));
 
         // Cube shadow camera controls: shadowCameraFar=0 means auto=range.
@@ -408,6 +411,7 @@ export class GUIUtil {
         GUIHelp.add(light, 'outerAngle', 0.0, 180.0, 0.001);
         GUIHelp.add(light, 'innerAngle', 0.0, 100.0, 0.001);
         GUIHelp.add(light, 'castShadow');
+        GUIHelp.add(light, 'softness', -1, 32, 0.01);
         GUIHelp.add(light, 'debugShadowRange').onChange(() => this.refreshPointLightDebug(light));
 
         // Slider range intentionally wide: shadowCameraNear only affects

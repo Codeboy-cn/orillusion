@@ -62,9 +62,10 @@ export let PointShadow_frag: string = /*wgsl*/ `
                 #if USE_SOFT_SHADOW
                   // Cube PCSS — blocker search in angular space, penumbra
                   // estimated from (refDepth - avgBlocker) / avgBlocker.
-                  // lightSize is angular (radians) around dir; shadowSoft
-                  // scales around a default 4-texel base angle.
-                  let pcssLightSize = max(globalUniform.shadowSoft, 1.0) * (4.0 / 512.0);
+                  // Per-light softness overrides the global knob when > 0.
+                  // Units: multiplier on a 4-texel base angle (4/512 rad).
+                  let pcssSoftBase = select(max(globalUniform.shadowSoft, 1.0), light.softness, light.softness > 0.0);
+                  let pcssLightSize = pcssSoftBase * (4.0 / 512.0);
                   var avgBlocker = 0.0;
                   var numBlockers = 0.0;
                   for (var j = 0; j < 16; j++) {

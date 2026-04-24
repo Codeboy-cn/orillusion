@@ -62,8 +62,18 @@ export class Depth2DTextureArray extends Texture implements ITexture {
         this._ensureBound();
         const device = this._boundCtx!.device;
         this.gpuSampler = device.createSampler({});
+        // Linear filter on a sampler_comparison triggers the hardware's 2x2
+        // compare-and-bilinear-filter ("free PCF") path — each
+        // textureSampleCompareLevel call returns a weighted average of 4
+        // sub-samples. Combined with our 9-tap 3x3 PCF, effective kernel is
+        // ~5x5 with no extra tap cost. Depth textures with sampleType 'depth'
+        // are allowed to pair with a 'comparison' sampler in linear mode
+        // (the 'non-filtering' restriction only applies to the non-comparison
+        // sampler used for PCSS blocker search).
         this.gpuSampler_comparison = device.createSampler({
             compare: 'less',
+            minFilter: 'linear',
+            magFilter: 'linear',
             label: "sampler_comparison"
         });
     }

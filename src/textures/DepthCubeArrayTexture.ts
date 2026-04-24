@@ -62,6 +62,15 @@ export class DepthCubeArrayTexture extends Texture implements ITexture {
             minFilter: GPUFilterMode.nearest,
             magFilter: GPUFilterMode.nearest,
         });
+        // Cube sampler stays NEAREST on the comparison side. Reason: LINEAR
+        // hardware compare on a cube depth texture interpolates across
+        // texels within a face, and depending on the driver, ALSO across
+        // face boundaries — producing visible radial banding on the lit
+        // area of a receiver plane as the filter footprint straddles the
+        // seams between the 6 faces. The 2D directional path benefits from
+        // LINEAR ("free 2x2 PCF"); the cube path already takes 16 Poisson
+        // taps in PointShadow_frag, so the bilinear bonus is marginal and
+        // not worth the seam artefacts.
         this.gpuSampler_comparison = device.createSampler({
             compare: 'less',
             label: "sampler_comparison"

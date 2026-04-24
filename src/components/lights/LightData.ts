@@ -118,4 +118,9 @@ export class LightData extends Struct {
 
     public csmShadowMapNum: number = 0;
     public csmShadowMapIndex: number = -1;
+
+    // Per-light soft-shadow / PCSS light-size multiplier.
+    // -1 means "fall back to globalUniform.shadowSoft". Consumed by
+    // DirectShadow_frag and PointShadow_frag SOFT branches.
+    public softness: number = -1;
 }
