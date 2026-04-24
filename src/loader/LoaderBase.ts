@@ -5,6 +5,33 @@ import { StringUtil } from '../util/StringUtil';
 import { LoaderFunctions } from './LoaderFunctions';
 
 /**
+ * Resolve a user-supplied asset URL against the browser origin.
+ *
+ * The samples harness runs each demo inside a `<iframe srcdoc="…">`
+ * whose effective base URL is the parent document's URL
+ * (`http://host/samples/`), so a relative URL like `gltfs/foo.gltf`
+ * resolves to `http://host/samples/gltfs/foo.gltf` and hits Vite's
+ * SPA fallback which returns `<!DOCTYPE html>` — the JSON parser
+ * then crashes with a useless "Unexpected token '<'" error.
+ *
+ * Convention: assets live under Vite's publicDir (served at origin
+ * root). Relative URLs without a scheme / leading slash are rewritten
+ * to origin-absolute so they always hit publicDir regardless of the
+ * current document's base URL.
+ *
+ * Leaves absolute URLs (`http://`, `https://`, `data:`, `blob:`) and
+ * already-absolute-path URLs (`/foo/bar`) untouched. No-op outside a
+ * browser runtime.
+ */
+function _normalizeAssetUrl(url: string): string {
+    if (!url) return url;
+    if (/^[a-z][a-z0-9+.-]*:/i.test(url)) return url;     // scheme present
+    if (url.startsWith('/')) return url;                   // origin-absolute
+    if (typeof location === 'undefined') return url;       // not in browser
+    return '/' + url;
+}
+
+/**
  * @internal
  * @group Loader
  */
@@ -22,6 +49,7 @@ export class LoaderBase {
      * @private
      */
     public async loadBinData(url: string, loaderFunctions?: LoaderFunctions): Promise<any> {
+        url = _normalizeAssetUrl(url);
         this.baseUrl = StringUtil.getPath(url);
         this.initUrl = url;
         return new Promise(async (succ, fail) => {
@@ -39,7 +67,7 @@ export class LoaderBase {
 
                 })
                 .catch((e) => {
-                    if (loaderFunctions.onError) {
+                    if (loaderFunctions?.onError) {
                         loaderFunctions.onError(e);
                     }
                     fail(e);
@@ -53,6 +81,7 @@ export class LoaderBase {
      * @private
      */
     public async loadAsyncBitmapTexture(url: string, loaderFunctions?: LoaderFunctions) {
+        url = _normalizeAssetUrl(url);
         this.baseUrl = StringUtil.getPath(url);
         this.initUrl = url;
         let bitmapTexture = new BitmapTexture2D(true, this.ctx);
@@ -68,6 +97,7 @@ export class LoaderBase {
      * @private
      */
     public async loadJson(url: string, loaderFunctions?: LoaderFunctions): Promise<object> {
+        url = _normalizeAssetUrl(url);
         this.baseUrl = StringUtil.getPath(url);
         this.initUrl = url;
         return new Promise(async (succ, fail) => {
@@ -86,7 +116,7 @@ export class LoaderBase {
 
                 })
                 .catch((e) => {
-                    if (loaderFunctions.onError) {
+                    if (loaderFunctions?.onError) {
                         loaderFunctions.onError(e);
                     }
                     fail(e);
@@ -99,6 +129,7 @@ export class LoaderBase {
      * @private
      */
     public async loadTxt(url: string, loaderFunctions?: LoaderFunctions): Promise<object> {
+        url = _normalizeAssetUrl(url);
         this.baseUrl = StringUtil.getPath(url);
         return new Promise(async (succ, fail) => {
             fetch(url)
@@ -116,7 +147,7 @@ export class LoaderBase {
 
                 })
                 .catch((e) => {
-                    if (loaderFunctions.onError) {
+                    if (loaderFunctions?.onError) {
                         loaderFunctions.onError(e);
                     }
                     fail(e);

@@ -75,6 +75,13 @@ export class BitmapTexture2D extends Texture {
      * @param loaderFunctions callback function when load complete
      */
     public async load(url: string, loaderFunctions?: LoaderFunctions) {
+        // Normalize relative asset URLs to origin-absolute so they
+        // hit Vite's publicDir instead of falling into the SPA
+        // fallback when the host document is an iframe srcdoc. See
+        // LoaderBase._normalizeAssetUrl for the underlying issue.
+        if (url && !/^[a-z][a-z0-9+.-]*:/i.test(url) && !url.startsWith('/') && typeof location !== 'undefined') {
+            url = '/' + url;
+        }
         this.name = StringUtil.getURLName(url);
         if (url.indexOf(';base64') != -1) {
             const img = document.createElement('img');
