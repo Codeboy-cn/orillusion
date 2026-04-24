@@ -1,4 +1,3 @@
-import { GPUCullMode } from '../../gfx/graphics/webGpu/WebGPUConst';
 import { RenderShaderPass } from '../../gfx/graphics/webGpu/shader/RenderShaderPass';
 import { PassType } from '../../gfx/renderJob/passRenderer/state/PassType';
 import { Vector3 } from '../../math/Vector3';
@@ -28,23 +27,33 @@ export class CastShadowMaterialPass extends RenderShaderPass {
         this.shaderState.castShadow = false;
         this.shaderState.acceptShadow = false;
 
-        // Back-face shadow rendering (matches Babylon / UE / Unity HDRP
-        // defaults). Culling FRONT faces means the shadow map stores depth
-        // of the back-face of each caster. When a receiver samples, its
-        // actual depth is strictly closer than any stored depth unless a
-        // different caster sits between → no self-shadowing, no texel
-        // quantization moire on caster-lit surfaces. Mesh thickness itself
-        // becomes the effective bias, so we can keep the shader-side bias
-        // small and still be acne-free. Point/Spot already did this in
-        // CastPointShadowMaterialPass; directional was the outlier.
+        // Directional shadow cast uses the traditional front-face path
+        // (cullMode inherited from ShaderState default = back, i.e. renders
+        // front faces). This is what Unity URP and classic UE4 do.
         //
-        // Caveat: single-sided geometry (grass billboards, cloth planes,
-        // terrain patches with only one face) casts NO shadow under this
-        // mode. The per-material escape is to author those as double-sided
-        // so back faces exist to rasterize here. Follow-up: add a
-        // `doubleSidedShadow` toggle that flips this cullMode per-caster.
-        this.shaderState.cullMode = GPUCullMode.front;
-
+        // Why not back-face (cullMode='front'), despite it eliminating
+        // self-shadow moire: back-face cast stores the far side of each
+        // caster in the shadow map, so any caster whose geometry extends
+        // below / past its visual "base" on the receiver produces
+        // peter-panning — the stored depth sits "behind" the receiver and
+        // the receiver fragment compares as lit when it should be
+        // shadowed. This is scene-authoring dependent (buried meshes,
+        // intersecting receivers, clipping-plane geometry) and users
+        // cannot reasonably be expected to re-author every asset to
+        // avoid it. Front-face cast is robust to scene content and
+        // relies on the receiver-side pipeline to hide moire:
+        //   - Hardware LINEAR compare (Depth2DTextureArray).
+        //   - Tent-weighted PCF 3x3.
+        //   - Hybrid NoL + screen-space slope bias, capped at 32x
+        //     baseline.
+        //   - Aggressive normalBias (ShadowBiasCalculator).
+        //
+        // Trade-off: narrow self-shadow seams may still appear on
+        // heavily tilted receivers under extreme main-camera zoom. If
+        // a specific material needs back-face cast (e.g. thick solid
+        // architecture that never embeds into receivers), add a
+        // per-material override in a follow-up — default stays safe.
+        //
         // Rasterizer depth-bias stays disabled. For depth32float the
         // WebGPU spec says depthBias * r uses an implementation-defined r
         // (smallest representable depth delta at 1.0). Metal treats r as

@@ -88,7 +88,16 @@ export class ShadowBiasCalculator {
         if (!cam) return 0.05;
         const extent = Math.max(Math.abs(cam.right - cam.left), Math.abs(cam.top - cam.bottom));
         const texelSize = extent / Math.max(light.shadowMapWidth || 1, 1);
-        return texelSize * 0.5;
+        // 2x texel offset along the receiver normal before shadow sample.
+        // Directional cast now renders front faces (for peter-panning
+        // resistance), so the receiver is in the shadow map at its own
+        // depth — self-shadow moire is suppressed primarily by pushing
+        // the sample point along the normal so the compare is done
+        // against a neighbouring texel's depth instead of the texel that
+        // contains the receiver itself. Larger than Unity URP's 0.5
+        // because our scenes use a wider range of lighting angles in
+        // tests; reduce per-light via light.normalBias if needed.
+        return texelSize * 2.0;
     }
 
     /**
