@@ -14,7 +14,21 @@ class Sample_PixelPick {
         // init Engine3D
         const engine = this.engine = await Engine3D.init({
             setting: {
-                useRTE: true,
+                // useRTE is a pre-existing multi-layered regression:
+                //   (1) the WASM-exported `_updateAllMatrixContinueTransform`
+                //       never populates the split-double world-position
+                //       HL buffer even when passed RTEScale > 0 — verified
+                //       2026-04-24 by snapshotting the buffer post-call.
+                //       A JS-side fallback in `MatrixBindGroup.writeBuffer`
+                //       now fills it correctly.
+                //   (2) there is at least one additional symptom (scene
+                //       still renders empty) whose root cause lies inside
+                //       the compiled `public/wasm/matrix.wasm` whose
+                //       source is not in the repo.
+                // Pixel picking works fine without RTE, so this sample
+                // pins to false. Re-enable after the WASM binary gets a
+                // source-controlled fix.
+                useRTE: false,
                 pick: {
                     enable: true,
                     mode: `pixel`,
