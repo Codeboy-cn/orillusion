@@ -23,10 +23,10 @@ export let PointShadow_frag: string = /*wgsl*/ `
               //
               // IMPORTANT (cross-platform): normalize() of a zero-length vector is
               // undefined in WGSL. Metal returns (0,0,0), Dawn D3D12 returns NaN,
-              // and once NaN is in NoL the whole compareZ goes NaN and the
-              // depth-compare sampler treats NaN ref as "pass" on Windows →
-              // no shadows. Use select + manual inverseSqrt to stay data-defined
-              // even for degenerate normals or unset light.position.
+              // and once NaN is in compareZ the depth-compare sampler treats
+              // NaN ref as "pass" on Windows → no shadows. Use select +
+              // manual inverseSqrt to stay data-defined even for degenerate
+              // normals or unset light.position.
               let Nraw = ORI_ShadingInput.Normal;
               let N_len2 = dot(Nraw, Nraw);
               let N = select(vec3<f32>(0.0, 1.0, 0.0), Nraw * inverseSqrt(max(N_len2, 1e-30)), N_len2 > 1e-8);
@@ -45,16 +45,23 @@ export let PointShadow_frag: string = /*wgsl*/ `
               let frg_len2 = dot(frgToLight, frgToLight);
               var dir: vec3<f32> = select(vec3<f32>(1.0, 0.0, 0.0), frgToLight * inverseSqrt(max(frg_len2, 1e-30)), frg_len2 > 1e-8);
               var len = sqrt(max(frg_len2, 0.0));
-              // Slope-scaled bias: dir points fragment→away from light, so the
-              // direction toward the light is -dir. Floor NoL at 0.1 to cap the
-              // 1/NoL multiplier at 10x (matches the directional path).
-              let NoL = max(dot(N, -dir), 0.1);
-              let bias = (light.shadowBias[0] * lengthScale) / NoL;
               // Per-light shadowFar normalizer — matches what the shadow-cast
               // shader used when writing depth (cube camera's far). Falls back
               // to main camera far when shadowFar is 0 (legacy / unpopulated).
               let shadowFarDecode = select(globalUniform.far, light.shadowFar, light.shadowFar > 0.0);
-              let compareZ = (len - bias) / shadowFarDecode;
+              // Analytic receiver-plane bias for cube shadow texel
+              // quantization. A cube texel's footprint on the receiver is a
+              // stretched ellipse with semi-major ≈ len / (mapSize × NoL).
+              // Depth variation within one texel is bounded by that
+              // footprint × |dir · tangent|, which for small NoL is
+              // ≈ len / (mapSize × NoL) in world units. Screen-space dpdx
+              // is *not* the right metric here because the cube shadow view
+              // and main camera view are independent — unlike directional
+              // shadow where screen-space dpdx is used in DirectShadow_frag.
+              // NoL floor 0.05 → 20× amplifier cap at extreme grazing.
+              let NoL = max(dot(N, -dir), 0.05);
+              let worldBias = (light.shadowBias[0] * lengthScale) / NoL;
+              let compareZ = (len - worldBias) / shadowFarDecode;
 
           #if USE_PCF_SHADOW
               let samples = 4.0;

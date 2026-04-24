@@ -44,12 +44,14 @@ export class ShadowBiasCalculator {
     static resolvePointShadowBias(light: PointLight | SpotLight, pointShadowMapSize: number): number {
         const v = (light as any)._shadowBias;
         if (typeof v === 'number') return v;
-        // One cube face is 90° FOV; at distance r the face spans ~2r.
-        // Coefficient 0.25× post-back-face shadow rendering: mesh thickness is
-        // the primary bias, host only covers fp-precision residuals. Shader
-        // additionally scales by len/range per fragment.
+        // Cube texel angular size = 2/mapSize rad; at distance r its footprint
+        // perpendicular to the face direction spans (2*r/mapSize). Coefficient
+        // 0.5 makes the baseline = half a texel footprint at worst-case
+        // distance (len=range), which matches the analytic receiver-plane
+        // depth variation inside one texel at perpendicular view (NoL=1).
+        // Shader amplifies by 1/NoL for grazing surfaces.
         const texelSize = (2 * (light.lightData.range || 1)) / Math.max(pointShadowMapSize, 1);
-        return texelSize * 0.25;
+        return texelSize * 0.5;
     }
 
     /**
@@ -67,11 +69,13 @@ export class ShadowBiasCalculator {
         if (typeof v === 'number') return v;
         // Directional shadow stays on front-face rasterization (supports single-
         // sided terrain / planes / grass blades), so bias carries texel
-        // quantization + fp-precision margin. Shader still divides by
-        // max(NoL, 0.1) for grazing amplification.
+        // quantization + fp-precision margin. Shader adds dpdx/dpdy slope on
+        // top for grazing amplification, so this is a pure quantization floor.
+        // Use max(|extentX|, |extentY|) — a non-square ortho frustum (common
+        // with sphere-fit + texel snap) otherwise mis-sizes the texel.
         const cam = (light.enableCSM && light.csmShadowCamera?.length ? light.csmShadowCamera[0] : light.shadowCamera);
         if (!cam) return 0.0005;
-        const extent = cam.right - cam.left;
+        const extent = Math.max(Math.abs(cam.right - cam.left), Math.abs(cam.top - cam.bottom));
         const depth = Math.max(cam.far - cam.near, 1e-6);
         const texelSize = extent / Math.max(light.shadowMapWidth || 1, 1);
         return (texelSize * 1.5) / depth;
@@ -82,7 +86,7 @@ export class ShadowBiasCalculator {
         if (typeof v === 'number') return v;
         const cam = (light.enableCSM && light.csmShadowCamera?.length ? light.csmShadowCamera[0] : light.shadowCamera);
         if (!cam) return 0.05;
-        const extent = cam.right - cam.left;
+        const extent = Math.max(Math.abs(cam.right - cam.left), Math.abs(cam.top - cam.bottom));
         const texelSize = extent / Math.max(light.shadowMapWidth || 1, 1);
         return texelSize * 0.5;
     }
