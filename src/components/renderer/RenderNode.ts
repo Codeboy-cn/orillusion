@@ -356,6 +356,24 @@ export class RenderNode extends ComponentBase {
         this._castShadow = value;
     }
 
+    /**
+     * Shadow cache classification.
+     *
+     * - `'auto'` (default): renderer is drawn to the shadow map every frame
+     *   as part of the single-pass render — matches historical behaviour.
+     * - `'static'`: renderer is drawn only to the cached static depth layer,
+     *   rebuilt lazily when the light moves or the scene explicitly marks
+     *   the static cache dirty. Use for buildings, terrain, prop meshes that
+     *   don't move.
+     * - `'dynamic'`: renderer is drawn every frame on top of the copied-in
+     *   static layer. Use for characters, physics objects, anything that
+     *   moves.
+     *
+     * Only consulted when `engine.setting.shadow.enableStaticCache === true`;
+     * otherwise all renderers behave as `'auto'`.
+     */
+    public shadowCacheMode: 'auto' | 'static' | 'dynamic' = 'auto';
+
     @EditorInspector
     public get castGI(): boolean {
         return this._castGI;

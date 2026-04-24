@@ -29,6 +29,16 @@ export class ShadowMapPassRenderer extends RendererBase {
     public shadowPassCount: number;
     public depth2DArrayTexture: Depth2DTextureArray;
     public rendererPassStates: RendererPassState[];
+    // Static-cache infrastructure — allocated lazily when
+    // setting.shadow.enableStaticCache is true and first frame hits the
+    // static-cache code path. Each layer has a cached static depth texture
+    // plus two extra pass states (clear into static cache, and load-into-
+    // live for dynamic append).
+    private _staticCacheReady = false;
+    private staticDepthTextures: VirtualTexture[] = [];
+    private rendererPassStatesStatic: RendererPassState[] = [];
+    private rendererPassStatesDynamic: RendererPassState[] = [];
+    private staticDirtyLayers: boolean[] = [];
     private _forceUpdate = false;
 
     constructor(ctx: Context3D) {
@@ -58,6 +68,60 @@ export class ShadowMapPassRenderer extends RendererBase {
             rtFrame.depthCleanValue = 1;
             let rendererPassState = WebGPUDescriptorCreator.createRendererPassState(ctx, rtFrame);
             this.rendererPassStates[i] = rendererPassState;
+        }
+    }
+
+    /**
+     * Build the companion static-cache depth textures + two parallel
+     * RendererPassStates per layer on first demand. One pass clears and
+     * fills the static cache; the other loads the live depth (pre-filled
+     * via texture-to-texture copy from the cache) and appends dynamic
+     * geometry on top.
+     */
+    private _ensureStaticCache(ctx: Context3D, sizeWidth: number, sizeHeight: number): void {
+        if (this._staticCacheReady) return;
+        const maxShadowMapNum = ctx.engine!.setting.shadow.maxShadowMapNum;
+        this.staticDirtyLayers = new Array(maxShadowMapNum).fill(true);
+        for (let i = 0; i < maxShadowMapNum; i++) {
+            const staticTex = new VirtualTexture(sizeWidth, sizeHeight, GPUTextureFormat.depth32float, false, undefined, 1, 0, 1, ctx);
+            staticTex.name = `shadowStaticCache_${i}`;
+            this.staticDepthTextures[i] = staticTex;
+
+            // Pass state that writes into the static cache (depth cleared).
+            const rtStatic = new RTFrame([], []);
+            rtStatic.depthTexture = staticTex;
+            rtStatic.label = "shadowStaticRebuild";
+            rtStatic.customSize = true;
+            rtStatic.depthCleanValue = 1;
+            rtStatic.depthLoadOp = 'clear';
+            this.rendererPassStatesStatic[i] = WebGPUDescriptorCreator.createRendererPassState(ctx, rtStatic);
+
+            // Pass state that loads the live depth (pre-filled from static
+            // cache) and writes dynamic casters on top. load=load preserves
+            // the copied depth so occlusion between static and dynamic is
+            // resolved by z-test.
+            const rtDynamic = new RTFrame([], []);
+            rtDynamic.depthTexture = this.rendererPassStates[i].depthTexture;
+            rtDynamic.label = "shadowDynamicAppend";
+            rtDynamic.customSize = true;
+            rtDynamic.depthCleanValue = 1;
+            rtDynamic.depthLoadOp = 'load';
+            this.rendererPassStatesDynamic[i] = WebGPUDescriptorCreator.createRendererPassState(ctx, rtDynamic);
+        }
+        this._staticCacheReady = true;
+    }
+
+    /**
+     * External API: mark the cached static depth dirty. Called by the
+     * engine / user when static-tagged renderers are added, removed, or
+     * move. The shadow renderer will rebuild the cache on its next run.
+     */
+    public markStaticShadowDirty(shadowIndex: number = -1): void {
+        if (!this._staticCacheReady) { return; }
+        if (shadowIndex < 0) {
+            for (let i = 0; i < this.staticDirtyLayers.length; i++) this.staticDirtyLayers[i] = true;
+        } else if (shadowIndex < this.staticDirtyLayers.length) {
+            this.staticDirtyLayers[shadowIndex] = true;
         }
     }
 
@@ -159,7 +223,41 @@ export class ShadowMapPassRenderer extends RendererBase {
                 }
             }
 
-            if ((dirLight.castShadow && dirLight.needUpdateShadow || this._forceUpdate) || (dirLight.castShadow && shadowSetting.autoUpdate)) {
+            const useStaticCache = shadowSetting.enableStaticCache === true;
+            const autoOrDirty = (dirLight.castShadow && dirLight.needUpdateShadow || this._forceUpdate) || (dirLight.castShadow && shadowSetting.autoUpdate);
+
+            if (useStaticCache && dirLight.castShadow) {
+                // Static-cache path: runs every frame (for the dynamic
+                // layer) even when autoUpdate is off. Light / _forceUpdate
+                // events invalidate the static cache for a single rebuild.
+                this._ensureStaticCache(view.engine3D.context3D, shadowSizeWidth, shadowSizeHeight);
+                if (dirLight.needUpdateShadow || this._forceUpdate) {
+                    if (dirLight.enableCSM) {
+                        for (let csmIndex = 0; csmIndex < dirLight.cascadeNum; csmIndex++) {
+                            this.staticDirtyLayers[shadowIndex + csmIndex] = true;
+                        }
+                    } else {
+                        this.staticDirtyLayers[shadowIndex] = true;
+                    }
+                    dirLight.needUpdateShadow = false;
+                }
+
+                if (dirLight.enableCSM) {
+                    dirLight.updateShadowCameraCSM(view.camera);
+                    dirLight.lightData.csmShadowMapIndex = shadowIndex;
+                    for (let csmIndex = 0; csmIndex < dirLight.cascadeNum; csmIndex++) {
+                        const layer = shadowIndex + csmIndex;
+                        let shadowCamera: Camera3D = dirLight.csmShadowCamera[csmIndex];
+                        (shadowCamera as any)._boundCtx ||= view.engine3D.context3D;
+                        this._renderLayerSplit(view, shadowCamera, occlusionSystem, layer, shadowSizeWidth, shadowSizeHeight);
+                    }
+                } else {
+                    let extents = camera.getShadowWorldExtents();
+                    this.poseShadowCamera(dirLight, camera, dirLight.direction, dirLight.shadowCamera, extents, camera.lookTarget);
+                    this._renderLayerSplit(view, dirLight.shadowCamera, occlusionSystem, shadowIndex, shadowSizeWidth, shadowSizeHeight);
+                }
+            } else if (autoOrDirty) {
+                // Original single-pass path — behaviour unchanged.
                 dirLight.needUpdateShadow = false;
                 if (dirLight.enableCSM) {
                     dirLight.updateShadowCameraCSM(view.camera);
@@ -182,6 +280,32 @@ export class ShadowMapPassRenderer extends RendererBase {
         }
 
         this._forceUpdate = false;
+    }
+
+    /**
+     * Static-cache render flow for a single shadow-map layer.
+     *   1. Rebuild the static layer if dirty (clear + draw static casters).
+     *   2. Copy static cache into the live layer.
+     *   3. Append dynamic casters on top of the live layer (load-op load).
+     *   4. Copy live layer into the receiver-facing 2D array texture.
+     */
+    private _renderLayerSplit(view: View3D, shadowCamera: Camera3D, occlusionSystem: OcclusionSystem, layer: number, sizeWidth: number, sizeHeight: number) {
+        // 1. Rebuild static cache if needed.
+        if (this.staticDirtyLayers[layer]) {
+            this.rendererPassState = this.rendererPassStatesStatic[layer];
+            this.renderShadow(view, shadowCamera, occlusionSystem, this.rendererPassState, 'static');
+            this.staticDirtyLayers[layer] = false;
+        }
+
+        // 2. Copy static cache -> live depth.
+        this.copyDepthTexture(view, this.staticDepthTextures[layer], (this.rendererPassStates[layer] as any).depthTexture, 0, sizeWidth, sizeHeight);
+
+        // 3. Append dynamic casters.
+        this.rendererPassState = this.rendererPassStatesDynamic[layer];
+        this.renderShadow(view, shadowCamera, occlusionSystem, this.rendererPassState, 'dynamic');
+
+        // 4. Publish to receiver-facing array.
+        this.copyDepthTexture(view, (this.rendererPassStates[layer] as any).depthTexture, this.depth2DArrayTexture, layer, sizeWidth, sizeHeight);
     }
 
     private copyDepthTexture(view: View3D, src: Texture, dst: Texture, dstIndex: number, shadowSizeWidth: number, shadowSizeHeight: number) {
@@ -222,7 +346,7 @@ export class ShadowMapPassRenderer extends RendererBase {
 
     }
 
-    private renderShadow(view: View3D, shadowCamera: Camera3D, occlusionSystem: OcclusionSystem, state: RendererPassState) {
+    private renderShadow(view: View3D, shadowCamera: Camera3D, occlusionSystem: OcclusionSystem, state: RendererPassState, kind: 'all' | 'static' | 'dynamic' = 'all') {
         // Shadow cameras aren't in the scene graph, so transform.view3D is null.
         // Adopt the rendering view's ctx on first use so GlobalBindGroup.updateCameraGroup
         // can find the device.
@@ -240,18 +364,30 @@ export class ShadowMapPassRenderer extends RendererBase {
         }
         GlobalBindGroup.updateCameraGroup(shadowCamera);
         gpu.bindCamera(encoder, shadowCamera);
-        let op_bundleList = this.renderShadowBundleOp(view, shadowCamera, state);
-        let tr_bundleList = this.renderShadowBundleTr(view, shadowCamera, state);
+        // Bundles bake in the renderer list at build time; they're only
+        // valid when the filter is 'all'. In static/dynamic split mode we
+        // draw each node individually via drawShadowRenderNodes so the
+        // per-node filter takes effect.
+        if (kind === 'all') {
+            let op_bundleList = this.renderShadowBundleOp(view, shadowCamera, state);
+            let tr_bundleList = this.renderShadowBundleTr(view, shadowCamera, state);
 
-        if (op_bundleList.length > 0) {
-            encoder.executeBundles(op_bundleList);
-        }
-        this.drawShadowRenderNodes(view, shadowCamera, encoder, collectInfo.opaqueList);
-        if (tr_bundleList.length > 0) {
-            encoder.executeBundles(tr_bundleList);
+            if (op_bundleList.length > 0) {
+                encoder.executeBundles(op_bundleList);
+            }
+            this.drawShadowRenderNodes(view, shadowCamera, encoder, collectInfo.opaqueList);
+            if (tr_bundleList.length > 0) {
+                encoder.executeBundles(tr_bundleList);
+            }
+            this.drawShadowRenderNodes(view, shadowCamera, encoder, collectInfo.transparentList);
+        } else {
+            // PointLightShadowRenderer hides drawShadowRenderNodes with an
+            // incompatible signature, so the direct call here trips the TS
+            // override check. Calls at runtime stay on this class.
+            (this as any).drawShadowRenderNodes(view, shadowCamera, encoder, collectInfo.opaqueList, null, kind);
+            (this as any).drawShadowRenderNodes(view, shadowCamera, encoder, collectInfo.transparentList, null, kind);
         }
 
-        this.drawShadowRenderNodes(view, shadowCamera, encoder, collectInfo.transparentList);
         gpu.endPass(encoder);
         gpu.endCommandEncoder(command);
     }
@@ -314,7 +450,7 @@ export class ShadowMapPassRenderer extends RendererBase {
         }
     }
 
-    protected drawShadowRenderNodes(view: View3D, shadowCamera: Camera3D, encoder: GPURenderPassEncoder, nodes: RenderNode[], clusterLightingBuffer?: ClusterLightingBuffer) {
+    protected drawShadowRenderNodes(view: View3D, shadowCamera: Camera3D, encoder: GPURenderPassEncoder, nodes: RenderNode[], clusterLightingBuffer?: ClusterLightingBuffer, kind: 'all' | 'static' | 'dynamic' = 'all') {
         GlobalBindGroup.updateCameraGroup(shadowCamera);
         view.engine3D.context3D.gpuContext.bindCamera(encoder, shadowCamera);
         if (nodes) {
@@ -331,6 +467,14 @@ export class ShadowMapPassRenderer extends RendererBase {
                     continue;
                 if (renderNode.isDestroyed)
                     continue;
+                // Per-node static/dynamic filter for the static-cache pipeline.
+                // 'auto' defaults to dynamic (preserves "render every frame"
+                // behaviour for renderers the user hasn't tagged).
+                if (kind === 'static') {
+                    if (renderNode.shadowCacheMode !== 'static') continue;
+                } else if (kind === 'dynamic') {
+                    if (renderNode.shadowCacheMode === 'static') continue;
+                }
                 if (!renderNode.preInit(this._rendererType)) {
                     renderNode.nodeUpdate(view, this._rendererType, this.rendererPassState, clusterLightingBuffer);
                 }
