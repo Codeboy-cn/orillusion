@@ -14,20 +14,31 @@ class Sample_PixelPick {
         // init Engine3D
         const engine = this.engine = await Engine3D.init({
             setting: {
-                // useRTE is a pre-existing multi-layered regression:
-                //   (1) the WASM-exported `_updateAllMatrixContinueTransform`
-                //       never populates the split-double world-position
-                //       HL buffer even when passed RTEScale > 0 — verified
-                //       2026-04-24 by snapshotting the buffer post-call.
-                //       A JS-side fallback in `MatrixBindGroup.writeBuffer`
-                //       now fills it correctly.
-                //   (2) there is at least one additional symptom (scene
-                //       still renders empty) whose root cause lies inside
-                //       the compiled `public/wasm/matrix.wasm` whose
-                //       source is not in the repo.
-                // Pixel picking works fine without RTE, so this sample
-                // pins to false. Re-enable after the WASM binary gets a
-                // source-controlled fix.
+                // useRTE is a pre-existing bug unrelated to Frame Graph
+                // work. Reproduces on clean main (stash Phase D away →
+                // Sample_RTE still black). Investigation 2026-04-24:
+                //   - WASM DOES populate the split-double HL buffer
+                //     correctly for non-helper matrices (verified by
+                //     reading matrixWorldPositionHLDatas at index 3
+                //     with world translation (-2.0013, 1.0046, 15.8425);
+                //     WASM wrote high=(-2, 1, 15, 0) low=(-0.0013,
+                //     0.0046, 0.8425, 0) — exact match).
+                //   - Forcing the shader RTE branch (`if (true ||
+                //     globalUniform.useRTE != 0)`) still yields a
+                //     black scene even with HL data correct and the
+                //     CPU-side view-matrix RTE override disabled.
+                //   - Scene IS drawing 14 MeshRenderer nodes per frame
+                //     (verified via ColorPassRenderer.drawNodes), so
+                //     it is not a geometry or culling problem.
+                //   - The remaining bug is either in the shader RTE
+                //     math (unlikely — the derivation checks out), in
+                //     the uniform-buffer struct packing between JS
+                //     bump-allocator and WGSL alignment (possible),
+                //     or in some other part of the pipeline not
+                //     yet traced.
+                // Pixel picking does not depend on RTE for correctness;
+                // pinning false keeps the demo working. A separate
+                // investigation is needed to unbreak useRTE in general.
                 useRTE: false,
                 pick: {
                     enable: true,
