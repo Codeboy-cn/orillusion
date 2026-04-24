@@ -78,10 +78,20 @@ class Sample_CSM {
 
     initScene() {
         {
+            // Tall column. BoxGeometry is centred at its origin; raise by
+            // half-height so the base sits on the floor plane (y=0.5 top
+            // of the floor slab). Previously y=0 buried the lower 50 units
+            // below the floor, which combined with back-face shadow cast
+            // (CastShadowMaterialPass.cullMode='front') produced peter-
+            // panning: the shadow map stores the back-face at y=-50,
+            // leaving the floor fragments at the caster base comparing
+            // against a depth well below the receiver and coming back
+            // "lit" when they should be shadowed.
             let obj = new Object3D();
             let mr = obj.addComponent(MeshRenderer);
             mr.geometry = new BoxGeometry(20, 100, 20);
             mr.material = new LitMaterial();
+            obj.y = 50;
             this.scene.addChild(obj);
         }
 
@@ -101,10 +111,16 @@ class Sample_CSM {
             let angle = Math.PI * 4 * i / 50;
             item.x = Math.sin(angle) * (50 + i ** 1.4);
             item.z = Math.cos(angle) * (50 + i ** 1.4);
-            item.y = 4;
             let scale = ((i ** 1.4) * 5 + 1000) / 1000;
             item.scaleX = item.scaleZ = scale;
             item.scaleY = scale * 5;
+            // Sit the sphere's bottom on the floor. Vertical half-extent
+            // = sphere radius (4) × scaleY = 20 * scale; place the centre
+            // at that height. Previously y=4 buried the sphere down to
+            // y≈-16, which caused back-face shadow cast to record depth
+            // well below the floor and produced the "shadow starts
+            // mid-tree" peter-panning effect.
+            item.y = 20 * scale;
             this.scene.addChild(item);
         }
     }
