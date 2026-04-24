@@ -81,19 +81,31 @@ export class DirectLight extends LightBase {
         const shadowPos = Vector3.HELP_6;
         const shadowCameraTarget = Vector3.HELP_1;
 
+        // Coverage safety factor. Sphere fit of the frustum gives a
+        // tighter ortho extent than the old AABB half-diagonal, which is
+        // great for resolution but leaves tall near-camera casters
+        // outside FAR cascades' horizontal bounds. Those casters still
+        // throw shadows INTO the far cascade (long slanted light) but
+        // since they aren't rasterised into that cascade's shadow map,
+        // the shadow is missing — a "cascade boundary leak". Padding the
+        // sphere by a fixed ratio recovers the lost coverage at modest
+        // resolution cost (~20% more ortho extent → ~17% bigger texels).
+        const coverageSafetyFactor = 1.25;
+
         for (let i = 0; i < this.cascadeNum; i++) {
             const corners = this.frustumCSM.children[i].getWorldCorners();
             // Centroid of the 8 frustum corners.
             sphereCenter.set(0, 0, 0);
             for (let c = 0; c < 8; c++) Vector3.add(sphereCenter, corners[c], sphereCenter);
             sphereCenter.scaleBy(1 / 8);
-            // Sphere radius = farthest corner to centroid.
+            // Sphere radius = farthest corner to centroid, padded by the
+            // safety factor for caster-coverage headroom.
             let radius = 0;
             for (let c = 0; c < 8; c++) {
                 const d = Vector3.distance(sphereCenter, corners[c]);
                 if (d > radius) radius = d;
             }
-            radius = Math.ceil(radius);
+            radius = Math.ceil(radius * coverageSafetyFactor);
 
             // Project centre onto the light's tangent plane (right, realUp)
             // and snap to texel boundaries. Forward component kept as-is so
@@ -110,17 +122,22 @@ export class DirectLight extends LightBase {
             Vector3.addScaledVector(snappedCenter, forward, cz, snappedCenter);
 
             // Place shadow camera at snappedCenter - direction*renderCam.far,
-            // looking at snappedCenter + direction*renderCam.far (matches the
-            // old convention where shadowPos = -direction*far, target =
-            // +direction*far relative to centre).
+            // looking at snappedCenter + direction*renderCam.far.
             shadowPos.copy(this.direction).normalize(renderCamera.far);
             Vector3.add(snappedCenter, shadowPos, shadowCameraTarget);
             Vector3.sub(snappedCenter, shadowPos, shadowPos);
 
-            this.csmShadowCamera[i].near = renderCamera.near;
+            // Push the near plane backward (toward the light) by the ortho
+            // extent so tall casters sitting "above" the cascade along the
+            // light axis still rasterise into this cascade's shadow map.
+            // Without this, a 100-unit-tall box near the camera casts no
+            // shadow into far cascades because its bounds are clipped by
+            // this cascade's original near = renderCamera.near.
+            const castPullback = renderCamera.far; // generous; same scale as shadowPos offset
+            this.csmShadowCamera[i].near = -castPullback;
             this.csmShadowCamera[i].far = renderCamera.far * 2;
             this.csmShadowCamera[i].transform.lookAt(shadowPos, shadowCameraTarget);
-            this.csmShadowCamera[i].orthoOffCenter(-radius, radius, -radius, radius, renderCamera.near, renderCamera.far * 2);
+            this.csmShadowCamera[i].orthoOffCenter(-radius, radius, -radius, radius, -castPullback, renderCamera.far * 2);
         }
     }
 
