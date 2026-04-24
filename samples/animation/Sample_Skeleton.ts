@@ -7,9 +7,16 @@ class Sample_Skeleton {
     lightObj3D: Object3D;
     scene: Scene3D;
     async run() {
+        // Read the persisted shadow sampling type (if any) so the GUI dropdown
+        // survives the required reload — see GUIUtil.renderShadowSetting.
+        const storedType = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('shadowType') : null;
+        const shadowType: 'HARD' | 'PCF' | 'SOFT' =
+            storedType === 'PCF' || storedType === 'SOFT' ? storedType : 'HARD';
+
         const engine = this.engine = await Engine3D.init({
             setting: {
                 shadow: {
+                    type: shadowType,
                     autoUpdate: true,
                     updateFrameRate: 1,
                 },
@@ -42,6 +49,7 @@ class Sample_Skeleton {
 
     async initScene(scene: Scene3D) {
         GUIHelp.init();
+        GUIUtil.renderShadowSetting(this.engine);
         {
             // load model with skeleton animation
             let man = await this.engine.res.loadGltf('gltfs/CesiumMan/CesiumMan_compress.gltf');

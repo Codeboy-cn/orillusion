@@ -537,7 +537,11 @@ export class RenderShaderPass extends ShaderPassBase {
                 switch (info.dataType) {
                     case `sampler`:
                         {
-                            let textureName = info.varName.replace(`Sampler`, ``);
+                            // Strip trailing 'Sampler' (and an optional 'Raw'/'Cmp' suffix
+                            // that lets a second sampler binding share the same texture —
+                            // e.g. shadowMapSamplerRaw reuses texture 'shadowMap' via its
+                            // non-comparison sampler for PCSS blocker search).
+                            let textureName = info.varName.replace(/Sampler(Raw|Cmp)?$/, ``);
                             let texture = this.textures[textureName] ? this.textures[textureName] : Engine3D.resFor(this._boundCtx).redTexture;
                             let entry: GPUBindGroupLayoutEntry = {
                                 binding: info.binding,
@@ -550,7 +554,7 @@ export class RenderShaderPass extends ShaderPassBase {
                         break;
                     case `sampler_comparison`:
                         {
-                            let textureName = info.varName.replace(`Sampler`, ``);
+                            let textureName = info.varName.replace(/Sampler(Raw|Cmp)?$/, ``);
                             let texture = this.textures[textureName] ? this.textures[textureName] : Engine3D.resFor(this._boundCtx).redTexture;
                             let entry: GPUBindGroupLayoutEntry = {
                                 binding: info.binding,
@@ -679,7 +683,10 @@ export class RenderShaderPass extends ShaderPassBase {
                         if (t && !t._boundCtx && this._boundCtx) bindCtx(t, this._boundCtx);
                     };
                     if (refs.dataType == `sampler`) {
-                        let textureName = refs.varName.replace(`Sampler`, ``);
+                        // Support <Texture>SamplerRaw / <Texture>SamplerCmp aliases —
+                        // both resolve to the texture named <Texture>, but with the
+                        // non-comparison sampler (Raw = no suffix too).
+                        let textureName = refs.varName.replace(/Sampler(Raw|Cmp)?$/, ``);
                         let texture = this.textures[textureName];
                         if (!texture) {
                             texture = Engine3D.resFor(this._boundCtx).blackTexture;
@@ -696,7 +703,7 @@ export class RenderShaderPass extends ShaderPassBase {
                             console.error(`shader${this.vsName}-${this.fsName}`, `texture ${refs.varName} is missing! `);
                         }
                     } else if (refs.dataType == `sampler_comparison`) {
-                        let textureName = refs.varName.replace(`Sampler`, ``);
+                        let textureName = refs.varName.replace(/Sampler(Raw|Cmp)?$/, ``);
                         let texture = this.textures[textureName];
                         if (texture) {
                             bindIfNeeded(texture);

@@ -51,6 +51,7 @@ async function main() {
     const extra = [`sessionStorage.setItem('target', '${sample}');`];
     if (process.env.SL_Y) extra.push(`sessionStorage.setItem('spotlightY', '${process.env.SL_Y}');`);
     if (process.env.SL_SWEEP) extra.push(`sessionStorage.setItem('spotlightSweep', '1');`);
+    if (process.env.SL_SHADOW_TYPE) extra.push(`sessionStorage.setItem('shadowType', '${process.env.SL_SHADOW_TYPE}');`);
     extra.push('true');
     await win.webContents.executeJavaScript(extra.join(' '));
     await win.loadURL(HOST + '/samples/');

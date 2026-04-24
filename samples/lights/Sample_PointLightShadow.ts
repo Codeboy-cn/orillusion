@@ -4,13 +4,21 @@ import { GUIUtil } from "@samples/utils/GUIUtil";
 
 // sample of point light shadow
 export class Sample_PointLightShadow {
+    engine: Engine3D;
     scene: Scene3D;
     lightObj: Object3D;
     async run() {
 
-        const engine = await Engine3D.init({
+        // Read the persisted shadow sampling type (if any) so the GUI dropdown
+        // survives the required reload — see GUIUtil.renderShadowSetting.
+        const storedType = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('shadowType') : null;
+        const shadowType: 'HARD' | 'PCF' | 'SOFT' =
+            storedType === 'PCF' || storedType === 'SOFT' ? storedType : 'HARD';
+
+        const engine = this.engine = await Engine3D.init({
             setting: {
                 shadow: {
+                    type: shadowType,
                     enable: true,
                     debug: true,
                 },
@@ -63,6 +71,7 @@ export class Sample_PointLightShadow {
 
         //show gui
         GUIHelp.init()
+        GUIUtil.renderShadowSetting(this.engine);
         GUIUtil.showPointLightGUI(pointLight);
 
         let cubeGeometry = new BoxGeometry(10, 10, 10);

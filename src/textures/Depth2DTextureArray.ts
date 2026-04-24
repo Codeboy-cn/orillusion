@@ -31,7 +31,12 @@ export class Depth2DTextureArray extends Texture implements ITexture {
     internalCreateBindingLayoutDesc() {
         this.textureBindingLayout.sampleType = `depth`;
         this.textureBindingLayout.viewDimension = `2d-array`;
-        this.samplerBindingLayout.type = `filtering`;
+        // WebGPU: a depth texture with sampleType 'depth' can pair with
+        // either a 'comparison' sampler or a 'non-filtering' sampler, but
+        // NOT a 'filtering' sampler (no bilinear on depth). PCSS blocker
+        // search uses the non-comparison path to read raw depth, so this
+        // must be 'non-filtering' for pipeline validation.
+        this.samplerBindingLayout.type = `non-filtering`;
         this.sampler_comparisonBindingLayout.type = `comparison`;
     }
 

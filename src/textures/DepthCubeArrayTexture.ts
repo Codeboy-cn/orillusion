@@ -28,7 +28,9 @@ export class DepthCubeArrayTexture extends Texture implements ITexture {
     internalCreateBindingLayoutDesc() {
         this.textureBindingLayout.sampleType = `depth`;
         this.textureBindingLayout.viewDimension = `cube-array`;
-        this.samplerBindingLayout.type = `filtering`;
+        // See Depth2DTextureArray for the 'non-filtering' rationale: WebGPU
+        // disallows pairing a 'filtering' sampler with a depth texture.
+        this.samplerBindingLayout.type = `non-filtering`;
         this.sampler_comparisonBindingLayout.type = `comparison`;
     }
 
@@ -53,9 +55,12 @@ export class DepthCubeArrayTexture extends Texture implements ITexture {
     internalCreateSampler() {
         this._ensureBound();
         const device = this._boundCtx!.device;
+        // Must match samplerBindingLayout.type = 'non-filtering': nearest
+        // filter on both axes. PCSS blocker search reads one texel at a
+        // time anyway, so filtering gains nothing here.
         this.gpuSampler = device.createSampler({
-            minFilter: GPUFilterMode.linear,
-            magFilter: GPUFilterMode.linear,
+            minFilter: GPUFilterMode.nearest,
+            magFilter: GPUFilterMode.nearest,
         });
         this.gpuSampler_comparison = device.createSampler({
             compare: 'less',

@@ -58,6 +58,24 @@ export class GUIUtil {
         let setting = engine.setting.shadow;
 
         GUIHelp.add(setting, 'shadowSize', 256, 4096, 1);
+
+        // Shadow sampling type dropdown. The type is baked into shader defines
+        // at preCompile (RenderShaderPass.ts USE_PCF/HARD/SOFT_SHADOW), so
+        // changing it live won't rebuild pipelines. Persist the choice in
+        // sessionStorage and reload so Engine3D.init picks it up next boot.
+        const picker = { type: setting.type as 'HARD' | 'PCF' | 'SOFT' };
+        GUIHelp.add(picker, 'type', ['HARD', 'PCF', 'SOFT']).onChange((v: string) => {
+            try { sessionStorage.setItem('shadowType', v); } catch {}
+            location.reload();
+        });
+
+        // Live-tunable penumbra knob for PCSS (SOFT mode). shadowSoft is a
+        // plain uniform — GlobalUniformGroup rewrites it every frame — so
+        // the slider takes effect next frame without a reload. Units are
+        // the PCSS light-size multiplier: 1.0 ~ 4 shadow texels of max
+        // penumbra for directional, 4/512 rad for cube.
+        GUIHelp.add(setting, 'shadowSoft', 0.1, 8.0, 0.01);
+
         open && GUIHelp.open();
         GUIHelp.endFolder();
     }

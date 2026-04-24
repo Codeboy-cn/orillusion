@@ -115,8 +115,29 @@ export let DirectShadow_frag: string = /*wgsl*/ `
           && shadowPosTmp.z >= 0.0)
         {
           isOutSideArea = 0.0;
-          var uvOnePixel = 1.0 / vec2<f32>(globalUniform.shadowMapSize) ;
-          visibility = samplePCF3x3_Direct(varying_shadowUV, depthTexIndex, shadowPos.z - effectiveShadowBias, uvOnePixel);
+          let uvOnePixel = 1.0 / vec2<f32>(globalUniform.shadowMapSize) ;
+          let refDepth = shadowPos.z - effectiveShadowBias;
+          #if USE_HARD_SHADOW
+            visibility = sampleHard_Direct(varying_shadowUV, depthTexIndex, refDepth);
+          #else
+            #if USE_SOFT_SHADOW
+              // PCSS — contact-hardening soft shadow. 'shadowSoft' is the
+              // light-size knob (max penumbra in shadow texels). Falls back
+              // to 4 texels when left at its default 1.0 so the SOFT mode
+              // is visibly softer than PCF out of the box.
+              let pcssLightSize = max(globalUniform.shadowSoft * 4.0, 4.0);
+              visibility = samplePCSS_Direct(varying_shadowUV, depthTexIndex, refDepth, uvOnePixel, pcssLightSize);
+            #else
+              // Default PCF path (USE_PCF_SHADOW, or unset).
+              visibility = samplePCF3x3_Direct(varying_shadowUV, depthTexIndex, refDepth, uvOnePixel);
+            #endif
+          #endif
+          // Smooth fade across the last 10% of the shadow frustum's depth
+          // range so receivers don't pop from "shadowed" to "fully lit"
+          // when they leave the ortho depth range. Matches the frustum-
+          // edge fade used in Unity/Babylon/Three.
+          let edgeFade = smoothstep(0.9, 1.0, shadowPos.z);
+          visibility = mix(visibility, 1.0, edgeFade);
       }
       #endif
       return vec4<f32>(visibility, isOutSideArea, varying_shadowUV);
