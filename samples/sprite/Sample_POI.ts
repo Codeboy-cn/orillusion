@@ -91,7 +91,7 @@ class Sample_POI {
         }
 
         /******** icon texture *******/
-        this.iconTexture = new BitmapTexture2D(true, this.engine.context3D);
+        this.iconTexture = new BitmapTexture2D();
         this.iconTexture.flipY = true;
         await this.iconTexture.load('textures/KB3D_NTT_Ads_basecolor.png');
 
