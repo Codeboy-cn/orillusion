@@ -34,10 +34,18 @@ export class WebGPUDescriptorCreator {
             rps.isOutTarget = rtFrame.isOutTarget;
             rps.depthCleanValue = rtFrame.depthCleanValue;
             rps.depthLoadOp = rtFrame.depthLoadOp;
+            rps.stateVersion = 1;
             passMap.set(rtFrame, rps);
         }
 
         if (rtFrame && rtFrame.renderTargets.length > 0) {
+            // Bump stateVersion when the attached RT array identity
+            // changes — scene resize / reflection probe rebuild /
+            // reconfiguration of the RTFrame all flow through here
+            // and must invalidate any cached render bundle.
+            if (rps.renderTargets !== rtFrame.renderTargets) {
+                rps.stateVersion++;
+            }
             rps.renderTargets = rtFrame.renderTargets;
             rps.rtTextureDescriptors = rtFrame.rtDescriptors;
             rps.renderPassDescriptor = WebGPUDescriptorCreator.getRenderPassDescriptor(ctx, rps);

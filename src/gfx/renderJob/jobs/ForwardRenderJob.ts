@@ -35,11 +35,17 @@ export class ForwardRenderJob extends RendererJob {
             if (setting.gi.enable) {
                 let lightEntries = GlobalBindGroup.getLightEntries(this.view.scene);
                 this.ddgiProbeRenderer = new DDGIProbeRenderer(ctx, lightEntries.irradianceVolume);
+                // Phase D: setInputTexture stays here because it
+                // allocates sub-passes (DDGILightingPass etc) that
+                // must only be constructed once. setIrradiance was
+                // the other legacy hard-wire — it is now called
+                // every frame from ColorFeature.execute, so the
+                // ColorPass → DDGI wire flows through the graph
+                // pool instead of a one-shot assignment.
                 this.ddgiProbeRenderer.setInputTexture([
                     this.shadowMapPassRenderer.depth2DArrayTexture,
                     this.pointLightShadowRenderer.cubeArrayTexture
                 ]);
-                colorPassRenderer.setIrradiance(this.ddgiProbeRenderer.irradianceColorMap, this.ddgiProbeRenderer.irradianceDepthMap);
                 this.rendererMap.addRenderer(this.ddgiProbeRenderer);
             }
 

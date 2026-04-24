@@ -321,9 +321,63 @@ export class RenderShaderPass extends ShaderPassBase {
     }
 
     /**
+     * Declare that the material slot `name` should be sourced from a
+     * Frame Graph resource handle rather than a pre-bound Texture.
+     * Resolution is deferred until `resolveBindings(view)` runs — the
+     * graph's resource pool may not have produced the GPUTexture yet
+     * when the declaration happens.
+     *
+     * Shim for Phase B: a frame-graph-aware feature can hand its
+     * material a named handle at setup time, and the legacy
+     * `RenderNode.nodeUpdate` path keeps working in parallel. No
+     * behavior change when `declareBinding` is never called.
+     *
+     * @param name   Shader-side texture binding name (e.g. `shadowMap`).
+     * @param handleName  Frame Graph handle name (e.g. `_MainShadowMap`).
+     */
+    public declareBinding(name: string, handleName: string): void {
+        if (!this._graphBindings) this._graphBindings = new Map();
+        this._graphBindings.set(name, handleName);
+    }
+
+    /**
+     * Return the declared handle name for a material slot, or null
+     * if the slot is not backed by a Frame Graph handle.
+     */
+    public getDeclaredBinding(name: string): string | null {
+        return this._graphBindings?.get(name) ?? null;
+    }
+
+    /**
+     * Walk declared bindings and push the current frame's resolved
+     * textures into the material via `setTexture`. Safe to call
+     * every frame — `setTexture` is a no-op when the resolved
+     * texture is identity-equal to the previously bound one.
+     *
+     * No-op unless `view.renderGraph` is present (legacy path) and
+     * the pool actually holds the declared resource.
+     */
+    public resolveBindings(view: { renderGraph?: { pool: { has(n: string): boolean; get<T>(n: string): T } } }): void {
+        if (!this._graphBindings) return;
+        const graph = view.renderGraph;
+        if (!graph) return;
+        const pool = graph.pool;
+        for (const [slot, handleName] of this._graphBindings) {
+            if (!pool.has(handleName)) continue;
+            const resource = pool.get<Texture>(handleName);
+            if (resource) this.setTexture(slot, resource);
+        }
+    }
+
+    /** Map of `materialSlotName → frameGraphHandleName`. Created lazily
+     *  the first time `declareBinding` is called; remains undefined
+     *  for materials that do not use Frame Graph handles. */
+    private _graphBindings?: Map<string, string>;
+
+    /**
      * Create a rendering pipeline
-     * @param geometry 
-     * @param renderPassState 
+     * @param geometry
+     * @param renderPassState
      */
     public genRenderPipeline(geometry: GeometryBase, renderPassState: RendererPassState) {
         let layouts = this.createGroupLayouts();

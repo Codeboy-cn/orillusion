@@ -9,6 +9,7 @@ import { Context3D } from "../../../graphics/webGpu/Context3D";
 import { GPUTextureFormat } from "../../../graphics/webGpu/WebGPUConst";
 import { WebGPUDescriptorCreator } from "../../../graphics/webGpu/descriptor/WebGPUDescriptorCreator";
 import { EntityCollect } from "../../collect/EntityCollect";
+import { renderGroupBundleKey } from "../../collect/RenderGroup";
 import { ShadowLightsCollect } from "../../collect/ShadowLightsCollect";
 import { RTFrame } from "../../frame/RTFrame";
 import { OcclusionSystem } from "../../occlusion/OcclusionSystem";
@@ -396,15 +397,17 @@ export class ShadowMapPassRenderer extends RendererBase {
         const gpu = view.engine3D.context3D.gpuContext;
         let entityBatchCollect = EntityCollect.instance.getOpRenderGroup(view.scene);
         if (entityBatchCollect) {
+            const stateVersion = state.stateVersion;
             let bundlerList = [];
             entityBatchCollect.renderGroup.forEach((v) => {
-                if (v.bundleMap.has(this._rendererType)) {
-                    bundlerList.push(v.bundleMap.get(this._rendererType));
+                const cacheKey = renderGroupBundleKey(v, this._rendererType, stateVersion);
+                if (v.bundleMap.has(cacheKey)) {
+                    bundlerList.push(v.bundleMap.get(cacheKey));
                 } else {
                     let renderBundleEncoder = gpu.recordBundleEncoder(state.renderBundleEncoderDescriptor);
                     this.recordShadowRenderBundleNode(view, shadowCamera, renderBundleEncoder, v.renderNodes);
                     let newBundle = renderBundleEncoder.finish();
-                    v.bundleMap.set(this._rendererType, newBundle);
+                    v.bundleMap.set(cacheKey, newBundle);
                     bundlerList.push(newBundle);
                 }
             });
@@ -417,15 +420,17 @@ export class ShadowMapPassRenderer extends RendererBase {
         const gpu = view.engine3D.context3D.gpuContext;
         let entityBatchCollect = EntityCollect.instance.getTrRenderGroup(view.scene);
         if (entityBatchCollect) {
+            const stateVersion = state.stateVersion;
             let bundlerList = [];
             entityBatchCollect.renderGroup.forEach((v) => {
-                if (v.bundleMap.has(this._rendererType)) {
-                    bundlerList.push(v.bundleMap.get(this._rendererType));
+                const cacheKey = renderGroupBundleKey(v, this._rendererType, stateVersion);
+                if (v.bundleMap.has(cacheKey)) {
+                    bundlerList.push(v.bundleMap.get(cacheKey));
                 } else {
                     let renderBundleEncoder = gpu.recordBundleEncoder(state.renderBundleEncoderDescriptor);
                     this.recordShadowRenderBundleNode(view, shadowCamera, renderBundleEncoder, v.renderNodes);
                     let newBundle = renderBundleEncoder.finish();
-                    v.bundleMap.set(this._rendererType, newBundle);
+                    v.bundleMap.set(cacheKey, newBundle);
                     bundlerList.push(newBundle);
                 }
             });

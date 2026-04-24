@@ -9,6 +9,7 @@ import { version } from '../package.json';
 import { Context3D } from './gfx/graphics/webGpu/Context3D';
 
 import { ForwardRenderJob } from './gfx/renderJob/jobs/ForwardRenderJob';
+import { FrameGraphRendererJob } from './gfx/renderJob/jobs/FrameGraphRendererJob';
 import { GlobalBindGroup } from './gfx/graphics/webGpu/core/bindGroups/GlobalBindGroup';
 import { Interpolator } from './math/TimeInterpolator';
 import { RendererJob } from './gfx/renderJob/jobs/RendererJob';
@@ -105,6 +106,7 @@ export class Engine3D {
                 useLogDepth: false,
                 useCompressGBuffer: false,
                 gi: false,
+                useFrameGraph: true,
                 postProcessing: {
                     bloom: {
                         downSampleStep: 3,
@@ -407,7 +409,9 @@ export class Engine3D {
                 }
             }
         }
-        let renderJob = new ForwardRenderJob(view);
+        let renderJob: RendererJob = this.setting.render.useFrameGraph
+            ? new FrameGraphRendererJob(view)
+            : new ForwardRenderJob(view);
         this.renderJobs.set(view, renderJob);
 
         if (this.setting.pick.mode == `pixel`) {

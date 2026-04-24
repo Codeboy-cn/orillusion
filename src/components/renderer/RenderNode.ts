@@ -313,14 +313,12 @@ export class RenderNode extends ComponentBase {
             }
         }
 
-        // if (this.castShadow) {
         for (let i = 0; i < this.materials.length; i++) {
             const mat = this.materials[i];
             if (mat.castShadow) {
                 PassGenerate.createShadowPass(this, mat.shader);
             }
         }
-        // }
 
         if (this.castReflection) {
             for (let i = 0; i < this.materials.length; i++) {
@@ -331,7 +329,6 @@ export class RenderNode extends ComponentBase {
             }
         }
 
-        // add if alpha == 1
         let ignoreDepthPass = RendererMaskUtil.hasMask(this.rendererMask, RendererMask.IgnoreDepthPass);
         const zPrePass = this.transform.view3D?.engine3D?.setting.render.zPrePass ?? false;
         if (!ignoreDepthPass && zPrePass) {

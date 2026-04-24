@@ -9,6 +9,7 @@ import { Texture } from "../../graphics/webGpu/core/texture/Texture";
 import { WebGPUDescriptorCreator } from "../../graphics/webGpu/descriptor/WebGPUDescriptorCreator";
 import { CollectInfo } from "../collect/CollectInfo";
 import { EntityCollect } from "../collect/EntityCollect";
+import { renderGroupBundleKey } from "../collect/RenderGroup";
 import { RTFrame } from "../frame/RTFrame";
 import { OcclusionSystem } from "../occlusion/OcclusionSystem";
 import { RendererPassState } from "./state/RendererPassState";
@@ -143,15 +144,17 @@ export class RendererBase extends CEventDispatcher {
         let entityBatchCollect = EntityCollect.instance.getOpRenderGroup(view.scene);
         if (entityBatchCollect) {
             const gpu = view.engine3D.context3D.gpuContext;
+            const stateVersion = this.rendererPassState.stateVersion;
             let bundlerList = [];
             entityBatchCollect.renderGroup.forEach((v) => {
-                if (v.bundleMap.has(this._rendererType)) {
-                    bundlerList.push(v.bundleMap.get(this._rendererType));
+                const cacheKey = renderGroupBundleKey(v, this._rendererType, stateVersion);
+                if (v.bundleMap.has(cacheKey)) {
+                    bundlerList.push(v.bundleMap.get(cacheKey));
                 } else {
                     let renderBundleEncoder = gpu.recordBundleEncoder(this.rendererPassState.renderBundleEncoderDescriptor);
                     this.recordRenderBundleNode(view, renderBundleEncoder, v.renderNodes, clusterLightingBuffer);
                     let newBundle = renderBundleEncoder.finish();
-                    v.bundleMap.set(this._rendererType, newBundle);
+                    v.bundleMap.set(cacheKey, newBundle);
                     bundlerList.push(newBundle);
                 }
             });
@@ -164,15 +167,17 @@ export class RendererBase extends CEventDispatcher {
         let entityBatchCollect = EntityCollect.instance.getTrRenderGroup(view.scene);
         if (entityBatchCollect) {
             const gpu = view.engine3D.context3D.gpuContext;
+            const stateVersion = this.rendererPassState.stateVersion;
             let bundlerList = [];
             entityBatchCollect.renderGroup.forEach((v) => {
-                if (v.bundleMap.has(this._rendererType)) {
-                    bundlerList.push(v.bundleMap.get(this._rendererType));
+                const cacheKey = renderGroupBundleKey(v, this._rendererType, stateVersion);
+                if (v.bundleMap.has(cacheKey)) {
+                    bundlerList.push(v.bundleMap.get(cacheKey));
                 } else {
                     let renderBundleEncoder = gpu.recordBundleEncoder(this.rendererPassState.renderBundleEncoderDescriptor);
                     this.recordRenderBundleNode(view, renderBundleEncoder, v.renderNodes, clusterLightingBuffer);
                     let newBundle = renderBundleEncoder.finish();
-                    v.bundleMap.set(this._rendererType, newBundle);
+                    v.bundleMap.set(cacheKey, newBundle);
                     bundlerList.push(newBundle);
                 }
             });

@@ -1,5 +1,3 @@
-import { Camera3D } from "../../../core/Camera3D";
-import { Scene3D } from "../../../core/Scene3D";
 import { RendererBase } from "../passRenderer/RendererBase";
 import { PassType } from "../passRenderer/state/PassType";
 
@@ -16,9 +14,17 @@ export class RendererMap {
     public addRenderer(renderer: RendererBase) {
         if (!this.map.has(renderer.passType)) {
             this.map.set(renderer.passType, renderer);
-            if (renderer.passType <= (1 << 3)) {
-                this.addPassRenderer(renderer);
-            }
+            // Phase D: the historical `passType <= (1 << 3)` filter
+            // was a hack that hid any renderer with PassType >=
+            // GI (16) / Cluster (32) / SHADOW (64) / POINT_SHADOW (128)
+            // / POST (256) / DEPTH (512) from the per-frame
+            // `getAllPassRenderer` loop — their dispatch was hand-
+            // written directly in `RendererJob.renderFrame`. With
+            // the Frame Graph owning all render ordering, the filter
+            // is dead weight: pass renderers now run exclusively
+            // through `RenderFeature.execute`, and the passList
+            // is only used by the legacy path.
+            this.passRendererList.push(renderer);
         } else {
             console.error("same renderer pass repeat!");
         }
@@ -26,10 +32,6 @@ export class RendererMap {
 
     public getRenderer(passType: PassType): RendererBase {
         return this.map.get(passType);
-    }
-
-    private addPassRenderer(renderer: RendererBase) {
-        this.passRendererList.push(renderer);
     }
 
     public getAllRenderer(): Map<PassType, RendererBase> {

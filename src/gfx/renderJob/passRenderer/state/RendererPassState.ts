@@ -31,6 +31,12 @@ export class RendererPassState {
     public renderPassDescriptor: GPURenderPassDescriptor;
     public renderBundleEncoderDescriptor: GPURenderBundleEncoderDescriptor;
     public depthLoadOp: GPULoadOp;
+    /** Monotonically increasing counter. Bumped by
+     *  WebGPUDescriptorCreator whenever the owning pass descriptor
+     *  or bundle descriptor is built / rebuilt. Consumers (render
+     *  bundle caches) use it as part of the composite cache key so
+     *  bundles from a stale state are not reused. */
+    public stateVersion: number = 0;
 
     getLastRenderTexture(ctx?: Context3D) {
         if (this.renderTargets) {

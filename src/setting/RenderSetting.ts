@@ -27,6 +27,13 @@ export type RenderSetting = {
     useLogDepth: boolean;
     useCompressGBuffer: boolean;
     gi: boolean;
+    /** Route rendering through the declarative Frame Graph
+     *  (`FrameGraphRendererJob`) instead of the legacy hardcoded
+     *  `RendererJob.renderFrame()`. False by default — the FG path
+     *  is still under active migration (Phase C) and the legacy
+     *  path remains the reference. Flip per-instance via
+     *  `engine.setting.render.useFrameGraph = true`. */
+    useFrameGraph: boolean;
     /**
      * post effect
      */

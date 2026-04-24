@@ -1,8 +1,6 @@
 import { Scene3D } from '../../../core/Scene3D';
 import { View3D } from '../../../core/View3D';
 import { PickFire } from '../../../io/PickFire';
-import { GlobalBindGroup } from '../../graphics/webGpu/core/bindGroups/GlobalBindGroup';
-import { ShadowLightsCollect } from '../collect/ShadowLightsCollect';
 import { ColorPassRenderer } from '../passRenderer/color/ColorPassRenderer';
 import { GBufferFrame } from '../frame/GBufferFrame';
 import { OcclusionSystem } from '../occlusion/OcclusionSystem';
@@ -18,9 +16,7 @@ import { Ctor } from '../../../util/Global';
 import { DDGIProbeRenderer } from '../passRenderer/ddgi/DDGIProbeRenderer';
 import { ReflectionRenderer } from '../passRenderer/cubeRenderer/ReflectionRenderer';
 import { PassType } from '../passRenderer/state/PassType';
-import { ProfilerUtil } from '../../../util/ProfilerUtil';
 import { FXAAPost } from '../post/FXAAPost';
-import { Camera3D } from '../../../core/Camera3D';
 
 /**
  * render jobs 
@@ -35,30 +31,48 @@ export class RendererJob {
     public rendererMap: RendererMap;
 
     /**
+     * @deprecated Phase D: Frame Graph owns all pass scheduling.
+     *             Use `view.renderGraph.getFeature('ShadowFeature')!.impl`
+     *             for the CSM cascade renderer; direct field access
+     *             is retained as a compatibility shim for one minor
+     *             version.
      * @internal
      */
     public shadowMapPassRenderer: ShadowMapPassRenderer;
 
     /**
+     * @deprecated Phase D: use
+     *             `view.renderGraph.getFeature('PointShadowFeature')!.impl`.
      * @internal
      */
     public pointLightShadowRenderer: PointLightShadowRenderer;
 
     /**
+     * @deprecated Phase D: use
+     *             `view.renderGraph.getFeature('GIFeature')!.impl` when
+     *             `setting.gi.enable` is true.
      * @internal
      */
     public ddgiProbeRenderer: DDGIProbeRenderer;
+
     /**
+     * @deprecated Phase D: use
+     *             `view.renderGraph.getFeature('PostFeature')!.impl`
+     *             — that feature wraps the whole post chain.
      * @internal
      */
     public postRenderer: PostRenderer;
 
     /**
+     * @deprecated Phase D: use
+     *             `view.renderGraph.getFeature('ClusterLightingFeature')!.impl`.
      * @internal
      */
     public clusterLightingRender: ClusterLightingRender;
 
     /**
+     * @deprecated Phase D: use
+     *             `view.renderGraph.getFeature('ReflectionFeature')!.impl`.
      * @internal
      */
     public reflectionRenderer: ReflectionRenderer;
@@ -69,6 +83,9 @@ export class RendererJob {
     public occlusionSystem: OcclusionSystem;
 
     /**
+     * @deprecated Phase D: use
+     *             `view.renderGraph.getFeature('PreDepthFeature')!.impl`
+     *             when `setting.render.zPrePass` is true.
      * @internal
      */
     public depthPassRenderer: PreDepthPassRenderer;
@@ -202,65 +219,18 @@ export class RendererJob {
     }
 
     /**
-     * To render a frame of the scene 
+     * Render one frame of the scene. Phase D removed the
+     * hardcoded 50-line sequence that used to live here — the
+     * Frame Graph now owns all render ordering, and
+     * {@link FrameGraphRendererJob.renderFrame} drives the graph.
+     *
+     * This base method is kept as a deprecated no-op so that
+     * external code extending `RendererJob` directly (rare) still
+     * compiles; the `useFrameGraph = false` escape hatch is gone.
      */
     public renderFrame() {
-        let view = this._view;
-
-        Camera3D.mainCamera = view.camera;
-
-        ProfilerUtil.startView(view);
-
-        GlobalBindGroup.getLightEntries(view.scene).update(view);
-        GlobalBindGroup.getReflectionEntries(view.scene).update(view);
-
-        this.occlusionSystem.update(view.camera, view.scene);
-        this.clusterLightingRender.render(view, this.occlusionSystem);
-
-        if (this.shadowMapPassRenderer) {
-            ShadowLightsCollect.update(view);
-            this.shadowMapPassRenderer.render(view, this.occlusionSystem);
-        }
-
-        if (this.pointLightShadowRenderer) {
-            this.pointLightShadowRenderer.render(view, this.occlusionSystem);
-        }
-
-        if (this.depthPassRenderer) {
-            this.depthPassRenderer.compute(view, this.occlusionSystem);
-            this.depthPassRenderer.render(view, this.occlusionSystem);
-        }
-
-        if (view.engine3D.setting.gi.enable && this.ddgiProbeRenderer) {
-            this.ddgiProbeRenderer.compute(view, this.occlusionSystem);
-            this.ddgiProbeRenderer.render(view, this.occlusionSystem);
-        }
-
-
-        let passList = this.rendererMap.getAllPassRenderer();
-        for (let i = 0; i < passList.length; i++) {
-            const renderer = passList[i];
-            renderer.compute(view, this.occlusionSystem);
-            renderer.render(view, this.occlusionSystem, this.clusterLightingRender.clusterLightingBuffer, false);
-        }
-
-        this.postRenderer.render(view);
-
-        // Present whatever texture the last render pass wrote to. Each
-        // PostBase updates `gpuContext.lastRenderPassState` at the end of
-        // its frame work, so this resolves to the final post output when
-        // post effects are enabled, and to ColorPassRenderer's output
-        // when they're not. The old code routed through a gui_GBuffer
-        // copy + UI render pass; both were dropped with the legacy GUI
-        // subsystem, but this hand-off was the critical part that carried
-        // the post chain's output through to the canvas — reading
-        // colorPass_GBuffer directly discarded every post effect.
-        const ctx = view.engine3D.context3D;
-        const gpu = ctx.gpuContext;
-        let lastTexture = gpu.lastRenderPassState
-            ? gpu.lastRenderPassState.getLastRenderTexture(ctx)
-            : GBufferFrame.getGBufferFrame(GBufferFrame.colorPass_GBuffer, ctx).getColorTexture();
-        this.postRenderer.presentContent(view, lastTexture);
+        console.warn('[RendererJob] renderFrame() is a no-op after Phase D. ' +
+            'Use FrameGraphRendererJob (the default under useFrameGraph=true) or extend it directly.');
     }
 
     public debug() {
