@@ -1,3 +1,4 @@
+import { GPUCullMode } from '../../gfx/graphics/webGpu/WebGPUConst';
 import { RenderShaderPass } from '../../gfx/graphics/webGpu/shader/RenderShaderPass';
 import { PassType } from '../../gfx/renderJob/passRenderer/state/PassType';
 import { Vector3 } from '../../math/Vector3';
@@ -27,21 +28,31 @@ export class CastShadowMaterialPass extends RenderShaderPass {
         this.shaderState.castShadow = false;
         this.shaderState.acceptShadow = false;
 
-        // Directional shadows stay on the traditional front-face path (cullMode
-        // inherited from ShaderState default = back, i.e. renders front faces).
-        // Switching to back-face / front-cull would break single-sided geometry
-        // like terrains, planes, and grass blades — they have no back faces to
-        // rasterize, so they'd cast no shadow at all. Instead, bias is tuned to
-        // cover slope acne directly (shader applies 1/max(NoL, 0.1) too).
-        // Rasterizer depth-bias disabled intentionally. For depth32float the
-        // WebGPU spec says depthBias * r uses an "implementation-defined r"
+        // Back-face shadow rendering (matches Babylon / UE / Unity HDRP
+        // defaults). Culling FRONT faces means the shadow map stores depth
+        // of the back-face of each caster. When a receiver samples, its
+        // actual depth is strictly closer than any stored depth unless a
+        // different caster sits between → no self-shadowing, no texel
+        // quantization moire on caster-lit surfaces. Mesh thickness itself
+        // becomes the effective bias, so we can keep the shader-side bias
+        // small and still be acne-free. Point/Spot already did this in
+        // CastPointShadowMaterialPass; directional was the outlier.
+        //
+        // Caveat: single-sided geometry (grass billboards, cloth planes,
+        // terrain patches with only one face) casts NO shadow under this
+        // mode. The per-material escape is to author those as double-sided
+        // so back faces exist to rasterize here. Follow-up: add a
+        // `doubleSidedShadow` toggle that flips this cullMode per-caster.
+        this.shaderState.cullMode = GPUCullMode.front;
+
+        // Rasterizer depth-bias stays disabled. For depth32float the
+        // WebGPU spec says depthBias * r uses an implementation-defined r
         // (smallest representable depth delta at 1.0). Metal treats r as
-        // ~1.19e-7 (f32 ULP at 1.0), Dawn D3D12 has historically treated
-        // integer depthBias values literally for float formats — so a value
-        // of 1 saturates the depth to 1.0 on Windows but is harmless on Mac.
-        // The sampler side (DirectShadow_frag) already applies a slope-scaled
-        // bias of `shadowBias / max(NoL, 0.1)` at sample time, which is
-        // backend-portable, so rasterizer bias is redundant anyway.
+        // ~1.19e-7 (f32 ULP at 1.0), Dawn D3D12 historically used integer
+        // depthBias literally for float formats — the same value saturates
+        // depth to 1.0 on Windows but is harmless on Mac. Shader-side
+        // `shadowBias / NoL` is backend-portable, so rasterizer bias is
+        // redundant.
         this.shaderState.depthBias = 0;
         this.shaderState.depthBiasSlopeScale = 0;
         this.shaderState.depthBiasClamp = 0;
