@@ -1,4 +1,4 @@
-import { DirectLight, EntityCollect, Vector3, Vector4 } from "../../../../..";
+import { DirectLight, EntityCollect, Vector3 } from "../../../../..";
 import { PointLight } from "../../../../../components/lights/PointLight";
 import { SpotLight } from "../../../../../components/lights/SpotLight";
 import { Camera3D } from "../../../../../core/Camera3D";
@@ -308,7 +308,30 @@ export class GlobalUniformGroup {
         this.uniformGPUBuffer.setVector3(`cameraForward`, camera.transform.forward);
         this.uniformGPUBuffer.setVector4Array(`frustumPlanes`, camera.frustum.planes);
 
-        this.uniformGPUBuffer.setVector4(`_retain`, Vector4.ZERO);
+        // JS bump-allocator / WGSL alignment bridge.
+        //
+        // The UniformGPUBuffer writes each setField call to the next
+        // free byte without respecting WGSL member alignment. The
+        // WGSL `GlobalUniform` struct, by contrast, pads `vec3f` +
+        // `vec4`-array members to 16-byte boundaries. `_retain`
+        // absorbs the cumulative padding difference so that
+        // `cameraPositionH` (next field) lands at the WGSL-computed
+        // offset.
+        //
+        // **The exact byte count of _retain depends on the number of
+        // preceding f32/i32 fields in the struct.** Any commit that
+        // adds or removes a 4-byte field before `cameraForward` MUST
+        // update this pad size or every useRTE scene renders black.
+        //
+        // Known-good sizes:
+        //   - 21 preceding f32/i32 fields (pre-pcfKernelScale) → vec4 (16 B)
+        //   - 22 preceding f32/i32 fields (post-pcfKernelScale, now)  → vec3 (12 B)
+        //
+        // Diagnosing a regression: binary-search from a commit where
+        // `Sample_RTE.ts` renders with ≥50% non-black center-region
+        // pixels. The first commit that drops below ~5% is almost
+        // always the one that added an unbalanced field.
+        this.uniformGPUBuffer.setVector3(`_retain`, Vector3.ZERO);
 
         if (this._ctx.engine!.setting.useRTE) {
             const mainCamera = Camera3D.mainCamera || camera;
