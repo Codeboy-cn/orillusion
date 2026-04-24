@@ -43,6 +43,15 @@ export type ShadowSetting = {
      */
     shadowSoft: number;
     /**
+     * Directional PCF kernel radius multiplier. 1.0 = exactly one shadow
+     * texel per sample step (3x3 tap spacing). Values > 1 widen the
+     * kernel for softer edges at the cost of possible peter-panning;
+     * values < 1 tighten it and give sharper but more aliased edges.
+     * Live-tunable — the value is rewritten to globalUniform every frame.
+     * Default 1.0.
+     */
+    pcfKernelScale?: number;
+    /**
      * Point shadow mapping size
      */
     pointShadowSize: number;

@@ -292,6 +292,10 @@ export class GlobalUniformGroup {
         this.uniformGPUBuffer.setFloat(`pointShadowBias`, 0.0);
         this.uniformGPUBuffer.setFloat(`shadowMapSize`, shadowMapSize);
         this.uniformGPUBuffer.setFloat(`shadowSoft`, this._ctx.engine!.setting.shadow.shadowSoft);
+        // Live-tunable PCF kernel radius multiplier. 1.0 = single texel
+        // step (default), >1.0 widens the 3x3 kernel for softer edges at
+        // the cost of peter-panning, <1.0 tightens it.
+        this.uniformGPUBuffer.setFloat(`pcfKernelScale`, this._ctx.engine!.setting.shadow.pcfKernelScale ?? 1.0);
         // Legacy globalUniform.enableCSM — kept for shader struct compat (DDGI / GodRay
         // compute paths still read it). Realtime shadow gates on per-light
         // light.csmShadowMapIndex >= 0 now, so this stays 0.

@@ -59,6 +59,8 @@ export function GlobalUniform(maxShadowMapNum: number): string {
     pointShadowBias: f32,
     shadowMapSize: f32,
     shadowSoft: f32,
+    pcfKernelScale: f32,
+
     enableCSM:f32,
 
 

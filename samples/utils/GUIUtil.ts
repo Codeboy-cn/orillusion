@@ -75,6 +75,11 @@ export class GUIUtil {
         // the PCSS light-size multiplier: 1.0 ~ 4 shadow texels of max
         // penumbra for directional, 4/512 rad for cube.
         GUIHelp.add(setting, 'shadowSoft', 0.1, 8.0, 0.01);
+        // Live-tunable PCF kernel scale (affects PCF mode only). 1.0 =
+        // standard 3x3 spacing, 2-3 softens edges, 0.5 tightens.
+        // Initialize if undefined (optional field) so the slider binds.
+        if ((setting as any).pcfKernelScale === undefined) (setting as any).pcfKernelScale = 1.0;
+        GUIHelp.add(setting, 'pcfKernelScale', 0.1, 4.0, 0.01);
 
         open && GUIHelp.open();
         GUIHelp.endFolder();

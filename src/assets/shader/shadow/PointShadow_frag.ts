@@ -95,7 +95,10 @@ export let PointShadow_frag: string = /*wgsl*/ `
                 #else
                   // USE_PCF_SHADOW (default). Tangent-plane 16-Poisson at
                   // one-cube-texel angular radius (default shadow map 1024).
-                  let pcfRadius = 1.0 / 512.0;
+                  // Scaled by globalUniform.pcfKernelScale so the live GUI
+                  // slider in ShadowSetting controls both directional and
+                  // cube PCF uniformly.
+                  let pcfRadius = (1.0 / 512.0) * max(globalUniform.pcfKernelScale, 0.01);
                   shadow = 0.0;
                   for (var j = 0; j < 16; j++) {
                       let p = POISSON_DISK_16[j];

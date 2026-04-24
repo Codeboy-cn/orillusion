@@ -150,8 +150,13 @@ export let DirectShadow_frag: string = /*wgsl*/ `
               );
               visibility = samplePCSS_Direct(varying_shadowUV, depthTexIndex, refDepth, uvOnePixel, pcssLightSize);
             #else
-              // Default PCF path (USE_PCF_SHADOW, or unset).
-              visibility = samplePCF3x3_Direct(varying_shadowUV, depthTexIndex, refDepth, uvOnePixel);
+              // Default PCF path (USE_PCF_SHADOW, or unset). Live-tunable
+              // kernel scale — globalUniform.pcfKernelScale multiplies the
+              // per-tap texel step. 1.0 = standard 3x3 spacing, 2.0 = 5x5-
+              // equivalent spread, etc. Falls back to 1.0 when the host
+              // doesn't populate the field (legacy clients).
+              let kernelScale = max(globalUniform.pcfKernelScale, 0.01);
+              visibility = samplePCF3x3_Direct(varying_shadowUV, depthTexIndex, refDepth, uvOnePixel * kernelScale);
             #endif
           #endif
           // Smooth fade across the last 10% of the shadow frustum's depth
