@@ -57,22 +57,70 @@ export class DirectLight extends LightBase {
 
         this.frustumCSM.update(renderCamera.projectionMatrix, renderCamera.pvMatrixInv, renderCamera.near, renderCamera.far, this.transform.view3D!.engine3D.setting.shadow, this.csmSplitFunction);
 
+        // CSM stabilize: sphere-fit + texel-snap.
+        //
+        // Previous AABB-based extent (bound.extents.length) is sensitive to
+        // camera rotation — as the view rotates, the AABB bounding the 8
+        // corners changes size, shrinking and growing the shadow frustum
+        // every frame. This causes shadows to visibly shimmer.
+        //
+        // Sphere fit (centroid + max distance to any corner) is rotation
+        // invariant. Texel-snap then aligns the sphere centre to shadow
+        // texel boundaries so the ortho projection grid never slides
+        // sub-texel — eliminating the remaining edge flicker when the
+        // camera translates.
+        const mapSize = this.shadowMapWidth || 1;
+        const forward = Vector3.negate(this.direction, Vector3.HELP_3).normalize();
+        // Pick a 'up' axis not parallel to the light forward.
+        const refUp = (Math.abs(forward.y) < 0.99) ? Vector3.UP : Vector3.FORWARD;
+        const right = Vector3.cross(refUp, forward, Vector3.HELP_4).normalize();
+        const realUp = Vector3.cross(forward, right, Vector3.HELP_5).normalize();
+
+        const sphereCenter = Vector3.HELP_0;
+        const snappedCenter = Vector3.HELP_2;
+        const shadowPos = Vector3.HELP_6;
+        const shadowCameraTarget = Vector3.HELP_1;
+
         for (let i = 0; i < this.cascadeNum; i++) {
-            const lookAt = this.frustumCSM.children[i].bound.center;
+            const corners = this.frustumCSM.children[i].getWorldCorners();
+            // Centroid of the 8 frustum corners.
+            sphereCenter.set(0, 0, 0);
+            for (let c = 0; c < 8; c++) Vector3.add(sphereCenter, corners[c], sphereCenter);
+            sphereCenter.scaleBy(1 / 8);
+            // Sphere radius = farthest corner to centroid.
+            let radius = 0;
+            for (let c = 0; c < 8; c++) {
+                const d = Vector3.distance(sphereCenter, corners[c]);
+                if (d > radius) radius = d;
+            }
+            radius = Math.ceil(radius);
 
-            const shadowPos = Vector3.HELP_0;
+            // Project centre onto the light's tangent plane (right, realUp)
+            // and snap to texel boundaries. Forward component kept as-is so
+            // the shadow camera still stays in front of the frustum.
+            const texelSize = (2 * radius) / mapSize;
+            const cx = Vector3.dot(sphereCenter, right);
+            const cy = Vector3.dot(sphereCenter, realUp);
+            const cz = Vector3.dot(sphereCenter, forward);
+            const snapX = Math.round(cx / texelSize) * texelSize;
+            const snapY = Math.round(cy / texelSize) * texelSize;
+            snappedCenter.set(0, 0, 0);
+            Vector3.addScaledVector(snappedCenter, right, snapX, snappedCenter);
+            Vector3.addScaledVector(snappedCenter, realUp, snapY, snappedCenter);
+            Vector3.addScaledVector(snappedCenter, forward, cz, snappedCenter);
+
+            // Place shadow camera at snappedCenter - direction*renderCam.far,
+            // looking at snappedCenter + direction*renderCam.far (matches the
+            // old convention where shadowPos = -direction*far, target =
+            // +direction*far relative to centre).
             shadowPos.copy(this.direction).normalize(renderCamera.far);
-
-            const shadowCameraTarget = Vector3.HELP_1;
-            Vector3.add(lookAt, shadowPos, shadowCameraTarget);
-            Vector3.sub(lookAt, shadowPos, shadowPos);
+            Vector3.add(snappedCenter, shadowPos, shadowCameraTarget);
+            Vector3.sub(snappedCenter, shadowPos, shadowPos);
 
             this.csmShadowCamera[i].near = renderCamera.near;
             this.csmShadowCamera[i].far = renderCamera.far * 2;
-
             this.csmShadowCamera[i].transform.lookAt(shadowPos, shadowCameraTarget);
-            const extents = Math.round(this.frustumCSM.children[i].bound.extents.length);
-            this.csmShadowCamera[i].orthoOffCenter(-extents, extents, -extents, extents, renderCamera.near, renderCamera.far * 2);
+            this.csmShadowCamera[i].orthoOffCenter(-radius, radius, -radius, radius, renderCamera.near, renderCamera.far * 2);
         }
     }
 
