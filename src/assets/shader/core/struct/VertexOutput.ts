@@ -20,6 +20,14 @@ export let VertexOutput: string = /*wgsl*/ `
         @location(auto) varying_Tangent: vec4<f32>,
     #endif
 
+    #if USE_TRANSMISSION
+        // Per-instance model scale derived from worldMat[i].xyz lengths
+        // in vertex stage; consumed by PBRLitShader's KHR_materials_volume
+        // refraction ray (transmissionRay = thickness * refractDir *
+        // modelScale) so non-uniform-scaled meshes refract correctly.
+        @location(auto) varying_ModelScale: vec3<f32>,
+    #endif
+
 
     @builtin(position) member: vec4<f32>
     };

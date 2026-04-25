@@ -191,12 +191,13 @@ export let PBRLItShader: string = /*wgsl*/ `
             // non-negative so refract never returns the zero TIR
             // sentinel here.
             let refractDir = refract(-viewDir, normalWS, 1.0 / max(materialUniform.ior, 1.0));
-            // Ray length in world units. modelScale is 1 in this
-            // sample (no transform.scale on the dragon); for scaled
-            // meshes this should multiply by length(modelMatrix[i].xyz)
-            // along each axis — left as a TODO when we expose the
-            // per-instance world matrix to the fragment shader.
-            let transmissionRay = refractDir * materialUniform.thicknessFactor;
+            // Ray length in world units, scaled per-axis by modelScale
+            // (vertex stage computed length(worldMat[i].xyz) into
+            // ORI_VertexVarying.modelScale). Uniform meshes collapse to
+            // (s,s,s); unscaled to (1,1,1). Matches three.js's
+            // getVolumeTransmissionRay so a stretched glass cube
+            // refracts proportionally to its world dimensions.
+            let transmissionRay = refractDir * materialUniform.thicknessFactor * ORI_VertexVarying.modelScale;
             let exitWorld = ORI_VertexVarying.vWorldPos.xyz + transmissionRay;
             // Project exit point back to NDC, then to UV space. Y is
             // flipped because WGSL's fragCoord origin is top-left
@@ -215,7 +216,16 @@ export let PBRLItShader: string = /*wgsl*/ `
             // mapping into the pyramid's mip chain — mip 0 for
             // polished glass, deepest mip for fully rough.
             let pyramidLodMax = f32(textureNumLevels(sceneColorPyramid)) - 1.0;
-            let lod = clamp(ORI_ShadingInput.Roughness, 0.0, 1.0) * pyramidLodMax;
+            // applyIorToRoughness (three.js): refraction blur scales
+            // by an IOR-derived factor. ior=1 (no refraction) drops
+            // the factor to 0 → sharp sample regardless of roughness;
+            // ior >= 1.5 (typical glass / crystal) clamps the factor
+            // to 1 → roughness drives blur as before. Subtle for the
+            // common 1.5..2.4 range, important for transmission of
+            // very-low-IOR media (water vapour, thin films).
+            let iorRoughnessFactor = clamp(materialUniform.ior * 2.0 - 2.0, 0.0, 1.0);
+            let effectiveRefractionRoughness = clamp(ORI_ShadingInput.Roughness, 0.0, 1.0) * iorRoughnessFactor;
+            let lod = effectiveRefractionRoughness * pyramidLodMax;
             let transmittedRGBA = textureSampleLevel(sceneColorPyramid, sceneColorPyramidSampler, sampleUV, lod);
             let transmitted = transmittedRGBA.rgb;
             // Volumetric attenuation. Three.js's

@@ -78,6 +78,20 @@ export let VertexFunction_vert: string = /*wgsl*/ `
     ORI_VertexOut.varying_WPos.w = f32(vertex.index);
     ORI_VertexOut.varying_WNormal = normalize(ORI_NORMALMATRIX * vertexNormal.xyz) ;
 
+    #if USE_TRANSMISSION
+        // length(worldMat[i].xyz) recovers the per-axis scale even for
+        // non-uniform / sheared instance transforms. For uniform scale
+        // it collapses to (s, s, s); for unscaled meshes (1, 1, 1).
+        // Includes skinning effect because ORI_MATRIX_M may have been
+        // multiplied by skeletonNormal above — which is correct for
+        // skinned glass too.
+        ORI_VertexOut.varying_ModelScale = vec3<f32>(
+            length(ORI_MATRIX_M[0].xyz),
+            length(ORI_MATRIX_M[1].xyz),
+            length(ORI_MATRIX_M[2].xyz)
+        );
+    #endif
+
     ORI_VertexOut.member = clipPosition ;
     }
 `
