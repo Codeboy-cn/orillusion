@@ -179,7 +179,7 @@ export let PBRLItShader: string = /*wgsl*/ `
             // Approximate refraction: view-space normal tells us how
             // the ray bends sideways. Keep this cheap; the P3 roadmap
             // has a proper refract() + pyramid mip lookup.
-            let refractStrength = max(materialUniform.ior - 1.0, 0.0) * 0.05;
+            let refractStrength = max(materialUniform.ior - 1.0, 0.0) * 0.20;
             let refractOffset = ORI_ShadingInput.Normal.xy * refractStrength;
             let sampleUV = clamp(screenUV + refractOffset, vec2f(0.002), vec2f(0.998));
             let transmitted = textureSample(sceneColorPyramid, sceneColorPyramidSampler, sampleUV).rgb;

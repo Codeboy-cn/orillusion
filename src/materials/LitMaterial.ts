@@ -207,11 +207,18 @@ export class LitMaterial extends Material {
         this.shader.setUniformFloat(`transmissionFactor`, value);
         this.shader.setDefine(`USE_TRANSMISSION`, value > 0.0);
         if (value > 0.0) {
-            // Bind the scene color pyramid. If it hasn't been allocated
-            // yet (material created before FrameGraphRendererJob.start),
-            // fall back to the white placeholder — the feature re-binds
-            // on its first execute via the material's shader cache.
-            const ctx = this._ctx;
+            // Resolve the SceneColorPyramid. The most common construction
+            // path is `new LitMaterial()` with no ctx argument, so fall
+            // back to the single-engine default Context3D — without this
+            // the lookup uses `null` and we'd forever bind the white
+            // placeholder, leaving transmission samples flat-white and
+            // refraction invisible. (`Engine3D._defaultContext()` only
+            // works in single-engine setups; multi-engine apps must pass
+            // ctx explicitly to the LitMaterial constructor.)
+            let ctx = this._ctx;
+            if (!ctx) {
+                try { ctx = Engine3D._defaultContext(); } catch { ctx = undefined; }
+            }
             const pyramid = ctx ? RTResourceMap.getTexture(ctx, '_SceneColorPyramid') : null;
             if (pyramid) {
                 this.shader.setTexture('sceneColorPyramid', pyramid);

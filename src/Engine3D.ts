@@ -456,13 +456,28 @@ export class Engine3D {
     public startRenderView(view: View3D): RendererJob {
         this.views = [view];
         let job = this._startRenderJob(view);
+        // Drive the render-job lifecycle synchronously here: previously
+        // `start()` ran on the first RAF tick from the shared render
+        // loop, which meant any synchronous user code between
+        // `startRenderView()` and the first frame (i.e., a typical
+        // `await initScene()`) saw a pre-`start()` engine. That tripped
+        // up Frame Graph features whose registration eagerly allocates
+        // shared resources — most visibly SceneColorPyramidFeature
+        // (its `_SceneColorPyramid` texture wasn't in the pool, so
+        // glass materials with `transmissionFactor > 0` bound the
+        // white-texture placeholder forever and the refraction never
+        // sampled the actual scene).
+        if (!job.renderState) job.start();
         Engine3D._ensureLoop();
         return job;
     }
 
     public startRenderViews(views: View3D[]) {
         this.views = views;
-        for (let v of views) this._startRenderJob(v);
+        for (let v of views) {
+            const job = this._startRenderJob(v);
+            if (!job.renderState) job.start();
+        }
         Engine3D._ensureLoop();
     }
 

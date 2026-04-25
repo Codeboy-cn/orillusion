@@ -2,6 +2,7 @@ import { RenderTexture } from '../../../../textures/RenderTexture';
 import { GPUTextureFormat } from '../../../graphics/webGpu/WebGPUConst';
 import { Context3D } from '../../../graphics/webGpu/Context3D';
 import { GBufferFrame } from '../../frame/GBufferFrame';
+import { RTResourceMap } from '../../frame/RTResourceMap';
 import { FeatureContext, RenderFeature } from '../RenderFeature';
 import { RenderStage } from '../RenderStage';
 import { COLOR_BUFFER } from './ColorFeature';
@@ -56,14 +57,17 @@ export class SceneColorPyramidFeature extends RenderFeature {
     private _getOrAllocate(): RenderTexture {
         const colorBuffer = GBufferFrame.getGBufferFrame(GBufferFrame.colorPass_GBuffer, this._ctx).getColorTexture();
         if (!this._pyramid || this._pyramid.width !== colorBuffer.width || this._pyramid.height !== colorBuffer.height) {
-            // Format matches the color buffer so the fragment shader
-            // can sample with a filtering sampler (rgba16float
-            // supports linear filtering in WebGPU without the
-            // float32-filterable extension).
-            this._pyramid = new RenderTexture(
+            // Allocate via RTResourceMap (not `new RenderTexture(...)`)
+            // so LitMaterial.transmissionFactor's setter can find the
+            // pyramid via `RTResourceMap.getTexture(ctx, '_SceneColorPyramid')`.
+            // Without going through the map, transmission materials
+            // would forever bind the white-texture placeholder and
+            // refraction would render as flat lit color.
+            this._pyramid = RTResourceMap.createRTTexture(
+                this._ctx, SCENE_COLOR_PYRAMID,
                 colorBuffer.width, colorBuffer.height,
                 GPUTextureFormat.rgba16float,
-                false, undefined, 1, 0, false, true, this._ctx,
+                false, 0,
             );
             this._pyramid.name = SCENE_COLOR_PYRAMID;
         }

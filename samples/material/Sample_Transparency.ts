@@ -192,12 +192,13 @@ class Sample_Transparency {
         }
 
         // P2 — sorted vs WBOIT side-by-side comparison.
-        // Two columns of 8 slabs each, identical colors / alpha /
-        // spacing — only the oitMode differs. Wider spacing + lower
-        // alpha so individual layers stay distinct visually.
-        const slabCount = 8;
-        const slabAlpha = 0.18;
-        const slabSpacing = 1.4;
+        // Two columns of 6 slabs each, identical colors / alpha /
+        // spacing — only the oitMode differs. Wider spacing + slightly
+        // higher per-slab alpha (0.35) keeps each layer individually
+        // visible while still letting the back layers show through.
+        const slabCount = 5;
+        const slabAlpha = 0.30;
+        const slabSpacing = 2.0;
         const palette = [
             new Color(1.0, 0.30, 0.30, 1),
             new Color(1.0, 0.65, 0.20, 1),
@@ -242,7 +243,7 @@ class Sample_Transparency {
             ior: 1.5,
             glassRoughness: 0.0,
             // Slab stacks
-            slabAlpha: 0.18,
+            slabAlpha: 0.30,
         };
 
         // Each slider hits a stable material reference — no scene
