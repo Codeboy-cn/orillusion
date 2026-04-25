@@ -103,8 +103,17 @@ export class ColorPassRenderer extends RendererBase {
             // would have been overdrawn by opaque is wasted work; this
             // ordering removes that overdraw via hardware Z-test. Same
             // optimization Unity / UE apply by default.
+            // Sky belongs to the OPAQUE half — `!maskOp` not
+            // `!maskTr`. The transmission-pipeline-split commit moved
+            // ColorFeature to `maskTr=true` (opaque-only call), so the
+            // previous `!maskTr` condition silently dropped the sky
+            // from every demo with an AtmosphericComponent and the
+            // viewport collapsed to the cleared color (black) wherever
+            // no opaque mesh covered it. The transparent half
+            // (`maskOp=true`) is the one that should skip — by then
+            // sky has already drawn this frame.
             const sky = EntityCollect.instance.getSky(view.scene);
-            if (!maskTr && sky) {
+            if (!maskOp && sky) {
                 gpu.bindCamera(renderPassEncoder, camera);
                 if (!sky.preInit(this._rendererType)) {
                     sky.nodeUpdate(view, this._rendererType, this.rendererPassState, clusterLightingBuffer);
