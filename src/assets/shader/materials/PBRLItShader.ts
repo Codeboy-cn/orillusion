@@ -231,26 +231,36 @@ export let PBRLItShader: string = /*wgsl*/ `
             // leaves the preserved specular-like term at full strength.
             let specularBoost = clamp(materialUniform.specularColor.a, 0.0, 1.0);
             let specularLike = (lit - diffuseLike) * specularBoost;
-            let baseRGB = mix(diffuseLike, transmittedTinted, tf) + specularLike;
-            // Alpha output:
-            //   opaque mode (default): always 1.0.
-            //   cutout mode: drive alpha from the pyramid's alpha so a
-            //     glass surface in front of an *opaque* backdrop (cloth,
-            //     wall) writes alpha=1 and blocks page-bg leak, while a
-            //     glass surface over an empty / canvas-cleared region
-            //     writes alpha=(1-tf) and lets HTML compose through.
-            //     Multiplied by opacity (baseColor.a) so the slider
-            //     keeps acting as a global fade. This relies on the
-            //     TransmissionOpaqueFeature pipeline split — without
-            //     it the pyramid would store the dragon itself and the
-            //     alpha would feed back into a stable 1 or 0.
-            let opaqueAlpha = 1.0;
-            let cutoutBackdropAlpha = transmittedRGBA.a;
-            let cutoutAlpha = ORI_FragmentOutput.color.a * mix(1.0 - tf, 1.0, cutoutBackdropAlpha);
-            ORI_FragmentOutput.color = vec4f(
-                baseRGB,
-                mix(opaqueAlpha, cutoutAlpha, alphaMode)
-            );
+            let dragonOpaqueRGB = mix(diffuseLike, transmittedTinted, tf) + specularLike;
+            // Alpha-blend simulation for cutout mode. Three's
+            // MeshPhysicalMaterial sets material.transparent=true and
+            // the GPU blend state runs the over-operator; we draw with
+            // BlendMode.NONE in the opaque queue (depth-tested
+            // override), so we emulate the same math in the shader.
+            // backdropDirect samples the pyramid at THIS fragment's
+            // screen position (no refraction offset) — the pyramid
+            // contains the rest of the world (cloth / floor / walls)
+            // at this stage of the frame thanks to the
+            // TransmissionOpaqueFeature pipeline split.
+            //
+            //   srcA      = opacity * pyramid.a            // = three.js's diffuseColor.a
+            //   resultRGB = srcA * dragon + (1 - srcA) * pyramid.a * pyramid.rgb
+            //   resultA   = srcA + pyramid.a * (1 - srcA)
+            //
+            // Cloth region (pyramid.a=1): result collapses to
+            // (opacity*dragon + (1-opacity)*cloth, 1) — alpha-blend with
+            // cloth, HTML fully blocked.
+            // Cells region (pyramid.a=0): srcA=0, result=(0,0) — dragon
+            // contributes nothing and the canvas's premultiplied
+            // compositor reveals the HTML cell at full strength.
+            let backdropDirect = textureSample(sceneColorPyramid, sceneColorPyramidSampler, screenUV);
+            let opacity = ORI_FragmentOutput.color.a;
+            let srcA = opacity * backdropDirect.a;
+            let cutoutAlpha = srcA + backdropDirect.a * (1.0 - srcA);
+            let cutoutRGB = srcA * dragonOpaqueRGB + (1.0 - srcA) * backdropDirect.a * backdropDirect.rgb;
+            let outAlpha = mix(1.0, cutoutAlpha, alphaMode);
+            let outRGB = mix(dragonOpaqueRGB, cutoutRGB, alphaMode);
+            ORI_FragmentOutput.color = vec4f(outRGB, outAlpha);
         #endif
     }
 `
