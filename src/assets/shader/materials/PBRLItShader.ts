@@ -229,7 +229,13 @@ export let PBRLItShader: string = /*wgsl*/ `
             let lit = ORI_FragmentOutput.color.rgb;
             let diffuseFraction = mix(1.0, 0.75, alphaMode);
             let diffuseLike = lit * diffuseFraction;
-            let specularLike = lit - diffuseLike;
+            // We piggyback specularColor.a as a scalar specularIntensity
+            // (Three's KHR_materials_specular). Default 1.0 leaves the
+            // preserved specular-like term at full strength; lowering it
+            // dims highlights / env reflection on transmissive surfaces
+            // without touching F0 (which specularColor.rgb still drives).
+            let specularBoost = clamp(materialUniform.specularColor.a, 0.0, 1.0);
+            let specularLike = (lit - diffuseLike) * specularBoost;
             let baseRGB = mix(diffuseLike, transmittedTinted, tf) + specularLike;
             // Alpha output: opaque (1.0) by default; in alpha-cutout
             // mode the material opacity is scaled by (1 - tf * k). k is

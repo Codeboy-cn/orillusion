@@ -273,15 +273,17 @@ class Sample_TransmissionAlpha {
             this.dragonMat.attenuationDistance = params.attenuationDistance;
         });
 
-        // specularIntensity / specularColor map onto the shared
-        // `specularColor` uniform on StandShader. We fold the intensity
-        // scalar into the color so a single uniform write covers both.
+        // specularColor.rgb = F0 for dielectrics (Fresnel at 0°, ~0.04
+        // by default; tinting it adjusts grazing-angle reflection hue).
+        // specularColor.a = specularIntensity scalar that the shader
+        // multiplies into the preserved specular-like term — see
+        // PBRLitShader's USE_TRANSMISSION block.
         const applySpecular = () => {
             const c = (params.specularColor as any).rgba;
             const k = params.specularIntensity;
             (this.dragonMat as any).shader.setUniformColor(
                 'specularColor',
-                new Color((c[0] / 255) * k, (c[1] / 255) * k, (c[2] / 255) * k, 1),
+                new Color(c[0] / 255, c[1] / 255, c[2] / 255, k),
             );
         };
         GUIHelp.add(params, 'specularIntensity', 0, 1, 0.01).onChange(applySpecular);
