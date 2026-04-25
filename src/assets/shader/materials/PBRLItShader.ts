@@ -244,13 +244,14 @@ export let PBRLItShader: string = /*wgsl*/ `
             // highlights three.js's full PBR pipeline produces; in
             // opaque mode the previous full-mix behaviour is preserved
             // so existing samples don't shift.
+            //
+            // specularColor.a (the KHR_materials_specular intensity
+            // scalar) is already applied inside indirectionSpec_Function
+            // — applying it again here would double-scale, so we just
+            // pass the lit signal through.
             let diffuseFraction = mix(1.0, 0.5, alphaMode);
             let diffuseLike = lit * diffuseFraction;
-            // specularColor.a is repurposed as a specularIntensity
-            // scalar (Three's KHR_materials_specular). Default 1.0
-            // leaves the preserved specular-like term at full strength.
-            let specularBoost = clamp(materialUniform.specularColor.a, 0.0, 1.0);
-            let specularLike = (lit - diffuseLike) * specularBoost;
+            let specularLike = lit - diffuseLike;
             let dragonOpaqueRGB = mix(diffuseLike, transmittedTinted, tf) + specularLike;
             // Alpha-blend simulation for cutout mode. Three's
             // MeshPhysicalMaterial sets material.transparent=true and

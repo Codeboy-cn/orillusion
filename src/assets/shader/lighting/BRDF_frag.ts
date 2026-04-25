@@ -499,7 +499,13 @@ export let BRDF_frag: string = /*wgsl*/ `
          var AB = LUT_Approx(roughness,NdotV);
         //  var AB = textureSampleLevel(brdflutMap, brdflutMapSampler, vec2f(NdotV, roughness), 0.0).rg;
          var indirectionSpecFactor = indirectionCube.rgb * (F_IndirectionLight * AB.r + AB.g) ;
-         return indirectionSpecFactor * occlusion;
+         // specularColor.a is the KHR_materials_specular intensity
+         // scalar — scales only the IBL specular contribution, not
+         // the diffuse term. Default 1.0 leaves it untouched; lower
+         // values dim highlights / env reflection without affecting
+         // baseColor's diffuse appearance.
+         let specStrength = clamp(materialUniform.specularColor.a, 0.0, 1.0);
+         return indirectionSpecFactor * occlusion * specStrength;
      }
 
      const  c0 = vec4f(-1, -0.0275, -0.572, 0.022 );
