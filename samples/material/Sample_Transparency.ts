@@ -19,21 +19,26 @@ import {
 } from "@orillusion/core";
 import { GUIUtil } from "@samples/utils/GUIUtil";
 
-/** Build a procedural alpha-cutout texture so the A2C plane has actual
- *  alpha variation to demonstrate. Generates a dot-grid leaf-like
- *  pattern in a 256×256 canvas; each dot is fully opaque, gaps are
- *  fully transparent — exactly the case where MSAA + alpha-to-coverage
- *  shines vs hard-cutout discard. */
+/**
+ * End-to-end transparency demo: A2C alpha cutout, real Transmission
+ * (refractive glass), and OIT vs sorted side-by-side comparison.
+ *
+ * Scene layout left → right:
+ *   - alphaMode='MASK' plane: procedural leaf alpha-cutout, A2C edges.
+ *   - 5 saturated backdrop cubes (refraction target).
+ *   - Centre: large transmissive glass sphere.
+ *   - 2 columns of stacked translucent slabs:
+ *       column A (oitMode='sorted')  — back-to-front sorted alpha blend
+ *       column B (oitMode='weighted') — Weighted Blended OIT (WBOIT)
+ *   - Both columns get the same colours / spacing / alpha so the
+ *     side-by-side comparison shows the algorithmic difference.
+ */
 function buildLeafAlphaTexture(): BitmapTexture2D {
     const size = 256;
     const cv = document.createElement('canvas');
-    cv.width = size;
-    cv.height = size;
+    cv.width = size; cv.height = size;
     const ctx = cv.getContext('2d')!;
-    // Fully transparent base
     ctx.clearRect(0, 0, size, size);
-    // Random scatter of organic-looking dots, colored leafy-green so the
-    // RGB looks reasonable independently of the alpha cutout test.
     ctx.fillStyle = 'rgba(60, 160, 80, 1.0)';
     for (let i = 0; i < 80; i++) {
         const x = Math.random() * size;
@@ -43,54 +48,31 @@ function buildLeafAlphaTexture(): BitmapTexture2D {
         ctx.arc(x, y, r, 0, Math.PI * 2);
         ctx.fill();
     }
-    // Add a soft border ring so the plane silhouette is visible too
     ctx.strokeStyle = 'rgba(80, 180, 100, 1.0)';
     ctx.lineWidth = 4;
     ctx.strokeRect(8, 8, size - 16, size - 16);
-    // useMipmap=true keeps the sampler binding layout as 'filtering'
-    // — matching the shader's baseMap/transmissionMap bindings. Passing
-    // false here flips it to 'non-filtering' and produces
-    // "Filtering sampler is incompatible with non-filtering sampler binding".
     const tex = new BitmapTexture2D(true);
     tex.source = cv;
     return tex;
 }
 
-/**
- * End-to-end demo for the P0→P2 transparency additions:
- *
- * - **P0 Alpha-to-Coverage**: left plane uses `alphaMode='MASK'` +
- *   alphaCutoff. Foliage-style hard cutout with smooth edges when
- *   the engine MSAA is on.
- *
- * - **P1 Transmission**: centre sphere uses `transmissionFactor=1`
- *   and samples the SceneColorPyramid for refraction. Try dragging
- *   the camera — the backdrop seen through the glass sphere updates
- *   each frame.
- *
- * - **P2 OIT opt-in**: a stack of 20+ coloured transparent slabs on
- *   the right exercises the sorted transparent path; toggling
- *   `useOIT` in the GUI re-routes them through the OIT feature
- *   scaffold (see `TransparentOITFeature`). OIT path currently
- *   falls through to the same renderer — full WBOIT shader variant
- *   is a P2-full follow-up — but the graph wiring is validated.
- *
- * - **`alphaMode='BLEND'`**: a simple colored sphere pair demonstrates
- *   back-to-front sorted alpha.
- */
 class Sample_Transparency {
     engine: Engine3D;
     scene: Scene3D;
     lightObj3D: Object3D;
     view: View3D;
 
+    // Explicit material references for GUI to manipulate. Avoids
+    // walking scene.forChild on every slider change and ensures the
+    // GUI hits the EXACT materials we want to control.
+    private maskMaterial!: LitMaterial;
+    private glassMaterial!: LitMaterial;
+    private slabMaterials: LitMaterial[] = [];
+
     async run() {
         this.engine = await Engine3D.init({
             setting: {
-                // Per-instance MSAA: the P0 plumbing. When >0 the main
-                // colour attachment becomes a multisample target and
-                // A2C pipelines are enabled for MASK materials.
-                render: { debug: false, msaa: 4, useOIT: true },
+                render: { debug: false, msaa: 4, useOIT: true } as any,
                 shadow: { enable: true, type: 'HARD' },
             },
         });
@@ -101,7 +83,7 @@ class Sample_Transparency {
         const sky = this.scene.addComponent(AtmosphericComponent);
         const camera = CameraUtil.createCamera3DObject(this.scene);
         camera.perspective(60, this.engine.aspect, 1, 5000.0);
-        camera.object3D.addComponent(HoverCameraController).setCamera(35, -12, 55);
+        camera.object3D.addComponent(HoverCameraController).setCamera(20, -3, 50);
 
         this.view = new View3D();
         this.view.scene = this.scene;
@@ -127,166 +109,162 @@ class Sample_Transparency {
         directLight.castShadow = false;
         this.scene.addChild(this.lightObj3D);
 
-        // Ground: an opaque chequer plane — the backdrop that
-        // transmission materials sample and A2C plane stands against.
+        // Ground.
         {
             const ground = new Object3D();
             const gr = ground.addComponent(MeshRenderer);
-            gr.geometry = new PlaneGeometry(120, 120, 1, 1);
+            gr.geometry = new PlaneGeometry(200, 200, 1, 1);
             const mat = new LitMaterial();
             mat.baseColor = new Color(0.85, 0.85, 0.85, 1);
             mat.roughness = 0.9;
-            mat.metallic = 0.0;
+            mat.metallic = 0;
             gr.material = mat;
-            ground.transform.y = -5;
+            ground.transform.y = -7;
             this.scene.addChild(ground);
         }
 
-        // Colored opaque cubes behind the glass so refraction has
-        // something visually interesting to distort.
-        const colors = [
-            new Color(0.95, 0.15, 0.20, 1),
-            new Color(0.15, 0.60, 0.95, 1),
-            new Color(0.95, 0.80, 0.10, 1),
+        // Saturated backdrop cubes — sit BEHIND the glass sphere so
+        // refraction / transmission has something distinctive to bend.
+        const backdropColors = [
+            new Color(1.0, 0.15, 0.20, 1),
+            new Color(0.10, 0.65, 1.0, 1),
+            new Color(1.0, 0.85, 0.10, 1),
             new Color(0.30, 0.95, 0.35, 1),
-            new Color(0.85, 0.35, 0.95, 1),
+            new Color(0.95, 0.30, 1.0, 1),
         ];
-        for (let i = 0; i < colors.length; i++) {
+        for (let i = 0; i < backdropColors.length; i++) {
             const box = new Object3D();
             const m = new LitMaterial();
-            m.baseColor = colors[i];
+            m.baseColor = backdropColors[i];
             m.roughness = 0.6;
-            m.metallic = 0.1;
+            m.metallic = 0.05;
             const r = box.addComponent(MeshRenderer);
-            r.geometry = new BoxGeometry(3, 6, 3);
+            // Tall + wide enough to fill the glass sphere's projected
+            // footprint when seen from the camera. Without this the
+            // refraction sample falls onto sky / ground and reads
+            // mostly neutral, masking the effect.
+            r.geometry = new BoxGeometry(3.5, 12, 3);
             r.material = m;
-            box.transform.x = (i - 2) * 5;
-            box.transform.y = -2;
-            box.transform.z = -8;
+            box.transform.x = (i - 2) * 4.5;
+            box.transform.y = 1;
+            box.transform.z = -12;
             this.scene.addChild(box);
         }
 
-        // --- P0: Alpha-to-Coverage plane. ---
-        // Procedurally-built dot-grid alpha texture demonstrates the
-        // visual difference vs hard `discard` cutout: with MSAA + A2C
-        // each dot's silhouette is anti-aliased through coverage masks.
+        // P0: alphaMode='MASK' A2C plane — left side, double-sided.
         {
             const plane = new Object3D();
-            const m = new LitMaterial();
-            m.baseColor = new Color(1, 1, 1, 1);
-            m.alphaCutoff = 0.5;
-            m.alphaMode = 'MASK';
-            m.baseMap = buildLeafAlphaTexture();
-            m.doubleSide = true;
+            this.maskMaterial = new LitMaterial();
+            this.maskMaterial.baseColor = new Color(1, 1, 1, 1);
+            this.maskMaterial.alphaCutoff = 0.5;
+            this.maskMaterial.alphaMode = 'MASK';
+            this.maskMaterial.baseMap = buildLeafAlphaTexture();
+            this.maskMaterial.doubleSide = true;
             const r = plane.addComponent(MeshRenderer);
             r.geometry = new PlaneGeometry(10, 8, 1, 1);
-            r.material = m;
-            plane.transform.x = -16;
+            r.material = this.maskMaterial;
+            plane.transform.x = -18;
             plane.transform.y = 1;
             plane.transform.rotationX = 90;
             this.scene.addChild(plane);
         }
 
-        // --- P1: Transmission "glass" sphere. ---
+        // P1: glass sphere with Transmission. Smooth + non-metallic so
+        // refraction reads against the backdrop without spec lobe noise.
         {
             const glass = new Object3D();
-            const m = new LitMaterial();
-            m.baseColor = new Color(1, 1, 1, 1);
-            m.roughness = 0.05;
-            m.metallic = 0;
-            m.ior = 1.5;
-            m.transmissionFactor = 1.0;
-            m.thicknessFactor = 0.6;
-            m.attenuationDistance = 2.5;
-            m.attenuationColor = new Color(0.9, 1.0, 0.95, 1);
-            // Transmission stays on the OPAQUE queue — the fragment
-            // shader folds scene colour into the output and writes
-            // alpha=1. alphaMode='OPAQUE' is already the default.
+            this.glassMaterial = new LitMaterial();
+            this.glassMaterial.baseColor = new Color(1, 1, 1, 1);
+            this.glassMaterial.roughness = 0.0;
+            this.glassMaterial.metallic = 0;
+            this.glassMaterial.ior = 1.5;
+            this.glassMaterial.transmissionFactor = 1.0;
+            this.glassMaterial.thicknessFactor = 0.6;
+            this.glassMaterial.attenuationDistance = 5.0;
+            this.glassMaterial.attenuationColor = new Color(0.92, 1.0, 0.95, 1);
             const r = glass.addComponent(MeshRenderer);
-            r.geometry = new SphereGeometry(3.5, 48, 48);
-            r.material = m;
+            r.geometry = new SphereGeometry(4.5, 64, 64);
+            r.material = this.glassMaterial;
             glass.transform.x = 0;
-            glass.transform.y = 2;
-            glass.transform.z = 2;
+            glass.transform.y = 1.5;
+            glass.transform.z = 0;
             this.scene.addChild(glass);
         }
 
-        // --- Mixed transparent stack — 12 coloured slabs.
-        // Even-indexed slabs use the legacy sorted path (oitMode='sorted'),
-        // odd-indexed use Weighted-Blended OIT (oitMode='weighted').
-        // When `useOIT=true` both render paths run in the same frame:
-        // sorted slabs draw via SortedTransparentFeature with the
-        // 'sorted' filter, weighted slabs draw via TransparentOITFeature.
-        // This validates the A8 "OIT and sorted coexistence" wiring.
-        for (let i = 0; i < 12; i++) {
-            const slab = new Object3D();
-            const m = new LitMaterial();
-            const hue = i / 12;
-            const c = new Color(
-                0.5 + 0.4 * Math.sin(hue * 6.28),
-                0.5 + 0.4 * Math.sin(hue * 6.28 + 2.1),
-                0.5 + 0.4 * Math.sin(hue * 6.28 + 4.2),
-                0.35,
-            );
-            m.baseColor = c;
-            m.roughness = 0.3;
-            m.metallic = 0;
-            m.alphaMode = 'BLEND';
-            m.oitMode = (i % 2 === 0) ? 'sorted' : 'weighted';
-            const r = slab.addComponent(MeshRenderer);
-            r.geometry = new BoxGeometry(6, 6, 0.3);
-            r.material = m;
-            slab.transform.x = 16;
-            slab.transform.y = 0;
-            slab.transform.z = -6 + i * 0.5;
-            this.scene.addChild(slab);
-        }
+        // P2 — sorted vs WBOIT side-by-side comparison.
+        // Two columns of 8 slabs each, identical colors / alpha /
+        // spacing — only the oitMode differs. Wider spacing + lower
+        // alpha so individual layers stay distinct visually.
+        const slabCount = 8;
+        const slabAlpha = 0.18;
+        const slabSpacing = 1.4;
+        const palette = [
+            new Color(1.0, 0.30, 0.30, 1),
+            new Color(1.0, 0.65, 0.20, 1),
+            new Color(1.0, 1.0, 0.30, 1),
+            new Color(0.40, 1.0, 0.40, 1),
+            new Color(0.30, 0.85, 1.0, 1),
+            new Color(0.40, 0.40, 1.0, 1),
+            new Color(0.85, 0.40, 1.0, 1),
+            new Color(1.0, 0.40, 0.85, 1),
+        ];
+
+        const buildColumn = (centerX: number, mode: 'sorted' | 'weighted') => {
+            for (let i = 0; i < slabCount; i++) {
+                const slab = new Object3D();
+                const m = new LitMaterial();
+                m.baseColor = new Color(palette[i].r, palette[i].g, palette[i].b, slabAlpha);
+                m.roughness = 0.3;
+                m.metallic = 0;
+                m.alphaMode = 'BLEND';
+                m.oitMode = mode;
+                const r = slab.addComponent(MeshRenderer);
+                r.geometry = new BoxGeometry(5, 7, 0.25);
+                r.material = m;
+                slab.transform.x = centerX;
+                slab.transform.y = 0;
+                slab.transform.z = -((slabCount - 1) * slabSpacing) / 2 + i * slabSpacing;
+                this.scene.addChild(slab);
+                this.slabMaterials.push(m);
+            }
+        };
+        buildColumn(15, 'sorted');
+        buildColumn(24, 'weighted');
     }
 
     private initGUI() {
         GUIHelp.addFolder('Transparency demo');
         const proxy: any = {
+            // MASK plane
             alphaCutoff: 0.5,
+            // Glass sphere
             transmissionFactor: 1.0,
-            attenuationDistance: 2.5,
             ior: 1.5,
+            glassRoughness: 0.0,
+            // Slab stacks
+            slabAlpha: 0.18,
         };
-        // Expose knobs so the user can feel the pipeline end-to-end.
+
+        // Each slider hits a stable material reference — no scene
+        // traversal, guaranteed propagation through Shader.setUniform*
+        // broadcast (which already iterates all sub-shader passes).
         GUIHelp.add(proxy, 'alphaCutoff', 0.0, 1.0, 0.01).onChange((v: number) => {
-            this.scene.forChild((c: Object3D) => {
-                const r = c.getComponent(MeshRenderer);
-                const mat: any = r?.material;
-                if (mat instanceof LitMaterial && mat.alphaMode === 'MASK') {
-                    mat.alphaCutoff = v;
-                }
-            });
+            this.maskMaterial.alphaCutoff = v;
         });
         GUIHelp.add(proxy, 'transmissionFactor', 0.0, 1.0, 0.01).onChange((v: number) => {
-            this.scene.forChild((c: Object3D) => {
-                const r = c.getComponent(MeshRenderer);
-                const mat: any = r?.material;
-                if (mat instanceof LitMaterial && mat.transmissionFactor > 0) {
-                    mat.transmissionFactor = v;
-                }
-            });
+            this.glassMaterial.transmissionFactor = v;
         });
         GUIHelp.add(proxy, 'ior', 1.0, 2.5, 0.01).onChange((v: number) => {
-            this.scene.forChild((c: Object3D) => {
-                const r = c.getComponent(MeshRenderer);
-                const mat: any = r?.material;
-                if (mat instanceof LitMaterial && mat.transmissionFactor > 0) {
-                    mat.ior = v;
-                }
-            });
+            this.glassMaterial.ior = v;
         });
-        GUIHelp.add(proxy, 'attenuationDistance', 0.1, 20.0, 0.1).onChange((v: number) => {
-            this.scene.forChild((c: Object3D) => {
-                const r = c.getComponent(MeshRenderer);
-                const mat: any = r?.material;
-                if (mat instanceof LitMaterial && mat.transmissionFactor > 0) {
-                    mat.attenuationDistance = v;
-                }
-            });
+        GUIHelp.add(proxy, 'glassRoughness', 0.0, 1.0, 0.01).onChange((v: number) => {
+            this.glassMaterial.roughness = v;
+        });
+        GUIHelp.add(proxy, 'slabAlpha', 0.05, 0.6, 0.01).onChange((v: number) => {
+            for (const m of this.slabMaterials) {
+                const c = m.baseColor;
+                m.baseColor = new Color(c.r, c.g, c.b, v);
+            }
         });
         GUIHelp.endFolder();
     }
