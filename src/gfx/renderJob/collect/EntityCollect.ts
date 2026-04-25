@@ -275,11 +275,35 @@ export class EntityCollect {
             return;
 
         let needSort = false;
+        let allWeighted = true;
         for (const renderNode of renderList) {
             if (renderNode.isRenderOrderChange || renderNode.needSortOnCameraZ) {
                 needSort = true;
-                break;
             }
+            // WBOIT (oitMode='weighted') is order-independent — its
+            // accum / reveal accumulation commutes. If every transparent
+            // node opts in, we can skip the per-frame sort entirely
+            // and let the hardware blend deal with it. Saves the
+            // O(N log N) JS sort on dense particle / glass scenes.
+            const mat = renderNode.materials?.[0];
+            if (!mat || mat.oitMode !== 'weighted') {
+                allWeighted = false;
+            }
+            // Bail early on the first dirty + non-weighted node — both
+            // conditions answered, no need to keep scanning.
+            if (needSort && !allWeighted) break;
+        }
+
+        const view = scene.view;
+        const useOIT = !!(view?.engine3D?.setting.render as any)?.useOIT;
+        if (allWeighted && useOIT && renderList.length > 0) {
+            // All transparents go through WBOIT and OIT is enabled —
+            // the GPU compositor doesn't care about order. Reset dirty
+            // flags so the next frame doesn't re-detect "needs sort".
+            for (const renderNode of renderList) {
+                renderNode.isRenderOrderChange = false;
+            }
+            return this;
         }
 
         if (needSort) {

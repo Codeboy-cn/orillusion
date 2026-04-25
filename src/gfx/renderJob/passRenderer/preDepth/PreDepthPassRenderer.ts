@@ -73,14 +73,22 @@ export class PreDepthPassRenderer extends RendererBase {
         //     GPUContext.bindCamera(encoder, camera);
         //     EntityCollect.instance.sky.renderPass2(this._rendererType, this.rendererPassState, scene, this.clusterLightingRender, encoder);
         // }
+        // Guard against empty-scene first frames: getRenderShaderCollect
+        // can return undefined before any RenderNode is registered.
+        // ColorPassRenderer / shadow passes already null-check; this
+        // path was the missing one — manifested as a runtime
+        // "viewRenderList is not iterable" when zPrePass enabled by
+        // default and the scene boots empty.
         let viewRenderList = EntityCollect.instance.getRenderShaderCollect(view);
-        for (const renderList of viewRenderList) {
-            let nodeMap = renderList[1];
-            for (const iterator of nodeMap) {
-                let node = iterator[1];
-                if (!node.isDestroyed && node.preInit(this._rendererType)) {
-                    node.nodeUpdate(view, this._rendererType, this.rendererPassState, null);
-                    break;
+        if (viewRenderList) {
+            for (const renderList of viewRenderList) {
+                let nodeMap = renderList[1];
+                for (const iterator of nodeMap) {
+                    let node = iterator[1];
+                    if (!node.isDestroyed && node.preInit(this._rendererType)) {
+                        node.nodeUpdate(view, this._rendererType, this.rendererPassState, null);
+                        break;
+                    }
                 }
             }
         }
