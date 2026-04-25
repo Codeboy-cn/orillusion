@@ -18,12 +18,20 @@ export enum RenderStage {
     Shadow = 10,
     /** Per-mesh depth prepass (optional, gated by `render.zPrePass`). */
     PreDepth = 20,
+    /** Hi-Z depth pyramid generation; downstream consumers
+     *  (SSR / SSGI / GPU cull / Volumetric Fog occlusion) sample
+     *  `_HiZPyramid`. */
+    HiZ = 25,
     /** DDGI probe update, SSGI / GTAO compute. */
     GI = 30,
     /** Opaque geometry main color pass. */
     Opaque = 40,
     /** Slot for refraction masks, opaque-only post, SSR normal buffer. */
     AfterOpaque = 50,
+    /** Per-pixel screen-space motion vector (`_MotionVector`).
+     *  Currently MVP via reverse-reproject (static-only); upgrade
+     *  path: per-vertex prev-clip output. */
+    MotionVector = 55,
     /** Transparent geometry (sorted or OIT). */
     Transparent = 60,
     /** Slot for transparent-depth snapshots or deferred composites. */

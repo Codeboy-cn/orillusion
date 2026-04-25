@@ -8,6 +8,8 @@ import { PointShadowFeature } from '../graph/features/PointShadowFeature';
 import { ReflectionFeature } from '../graph/features/ReflectionFeature';
 import { GIFeature } from '../graph/features/GIFeature';
 import { ColorFeature } from '../graph/features/ColorFeature';
+import { HiZFeature } from '../graph/features/HiZFeature';
+import { MotionVectorFeature } from '../graph/features/MotionVectorFeature';
 import { SceneColorPyramidFeature } from '../graph/features/SceneColorPyramidFeature';
 import { SortedTransparentFeature } from '../graph/features/SortedTransparentFeature';
 import { TransparentOITFeature } from '../graph/features/TransparentOITFeature';
@@ -55,6 +57,20 @@ export class FrameGraphRendererJob extends ForwardRenderJob {
             preDepthFeature.registerResources(this.graph.pool);
             this.graph.addFeature(preDepthFeature);
         }
+
+        // Hi-Z depth pyramid (skeleton). Allocates `_HiZPyramid` for
+        // downstream consumers (SSR / GPU cull / Volumetric Fog
+        // visibility). Generation pass is deferred — see HiZFeature
+        // class doc.
+        const hizFeature = new HiZFeature(view.engine3D.context3D);
+        hizFeature.registerResources(this.graph.pool);
+        this.graph.addFeature(hizFeature);
+
+        // Motion Vector (skeleton). Allocates `_MotionVector` (rg16float).
+        // Compute generation deferred — see MotionVectorFeature class doc.
+        const mvFeature = new MotionVectorFeature(view.engine3D.context3D);
+        mvFeature.registerResources(this.graph.pool);
+        this.graph.addFeature(mvFeature);
 
         // C3: directional-light shadow map (CSM cascade array). The
         // parent RendererJob constructor always builds

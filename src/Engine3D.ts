@@ -109,6 +109,7 @@ export class Engine3D {
                 useFrameGraph: true,
                 msaa: 0,
                 useOIT: false,
+                gpuCull: false,
                 postProcessing: {
                     bloom: {
                         downSampleStep: 3,
@@ -151,6 +152,15 @@ export class Engine3D {
                     ssr: { enable: false, pixelRatio: 1, fadeEdgeRatio: 0.2, rayMarchRatio: 0.5, fadeDistanceMin: 600, fadeDistanceMax: 2000, roughnessThreshold: 0.5, powDotRN: 0.2, mixThreshold: 0.1, debug: true },
                     fxaa: { enable: false },
                     depthOfView: { enable: false, iterationCount: 3, pixelOffset: 1.0, near: 150, far: 300 },
+                    volumetricFog: {
+                        enable: false,
+                        density: 0.05,
+                        scatteringIntensity: 1.0,
+                        anisotropy: 0.6,
+                        maxDistance: 100.0,
+                        stepCount: 32,
+                        ambient: { r: 0.02, g: 0.02, b: 0.04 },
+                    },
                 },
             },
             shadow: {
@@ -159,6 +169,14 @@ export class Engine3D {
                 updateFrameRate: 1, csmMargin: 0.1, csmScatteringExp: 0.7, csmAreaScale: 0.4,
                 maxCascades: 4, maxShadowMapNum: 8, maxShadowMapWidth: 2048, maxShadowMapHeight: 2048, shadowBound: 256,
                 debug: false,
+                contactShadow: {
+                    enable: false,
+                    maxStepCount: 16,
+                    maxDistance: 0.5,
+                    thickness: 0.05,
+                    bias: 0.01,
+                    intensity: 1.0,
+                },
             },
             gi: {
                 enable: false, offsetX: 0, offsetY: 0, offsetZ: 0, probeSpace: 64, probeXCount: 4, probeYCount: 2,

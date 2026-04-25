@@ -24,10 +24,21 @@ export type ShadowSetting = {
     updateFrameRate: number;
 
     /**
-     * Percentage-Closer Filtering(PCF)is a simple, often seen technique for removing shadow edges.
-     * Soft shadow, is a soft and blurred shadow that is farther away from the object when the light is shot down.
-     * Hard shadow, is a sharper shadow, at the exchange (connection) with the object or the place where the light hits and close to the object, 
-     or the occluded place where the sunlight cannot reach.
+     * Shadow sampling mode.
+     *
+     * - `'HARD'`: single-tap hardware compare, sharp 1-texel edges.
+     *   Cheapest. Default.
+     * - `'PCF'`: 3×3 tent-weighted PCF (~5×5 effective via the
+     *   hardware comparison sampler's 2×2 filtering). Mild softness,
+     *   uniform across the shadow map regardless of receiver depth.
+     * - `'SOFT'`: **Percentage-Closer Soft Shadows (PCSS)** — the
+     *   16-tap blocker search + similar-triangles penumbra estimate +
+     *   16-tap Poisson PCF. Produces "contact hardening": sharp
+     *   directly under occluders, progressively softer as receiver-to-
+     *   blocker distance grows. The most expensive of the three but
+     *   the only one that captures distance-dependent softness.
+     *   Per-light `softness` (light.size in shadow-map texels) overrides
+     *   the global `shadowSoft` knob.
      */
     type: `PCF` | `HARD` | `SOFT`;
     // /**
@@ -128,4 +139,24 @@ export type ShadowSetting = {
      * are consulted when this flag is on; `'auto'` counts as dynamic.
      */
     enableStaticCache?: boolean;
+
+    /** Contact Shadows — short screen-space ray-march along the dominant
+     *  directional light. Adds the close-contact darkness CSM can't
+     *  resolve (object-on-floor, fingers-on-table). Enable by adding
+     *  ContactShadowPost to the post chain; this sub-tree controls
+     *  the shader parameters. */
+    contactShadow?: {
+        enable: boolean;
+        /** Number of ray-march steps. 12-24 is the visual sweet-spot. */
+        maxStepCount: number;
+        /** World-space ray length. Smaller = tighter contact-only shadow. */
+        maxDistance: number;
+        /** Depth-difference window that counts as "occluded". Bigger
+         *  catches more contact but smears under thin geometry. */
+        thickness: number;
+        /** Bias along the surface normal to avoid self-shadow acne. */
+        bias: number;
+        /** [0,1] strength. */
+        intensity: number;
+    };
 };

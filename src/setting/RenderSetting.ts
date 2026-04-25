@@ -6,6 +6,7 @@ import { SSRSetting } from "./post/SSRSetting";
 import { TAASetting } from "./post/TAASetting";
 import { BloomSetting } from "./post/BloomSetting";
 import { GodRaySetting } from "./post/GodRaySetting";
+import { VolumetricFogSetting } from "./post/VolumetricFogSetting";
 
 export type RenderSetting = {
     debug: boolean;
@@ -34,6 +35,13 @@ export type RenderSetting = {
      *  path remains the reference. Flip per-instance via
      *  `engine.setting.render.useFrameGraph = true`. */
     useFrameGraph: boolean;
+    /** GPU-driven culling — when true, frustum + (eventually) Hi-Z
+     *  occlusion tests are computed on the GPU per mesh instance, and
+     *  visible meshes are submitted via `drawIndexedIndirect` from a
+     *  GPU-built indirect buffer. Currently MVP infrastructure-only:
+     *  the setting flag is plumbed but the compute culling pass and
+     *  indirect draw path are skeleton-stage. False default. */
+    gpuCull?: boolean;
     /** Per-instance MSAA sample count for the main color pass.
      *  0 disables MSAA (default). Valid non-zero values: 2 | 4 | 8
      *  depending on device support. Enabling MSAA unlocks
@@ -68,5 +76,6 @@ export type RenderSetting = {
             enable: boolean;
         };
         depthOfView?: DepthOfViewSetting;
+        volumetricFog?: VolumetricFogSetting;
     };
 }
