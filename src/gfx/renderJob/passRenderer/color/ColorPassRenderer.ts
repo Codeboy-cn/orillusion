@@ -141,6 +141,29 @@ export class ColorPassRenderer extends RendererBase {
         // ProfilerUtil.end("colorPass Renderer");
     }
 
+    /**
+     * Iterate the visible RenderNodes and submit per-node draws.
+     *
+     * **GPU-driven indirect-draw integration point**: when
+     * `engine.setting.render.gpuCull === true`, the visibility decision
+     * and indirect-draw arg buffer are already on the GPU
+     * (`GPUCullFeature` ran at BeforeShadows; outputs are
+     * `_VisibilityBuffer`, `_DrawCmds`, `_DrawCount`). The seam to take
+     * advantage of this is here:
+     *
+     *   1. Skip the per-node `nodes[i].renderPass(...)` loop below.
+     *   2. Group nodes by pipeline / pass key (one indirect call per
+     *      group is currently the WebGPU model — multi-draw indirect
+     *      is not yet in the spec).
+     *   3. Per group: bind shared geometry+pipeline, then call
+     *      `gpu.drawIndexedIndirect(encoder, drawCmdsBuffer.buffer,
+     *      offset)` ranging over the visible-count subrange.
+     *
+     * Deferred because the per-pipeline grouping requires a tighter
+     * EntityCollect contract (each RenderNode currently contributes
+     * its own bindGroups + push-constant matrix slot via
+     * `firstInstance`); Phase 5 of the GPU-cull rollout.
+     */
     public drawNodes(view: View3D, renderContext: RenderContext, nodes: RenderNode[], occlusionSystem: OcclusionSystem, clusterLightingBuffer: ClusterLightingBuffer) {
         let viewRenderList = EntityCollect.instance.getRenderShaderCollect(view);
         if (viewRenderList) {

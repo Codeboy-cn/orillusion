@@ -110,6 +110,7 @@ export class Engine3D {
                 msaa: 0,
                 useOIT: false,
                 gpuCull: false,
+                gpuCullTwoPhase: false,
                 postProcessing: {
                     bloom: {
                         downSampleStep: 3,

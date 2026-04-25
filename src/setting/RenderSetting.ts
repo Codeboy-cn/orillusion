@@ -35,13 +35,24 @@ export type RenderSetting = {
      *  path remains the reference. Flip per-instance via
      *  `engine.setting.render.useFrameGraph = true`. */
     useFrameGraph: boolean;
-    /** GPU-driven culling — when true, frustum + (eventually) Hi-Z
-     *  occlusion tests are computed on the GPU per mesh instance, and
-     *  visible meshes are submitted via `drawIndexedIndirect` from a
-     *  GPU-built indirect buffer. Currently MVP infrastructure-only:
-     *  the setting flag is plumbed but the compute culling pass and
-     *  indirect draw path are skeleton-stage. False default. */
+    /** GPU-driven culling — when true, frustum + (when paired with
+     *  Hi-Z) occlusion tests run on the GPU per mesh instance and
+     *  produce a `drawIndexedIndirect` arg buffer. The compute pass
+     *  is fully implemented in `GPUCullFeature` /
+     *  `GPUFrustumCull_cs`; what's still skeleton is the
+     *  `ColorPassRenderer.drawNodes` consumer that actually issues
+     *  the indirect call (the existing per-node iteration coexists).
+     *  Flip this on AND open the integration in
+     *  `ColorPassRenderer.drawNodes` to get the 5-20× perf win. */
     gpuCull?: boolean;
+    /** Two-phase Hi-Z occlusion culling — phase 1 tests against the
+     *  prior frame's Hi-Z and renders the survivors; phase 2 rebuilds
+     *  Hi-Z and re-tests the failures to catch newly-revealed
+     *  geometry. Reduces over-culling artifacts at edges and during
+     *  fast camera motion. Implementation seam: `GPUCullSystem` runs
+     *  twice with different Hi-Z bindings. Defaults off; gated by
+     *  `gpuCull === true`. */
+    gpuCullTwoPhase?: boolean;
     /** Per-instance MSAA sample count for the main color pass.
      *  0 disables MSAA (default). Valid non-zero values: 2 | 4 | 8
      *  depending on device support. Enabling MSAA unlocks
