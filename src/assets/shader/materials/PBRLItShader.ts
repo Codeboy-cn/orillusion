@@ -281,7 +281,19 @@ export let PBRLItShader: string = /*wgsl*/ `
             let litMinusSpec = max(lit - cleanSpec, vec3f(0.0));
             let diffuseLike = mix(lit, litMinusSpec, alphaMode);
             let preservedSpec = mix(vec3f(0.0), cleanSpec, alphaMode);
-            let dragonOpaqueRGB = mix(diffuseLike, transmittedTinted, tf) + preservedSpec;
+            // KHR_materials_transmission spec: "A material with metallic
+            // = 1 cannot transmit light." Three.js gets this for free
+            // because its PBR multiplies diffuse by kD = (1-F)*(1-
+            // metallic), so a pure metal has zero diffuse term and
+            // transmission, which only replaces diffuse, has no
+            // visible effect — the surface becomes a pure mirror.
+            // Our diffuseLike here also includes direct-light spec
+            // contribution, so we need to gate transmission explicitly
+            // by (1 - metallic) to get the same chrome-at-metallic=1
+            // look three.js's reference produces.
+            let metalMask = 1.0 - clamp(fragData.Metallic, 0.0, 1.0);
+            let effectiveTf = tf * metalMask;
+            let dragonOpaqueRGB = mix(diffuseLike, transmittedTinted, effectiveTf) + preservedSpec;
             // Alpha-blend simulation for cutout mode. Three's
             // MeshPhysicalMaterial sets material.transparent=true and
             // the GPU blend state runs the over-operator; we draw with
@@ -305,7 +317,12 @@ export let PBRLItShader: string = /*wgsl*/ `
             // compositor reveals the HTML cell at full strength.
             let backdropDirect = textureSample(sceneColorPyramid, sceneColorPyramidSampler, screenUV);
             let opacity = ORI_FragmentOutput.color.a;
-            let srcA = opacity * backdropDirect.a;
+            // Same metalness gating for the alpha-cutout path: pure
+            // metals don't let the iframe HTML show through, they
+            // mirror-reflect the IBL. Scale the alpha-blend term by
+            // metalMask so srcA collapses to 1 at metallic=1 (no HTML
+            // leak even in cutout mode).
+            let srcA = opacity * mix(1.0, backdropDirect.a, metalMask);
             let cutoutAlpha = srcA + backdropDirect.a * (1.0 - srcA);
             let cutoutRGB = srcA * dragonOpaqueRGB + (1.0 - srcA) * backdropDirect.a * backdropDirect.rgb;
             let outAlpha = mix(1.0, cutoutAlpha, alphaMode);
