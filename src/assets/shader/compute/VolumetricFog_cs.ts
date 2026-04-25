@@ -116,11 +116,13 @@ export let VolumetricFog_cs: string = /*wgsl*/`
             let stepTransmittance = exp(-fogSettings.density * stepLen);
 
             // In-scattering = phase * lightColor * density (sun term).
-            // Skip shadow lookup in this MVP — proper CSM sample needs
-            // the shadowMap binding plumbed through which is non-trivial
-            // for a compute pass. Fake shadow via simple distance-based
-            // attenuation; the demo still shows light shafts because the
-            // phase function biases toward the light.
+            // CSM shadow sampling along the march is on the upgrade path
+            // for this shader — wiring shadowMap2DArray + comparison
+            // sampler into a compute pipeline is straightforward but
+            // adds ~5 bindings + matrix lookups + cascade selection;
+            // deferred to keep MVP small. The phase function already
+            // biases scattering toward the sun direction so god-ray
+            // shafts read correctly when looking near the light.
             let inscatter = (phase * lightColor + ambient) * fogSettings.density * stepLen;
             scattering = scattering + inscatter * transmittance * fogSettings.scatteringIntensity;
             transmittance = transmittance * stepTransmittance;
