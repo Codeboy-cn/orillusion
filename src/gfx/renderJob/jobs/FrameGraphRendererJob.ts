@@ -8,6 +8,7 @@ import { PointShadowFeature } from '../graph/features/PointShadowFeature';
 import { ReflectionFeature } from '../graph/features/ReflectionFeature';
 import { GIFeature } from '../graph/features/GIFeature';
 import { ColorFeature } from '../graph/features/ColorFeature';
+import { GPUCullFeature } from '../graph/features/GPUCullFeature';
 import { HiZFeature } from '../graph/features/HiZFeature';
 import { MotionVectorFeature } from '../graph/features/MotionVectorFeature';
 import { SceneColorPyramidFeature } from '../graph/features/SceneColorPyramidFeature';
@@ -58,19 +59,30 @@ export class FrameGraphRendererJob extends ForwardRenderJob {
             this.graph.addFeature(preDepthFeature);
         }
 
-        // Hi-Z depth pyramid (skeleton). Allocates `_HiZPyramid` for
-        // downstream consumers (SSR / GPU cull / Volumetric Fog
-        // visibility). Generation pass is deferred — see HiZFeature
-        // class doc.
+        // Hi-Z depth pyramid. Allocates `_HiZPyramid` and runs a
+        // per-frame max-z reduction compute pass — downstream
+        // consumers (SSR / GPU cull occlusion / Volumetric Fog
+        // visibility) can sample the chain at any mip.
         const hizFeature = new HiZFeature(view.engine3D.context3D);
         hizFeature.registerResources(this.graph.pool);
         this.graph.addFeature(hizFeature);
 
-        // Motion Vector (skeleton). Allocates `_MotionVector` (rg16float).
-        // Compute generation deferred — see MotionVectorFeature class doc.
+        // Motion Vector (screen-space reverse-reproject MVP).
+        // Allocates `_MotionVector` (rg16float) and runs a compute
+        // pass each frame using the prior frame's viewProj.
         const mvFeature = new MotionVectorFeature(view.engine3D.context3D);
         mvFeature.registerResources(this.graph.pool);
         this.graph.addFeature(mvFeature);
+
+        // GPU-driven mesh culling. Opt-in via setting; the feature
+        // computes a visibility buffer + indirect draw args on the
+        // GPU each frame. Renderer integration is follow-up.
+        const useGPUCull = !!(view.engine3D.setting.render as any).gpuCull;
+        if (useGPUCull) {
+            const cullFeature = new GPUCullFeature(view.engine3D.context3D);
+            cullFeature.registerResources(this.graph.pool);
+            this.graph.addFeature(cullFeature);
+        }
 
         // C3: directional-light shadow map (CSM cascade array). The
         // parent RendererJob constructor always builds

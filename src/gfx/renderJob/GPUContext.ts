@@ -168,6 +168,22 @@ export class GPUContextInstance {
         }
     }
 
+    /**
+     * Indirect indexed draw — the draw call counts (indexCount, instanceCount,
+     * firstIndex, baseVertex, firstInstance) come from a GPU buffer at the
+     * given offset. Companion of {@link drawIndexed}; used by GPU-driven
+     * culling so the visibility decision and the draw submission both live
+     * on the GPU.
+     *
+     * The `indirect-first-instance` adapter feature must be enabled if the
+     * indirect buffer's `firstInstance` field is non-zero (Orillusion
+     * requests it in Context3D init).
+     */
+    public drawIndexedIndirect(encoder: GPURenderPassEncoder, indirectBuffer: GPUBuffer, indirectOffset: GPUSize64) {
+        encoder.drawIndexedIndirect(indirectBuffer, indirectOffset);
+        this.drawCount++;
+    }
+
     public drawIndexed(encoder: GPURenderPassEncoder, indexCount: GPUSize32,
         instanceCount?: GPUSize32,
         firstIndex?: GPUSize32,
