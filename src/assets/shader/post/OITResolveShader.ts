@@ -1,6 +1,7 @@
 /**
- * Weighted-Blended OIT resolve fragment shader. Pairs with
- * {@link OITAccumShader}. Read the two OIT attachments and composite
+ * Weighted-Blended OIT resolve fragment shader. Pairs with the
+ * `USE_OIT_ACCUM` shader path in `PBRLitShader` (see Common_frag's
+ * tail block). Read the two OIT attachments and composite
  * into the destination color buffer using:
  *
  *   visibility   = 1 - reveal   // probability the fragment is visible
