@@ -62,6 +62,14 @@ export class Demo_FlowImg {
     async initComputeBuffer() { }
 
     async imageloader(url: string) {
+        // Iframe srcdoc resolves bare relative URLs against
+        // about:srcdoc, which makes fetch() return an empty blob and
+        // createImageBitmap reject with InvalidStateError. Force-bind
+        // to the parent's origin (vite dev server) the same way
+        // BitmapTextureCube / VideoTexture do.
+        if (!/^https?:|^data:|^blob:|^\//.test(url)) {
+            url = new URL(url, (window.parent || window).location.origin + '/').href
+        }
         const res = await fetch(url)
         const img = await res.blob()
         const bitmap = await createImageBitmap(img)

@@ -465,6 +465,15 @@ export let BRDF_frag: string = /*wgsl*/ `
     }
 
 
+     // indirection*_Function reference materialUniform.envIntensity /
+     // .specularColor.a, fields that only exist on the PBR
+     // (USE_BRDF) MaterialUniform layout. WGSL validates included
+     // function bodies even when uncalled, so non-BRDF shaders
+     // (Grass, Sprite, Unlit, ...) that pull LightingFunction_frag
+     // for the direct-light helpers reject the parse with
+     // "struct member envIntensity not found". Gate the helpers behind
+     // USE_BRDF so non-BRDF includes only see the direct-light path.
+     #if USE_BRDF
      fn indirectionDiffuse_Function( NdotV:f32, normalDir:vec3f, metallic:f32, baseColor:vec3f, roughness:f32, occlusion:f32, F0:vec3f)-> vec3f
      {
         //  var SHColor = SH9(normalDir,globalUniform.SH).rgb * globalUniform.skyExposure ;
@@ -474,10 +483,9 @@ export let BRDF_frag: string = /*wgsl*/ `
          var KD = (1.0 - KS) * (1.0 - metallic);
          // envIntensity exclusively scales the IBL diffuse term — the
          // ambient sky / SH lighting that fills in matte / shadow
-         // areas. Pairing it with specularIntensity (which now drives
-         // the IBL spec lobe alone) gives the GUI two visually
-         // distinct knobs: envIntensity → "ambient brightness", and
-         // specularIntensity → "highlight strength".
+         // areas. Pairing it with specularIntensity (which drives the
+         // IBL spec lobe alone) gives the GUI two visually distinct
+         // knobs: env → "ambient brightness", spec → "highlight strength".
          return SHColor * KD * baseColor * occlusion * materialUniform.envIntensity;
         //  return SHColor ;
      }
@@ -509,6 +517,7 @@ export let BRDF_frag: string = /*wgsl*/ `
          let specStrength = clamp(materialUniform.specularColor.a, 0.0, 1.0);
          return indirectionSpecFactor * occlusion * specStrength;
      }
+     #endif
 
      const  c0 = vec4f(-1, -0.0275, -0.572, 0.022 );
      const  c1 = vec4f(1, 0.0425, 1.04, -0.04 );

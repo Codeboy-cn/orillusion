@@ -36,7 +36,10 @@ export class VideoTexture extends Texture {
 
         if (typeof video === 'string') {
             media = this.createVideo()
-            media.src = video
+            // Resolve relative URLs against window.location.origin
+            // (inherits parent origin under iframe srcdoc; baseURI
+            // there is "about:srcdoc" which rejects URL construction).
+            media.src = /^https?:|^data:|^blob:|^\//.test(video) ? video : new URL(video, (window.parent || window).location.origin + '/').href;
         } else if (video.constructor.name === 'MediaStream') {
             media = this.createVideo()
             media.srcObject = video as MediaStream

@@ -181,7 +181,13 @@ export class BitmapTextureCube extends TextureCube {
 
         async function loadImage(index: number, url: string) {
             const img = document.createElement('img');
-            img.src = url;
+            // Iframe srcdoc has document.baseURI = "about:srcdoc" AND
+            // window.location.href is "about:srcdoc/" — both reject
+            // `new URL(rel, base)`. The iframe's window.location.origin
+            // however inherits the parent's origin (vite dev server)
+            // and the assets live under that origin's public root, so
+            // resolving against `${origin}/` lands on the correct file.
+            img.src = /^https?:|^data:|^blob:|^\//.test(url) ? url : new URL(url, (window.parent || window).location.origin + '/').href;
             img.setAttribute('crossOrigin', '');
             await img.decode();
             bitmaps[index] = await createImageBitmap(img);
@@ -209,7 +215,11 @@ export class BitmapTextureCube extends TextureCube {
         if (ctx) this._ensureBound(ctx);
 
         const img = document.createElement('img');
-        img.src = url;
+        // Same iframe-srcdoc fix as load() above — resolve relative
+        // URLs against window.location.origin (which inherits the
+        // parent's origin in srcdoc) so the asset lands on the dev
+        // server's public root.
+        img.src = /^https?:|^data:|^blob:|^\//.test(url) ? url : new URL(url, (window.parent || window).location.origin + '/').href;
         img.setAttribute('crossOrigin', '');
         await img.decode();
         let srcTexture = new BitmapTexture2D(false, this._boundCtx);
