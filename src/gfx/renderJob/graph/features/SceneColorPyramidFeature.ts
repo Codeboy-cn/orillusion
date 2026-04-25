@@ -1,6 +1,7 @@
 import { RenderTexture } from '../../../../textures/RenderTexture';
 import { GPUTextureFormat } from '../../../graphics/webGpu/WebGPUConst';
 import { Context3D } from '../../../graphics/webGpu/Context3D';
+import { TextureMipmapGenerator } from '../../../graphics/webGpu/core/texture/TextureMipmapGenerator';
 import { GBufferFrame } from '../../frame/GBufferFrame';
 import { RTResourceMap } from '../../frame/RTResourceMap';
 import { FeatureContext, RenderFeature } from '../RenderFeature';
@@ -14,11 +15,15 @@ import { COLOR_BUFFER } from './ColorFeature';
  * texture through a fragment shader refraction term — see
  * `KHR_materials_transmission` + `Transmission_frag.ts`.
  *
- * This is a single-level copy of `_ColorBuffer` (no mip chain) — it
- * is called "pyramid" for forward compatibility with the P3 upgrade
- * path where `roughness`-aware refraction samples filtered mips. For
- * v1 the refraction is always sharp, which is correct for polished
- * glass and acceptable for frosted variants.
+ * The pyramid carries a full mip chain so frosted-glass / rough-glass
+ * transmission can sample blurred levels via `textureSampleLevel`.
+ * Mip 0 is the raw `_ColorBuffer` copy; mips 1..N are progressively
+ * downsampled box filters generated each frame after the copy via
+ * {@link TextureMipmapGenerator}. PBRLitShader's transmission block
+ * picks an LOD from `roughness` so polished glass reads from mip 0
+ * (sharp refraction) and frosted glass reads from a higher LOD
+ * (blurred backdrop) — the path Three.js's getTransmissionSample
+ * follows.
  *
  * @group Graph
  */
@@ -63,11 +68,16 @@ export class SceneColorPyramidFeature extends RenderFeature {
             // Without going through the map, transmission materials
             // would forever bind the white-texture placeholder and
             // refraction would render as flat lit color.
+            //
+            // useMipmap=true so the texture has a full mip chain;
+            // execute() generates mips 1..N each frame via
+            // TextureMipmapGenerator, and the transmission shader
+            // selects an LOD from roughness.
             this._pyramid = RTResourceMap.createRTTexture(
                 this._ctx, SCENE_COLOR_PYRAMID,
                 colorBuffer.width, colorBuffer.height,
                 GPUTextureFormat.rgba16float,
-                false, 0,
+                true, 0,
             );
             this._pyramid.name = SCENE_COLOR_PYRAMID;
         }
@@ -80,11 +90,19 @@ export class SceneColorPyramidFeature extends RenderFeature {
         const pyramid = this._getOrAllocate();
         const gpu = ctx.view.engine3D.context3D.gpuContext;
         const command = gpu.beginCommandEncoder();
+        // Copy mip 0 from the live color buffer.
         command.copyTextureToTexture(
             { texture: colorBuffer.getGPUTexture(), mipLevel: 0, origin: { x: 0, y: 0, z: 0 } },
             { texture: pyramid.getGPUTexture(), mipLevel: 0, origin: { x: 0, y: 0, z: 0 } },
             { width: colorBuffer.width, height: colorBuffer.height, depthOrArrayLayers: 1 },
         );
         gpu.endCommandEncoder(command);
+        // Refresh mips 1..N. webGPUGenerateMipmap submits its own
+        // command encoder (it has to — running inside the live one
+        // would auto-finish the main loop's encoder mid-frame and
+        // explode the next end-pass). It reads mip i and writes
+        // mip i+1 with hardware blits, so for an HD-ish viewport
+        // (1080p) the cost is ~0.05ms.
+        TextureMipmapGenerator.webGPUGenerateMipmap(pyramid);
     }
 }

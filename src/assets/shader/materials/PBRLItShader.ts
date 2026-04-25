@@ -209,7 +209,14 @@ export let PBRLItShader: string = /*wgsl*/ `
             // angles, and clamp behaviour beats whatever the sampler's
             // address mode would do (typically smear edge pixels).
             let sampleUV = clamp(refractedUV, vec2f(0.002), vec2f(0.998));
-            let transmittedRGBA = textureSample(sceneColorPyramid, sceneColorPyramidSampler, sampleUV);
+            // Roughness-aware mip selection. Three.js's
+            // getTransmissionSample uses applyIorToRoughness +
+            // textureBicubic, we approximate with a simple linear
+            // mapping into the pyramid's mip chain — mip 0 for
+            // polished glass, deepest mip for fully rough.
+            let pyramidLodMax = f32(textureNumLevels(sceneColorPyramid)) - 1.0;
+            let lod = clamp(ORI_ShadingInput.Roughness, 0.0, 1.0) * pyramidLodMax;
+            let transmittedRGBA = textureSampleLevel(sceneColorPyramid, sceneColorPyramidSampler, sampleUV, lod);
             let transmitted = transmittedRGBA.rgb;
             // Volumetric attenuation. Three.js's
             // applyVolumeAttenuation uses log-space:
