@@ -37,7 +37,17 @@ export let BsDF_frag: string = /*wgsl*/ `
 
       fragData.NoV = saturate(dot(fragData.N, fragData.V)) ;
 
-      fragData.F0 = mix(vec3<f32>(materialUniform.specularColor.rgb), fragData.Albedo.rgb, fragData.Metallic);
+      // F0 follows the KHR_materials_specular convention three.js uses:
+      // for dielectrics, F0 starts at the canonical 0.04 (Schlick approx
+      // for ior=1.5 glass) and is *modulated* by specularColor — i.e.
+      // specularColor (1,1,1) keeps F0 at 0.04, tinting it shifts the
+      // hue of grazing-angle reflection without inflating the overall
+      // reflectance. Treating specularColor as F0 directly (the old
+      // path) coupled the slider to the entire BRDF balance, so a
+      // red picker turned the whole material red instead of just
+      // tinting highlights.
+      let dielectricF0 = vec3<f32>(0.04) * materialUniform.specularColor.rgb;
+      fragData.F0 = mix(dielectricF0, fragData.Albedo.rgb, fragData.Metallic);
       
       fragData.F = computeFresnelSchlick(fragData.NoV, fragData.F0);
       fragData.KD = vec3<f32>(fragData.F) ;

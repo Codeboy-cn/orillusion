@@ -42,11 +42,13 @@ export class StandShader extends Shader {
         this.setUniformColor(`baseColor`, new Color(0.75, 0.75, 0.75, 1.0));
         this.setUniformColor(`emissiveColor`, new Color(0, 0, 0));
         this.setUniformVector4(`materialF0`, new Vector4(0.04, 0.04, 0.04, 1));
-        // .rgb = F0 (Fresnel reflectance at normal incidence; ~0.04 for
-        // dielectrics). .a = specularIntensity (Three.js KHR_materials_specular)
-        // — scales the preserved specular term in the transmission shader
-        // path. 1.0 = no attenuation.
-        this.setUniformColor(`specularColor`, new Color(0.04, 0.04, 0.04, 1.0));
+        // .rgb = F0 modulator (KHR_materials_specular). The base
+        // dielectric F0 is the canonical 0.04 — multiplied by this
+        // color to tint grazing-angle reflection. Default (1,1,1)
+        // keeps F0 at 0.04 (standard polished glass).
+        // .a = specularIntensity — scales the preserved specular term
+        // in the transmission shader path. 1.0 = no attenuation.
+        this.setUniformColor(`specularColor`, new Color(1.0, 1.0, 1.0, 1.0));
         this.setUniformFloat(`envIntensity`, 1);
         this.setUniformFloat(`normalScale`, 1);
         this.setUniformFloat(`roughness`, 1.0);

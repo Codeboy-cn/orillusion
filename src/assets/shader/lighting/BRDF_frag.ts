@@ -465,18 +465,23 @@ export let BRDF_frag: string = /*wgsl*/ `
     }
 
 
-     fn indirectionDiffuse_Function( NdotV:f32, normalDir:vec3f, metallic:f32, baseColor:vec3f, roughness:f32, occlusion:f32, F0:vec3f)-> vec3f 
+     fn indirectionDiffuse_Function( NdotV:f32, normalDir:vec3f, metallic:f32, baseColor:vec3f, roughness:f32, occlusion:f32, F0:vec3f)-> vec3f
      {
         //  var SHColor = SH9(normalDir,globalUniform.SH).rgb * globalUniform.skyExposure ;
          var SHColor = fragData.Irradiance.rgb ;
-         
+
          var KS = F_indirect_Function(NdotV,roughness,F0);
-         var KD = (1.0 - KS) * (1.0 - metallic); 
-         return SHColor * KD * baseColor * occlusion;
+         var KD = (1.0 - KS) * (1.0 - metallic);
+         // envIntensity scales the IBL contribution end-to-end — the
+         // GUI knob that exposes it (envMapIntensity) was a no-op
+         // before because this function and indirectionSpec_Function
+         // (the only IBL paths the BxDF main entry actually runs) only
+         // applied skyExposure.
+         return SHColor * KD * baseColor * occlusion * materialUniform.envIntensity;
         //  return SHColor ;
      }
- 
-     fn indirectionSpec_Function( reflectDir:vec3f, roughness:f32, NdotV:f32,occlusion:f32, F0:vec3f )-> vec3f 
+
+     fn indirectionSpec_Function( reflectDir:vec3f, roughness:f32, NdotV:f32,occlusion:f32, F0:vec3f )-> vec3f
      {
          var mipRoughness = roughness * (1.7 - 0.7 * roughness) ;
          var env : vec3f ;
@@ -488,7 +493,7 @@ export let BRDF_frag: string = /*wgsl*/ `
         #endif
 
         //  env *= 0.45 ;
-         var indirectionCube: vec3<f32> = globalUniform.skyExposure * env ;
+         var indirectionCube: vec3<f32> = globalUniform.skyExposure * env * materialUniform.envIntensity ;
          var F_IndirectionLight = F_indirect_Function(NdotV,roughness,F0);
 
          var AB = LUT_Approx(roughness,NdotV);
