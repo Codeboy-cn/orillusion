@@ -235,38 +235,116 @@ class Sample_Transparency {
 
     private initGUI() {
         GUIHelp.addFolder('Transparency demo');
-        const proxy: any = {
-            // MASK plane
-            alphaCutoff: 0.5,
-            // Glass sphere
-            transmissionFactor: 1.0,
-            ior: 1.5,
-            glassRoughness: 0.0,
-            // Slab stacks
-            slabAlpha: 0.30,
+
+        // Each preset is a complete snapshot of every controlled value
+        // — picking one reseeds the whole GUI, so combinations stay
+        // visually consistent.
+        type Preset = {
+            alphaCutoff: number;
+            transmissionFactor: number;
+            ior: number;
+            glassRoughness: number;
+            slabAlpha: number;
+        };
+        const presets: Record<string, Preset> = {
+            'Default': {
+                alphaCutoff: 0.5, transmissionFactor: 1.0, ior: 1.5,
+                glassRoughness: 0.0, slabAlpha: 0.30,
+            },
+            'Crystal Glass': {
+                alphaCutoff: 0.5, transmissionFactor: 1.0, ior: 2.0,
+                glassRoughness: 0.0, slabAlpha: 0.20,
+            },
+            'Frosted Glass': {
+                alphaCutoff: 0.5, transmissionFactor: 0.8, ior: 1.3,
+                glassRoughness: 0.7, slabAlpha: 0.30,
+            },
+            'Diamond': {
+                alphaCutoff: 0.5, transmissionFactor: 1.0, ior: 2.4,
+                glassRoughness: 0.0, slabAlpha: 0.20,
+            },
+            'Solid Sphere (no transmission)': {
+                alphaCutoff: 0.5, transmissionFactor: 0.0, ior: 1.5,
+                glassRoughness: 0.4, slabAlpha: 0.30,
+            },
+            'Dense Foliage': {
+                alphaCutoff: 0.2, transmissionFactor: 1.0, ior: 1.5,
+                glassRoughness: 0.0, slabAlpha: 0.30,
+            },
+            'Sparse Foliage': {
+                alphaCutoff: 0.75, transmissionFactor: 1.0, ior: 1.5,
+                glassRoughness: 0.0, slabAlpha: 0.30,
+            },
+            'Ghost Slabs (5% alpha)': {
+                alphaCutoff: 0.5, transmissionFactor: 1.0, ior: 1.5,
+                glassRoughness: 0.0, slabAlpha: 0.08,
+            },
+            'Saturated Slabs': {
+                alphaCutoff: 0.5, transmissionFactor: 1.0, ior: 1.5,
+                glassRoughness: 0.0, slabAlpha: 0.55,
+            },
         };
 
-        // Each slider hits a stable material reference — no scene
-        // traversal, guaranteed propagation through Shader.setUniform*
-        // broadcast (which already iterates all sub-shader passes).
-        GUIHelp.add(proxy, 'alphaCutoff', 0.0, 1.0, 0.01).onChange((v: number) => {
+        const proxy: any = { preset: 'Default', ...presets['Default'] };
+
+        // Apply the GUI values to the underlying materials. Called
+        // both from individual slider onChange and from the preset
+        // dropdown after it bulk-updates the proxy.
+        const applyAll = () => {
+            this.maskMaterial.alphaCutoff = proxy.alphaCutoff;
+            this.glassMaterial.transmissionFactor = proxy.transmissionFactor;
+            this.glassMaterial.ior = proxy.ior;
+            this.glassMaterial.roughness = proxy.glassRoughness;
+            for (const m of this.slabMaterials) {
+                const c = m.baseColor;
+                m.baseColor = new Color(c.r, c.g, c.b, proxy.slabAlpha);
+            }
+        };
+
+        // Preset dropdown — picks reseed every other slider AND
+        // pushes the values into the materials in one shot.
+        const presetCtl = GUIHelp.add(proxy, 'preset', Object.keys(presets));
+
+        // Individual sliders — held in a map so the preset dropdown
+        // can refresh their visual state via dat.gui's setValue.
+        const sliderCtls: Record<string, any> = {};
+        sliderCtls.alphaCutoff = GUIHelp.add(proxy, 'alphaCutoff', 0.0, 1.0, 0.01).onChange((v: number) => {
             this.maskMaterial.alphaCutoff = v;
         });
-        GUIHelp.add(proxy, 'transmissionFactor', 0.0, 1.0, 0.01).onChange((v: number) => {
+        sliderCtls.transmissionFactor = GUIHelp.add(proxy, 'transmissionFactor', 0.0, 1.0, 0.01).onChange((v: number) => {
             this.glassMaterial.transmissionFactor = v;
         });
-        GUIHelp.add(proxy, 'ior', 1.0, 2.5, 0.01).onChange((v: number) => {
+        sliderCtls.ior = GUIHelp.add(proxy, 'ior', 1.0, 2.5, 0.01).onChange((v: number) => {
             this.glassMaterial.ior = v;
         });
-        GUIHelp.add(proxy, 'glassRoughness', 0.0, 1.0, 0.01).onChange((v: number) => {
+        sliderCtls.glassRoughness = GUIHelp.add(proxy, 'glassRoughness', 0.0, 1.0, 0.01).onChange((v: number) => {
             this.glassMaterial.roughness = v;
         });
-        GUIHelp.add(proxy, 'slabAlpha', 0.05, 0.6, 0.01).onChange((v: number) => {
+        sliderCtls.slabAlpha = GUIHelp.add(proxy, 'slabAlpha', 0.05, 0.6, 0.01).onChange((v: number) => {
             for (const m of this.slabMaterials) {
                 const c = m.baseColor;
                 m.baseColor = new Color(c.r, c.g, c.b, v);
             }
         });
+
+        // Wire the dropdown last so all slider controllers exist
+        // when its onChange runs.
+        presetCtl.onChange((name: string) => {
+            const p = presets[name];
+            if (!p) return;
+            // Push preset values into proxy + slider widgets. setValue
+            // on a dat.gui Controller updates BOTH the underlying
+            // proxy field AND the on-screen slider position, and fires
+            // the slider's own onChange — so the per-slider material
+            // setters run automatically.
+            sliderCtls.alphaCutoff.setValue(p.alphaCutoff);
+            sliderCtls.transmissionFactor.setValue(p.transmissionFactor);
+            sliderCtls.ior.setValue(p.ior);
+            sliderCtls.glassRoughness.setValue(p.glassRoughness);
+            sliderCtls.slabAlpha.setValue(p.slabAlpha);
+        });
+
+        applyAll();
         GUIHelp.endFolder();
     }
 }
