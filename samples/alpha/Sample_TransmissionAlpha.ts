@@ -204,9 +204,19 @@ class Sample_TransmissionAlpha {
             // Three's render at the heavier ratio. Slider stays in
             // range — drag thickness up to 2.27 or attenuation
             // distance down to 0.155 to feel the asset default.
-            this.dragonMat.thicknessFactor = 0.5;
+            // thickness=2.27 keeps the asset's authored value (now
+            // drives both Beer-Lambert path length AND the new 3D
+            // refraction-ray screen offset). attenuationDistance
+            // softened from the asset's 0.155 to 2.0 — without
+            // three.js's sRGB-managed colour pipeline and final-pass
+            // ACES tonemap to bring back highlights, even a ratio of
+            // 4-5 collapses the body to deep red. Ratio ≈ 1 keeps the
+            // authored amber hue visible while the new 3D refraction
+            // produces the per-fragment colour variation that gives
+            // the volumetric look.
+            this.dragonMat.thicknessFactor = 2.27;
             this.dragonMat.attenuationColor = new Color(246 / 255, 209 / 255, 72 / 255, 1);
-            this.dragonMat.attenuationDistance = 1.0;
+            this.dragonMat.attenuationDistance = 2.0;
             // Three's demo is IBL-dominated (no explicit DirectLight,
             // only scene.environment). Our DirectLight at intensity=3
             // adds a strong warm-white wash that flattens the glass
@@ -240,9 +250,9 @@ class Sample_TransmissionAlpha {
             metalness: 0,
             roughness: 0,
             ior: 1.5,
-            thickness: 0.5,
+            thickness: 2.27,
             attenuationColor: { rgba: [246, 209, 72, 1] },
-            attenuationDistance: 1.0,
+            attenuationDistance: 2.0,
             specularIntensity: 1,
             specularColor: { rgba: [255, 255, 255, 1] },
             envMapIntensity: 1,
@@ -333,7 +343,7 @@ class Sample_TransmissionAlpha {
         );
 
         decorate(
-            GUIHelp.add(params, 'attenuationDistance', 0, 1, 0.01).onChange(() => {
+            GUIHelp.add(params, 'attenuationDistance', 0, 3, 0.01).onChange(() => {
                 this.dragonMat.attenuationDistance = params.attenuationDistance;
             }),
             '染色距离',

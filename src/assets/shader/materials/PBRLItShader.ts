@@ -169,24 +169,46 @@ export let PBRLItShader: string = /*wgsl*/ `
 
         #if USE_TRANSMISSION
             // KHR_materials_transmission — sample the opaque-world
-            // backdrop captured by SceneColorPyramidFeature. UV is
-            // derived from the fragment's screen position via the
-            // per-instance window size uniform; refraction distortion
-            // is approximated by offsetting the UV along the view-
-            // space normal's xy, scaled by (ior - 1) * thickness.
+            // backdrop captured by SceneColorPyramidFeature.
+            //
+            // Refraction follows Three.js's getVolumeTransmissionRay:
+            // build a 3D refracted ray of length thickness starting
+            // from the fragment's world position, then project its
+            // exit point back to clip space and sample the pyramid at
+            // that UV. This gives per-fragment offsets that depend on
+            // surface curvature, view angle, and distance to camera —
+            // the volumetric refraction look (gradient amber, multiple
+            // colour bands across the body) that the previous flat
+            // 2D normal.xy * (ior-1) approximation couldn't produce.
             let screenUV = ORI_VertexVarying.fragCoord.xy /
                 vec2f(globalUniform.windowWidth, globalUniform.windowHeight);
-            // Approximate refraction: three.js builds a 3D refracted
-            // ray (thickness * refract(view, normal, ior)) and projects
-            // its exit point back to clip space. We do a cheap 2D
-            // analogue, scaling the in-plane normal by IOR delta. We
-            // intentionally do NOT scale by thickness here: thickness
-            // already drives Beer-Lambert attenuation below, and folding
-            // it into the screen-space offset over-samples distant
-            // pixels in UV space (no projection-matrix compensation).
-            let refractStrength = max(materialUniform.ior - 1.0, 0.0) * 0.20;
-            let refractOffset = ORI_ShadingInput.Normal.xy * refractStrength;
-            let sampleUV = clamp(screenUV + refractOffset, vec2f(0.002), vec2f(0.998));
+            let viewDir = normalize(globalUniform.CameraPos.xyz - ORI_VertexVarying.vWorldPos.xyz);
+            let normalWS = normalize(ORI_ShadingInput.Normal);
+            // -viewDir points from camera into the surface; refract()
+            // returns the transmitted direction continuing through the
+            // medium. eta = 1/ior because we go from air (n≈1) into
+            // glass (n=ior). For ior ≥ 1 the discriminant stays
+            // non-negative so refract never returns the zero TIR
+            // sentinel here.
+            let refractDir = refract(-viewDir, normalWS, 1.0 / max(materialUniform.ior, 1.0));
+            // Ray length in world units. modelScale is 1 in this
+            // sample (no transform.scale on the dragon); for scaled
+            // meshes this should multiply by length(modelMatrix[i].xyz)
+            // along each axis — left as a TODO when we expose the
+            // per-instance world matrix to the fragment shader.
+            let transmissionRay = refractDir * materialUniform.thicknessFactor;
+            let exitWorld = ORI_VertexVarying.vWorldPos.xyz + transmissionRay;
+            // Project exit point back to NDC, then to UV space. Y is
+            // flipped because WGSL's fragCoord origin is top-left
+            // (y-down) while the post-projective NDC has y-up.
+            let exitClip = globalUniform.projMat * globalUniform.viewMat * vec4f(exitWorld, 1.0);
+            let exitNDC = exitClip.xy / max(exitClip.w, 1e-4);
+            let refractedUV = vec2f(exitNDC.x * 0.5 + 0.5, exitNDC.y * -0.5 + 0.5);
+            // Clamp to texture interior — the exit point can land
+            // outside the framebuffer for thick glass + grazing
+            // angles, and clamp behaviour beats whatever the sampler's
+            // address mode would do (typically smear edge pixels).
+            let sampleUV = clamp(refractedUV, vec2f(0.002), vec2f(0.998));
             let transmittedRGBA = textureSample(sceneColorPyramid, sceneColorPyramidSampler, sampleUV);
             let transmitted = transmittedRGBA.rgb;
             // Volumetric attenuation. Three.js's
