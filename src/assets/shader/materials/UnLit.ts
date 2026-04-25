@@ -30,12 +30,12 @@ export let UnLit: string = /*wgsl*/ `
         var transformUV1 = materialUniform.transformUV1;
         var transformUV2 = materialUniform.transformUV2;
 
-        var uv = transformUV1.zw * ORI_VertexVarying.fragUV0 + transformUV1.xy; 
+        var uv = transformUV1.zw * ORI_VertexVarying.fragUV0 + transformUV1.xy;
         let color = textureSample(baseMap,baseMapSampler,uv) ;
         if(color.w < materialUniform.alphaCutoff){
             discard ;
         }
-        
+
         ORI_ShadingInput.BaseColor = color * materialUniform.baseColor ;
         UnLit();
     }

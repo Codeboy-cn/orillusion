@@ -80,6 +80,18 @@ export class ColorPassRenderer extends RendererBase {
                 renderPassEncoder.executeBundles(op_bundleList);
             }
 
+            if (collectInfo.opaqueList) {
+                gpu.bindCamera(renderPassEncoder, camera);
+                this.drawNodes(view, this.renderContext, collectInfo.opaqueList, occlusionSystem, clusterLightingBuffer);
+            }
+
+            // Sky goes LAST in the opaque half — by now every opaque
+            // mesh has written depth, so sky's `depthCompare='less_equal'
+            // + writeDepth=false` only paints empty pixels (where Z is
+            // still the cleared 1.0). Running sky shader on pixels that
+            // would have been overdrawn by opaque is wasted work; this
+            // ordering removes that overdraw via hardware Z-test. Same
+            // optimization Unity / UE apply by default.
             const sky = EntityCollect.instance.getSky(view.scene);
             if (!maskTr && sky) {
                 gpu.bindCamera(renderPassEncoder, camera);
@@ -87,11 +99,6 @@ export class ColorPassRenderer extends RendererBase {
                     sky.nodeUpdate(view, this._rendererType, this.rendererPassState, clusterLightingBuffer);
                 }
                 sky.renderPass2(view, this._rendererType, this.rendererPassState, clusterLightingBuffer, renderPassEncoder);
-            }
-
-            if (collectInfo.opaqueList) {
-                gpu.bindCamera(renderPassEncoder, camera);
-                this.drawNodes(view, this.renderContext, collectInfo.opaqueList, occlusionSystem, clusterLightingBuffer);
             }
 
             // Split mode: this call is owned by ColorFeature (opaque
