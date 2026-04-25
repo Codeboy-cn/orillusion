@@ -189,16 +189,31 @@ class Sample_TransmissionAlpha {
             this.dragonMat.metallic = 0;
             this.dragonMat.roughness = 0;
             this.dragonMat.ior = 1.5;
-            // Asset-authored values (DragonAttenuation.glb +
-            // KHR_materials_volume / _ior). These are what three.js's
-            // webgl_materials_physical_transmission_alpha demo reads
-            // from `mesh.material.*` and shows in its Controls panel,
-            // so initialising with the same numbers gives a 1:1 visual
-            // match — heavy amber Beer-Lambert attenuation with
-            // ratio thickness/distance ≈ 14.6.
-            this.dragonMat.thicknessFactor = 2.27;
+            // Three.js-equivalent visual via compensated ratio.
+            //
+            // The asset's authored values (thickness=2.27, distance=
+            // 0.155) push the Beer-Lambert ratio to ~14.6, which on
+            // three.js still reads as amber because of three things
+            // we don't replicate: per-fragment 3D refraction-ray
+            // length, sRGB → linear color management, and an ACES
+            // final-pass tonemap. Stacking those compensations would
+            // be a multi-feature shader rewrite.
+            //
+            // Pragmatic match: lower the ratio to ~0.5 so our flat
+            // attenuation produces a similar amber/golden hue to
+            // Three's render at the heavier ratio. Slider stays in
+            // range — drag thickness up to 2.27 or attenuation
+            // distance down to 0.155 to feel the asset default.
+            this.dragonMat.thicknessFactor = 0.5;
             this.dragonMat.attenuationColor = new Color(246 / 255, 209 / 255, 72 / 255, 1);
-            this.dragonMat.attenuationDistance = 0.155;
+            this.dragonMat.attenuationDistance = 1.0;
+            // Three's demo is IBL-dominated (no explicit DirectLight,
+            // only scene.environment). Our DirectLight at intensity=3
+            // adds a strong warm-white wash that flattens the glass
+            // contrast. Drop it so the IBL specular and the env
+            // reflection get the visual weight they have in three.js.
+            this.lightBaseIntensity = 1.5;
+            this.directLight.intensity = this.lightBaseIntensity;
             // Critical for the canvas-alpha trick: with this mode on,
             // the transmission shader writes alpha < 1 wherever the
             // glass transmits, so the iframe's HTML backdrop can show
@@ -225,9 +240,9 @@ class Sample_TransmissionAlpha {
             metalness: 0,
             roughness: 0,
             ior: 1.5,
-            thickness: 2.27,
+            thickness: 0.5,
             attenuationColor: { rgba: [246, 209, 72, 1] },
-            attenuationDistance: 0.155,
+            attenuationDistance: 1.0,
             specularIntensity: 1,
             specularColor: { rgba: [255, 255, 255, 1] },
             envMapIntensity: 1,
