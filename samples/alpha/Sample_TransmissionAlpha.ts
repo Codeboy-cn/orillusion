@@ -366,7 +366,7 @@ class Sample_TransmissionAlpha {
         decorate(
             GUIHelp.add(params, 'specularIntensity', 0, 1, 0.01).onChange(applySpecular),
             '高光强度',
-            'specularIntensity (KHR_materials_specular) — 介电材质镜面反射的整体强度系数，不改色相只缩放强度。透射模式下还会缩放保留下来的高光项',
+            'specularIntensity (KHR_materials_specular) — 只缩放 IBL 镜面反射的强度（环境贴图在表面上的高光锐点），不影响漫反射。0 = 哑光无反射，1 = 完整环境反射',
         );
         decorate(
             GUIHelp.addColor(params, 'specularColor').onChange(applySpecular),
@@ -379,7 +379,7 @@ class Sample_TransmissionAlpha {
                 (this.dragonMat as any).shader.envIntensity = params.envMapIntensity * this.envMapBaseIntensity;
             }),
             '环境光强度',
-            'envIntensity — HDR 环境贴图反射在表面的可见度。0 = 黑环境（只剩主光），1 = 完整 IBL。透射玻璃的「高光感」很大程度来自这一项',
+            'envIntensity — 只缩放 IBL 漫反射（环境光填充在哑光 / 阴影区的氛围色），不影响高光。0 = 失去环境氛围（只剩主光），1 = 完整环境漫反射。跟「高光强度」分工：env 管哑光区，spec 管反射高光',
         );
 
         // We have no global tonemap-exposure knob (ACES is inline in

@@ -472,11 +472,12 @@ export let BRDF_frag: string = /*wgsl*/ `
 
          var KS = F_indirect_Function(NdotV,roughness,F0);
          var KD = (1.0 - KS) * (1.0 - metallic);
-         // envIntensity scales the IBL contribution end-to-end — the
-         // GUI knob that exposes it (envMapIntensity) was a no-op
-         // before because this function and indirectionSpec_Function
-         // (the only IBL paths the BxDF main entry actually runs) only
-         // applied skyExposure.
+         // envIntensity exclusively scales the IBL diffuse term — the
+         // ambient sky / SH lighting that fills in matte / shadow
+         // areas. Pairing it with specularIntensity (which now drives
+         // the IBL spec lobe alone) gives the GUI two visually
+         // distinct knobs: envIntensity → "ambient brightness", and
+         // specularIntensity → "highlight strength".
          return SHColor * KD * baseColor * occlusion * materialUniform.envIntensity;
         //  return SHColor ;
      }
@@ -493,17 +494,18 @@ export let BRDF_frag: string = /*wgsl*/ `
         #endif
 
         //  env *= 0.45 ;
-         var indirectionCube: vec3<f32> = globalUniform.skyExposure * env * materialUniform.envIntensity ;
+         // Note: this lobe is the IBL specular term and is governed
+         // by specularIntensity (specularColor.a) — NOT by envIntensity.
+         // envIntensity is reserved for the IBL diffuse term in
+         // indirectionDiffuse_Function so the two GUI sliders feel
+         // distinct: env → ambient brightness on matte / shadow
+         // areas; spec → highlight / mirror reflection.
+         var indirectionCube: vec3<f32> = globalUniform.skyExposure * env ;
          var F_IndirectionLight = F_indirect_Function(NdotV,roughness,F0);
 
          var AB = LUT_Approx(roughness,NdotV);
         //  var AB = textureSampleLevel(brdflutMap, brdflutMapSampler, vec2f(NdotV, roughness), 0.0).rg;
          var indirectionSpecFactor = indirectionCube.rgb * (F_IndirectionLight * AB.r + AB.g) ;
-         // specularColor.a is the KHR_materials_specular intensity
-         // scalar — scales only the IBL specular contribution, not
-         // the diffuse term. Default 1.0 leaves it untouched; lower
-         // values dim highlights / env reflection without affecting
-         // baseColor's diffuse appearance.
          let specStrength = clamp(materialUniform.specularColor.a, 0.0, 1.0);
          return indirectionSpecFactor * occlusion * specStrength;
      }
