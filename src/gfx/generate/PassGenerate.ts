@@ -8,6 +8,7 @@ import { GBufferPass } from '../../materials/multiPass/GBufferPass';
 import { CastShadowMaterialPass } from '../../materials/multiPass/CastShadowMaterialPass';
 import { CastPointShadowMaterialPass } from '../../materials/multiPass/CastPointShadowMaterialPass';
 import { DepthMaterialPass } from '../../materials/multiPass/DepthMaterialPass';
+import { OITAccumPass } from '../../materials/multiPass/OITAccumPass';
 import { RenderShaderPass } from '../..';
 import { bindCtx, Context3D } from '../graphics/webGpu/Context3D';
 
@@ -189,6 +190,68 @@ export class PassGenerate {
                     shader.addRenderPass(depthPass);
                 }
             }
+        }
+    }
+
+    /**
+     * Build the WBOIT accumulation pass for materials whose
+     * `oitMode === 'weighted'`. Mirrors the createReflectionPass
+     * pattern but reuses the **full PBRLitShader** lighting pipeline
+     * — every define / uniform / texture from the color pass is
+     * cloned, then `USE_OIT_ACCUM` is set so the trailing block in
+     * Common_frag's FragMain overrides the fragment outputs with the
+     * WBOIT-weighted (accum, reveal) pair instead of the lit color.
+     *
+     * The full clone is necessary because PBR lighting depends on
+     * baseMap, normalMap, maskMap, environment probe, shadow maps,
+     * IBL, clearcoat textures, transmission state, etc. Selectively
+     * copying a subset (as the previous standalone OITAccumShader
+     * version did) produced unlit-looking transparents.
+     *
+     * No-op if an OIT pass already exists for this material.
+     */
+    public static createOITPass(renderNode: RenderNode, shader: Shader) {
+        const colorPassList = shader.getDefaultShaders();
+        if (!colorPassList) return;
+        for (let jj = 0; jj < colorPassList.length; jj++) {
+            const colorPass = colorPassList[jj];
+            const existing = shader.getSubShaders(PassType.OIT_ACCUM);
+            if (existing && existing.length > jj) continue;
+
+            const pass = new OITAccumPass();
+
+            // Clone shaderState — we want the same culling / front-face
+            // / topology / lighting flags / receive-env etc as the
+            // color pass. depthWriteEnabled stays as OITAccumPass set
+            // it (false) and transparent stays true.
+            for (const key in colorPass.shaderState) {
+                if (key === 'depthWriteEnabled' || key === 'transparent' || key === 'blendMode') continue;
+                (pass.shaderState as any)[key] = (colorPass.shaderState as any)[key];
+            }
+
+            // Clone uniforms / textures / defines wholesale. Defines
+            // drive shader code paths (USE_TRANSMISSION, USE_CLEARCOAT,
+            // USE_TANGENT, USE_ALPHACUT, USE_AOTEX, ...); uniforms +
+            // textures feed the same lighting math the color pass
+            // would have run.
+            for (const uniformName in colorPass.uniforms) {
+                pass.setUniform(uniformName, colorPass.getUniform(uniformName));
+            }
+            for (const textureName in colorPass.textures) {
+                const tex = colorPass.getTexture(textureName);
+                if (tex) pass.setTexture(textureName, tex);
+            }
+            for (const defineName in colorPass.defineValue) {
+                pass.setDefine(defineName, colorPass.defineValue[defineName]);
+            }
+            // Last: flip USE_OIT_ACCUM. Goes after the bulk define
+            // copy so any cloned `false` value can't override it.
+            pass.setDefine('USE_OIT_ACCUM', true);
+
+            const ctx = this._ctxOf(renderNode);
+            if (ctx) bindCtx(pass, ctx);
+            pass.preCompile(renderNode.geometry);
+            shader.addRenderPass(pass);
         }
     }
 

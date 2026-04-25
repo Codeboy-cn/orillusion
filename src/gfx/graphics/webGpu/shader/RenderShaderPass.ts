@@ -827,6 +827,24 @@ export class RenderShaderPass extends ShaderPassBase {
             }
         }
 
+        // P2: per-attachment blend states for the WBOIT accumulation
+        // pass. Target 0 (accum) uses additive blending in both color
+        // and alpha so contributions from any number of fragments can
+        // be summed in arbitrary order. Target 1 (reveal) uses
+        // multiplicative blending of (1 - src) so the alpha channel
+        // tracks the visibility product. The two formulas come from
+        // McGuire & Bavoil 2013 §4.
+        if (this.passType === PassType.OIT_ACCUM && targets.length >= 2) {
+            targets[0].blend = {
+                color: { srcFactor: 'one', dstFactor: 'one', operation: 'add' },
+                alpha: { srcFactor: 'one', dstFactor: 'one', operation: 'add' },
+            };
+            targets[1].blend = {
+                color: { srcFactor: 'zero', dstFactor: 'one-minus-src', operation: 'add' },
+                alpha: { srcFactor: 'zero', dstFactor: 'one-minus-src-alpha', operation: 'add' },
+            };
+        }
+
         let renderPipelineDescriptor: GPURenderPipelineDescriptor = {
             label: this.vsName + '|' + this.fsName,
             layout: layouts,
@@ -854,9 +872,16 @@ export class RenderShaderPass extends ShaderPassBase {
             }
         }
 
-        if (shaderState.multisample > 0) {
+        // Prefer the render pass's sample count (driven by GBufferFrame /
+        // engine.setting.render.msaa) over the material-side default, so
+        // pipelines compile with the right MSAA count for whichever pass
+        // they are being built for. `alphaToCoverageEnabled` requires
+        // sampleCount > 1 per WebGPU spec, so it is gated implicitly.
+        const msaaCount = renderPassState.multisample > 0 ? renderPassState.multisample : shaderState.multisample;
+        if (msaaCount > 0) {
             renderPipelineDescriptor[`multisample`] = {
-                count: shaderState.multisample
+                count: msaaCount,
+                alphaToCoverageEnabled: (shaderState.alphaToCoverageEnabled === true && msaaCount > 1) ? true : false,
             }
         }
 
@@ -887,7 +912,7 @@ export class RenderShaderPass extends ShaderPassBase {
         // different render targets (e.g. main GBuffer vs overlay BGRA8Unorm
         // canvas) produce incompatible pipelines, so they must cache
         // separately.
-        const pipelineKey = `${this.shaderVariant}|${RenderShaderPass._attachmentKey(renderPassState)}`;
+        const pipelineKey = `${this.shaderVariant}|${RenderShaderPass._attachmentKey(renderPassState)}|a2c${shaderState.alphaToCoverageEnabled ? 1 : 0}`;
         let pipeline = PipelinePool.getSharePipeline(ctx, pipelineKey);
         if (pipeline) {
             this.pipeline = pipeline;

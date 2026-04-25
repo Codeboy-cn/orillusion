@@ -42,6 +42,19 @@ export let PBRLItShader: string = /*wgsl*/ `
     @group(1) @binding(auto)
     var emissiveMap: texture_2d<f32>;
 
+    #if USE_TRANSMISSION
+        @group(1) @binding(auto)
+        var sceneColorPyramidSampler: sampler;
+        @group(1) @binding(auto)
+        var sceneColorPyramid: texture_2d<f32>;
+        #if USE_TRANSMISSIONMAP
+            @group(1) @binding(auto)
+            var transmissionMapSampler: sampler;
+            @group(1) @binding(auto)
+            var transmissionMap: texture_2d<f32>;
+        #endif
+    #endif
+
     var<private> debugOut : vec4f = vec4f(0.0) ;
 
     fn vert(inputData:VertexAttributes) -> VertexOutput {
@@ -72,16 +85,9 @@ export let PBRLItShader: string = /*wgsl*/ `
             ORI_ShadingInput.BaseColor.a =  ORI_ShadingInput.BaseColor.a * (maskTex.a) ;
         #endif
 
-        #if USE_ALPHACUT 
+        #if USE_ALPHACUT
             if( (ORI_ShadingInput.BaseColor.a - materialUniform.alphaCutoff) <= 0.0 ){
-                ORI_FragmentOutput.color = vec4<f32>(0.0,0.0,0.0,1.0);
-                
-                #if USEGBUFFER
-                    ORI_FragmentOutput.worldPos = vec4<f32>(0.0,0.0,0.0,1.0);
-                    ORI_FragmentOutput.worldNormal = vec4<f32>(0.0,0.0,0.0,1.0);
-                    ORI_FragmentOutput.material = vec4<f32>(0.0,0.0,0.0,1.0);
-                #endif
-
+                // discard kills the fragment; no need to write @location outputs.
                 discard;
             }
         #endif
@@ -161,7 +167,42 @@ export let PBRLItShader: string = /*wgsl*/ `
      
         BxDFShading();
 
-        // ORI_FragmentOutput.color = vec4<f32>(vec3<f32>(normal.rgb),1.0) ;
+        #if USE_TRANSMISSION
+            // KHR_materials_transmission — sample the opaque-world
+            // backdrop captured by SceneColorPyramidFeature. UV is
+            // derived from the fragment's screen position via the
+            // per-instance window size uniform; refraction distortion
+            // is approximated by offsetting the UV along the view-
+            // space normal's xy, scaled by (ior - 1) * thickness.
+            let screenUV = ORI_VertexVarying.fragCoord.xy /
+                vec2f(globalUniform.windowWidth, globalUniform.windowHeight);
+            // Approximate refraction: view-space normal tells us how
+            // the ray bends sideways. Keep this cheap; the P3 roadmap
+            // has a proper refract() + pyramid mip lookup.
+            let refractStrength = max(materialUniform.ior - 1.0, 0.0) * 0.05;
+            let refractOffset = ORI_ShadingInput.Normal.xy * refractStrength;
+            let sampleUV = clamp(screenUV + refractOffset, vec2f(0.002), vec2f(0.998));
+            let transmitted = textureSample(sceneColorPyramid, sceneColorPyramidSampler, sampleUV).rgb;
+            // Beer-Lambert attenuation through thickness.
+            var transmittance = vec3f(1.0);
+            if (materialUniform.attenuationDistance < 1.0e18 && materialUniform.thicknessFactor > 0.0) {
+                let attn = exp(-(vec3f(1.0) - materialUniform.attenuationColor.rgb) * materialUniform.thicknessFactor / materialUniform.attenuationDistance);
+                transmittance = attn;
+            }
+            var tf = clamp(materialUniform.transmissionFactor, 0.0, 1.0);
+            #if USE_TRANSMISSIONMAP
+                // glTF spec: transmissionTexture R channel scales the
+                // factor per-fragment, so a single material can have
+                // opaque + glassy regions (e.g. a window frame).
+                tf = tf * textureSample(transmissionMap, transmissionMapSampler, uv).r;
+            #endif
+            let tint = materialUniform.attenuationColor.rgb;
+            let transmittedTinted = transmitted * transmittance * tint;
+            ORI_FragmentOutput.color = vec4f(
+                mix(ORI_FragmentOutput.color.rgb, transmittedTinted, tf),
+                1.0
+            );
+        #endif
     }
 `
 

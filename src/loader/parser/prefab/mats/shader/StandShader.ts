@@ -2,6 +2,7 @@ import { Engine3D, PassType } from "../../../../..";
 import { Context3D } from "../../../../../gfx/graphics/webGpu/Context3D";
 import { Texture } from "../../../../../gfx/graphics/webGpu/core/texture/Texture";
 import { RenderShaderPass } from "../../../../../gfx/graphics/webGpu/shader/RenderShaderPass";
+import { RTResourceMap } from "../../../../../gfx/renderJob/frame/RTResourceMap";
 import { Color } from "../../../../../math/Color";
 import { Vector4 } from "../../../../../math/Vector4";
 import { Shader } from "../../../../../gfx/graphics/webGpu/shader/Shader";
@@ -60,6 +61,15 @@ export class StandShader extends Shader {
         this.setUniformFloat(`clearcoatWeight`, 0.0);
         this.setUniformFloat(`clearcoatIor`, 1.5);
 
+        // Transmission (KHR_materials_transmission / _volume). Defaults
+        // are "no transmission" so enabling only costs one branch in
+        // the shader when the material actually needs it.
+        this.setUniformFloat(`transmissionFactor`, 0.0);
+        this.setUniformFloat(`thicknessFactor`, 0.0);
+        this.setUniformFloat(`attenuationDistance`, 1.0e20);
+        this.setUniformFloat(`_padTransmission`, 0.0);
+        this.setUniformColor(`attenuationColor`, new Color(1, 1, 1, 1));
+
         this.setUniformVector4(`baseMapOffsetSize`, new Vector4(0, 0, 1, 1));
         this.setUniformVector4(`normalMapOffsetSize`, new Vector4(0, 0, 1, 1));
         this.setUniformVector4(`emissiveMapOffsetSize`, new Vector4(0, 0, 1, 1));
@@ -71,6 +81,14 @@ export class StandShader extends Shader {
         this.baseMap = res.whiteTexture;
         this.normalMap = res.normalTexture;
         this.maskMap = res.maskTexture;
+
+        // SceneColorPyramid placeholder. The texture slot is only
+        // consumed when `USE_TRANSMISSION` is defined (see PBRLItShader),
+        // so binding the white texture here is a harmless default for
+        // opaque materials. When transmission is enabled the material
+        // setter resolves the real pyramid from RTResourceMap.
+        const pyramid = this._ctx ? RTResourceMap.getTexture(this._ctx, '_SceneColorPyramid') : null;
+        this.setTexture('sceneColorPyramid', pyramid ?? res.whiteTexture);
     }
 
     public get baseMap(): Texture {

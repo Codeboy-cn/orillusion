@@ -1,0 +1,138 @@
+import { OITResolveShader } from '../../../../assets/shader/post/OITResolveShader';
+import { Context3D } from '../../../graphics/webGpu/Context3D';
+import { RenderTexture } from '../../../../textures/RenderTexture';
+import { GBufferFrame } from '../../frame/GBufferFrame';
+import { OIT_ACCUM_TEX, OIT_REVEAL_TEX } from '../../passRenderer/oit/OITPassRenderer';
+import { RTResourceMap } from '../../frame/RTResourceMap';
+import { FeatureContext, RenderFeature } from '../RenderFeature';
+import { RenderStage } from '../RenderStage';
+import { COLOR_BUFFER } from './ColorFeature';
+
+/**
+ * Composite the WBOIT accum + reveal attachments back into
+ * `_ColorBuffer` via a full-screen pass with hardware blend
+ * `(SRC=ONE, DST=ONE_MINUS_SRC_ALPHA)`. Pairs with
+ * {@link TransparentOITFeature}.
+ *
+ * Builds a private WebGPU pipeline + bind group on first execute —
+ * the resolve shader is intentionally NOT a Material so it can run
+ * with its own bind layout (raw texture bindings on group 0) without
+ * paying the material/uniform setup cost on every frame.
+ *
+ * @group Graph
+ */
+export class TransparentResolveFeature extends RenderFeature {
+    public readonly name = 'TransparentResolveFeature';
+    public readonly stage = RenderStage.AfterTransparent;
+    public readonly reads = [COLOR_BUFFER, OIT_ACCUM_TEX, OIT_REVEAL_TEX];
+    public readonly writes: readonly string[] = [];
+
+    private readonly _ctx: Context3D;
+    private _pipeline: GPURenderPipeline | null = null;
+    private _bindGroupLayout: GPUBindGroupLayout | null = null;
+    private _sampler: GPUSampler | null = null;
+
+    constructor(ctx: Context3D) {
+        super();
+        this._ctx = ctx;
+    }
+
+    private _ensurePipeline(colorBuffer: RenderTexture): void {
+        if (this._pipeline) return;
+        const device = this._ctx.device;
+        const module = device.createShaderModule({
+            label: 'OITResolveShader',
+            code: OITResolveShader,
+        });
+        this._sampler = device.createSampler({
+            magFilter: 'linear',
+            minFilter: 'linear',
+            addressModeU: 'clamp-to-edge',
+            addressModeV: 'clamp-to-edge',
+        });
+        this._bindGroupLayout = device.createBindGroupLayout({
+            label: 'OITResolveBindGroupLayout',
+            entries: [
+                { binding: 0, visibility: GPUShaderStage.FRAGMENT, sampler: { type: 'filtering' } },
+                { binding: 1, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: 'float' } },
+                { binding: 2, visibility: GPUShaderStage.FRAGMENT, sampler: { type: 'filtering' } },
+                { binding: 3, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: 'float' } },
+            ],
+        });
+        const pipelineLayout = device.createPipelineLayout({
+            label: 'OITResolvePipelineLayout',
+            bindGroupLayouts: [this._bindGroupLayout],
+        });
+        this._pipeline = device.createRenderPipeline({
+            label: 'OITResolvePipeline',
+            layout: pipelineLayout,
+            vertex: { module, entryPoint: 'vs_main' },
+            fragment: {
+                module,
+                entryPoint: 'fs_main',
+                targets: [{
+                    format: colorBuffer.format,
+                    // Pre-multiplied composite: shader outputs
+                    // (avg * visibility, visibility), and hardware
+                    // blends with (1 - visibility) on the existing
+                    // background — net effect is the WBOIT formula.
+                    blend: {
+                        color: { srcFactor: 'one', dstFactor: 'one-minus-src-alpha', operation: 'add' },
+                        alpha: { srcFactor: 'one', dstFactor: 'one-minus-src-alpha', operation: 'add' },
+                    },
+                }],
+            },
+            primitive: { topology: 'triangle-list' },
+        });
+    }
+
+    public execute(ctx: FeatureContext): void {
+        const accum = RTResourceMap.getTexture(this._ctx, OIT_ACCUM_TEX);
+        const reveal = RTResourceMap.getTexture(this._ctx, OIT_REVEAL_TEX);
+        const colorBuffer = ctx.get<RenderTexture>(COLOR_BUFFER);
+        if (!accum || !reveal || !colorBuffer) return;
+
+        this._ensurePipeline(colorBuffer);
+
+        const gpu = ctx.view.engine3D.context3D.gpuContext;
+        const command = gpu.beginCommandEncoder();
+
+        // Build the bind group fresh every frame. Texture views on
+        // RenderTexture can rotate when the canvas resizes (the
+        // underlying GPUTexture is destroyed and re-created); a cached
+        // bind group would point at a destroyed view. Per-frame
+        // re-creation is cheap (3-4 µs typical).
+        const bindGroup = this._ctx.device.createBindGroup({
+            label: 'OITResolveBindGroup',
+            layout: this._bindGroupLayout!,
+            entries: [
+                { binding: 0, resource: this._sampler! },
+                { binding: 1, resource: accum.getGPUTexture().createView() },
+                { binding: 2, resource: this._sampler! },
+                { binding: 3, resource: reveal.getGPUTexture().createView() },
+            ],
+        });
+
+        const passDesc: GPURenderPassDescriptor = {
+            label: 'OITResolvePass',
+            colorAttachments: [{
+                view: colorBuffer.getGPUTexture().createView(),
+                loadOp: 'load',
+                storeOp: 'store',
+                clearValue: [0, 0, 0, 0],
+            }],
+        };
+        const encoder = command.beginRenderPass(passDesc);
+        encoder.setPipeline(this._pipeline!);
+        encoder.setBindGroup(0, bindGroup);
+        // Three-vertex big triangle covers the screen. No vertex
+        // buffer — the shader hard-codes positions via @builtin.
+        encoder.draw(3, 1, 0, 0);
+        encoder.end();
+        gpu.endCommandEncoder(command);
+
+        // Suppress unused-import warning while GBufferFrame is here
+        // for potential future "depth peel for occluded transparents".
+        void GBufferFrame;
+    }
+}

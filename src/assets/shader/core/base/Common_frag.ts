@@ -55,6 +55,26 @@ export let Common_frag: string = /*wgsl*/ `
       #endif
     #endif
 
+    #if USE_OIT_ACCUM
+      // Weighted-Blended OIT (McGuire & Bavoil 2013). Reuses the
+      // FragmentOutput struct slots verbatim: .color becomes the
+      // accumulation attachment (RGBA16F), .gBuffer becomes the
+      // reveal attachment (R8 — only .r is sampled). Pipeline blend
+      // states for these targets are set in RenderShaderPass when
+      // passType === PassType.OIT_ACCUM.
+      {
+        let __alpha = clamp(ORI_FragmentOutput.color.a, 0.0, 1.0);
+        let __z = vertex_varying.fragCoord.z;
+        let __w = clamp(
+          pow(__alpha + 0.01, 4.0) +
+          max(min(0.3 / (1e-5 + pow(__z / 200.0, 4.0)), 3000.0), 0.01),
+          0.01, 3000.0
+        );
+        ORI_FragmentOutput.color = vec4<f32>(ORI_FragmentOutput.color.rgb * __alpha, __alpha) * __w;
+        ORI_FragmentOutput.gBuffer = vec4<f32>(__alpha, 0.0, 0.0, 0.0);
+      }
+    #endif
+
     return ORI_FragmentOutput ;
   }
 

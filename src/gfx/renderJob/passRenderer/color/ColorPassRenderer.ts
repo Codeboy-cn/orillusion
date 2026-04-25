@@ -21,10 +21,24 @@ export class ColorPassRenderer extends RendererBase {
         this.passType = PassType.COLOR;
     }
 
-    public render(view: View3D, occlusionSystem: OcclusionSystem, clusterLightingBuffer?: ClusterLightingBuffer, maskTr: boolean = false) {
+    /** When set, the transparent half of this pass filters draw nodes
+     *  by their material's `oitMode`. `'sorted'` skips materials marked
+     *  for WBOIT (TransparentOITFeature renders those instead);
+     *  `'weighted'` would do the inverse but isn't currently used —
+     *  OIT has its own renderer with a different RTFrame. */
+    public oitFilter: 'sorted' | 'weighted' | null = null;
+
+    public render(view: View3D, occlusionSystem: OcclusionSystem, clusterLightingBuffer?: ClusterLightingBuffer, maskTr: boolean = false, maskOp: boolean = false) {
         const gpu = view.engine3D.context3D.gpuContext;
         this.renderContext.gpu = gpu;
-        this.renderContext.clean();
+        if (!maskOp) {
+            // When this call owns the "opaque half" of the pass (the
+            // normal case and the maskTr path) the render-context must
+            // start fresh; the transparent-only call, by contrast, is
+            // always invoked after the opaque feature already finished
+            // a pass so the cached list is still relevant.
+            this.renderContext.clean();
+        }
 
 
         let scene = view.scene;
@@ -36,10 +50,14 @@ export class ColorPassRenderer extends RendererBase {
 
         let collectInfo = EntityCollect.instance.getRenderNodes(scene, camera);
 
-        let op_bundleList = this.renderBundleOp(view, collectInfo, occlusionSystem, clusterLightingBuffer);
-        let tr_bundleList = maskTr ? [] : this.renderBundleTr(view, collectInfo, occlusionSystem, clusterLightingBuffer);
+        let op_bundleList = maskOp ? [] : this.renderBundleOp(view, collectInfo, occlusionSystem, clusterLightingBuffer);
+        // When the transparent half is partitioned by oitMode, skip the
+        // cached bundles (they bake the full transparent set) and let
+        // drawNodes do the per-node filter inline. Bundle re-keying for
+        // OIT/sorted partitions is a future optimization.
+        let tr_bundleList = (maskTr || this.oitFilter !== null) ? [] : this.renderBundleTr(view, collectInfo, occlusionSystem, clusterLightingBuffer);
 
-        {
+        if (!maskOp) {
             this.renderContext.beginOpaqueRenderPass();
             let renderPassEncoder = this.renderContext.encoder;
 
@@ -75,12 +93,25 @@ export class ColorPassRenderer extends RendererBase {
                 gpu.bindCamera(renderPassEncoder, camera);
                 this.drawNodes(view, this.renderContext, collectInfo.opaqueList, occlusionSystem, clusterLightingBuffer);
             }
-            // this.renderContext.endRenderPass();
 
+            // Split mode: this call is owned by ColorFeature (opaque
+            // half). End the pass so the resource between opaque and
+            // transparent — i.e. SceneColorPyramid copy — can happen
+            // outside any render-pass encoder. The matching TransparentFeature
+            // call (maskOp=true) will open a continue-pass with loadOp='load'.
+            if (maskTr) {
+                this.renderContext.endRenderPass();
+                return;
+            }
         }
 
         {
-            // this.renderContext.beginTransparentRenderPass();
+            // Transparent-only entrypoint: reopen the pass with loadOp='load'
+            // so opaque content (and any intermediate work — pyramid copy,
+            // OIT accum resolve) survives.
+            if (maskOp) {
+                this.renderContext.beginTransparentRenderPass();
+            }
 
             let renderPassEncoder = this.renderContext.encoder;
 
@@ -125,6 +156,7 @@ export class ColorPassRenderer extends RendererBase {
             }
 
             const render = view.engine3D.setting.render;
+            const filter = this.oitFilter;
             for (let i = render.drawOpMin; i < Math.min(nodes.length, render.drawOpMax); ++i) {
                 let renderNode = nodes[i];
                 // if (!occlusionSystem.renderCommitTesting(view.camera, renderNode))
@@ -135,6 +167,17 @@ export class ColorPassRenderer extends RendererBase {
                     continue;
                 if (renderNode.isDestroyed)
                     continue;
+                // OIT/sorted partition. When TransparentOITFeature is in
+                // the graph, the SortedTransparentFeature sets
+                // `oitFilter = 'sorted'` and we must skip materials that
+                // opted into WBOIT — they will be rendered by the OIT
+                // pass instead. Without this gate they would be drawn
+                // twice (once sorted, once OIT) and double-blended.
+                if (filter !== null) {
+                    const mat = renderNode.materials?.[0];
+                    if (filter === 'sorted' && mat?.oitMode === 'weighted') continue;
+                    if (filter === 'weighted' && mat?.oitMode !== 'weighted') continue;
+                }
                 if (!renderNode.preInit(this._rendererType)) {
                     renderNode.nodeUpdate(view, this._rendererType, this.rendererPassState, clusterLightingBuffer);
                 }

@@ -1,14 +1,29 @@
 import { Context3D } from "../gfx/graphics/webGpu/Context3D";
 import { Texture } from "../gfx/graphics/webGpu/core/texture/Texture";
+import { RTResourceMap } from "../gfx/renderJob/frame/RTResourceMap";
 import { StandShader } from "../loader/parser/prefab/mats/shader/StandShader";
+import { BlendMode } from "./BlendMode";
 import { Color } from "../math/Color";
+import { Engine3D } from "../Engine3D";
 import { Material } from "./Material";
+
+/** glTF-style alpha handling for a LitMaterial.
+ *  - OPAQUE: opaque queue, no alpha handling (default).
+ *  - MASK:   opaque queue, hard `discard` via alphaCutoff. When the
+ *            engine has MSAA enabled (`engine.setting.render.msaa > 0`)
+ *            the pipeline additionally enables alpha-to-coverage for
+ *            smooth edges (foliage, fences).
+ *  - BLEND:  transparent queue, hardware straight-alpha blending. */
+export type AlphaMode = 'OPAQUE' | 'MASK' | 'BLEND';
 
 export class LitMaterial extends Material {
 
+    private _alphaMode: AlphaMode = 'OPAQUE';
+    private _ctx: Context3D | undefined;
+
     constructor(ctx?: Context3D) {
         super();
-
+        this._ctx = ctx;
         let shader = new StandShader(ctx);
         this.shader = shader;
     }
@@ -148,20 +163,133 @@ export class LitMaterial extends Material {
     }
 
     public set ior(value: number) {
-        this.shader.setUniformFloat(`clearcoatIor`, value);
+        this.shader.setUniformFloat(`ior`, value);
     }
 
     public get ior() {
-        return this.shader.getUniformFloat(`clearcoatIor`);
+        return this.shader.getUniformFloat(`ior`);
     }
 
 
     public set alphaCutoff(value: number) {
         this.shader.setUniform(`alphaCutoff`, value);
+        this.shader.setDefine('USE_ALPHACUT', true);
     }
 
     public get alphaCutoff() {
         return this.shader.getUniform(`alphaCutoff`);
+    }
+
+    /** Transmission (KHR_materials_transmission). Setting a non-zero
+     *  value turns on the USE_TRANSMISSION shader path — the fragment
+     *  samples the SceneColorPyramid at the fragment's screen position
+     *  and mixes it into the opaque output.
+     *
+     *  Transmission materials stay on the OPAQUE queue (renderOrder
+     *  < 3000) — the alpha channel is folded into the transmitted
+     *  color in the shader. That's the same contract Unity HDRP,
+     *  UE Refraction and Three.js MeshPhysicalMaterial use. */
+    /** glTF KHR_materials_transmission `transmissionTexture` — R channel
+     *  is multiplied with `transmissionFactor` per fragment, so the same
+     *  material can have opaque + glassy regions (e.g. a frosted window
+     *  with painted bezels). Setting it implies USE_TRANSMISSION. */
+    public set transmissionMap(texture: Texture) {
+        this.shader.setTexture(`transmissionMap`, texture);
+        this.shader.setDefine(`USE_TRANSMISSIONMAP`, true);
+        this.shader.setDefine(`USE_TRANSMISSION`, true);
+    }
+
+    public get transmissionMap(): Texture {
+        return this.shader.getTexture(`transmissionMap`);
+    }
+
+    public set transmissionFactor(value: number) {
+        this.shader.setUniformFloat(`transmissionFactor`, value);
+        this.shader.setDefine(`USE_TRANSMISSION`, value > 0.0);
+        if (value > 0.0) {
+            // Bind the scene color pyramid. If it hasn't been allocated
+            // yet (material created before FrameGraphRendererJob.start),
+            // fall back to the white placeholder — the feature re-binds
+            // on its first execute via the material's shader cache.
+            const ctx = this._ctx;
+            const pyramid = ctx ? RTResourceMap.getTexture(ctx, '_SceneColorPyramid') : null;
+            if (pyramid) {
+                this.shader.setTexture('sceneColorPyramid', pyramid);
+            } else {
+                this.shader.setTexture('sceneColorPyramid', Engine3D.resFor(ctx).whiteTexture);
+            }
+        }
+    }
+
+    public get transmissionFactor(): number {
+        return this.shader.getUniformFloat(`transmissionFactor`);
+    }
+
+    public set thicknessFactor(value: number) {
+        this.shader.setUniformFloat(`thicknessFactor`, value);
+    }
+
+    public get thicknessFactor(): number {
+        return this.shader.getUniformFloat(`thicknessFactor`);
+    }
+
+    /** Distance (in world units) after which the transmitted radiance
+     *  has been attenuated to `1/e` of its initial intensity. Use
+     *  `Number.POSITIVE_INFINITY` to disable attenuation. */
+    public set attenuationDistance(value: number) {
+        // WebGPU has no "infinity" in std140 float — map to a very
+        // large number (2e19) and keep the Infinity sentinel in JS
+        // for external round-tripping. The shader side compares
+        // against 1e18 as "effectively infinite".
+        const clamped = isFinite(value) ? value : 1.0e20;
+        this.shader.setUniformFloat(`attenuationDistance`, clamped);
+    }
+
+    public get attenuationDistance(): number {
+        const v = this.shader.getUniformFloat(`attenuationDistance`);
+        return v >= 1.0e18 ? Number.POSITIVE_INFINITY : v;
+    }
+
+    public set attenuationColor(value: Color) {
+        this.shader.setUniformColor(`attenuationColor`, value);
+    }
+
+    public get attenuationColor(): Color {
+        return this.shader.getUniformColor(`attenuationColor`);
+    }
+
+    /** glTF-aligned alpha handling. See {@link AlphaMode}. */
+    public get alphaMode(): AlphaMode {
+        return this._alphaMode;
+    }
+
+    public set alphaMode(mode: AlphaMode) {
+        this._alphaMode = mode;
+        const colorPass = this.shader.getDefaultColorShader();
+        const state = colorPass.shaderState;
+        switch (mode) {
+            case 'OPAQUE':
+                state.transparent = false;
+                state.alphaToCoverageEnabled = false;
+                state.blendMode = BlendMode.NONE;
+                state.depthWriteEnabled = true;
+                colorPass.setDefine('USE_ALPHACUT', false);
+                break;
+            case 'MASK':
+                state.transparent = false;
+                state.alphaToCoverageEnabled = true;
+                state.blendMode = BlendMode.NONE;
+                state.depthWriteEnabled = true;
+                colorPass.setDefine('USE_ALPHACUT', true);
+                break;
+            case 'BLEND':
+                state.transparent = true;
+                state.alphaToCoverageEnabled = false;
+                state.blendMode = BlendMode.NORMAL;
+                state.depthWriteEnabled = false;
+                colorPass.setDefine('USE_ALPHACUT', false);
+                break;
+        }
     }
 
     /**

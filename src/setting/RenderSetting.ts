@@ -34,6 +34,16 @@ export type RenderSetting = {
      *  path remains the reference. Flip per-instance via
      *  `engine.setting.render.useFrameGraph = true`. */
     useFrameGraph: boolean;
+    /** Per-instance MSAA sample count for the main color pass.
+     *  0 disables MSAA (default). Valid non-zero values: 2 | 4 | 8
+     *  depending on device support. Enabling MSAA unlocks
+     *  alpha-to-coverage (set LitMaterial.alphaMode = 'MASK'). */
+    msaa: 0 | 2 | 4 | 8;
+    /** Opt-in order-independent transparency (Weighted Blended OIT).
+     *  When true, materials with `oitMode === 'weighted'` are routed
+     *  through the OIT accum/resolve features instead of the sorted
+     *  transparent path. Default false — matches legacy behavior. */
+    useOIT: boolean;
     /**
      * post effect
      */

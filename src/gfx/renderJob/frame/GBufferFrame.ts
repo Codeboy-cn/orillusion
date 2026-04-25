@@ -30,12 +30,21 @@ export class GBufferFrame extends RTFrame {
         super([], []);
     }
 
-    createGBuffer(ctx: Context3D, key: string, rtWidth: number, rtHeight: number, autoResize: boolean = true, outColor: boolean = true, depthTexture?: RenderTexture) {
+    /** MSAA sample count of the attachments this GBuffer was created with.
+     *  Captured at creation time so the render pass state can pick it up
+     *  without a second lookup into the engine setting. */
+    createGBuffer(ctx: Context3D, key: string, rtWidth: number, rtHeight: number, _autoResize: boolean = true, outColor: boolean = true, depthTexture?: RenderTexture, sampleCount: number = 0) {
         let attachments = this.renderTargets;
         let reDescriptors = this.rtDescriptors;
+        this.sampleCount = sampleCount;
         if (outColor) {
             let colorDec = new RTDescriptor();
             colorDec.loadOp = 'clear';
+            // Color buffer is the "primary" attachment and is always
+            // created as a non-MSAA single-sample texture; when MSAA is
+            // enabled the render pass allocates a side-band multisample
+            // texture in WebGPUDescriptorCreator and resolves into this
+            // one so downstream post passes sample a normal 2D texture.
             this._colorBufferTex = RTResourceMap.createRTTexture(ctx, key + RTResourceConfig.colorBufferTex_NAME, rtWidth, rtHeight, GPUTextureFormat.rgba16float, true);
             attachments.push(this._colorBufferTex);
             reDescriptors.push(colorDec);
@@ -47,7 +56,9 @@ export class GBufferFrame extends RTFrame {
         if (depthTexture) {
             this.depthTexture = depthTexture;
         } else {
-            this.depthTexture = new RenderTexture(rtWidth, rtHeight, GPUTextureFormat.depth32float, false, undefined, 1, 0, true, true, ctx);
+            // Depth attachment must match the color attachments' sample
+            // count when MSAA is enabled — WebGPU validates them together.
+            this.depthTexture = new RenderTexture(rtWidth, rtHeight, GPUTextureFormat.depth32float, false, undefined, 1, sampleCount, true, true, ctx);
             this.depthTexture.name = key + `_depthTexture`;
         }
 
@@ -76,7 +87,7 @@ export class GBufferFrame extends RTFrame {
     /**
      * @internal
      */
-    public static getGBufferFrame(key: string, ctx: Context3D, fixedWidth: number = 0, fixedHeight: number = 0, outColor: boolean = true, depthTexture?: RenderTexture): GBufferFrame {
+    public static getGBufferFrame(key: string, ctx: Context3D, fixedWidth: number = 0, fixedHeight: number = 0, outColor: boolean = true, depthTexture?: RenderTexture, sampleCount: number = 0): GBufferFrame {
         let map = GBufferFrame._mapFor(ctx);
         GBufferFrame.gBufferMap = map;
         let gBuffer: GBufferFrame;
@@ -90,7 +101,8 @@ export class GBufferFrame extends RTFrame {
                 fixedHeight == 0 ? size[1] : fixedHeight,
                 fixedWidth != 0 && fixedHeight != 0,
                 outColor,
-                depthTexture
+                depthTexture,
+                sampleCount
             );
             map.set(key, gBuffer);
         } else {

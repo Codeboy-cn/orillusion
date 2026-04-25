@@ -29,6 +29,7 @@ export class ShaderState {
     public unclippedDepth: boolean = false;
     public transparent: boolean = false;
     public multisample: number = 0;
+    public alphaToCoverageEnabled: boolean = false;
     public label: string;
     public useZ: boolean = true;
     public splitTexture: boolean = false;
@@ -95,6 +96,10 @@ export class ShaderState {
 
         if (values.has('multisample')) {
             this.multisample = values.get('multisample');
+        }
+
+        if (values.has('alphaToCoverageEnabled')) {
+            this.alphaToCoverageEnabled = values.get('alphaToCoverageEnabled');
         }
 
         if (values.has('label')) {

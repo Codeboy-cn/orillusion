@@ -124,7 +124,29 @@ export class GPUContextInstance {
             for (let i = 0; i < renderPassState.renderTargets.length; ++i) {
                 const renderTarget = renderPassState.renderTargets[i];
                 let att = renderPassState.renderPassDescriptor.colorAttachments[i];
-                if (renderPassState.multisample > 0 && renderPassState.renderTargets.length == 1) {
+                if (renderPassState.multisample > 0 && renderPassState.multiTextures && renderPassState.multiTextures[i]) {
+                    // Render into the MSAA side-band and resolve into
+                    // the single-sample RT — but only for formats that
+                    // WebGPU can actually resolve. rgba32float (compress
+                    // g-buffer) isn't resolvable; in that case the
+                    // multisample samples are discarded after the pass,
+                    // which is acceptable because SSR / SSAO / the
+                    // compress-gbuffer consumers are not used in the
+                    // MSAA path.
+                    att.view = renderPassState.multiTextures[i].createView();
+                    const fmt = renderTarget.format;
+                    const resolvable = (
+                        fmt === 'rgba8unorm' || fmt === 'rgba8unorm-srgb' ||
+                        fmt === 'bgra8unorm' || fmt === 'bgra8unorm-srgb' ||
+                        fmt === 'rgba16float' || fmt === 'r16float' ||
+                        fmt === 'rg16float' || fmt === 'r8unorm' || fmt === 'rg8unorm'
+                    );
+                    if (resolvable) {
+                        att.resolveTarget = renderTarget.getGPUView();
+                    } else {
+                        att.resolveTarget = undefined;
+                    }
+                } else if (renderPassState.multisample > 0 && renderPassState.renderTargets.length == 1) {
                     att.view = renderPassState.multiTexture.createView();
                     att.resolveTarget = renderTarget.getGPUView();
                 } else {

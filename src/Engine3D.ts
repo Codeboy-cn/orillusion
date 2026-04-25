@@ -107,6 +107,8 @@ export class Engine3D {
                 useCompressGBuffer: false,
                 gi: false,
                 useFrameGraph: true,
+                msaa: 0,
+                useOIT: false,
                 postProcessing: {
                     bloom: {
                         downSampleStep: 3,

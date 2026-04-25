@@ -127,13 +127,18 @@ export class ColorFeature extends RenderFeature {
             }
         }
 
-        // ColorPassRenderer.render handles opaque + sky + transparent
-        // + Graphic3D in one entry point.
+        // ColorFeature now renders only the opaque half (opaque + sky
+        // draws) by passing maskTr=true. The transparent half is owned
+        // by SortedTransparentFeature at RenderStage.Transparent, which
+        // continues the same render pass with loadOp='load' after the
+        // SceneColorPyramidFeature has snapshotted the opaque-only color
+        // buffer. See the P1 transmission plan.
         this._impl.render(
             ctx.view,
             this._occlusion,
             this._clusterLighting.clusterLightingBuffer,
-            false,
+            true,  // maskTr — do not touch transparent here
+            false, // maskOp
         );
     }
 }

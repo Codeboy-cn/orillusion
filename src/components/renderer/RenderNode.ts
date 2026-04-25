@@ -342,6 +342,20 @@ export class RenderNode extends ComponentBase {
                 mat.shader.removeShaderByIndex(PassType.DEPTH, 0);
             }
         }
+
+        // P2: WBOIT pass generation for materials marked
+        // `oitMode === 'weighted'`. Only meaningful when the engine
+        // has `setting.render.useOIT === true` — otherwise the
+        // TransparentOITFeature isn't in the graph and the generated
+        // pass would never run. Generation still happens unconditionally
+        // (cheap, idempotent) so flipping useOIT at runtime in dev
+        // tooling doesn't require re-creating materials.
+        for (let i = 0; i < this.materials.length; i++) {
+            const mat = this.materials[i];
+            if (mat.oitMode === 'weighted') {
+                PassGenerate.createOITPass(this, mat.shader);
+            }
+        }
     }
 
     @EditorInspector

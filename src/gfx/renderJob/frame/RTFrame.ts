@@ -14,6 +14,11 @@ export class RTFrame {
     public depthCleanValue: number = 1;
     public depthLoadOp: GPULoadOp = `clear`;
     public isOutTarget: boolean = true;
+    /** MSAA sample count — 0 disables MSAA (default). When non-zero,
+     *  {@link WebGPUDescriptorCreator} allocates side-band multisample
+     *  textures and flags the pass state so pipelines compile with the
+     *  matching sample count. */
+    public sampleCount: number = 0;
 
     constructor(attachments: RenderTexture[], rtDescriptors: RTDescriptor[], depthTexture?: RenderTexture, zPreTexture?: RenderTexture, isOutTarget: boolean = true) {
         this.renderTargets = attachments;

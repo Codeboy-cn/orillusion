@@ -27,6 +27,16 @@ export class Material {
 
     public enable: boolean = true;
 
+    /** Order-independent transparency mode opt-in. `sorted` (default)
+     *  uses the back-to-front sorted transparent pass. `weighted`
+     *  routes the material through the Weighted-Blended OIT
+     *  accumulation feature when `engine.setting.render.useOIT` is
+     *  true; otherwise it falls back to the sorted path.
+     *
+     *  Documented at Material-level (not LitMaterial) so any future
+     *  material subclass (particle, decal) can opt in. */
+    public oitMode: 'sorted' | 'weighted' = 'sorted';
+
     private _defaultSubShader: RenderShaderPass;
 
     protected _shader: Shader;

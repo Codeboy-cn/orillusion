@@ -8,6 +8,10 @@ import { PointShadowFeature } from '../graph/features/PointShadowFeature';
 import { ReflectionFeature } from '../graph/features/ReflectionFeature';
 import { GIFeature } from '../graph/features/GIFeature';
 import { ColorFeature } from '../graph/features/ColorFeature';
+import { SceneColorPyramidFeature } from '../graph/features/SceneColorPyramidFeature';
+import { SortedTransparentFeature } from '../graph/features/SortedTransparentFeature';
+import { TransparentOITFeature } from '../graph/features/TransparentOITFeature';
+import { TransparentResolveFeature } from '../graph/features/TransparentResolveFeature';
 import { PostFeature } from '../graph/features/PostFeature';
 import { GUIFeature } from '../graph/features/GUIFeature';
 import { RenderGraph } from '../graph/RenderGraph';
@@ -163,6 +167,60 @@ export class FrameGraphRendererJob extends ForwardRenderJob {
             );
             colorFeature.registerResources(this.graph.pool);
             this.graph.addFeature(colorFeature);
+
+            // P1: capture the opaque-only color as a sampleable texture
+            // for Transmission / refraction sampling. Runs unconditionally
+            // — the copy is cheap (`copyTextureToTexture`) and opting in
+            // at material level (`material.transmissionFactor > 0`) is
+            // the right knob; a dead feature is worse than a 0.1ms copy.
+            if (!this.graph.getFeature('SceneColorPyramidFeature')) {
+                const pyramidFeature = new SceneColorPyramidFeature(ctx);
+                pyramidFeature.registerResources(this.graph.pool);
+                this.graph.addFeature(pyramidFeature);
+                // Eagerly allocate the pyramid texture so LitMaterials
+                // instantiated after engine.start() can bind it
+                // without waiting for the first AfterOpaque execute.
+                // Accessing the graph pool triggers the registered
+                // external getter which in turn calls `_getOrAllocate`.
+                this.graph.pool.get('_SceneColorPyramid');
+            }
+
+            // P1: transparent pass moved out of ColorFeature (which now
+            // runs opaque-only via maskTr=true). This matches the plan's
+            // stage-by-stage ordering: Opaque(40) → AfterOpaque(50) →
+            // Transparent(60), with the pyramid snapshot between them.
+            //
+            // P2: the transparent pass is split by engine opt-in. When
+            // `useOIT=true`, the OIT feature owns the transparent stage
+            // and a paired resolve feature runs at AfterTransparent.
+            // Otherwise the sorted path runs alone. The two transparent
+            // features are mutually exclusive so the graph never double-
+            // renders the transparent queue.
+            // Coexist mode: when useOIT is on, BOTH features run —
+            // sorted with a `'sorted'` filter (skips weighted), OIT
+            // with its own renderer that filters to weighted-only.
+            // When useOIT is off, only sorted runs and renders every
+            // transparent node (legacy behavior).
+            const useOIT = !!(this.view.engine3D.setting.render as any).useOIT;
+            if (!this.graph.getFeature('SortedTransparentFeature')) {
+                const transparentFeature = new SortedTransparentFeature(
+                    colorPass,
+                    this.occlusionSystem,
+                    this.clusterLightingRender,
+                    useOIT ? 'sorted' : 'all',
+                );
+                this.graph.addFeature(transparentFeature);
+            }
+            if (useOIT) {
+                if (!this.graph.getFeature('TransparentOITFeature')) {
+                    const oitFeature = new TransparentOITFeature(ctx, this.occlusionSystem);
+                    oitFeature.registerResources(this.graph.pool);
+                    this.graph.addFeature(oitFeature);
+                }
+                if (!this.graph.getFeature('TransparentResolveFeature')) {
+                    this.graph.addFeature(new TransparentResolveFeature(ctx));
+                }
+            }
         }
     }
 

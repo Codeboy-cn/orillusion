@@ -23,6 +23,11 @@ export class RendererPassState {
     public irradianceBuffer: Texture[];
     public multisample: number = 0;
     public multiTexture: GPUTexture;
+    /** Per-color-attachment MSAA side-band textures, populated by
+     *  {@link WebGPUDescriptorCreator} when `multisample > 0` and the
+     *  pass has multiple color attachments. Index matches `renderTargets`.
+     *  Unused entries stay undefined so begin-pass can distinguish. */
+    public multiTextures: GPUTexture[];
     public depthViewIndex: number = 0;
     public depthCleanValue: number = 0;
     public isOutTarget: boolean = true;

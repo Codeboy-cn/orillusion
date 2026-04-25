@@ -35,6 +35,12 @@ export class WebGPUDescriptorCreator {
             rps.depthCleanValue = rtFrame.depthCleanValue;
             rps.depthLoadOp = rtFrame.depthLoadOp;
             rps.stateVersion = 1;
+            // MSAA: an rtFrame authored with `sampleCount > 0` — e.g. a
+            // GBufferFrame created with `engine.setting.render.msaa` — needs
+            // side-band multisample textures for each color attachment
+            // plus a matching pipeline sample count. Allocate once up-front
+            // and let the beginRenderPass path re-use them.
+            rps.multisample = rtFrame.sampleCount | 0;
             passMap.set(rtFrame, rps);
         }
 
@@ -62,6 +68,24 @@ export class WebGPUDescriptorCreator {
                 };
                 if (element.name.indexOf(RTResourceConfig.colorBufferTex_NAME) != -1) {
                     rps.outColor = i;
+                }
+            }
+
+            // Allocate per-attachment MSAA side-band textures. Done here
+            // (not in beginRenderPass) because this is the one hook that
+            // already runs on resize (via customSize descriptors being
+            // rebuilt) and owns the lifetime tied to the rtFrame cache key.
+            if (rps.multisample > 0) {
+                rps.multiTextures = [];
+                for (let i = 0; i < rtFrame.renderTargets.length; i++) {
+                    const rt = rtFrame.renderTargets[i];
+                    rps.multiTextures[i] = ctx.device.createTexture({
+                        label: `${rps.label || 'MSAA'}_ms_${i}`,
+                        size: { width: rt.width, height: rt.height },
+                        sampleCount: rps.multisample,
+                        format: rt.format,
+                        usage: GPUTextureUsage.RENDER_ATTACHMENT,
+                    });
                 }
             }
 

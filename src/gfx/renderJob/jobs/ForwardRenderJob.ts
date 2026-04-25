@@ -24,7 +24,8 @@ export class ForwardRenderJob extends RendererJob {
         const setting = this.view.engine3D.setting;
         {
             let colorPassRenderer = new ColorPassRenderer();
-            let rtFrame = GBufferFrame.getGBufferFrame(GBufferFrame.colorPass_GBuffer, ctx);
+            const msaa = (setting.render as any).msaa | 0;
+            let rtFrame = GBufferFrame.getGBufferFrame(GBufferFrame.colorPass_GBuffer, ctx, 0, 0, true, undefined, msaa);
 
             if (setting.render.zPrePass) {
                 rtFrame.zPreTexture = this.depthPassRenderer.rendererPassState.depthTexture;

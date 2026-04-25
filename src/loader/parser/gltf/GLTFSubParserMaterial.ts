@@ -141,6 +141,22 @@ export class GLTFSubParserMaterial {
             });
         }
 
+        // KHR_materials_transmission textures live on `material.extensions`
+        // — resolve them here in the async path so the synchronous
+        // extension applier (KHR_materials_transmission.apply, run from
+        // GLTFSubParserConverter) can just bind the already-loaded
+        // Texture via setter.
+        if (extensions && extensions.KHR_materials_transmission && extensions.KHR_materials_transmission.transmissionTexture) {
+            const texInfo = extensions.KHR_materials_transmission.transmissionTexture;
+            const tex = await this.parseTexture(texInfo.index);
+            if (tex) (dmaterial as any).transmissionTextureResolved = tex;
+        }
+        if (extensions && extensions.KHR_materials_volume && extensions.KHR_materials_volume.thicknessTexture) {
+            const texInfo = extensions.KHR_materials_volume.thicknessTexture;
+            const tex = await this.parseTexture(texInfo.index);
+            if (tex) (dmaterial as any).thicknessTextureResolved = tex;
+        }
+
         if (dmaterial.baseColorFactor && dmaterial.baseColorFactor[3] < 1.0) {
             alphaMode = alphaMode === 'MASK' ? 'MASK' : 'BLEND';
         }
