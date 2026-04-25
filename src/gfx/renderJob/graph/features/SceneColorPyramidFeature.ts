@@ -68,20 +68,52 @@ export class SceneColorPyramidFeature extends RenderFeature {
             // Without going through the map, transmission materials
             // would forever bind the white-texture placeholder and
             // refraction would render as flat lit color.
-            //
-            // useMipmap=true so the texture has a full mip chain;
-            // execute() generates mips 1..N each frame via
-            // TextureMipmapGenerator, and the transmission shader
-            // selects an LOD from roughness.
             this._pyramid = RTResourceMap.createRTTexture(
                 this._ctx, SCENE_COLOR_PYRAMID,
                 colorBuffer.width, colorBuffer.height,
                 GPUTextureFormat.rgba16float,
-                true, 0,
+                false, 0,
             );
             this._pyramid.name = SCENE_COLOR_PYRAMID;
+            // RenderTexture.resize() unconditionally writes useMipmap
+            // = false and mipLevelCount = 1, so we can't get a mipped
+            // RT through the public constructor. Patch the descriptor
+            // and re-allocate the GPUTexture in-place after the RT
+            // wrapper exists — only this specific RT needs the chain;
+            // keeping the change scoped here avoids cascading impacts
+            // on r32float / depth / etc. RTs whose sampler bindings
+            // depend on the single-mip layout.
+            this._installMipChain(this._pyramid);
         }
         return this._pyramid;
+    }
+
+    /** Re-create the pyramid's underlying GPUTexture with a full mip
+     *  chain. The wrapper RenderTexture, viewDescriptor, etc. stay
+     *  the same so RTResourceMap and LitMaterial bindings keep
+     *  pointing at the same handle. */
+    private _installMipChain(rt: RenderTexture): void {
+        const mipLevelCount = Math.floor(Math.log2(Math.max(rt.width, rt.height))) + 1;
+        rt.mipmapCount = mipLevelCount;
+        rt.textureDescriptor.mipLevelCount = mipLevelCount;
+        if (rt.viewDescriptor) {
+            rt.viewDescriptor.mipLevelCount = mipLevelCount;
+        }
+        // gpuTexture is `protected` on Texture; cast to any so this
+        // feature (which lives outside the texture class hierarchy)
+        // can swap the underlying GPU handle without losing the
+        // wrapper instance the rest of the engine already holds
+        // references to.
+        const rtAny = rt as any;
+        const old = rtAny.gpuTexture;
+        if (old instanceof GPUTexture) {
+            old.destroy();
+        }
+        rtAny.gpuTexture = this._ctx.device.createTexture(rt.textureDescriptor);
+        // Force view recreation on next access so the shader sees the
+        // new mip layout.
+        rtAny._view = null;
+        rt.view = null as any;
     }
 
     public execute(ctx: FeatureContext): void {
