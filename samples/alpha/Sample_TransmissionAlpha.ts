@@ -237,19 +237,15 @@ class Sample_TransmissionAlpha {
         });
 
         GUIHelp.add(params, 'opacity', 0, 1, 0.01).onChange(() => {
-            // Three flips `material.transparent` based on opacity. Our
-            // analogue is alphaMode: BLEND for <1, OPAQUE for ==1; the
-            // baseColor.a carries the actual fade. (alphaMode also
-            // re-keys the pipeline so we only switch on threshold
-            // crossings to avoid thrash.)
+            // Drive opacity via baseColor.a only — the transmission
+            // shader path multiplies the cut-out alpha by this value
+            // (cutoutAlpha = baseColor.a * (1 - tf * k)), so the
+            // slider takes effect immediately. Switching alphaMode at
+            // runtime would need a pipeline rebuild and a queue swap,
+            // which we don't do here.
             const a = params.opacity;
             const c = this.dragonMat.baseColor;
             this.dragonMat.baseColor = new Color(c.r, c.g, c.b, a);
-            const wantBlend = a < 1.0;
-            const isBlend = this.dragonMat.alphaMode === 'BLEND';
-            if (wantBlend !== isBlend) {
-                this.dragonMat.alphaMode = wantBlend ? 'BLEND' : 'OPAQUE';
-            }
         });
 
         GUIHelp.add(params, 'metalness', 0, 1, 0.01).onChange(() => {

@@ -215,10 +215,28 @@ export let PBRLItShader: string = /*wgsl*/ `
             // this fragment writes), so we derive alpha from 1 - tf
             // directly. The mode is opt-in to preserve existing
             // demos that share an opaque canvas with other geometry.
-            let baseRGB = mix(ORI_FragmentOutput.color.rgb, transmittedTinted, tf);
             let alphaMode = clamp(materialUniform.transmissionAlphaMode, 0.0, 1.0);
+            // In alpha-cutout mode (Three's transmission_alpha demo) we
+            // approximate MeshPhysicalMaterial's specular-preserving
+            // behavior: the diffuse lobe is replaced by the attenuated
+            // backdrop sample, but a fixed fraction of the lit signal
+            // (specular + env reflection) survives unattenuated. Without
+            // this, metallic / roughness / lighting tweaks are invisible
+            // at tf=1 (the lit term gets mixed out entirely).
+            // In opaque mode the original "full mix" stays — that's
+            // what existing samples rely on for clean refraction
+            // through colored backdrops.
+            let lit = ORI_FragmentOutput.color.rgb;
+            let diffuseFraction = mix(1.0, 0.75, alphaMode);
+            let diffuseLike = lit * diffuseFraction;
+            let specularLike = lit - diffuseLike;
+            let baseRGB = mix(diffuseLike, transmittedTinted, tf) + specularLike;
+            // Alpha output: opaque (1.0) by default; in alpha-cutout
+            // mode the material opacity is scaled by (1 - tf * k). k is
+            // softer than before (0.85 not 0.95) so the opacity slider
+            // has visible headroom at high transmission.
             let opaqueAlpha = 1.0;
-            let cutoutAlpha = ORI_FragmentOutput.color.a * (1.0 - tf * 0.95);
+            let cutoutAlpha = ORI_FragmentOutput.color.a * (1.0 - tf * 0.85);
             ORI_FragmentOutput.color = vec4f(
                 baseRGB,
                 mix(opaqueAlpha, cutoutAlpha, alphaMode)
