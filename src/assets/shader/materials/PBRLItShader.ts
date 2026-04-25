@@ -280,7 +280,20 @@ export let PBRLItShader: string = /*wgsl*/ `
             let cleanSpec = fragData.Specular;
             let litMinusSpec = max(lit - cleanSpec, vec3f(0.0));
             let diffuseLike = mix(lit, litMinusSpec, alphaMode);
-            let preservedSpec = mix(vec3f(0.0), cleanSpec, alphaMode);
+            // In cutout mode tint the preserved highlight by
+            // specularColor.rgb. The BRDF LUT's AB.g term keeps the
+            // base IBL spec partially white regardless of F0, which
+            // dilutes the user's chosen specular hue by the time it
+            // reaches the visible output. This local multiplier sits
+            // between fragData.Specular and the final composite —
+            // direct enough that 高光颜色 noticeably tints the
+            // dragon's highlights — and is mixed to white at
+            // alphaMode=0 so opaque-queue PBR materials are
+            // untouched. We mix back to white at metallic=1 so the
+            // chrome path still mirrors the env honestly.
+            let cutoutSpecTint = mix(materialUniform.specularColor.rgb, vec3<f32>(1.0), fragData.Metallic);
+            let tintedSpec = cleanSpec * cutoutSpecTint;
+            let preservedSpec = mix(vec3f(0.0), tintedSpec, alphaMode);
             // KHR_materials_transmission spec: "A material with metallic
             // = 1 cannot transmit light." Three.js gets this for free
             // because its PBR multiplies diffuse by kD = (1-F)*(1-
