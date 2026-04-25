@@ -239,20 +239,20 @@ export let PBRLItShader: string = /*wgsl*/ `
             // opaque mode the original full mix stays; existing samples
             // rely on it for clean refraction through colored backdrops.
             let lit = ORI_FragmentOutput.color.rgb;
-            // In cutout mode keep half the lit signal as a specular /
-            // env-reflection proxy so polished glass shows the bright
-            // highlights three.js's full PBR pipeline produces; in
-            // opaque mode the previous full-mix behaviour is preserved
-            // so existing samples don't shift.
-            //
-            // specularColor.a (the KHR_materials_specular intensity
-            // scalar) is already applied inside indirectionSpec_Function
-            // — applying it again here would double-scale, so we just
-            // pass the lit signal through.
-            let diffuseFraction = mix(1.0, 0.5, alphaMode);
-            let diffuseLike = lit * diffuseFraction;
-            let specularLike = lit - diffuseLike;
-            let dragonOpaqueRGB = mix(diffuseLike, transmittedTinted, tf) + specularLike;
+            // Pull the *real* IBL specular term BxDF_frag exported via
+            // fragData.Specular. In cutout mode we use it as the
+            // preserved-highlight signal on top of refraction, instead
+            // of the previous "50% of lit" approximation. That kept
+            // sliding 高光强度 / 高光颜色 from showing up clearly
+            // because the slider was modulating a tiny fraction of a
+            // lit signal that was already mostly direct-light diffuse.
+            // Now the slider directly drives the visible highlight
+            // strength / hue.
+            let cleanSpec = fragData.Specular;
+            let litMinusSpec = max(lit - cleanSpec, vec3f(0.0));
+            let diffuseLike = mix(lit, litMinusSpec, alphaMode);
+            let preservedSpec = mix(vec3f(0.0), cleanSpec, alphaMode);
+            let dragonOpaqueRGB = mix(diffuseLike, transmittedTinted, tf) + preservedSpec;
             // Alpha-blend simulation for cutout mode. Three's
             // MeshPhysicalMaterial sets material.transparent=true and
             // the GPU blend state runs the over-operator; we draw with

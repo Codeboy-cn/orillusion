@@ -146,6 +146,12 @@ export let BxDF_frag: string = /*wgsl*/ `
         indirectionSpec *= globalUniform.hdrExposure ;
       #endif
 
+      // Export the IBL specular term so material-level shaders can
+      // pull a *clean* highlight signal — used by PBRLitShader's
+      // transmission cutout path to preserve real highlights on top
+      // of refraction without doubling diffuse contribution.
+      fragData.Specular = indirectionSpec;
+
       var color = vec3f(iblDiffuseResult + indirectionSpec + specColor)  ;
       // var color = vec3f(indirectionDiffuse )  ;
 
