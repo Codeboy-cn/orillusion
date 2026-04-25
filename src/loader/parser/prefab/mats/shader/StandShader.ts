@@ -67,7 +67,7 @@ export class StandShader extends Shader {
         this.setUniformFloat(`transmissionFactor`, 0.0);
         this.setUniformFloat(`thicknessFactor`, 0.0);
         this.setUniformFloat(`attenuationDistance`, 1.0e20);
-        this.setUniformFloat(`_padTransmission`, 0.0);
+        this.setUniformFloat(`transmissionAlphaMode`, 0.0);
         this.setUniformColor(`attenuationColor`, new Color(1, 1, 1, 1));
 
         this.setUniformVector4(`baseMapOffsetSize`, new Vector4(0, 0, 1, 1));

@@ -35,7 +35,7 @@ export let PhysicMaterialUniform_frag = /* wgsl */`
                   transmissionFactor: f32,
                   thicknessFactor: f32,
                   attenuationDistance: f32,
-                  _padTransmission: f32,
+                  transmissionAlphaMode: f32,
 
                   attenuationColor: vec4<f32>,
 

@@ -182,7 +182,8 @@ export let PBRLItShader: string = /*wgsl*/ `
             let refractStrength = max(materialUniform.ior - 1.0, 0.0) * 0.20;
             let refractOffset = ORI_ShadingInput.Normal.xy * refractStrength;
             let sampleUV = clamp(screenUV + refractOffset, vec2f(0.002), vec2f(0.998));
-            let transmitted = textureSample(sceneColorPyramid, sceneColorPyramidSampler, sampleUV).rgb;
+            let transmittedRGBA = textureSample(sceneColorPyramid, sceneColorPyramidSampler, sampleUV);
+            let transmitted = transmittedRGBA.rgb;
             // Beer-Lambert attenuation through thickness.
             var transmittance = vec3f(1.0);
             if (materialUniform.attenuationDistance < 1.0e18 && materialUniform.thicknessFactor > 0.0) {
@@ -198,9 +199,29 @@ export let PBRLItShader: string = /*wgsl*/ `
             #endif
             let tint = materialUniform.attenuationColor.rgb;
             let transmittedTinted = transmitted * transmittance * tint;
+            // Default behavior matches three.js's regular transmission
+            // path on an opaque canvas: mix lit color with the
+            // attenuated backdrop and keep alpha at 1 so opaque-queue
+            // depth and blending semantics hold.
+            //
+            // When transmissionAlphaMode is non-zero, the fragment also
+            // attenuates its output alpha by transmission so an
+            // alpha-true swapchain composites whatever lives behind the
+            // canvas (HTML page background, video, ...) through the
+            // glass — the trick three.js's
+            // webgl_materials_physical_transmission_alpha sample relies
+            // on. Sampling the pyramid alpha for this would feed back
+            // into itself (the pyramid is captured AfterOpaque, after
+            // this fragment writes), so we derive alpha from 1 - tf
+            // directly. The mode is opt-in to preserve existing
+            // demos that share an opaque canvas with other geometry.
+            let baseRGB = mix(ORI_FragmentOutput.color.rgb, transmittedTinted, tf);
+            let alphaMode = clamp(materialUniform.transmissionAlphaMode, 0.0, 1.0);
+            let opaqueAlpha = 1.0;
+            let cutoutAlpha = ORI_FragmentOutput.color.a * (1.0 - tf * 0.95);
             ORI_FragmentOutput.color = vec4f(
-                mix(ORI_FragmentOutput.color.rgb, transmittedTinted, tf),
-                1.0
+                baseRGB,
+                mix(opaqueAlpha, cutoutAlpha, alphaMode)
             );
         #endif
     }

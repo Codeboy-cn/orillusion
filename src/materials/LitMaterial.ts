@@ -265,6 +265,21 @@ export class LitMaterial extends Material {
         return this.shader.getUniformColor(`attenuationColor`);
     }
 
+    /** When set to true, the transmission shader path attenuates this
+     *  fragment's output alpha by transmission as well as RGB so an
+     *  `alpha:true` swapchain composites whatever's behind the canvas
+     *  (HTML page background, video element, ...) through the glass.
+     *  Off by default — opaque-queue draws keep alpha=1 so demos that
+     *  share an opaque canvas with other geometry don't inherit
+     *  unwanted blending. */
+    public set transmissionAlphaMode(value: boolean) {
+        this.shader.setUniformFloat(`transmissionAlphaMode`, value ? 1.0 : 0.0);
+    }
+
+    public get transmissionAlphaMode(): boolean {
+        return this.shader.getUniformFloat(`transmissionAlphaMode`) > 0.5;
+    }
+
     /** glTF-aligned alpha handling. See {@link AlphaMode}. */
     public get alphaMode(): AlphaMode {
         return this._alphaMode;
