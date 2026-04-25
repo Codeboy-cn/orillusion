@@ -306,7 +306,14 @@ export let PBRLItShader: string = /*wgsl*/ `
             // look three.js's reference produces.
             let metalMask = 1.0 - clamp(fragData.Metallic, 0.0, 1.0);
             let effectiveTf = tf * metalMask;
-            let dragonOpaqueRGB = mix(diffuseLike, transmittedTinted, effectiveTf) + preservedSpec;
+            // bodyRGB is the diffuse / transmitted-backdrop part of
+            // the dragon (no specular). Spec is added separately
+            // below so it can also contribute on top of the canvas
+            // composite over a transparent backdrop (cells region) —
+            // matching three.js's "specular halo over alpha-canvas"
+            // behaviour.
+            let bodyRGB = mix(diffuseLike, transmittedTinted, effectiveTf);
+            let dragonOpaqueRGB = bodyRGB + preservedSpec;
             // Alpha-blend simulation for cutout mode. Three's
             // MeshPhysicalMaterial sets material.transparent=true and
             // the GPU blend state runs the over-operator; we draw with
@@ -337,7 +344,16 @@ export let PBRLItShader: string = /*wgsl*/ `
             // leak even in cutout mode).
             let srcA = opacity * mix(1.0, backdropDirect.a, metalMask);
             let cutoutAlpha = srcA + backdropDirect.a * (1.0 - srcA);
-            let cutoutRGB = srcA * dragonOpaqueRGB + (1.0 - srcA) * backdropDirect.a * backdropDirect.rgb;
+            // Diffuse / transmission part follows the over-operator
+            // alpha-blend with the backdrop sample. Specular is added
+            // unconditionally on top so a glass surface in front of
+            // an alpha:true canvas region (HTML cells) still casts
+            // bright highlights / reflection halos onto the visible
+            // page background — three.js gets this for free because
+            // its PBR writes RGB even when gl_FragColor.a hits 0
+            // (premultiplied compositor adds RGB regardless of alpha).
+            let cutoutBodyRGB = srcA * bodyRGB + (1.0 - srcA) * backdropDirect.a * backdropDirect.rgb;
+            let cutoutRGB = cutoutBodyRGB + preservedSpec;
             let outAlpha = mix(1.0, cutoutAlpha, alphaMode);
             let outRGB = mix(dragonOpaqueRGB, cutoutRGB, alphaMode);
             ORI_FragmentOutput.color = vec4f(outRGB, outAlpha);
