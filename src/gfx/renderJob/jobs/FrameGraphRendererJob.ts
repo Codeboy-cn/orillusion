@@ -13,6 +13,7 @@ import { HiZFeature } from '../graph/features/HiZFeature';
 import { MotionVectorFeature } from '../graph/features/MotionVectorFeature';
 import { SceneColorPyramidFeature } from '../graph/features/SceneColorPyramidFeature';
 import { SortedTransparentFeature } from '../graph/features/SortedTransparentFeature';
+import { TransmissionOpaqueFeature } from '../graph/features/TransmissionOpaqueFeature';
 import { TransparentOITFeature } from '../graph/features/TransparentOITFeature';
 import { TransparentResolveFeature } from '../graph/features/TransparentResolveFeature';
 import { PostFeature } from '../graph/features/PostFeature';
@@ -211,6 +212,23 @@ export class FrameGraphRendererJob extends ForwardRenderJob {
                 // Accessing the graph pool triggers the registered
                 // external getter which in turn calls `_getOrAllocate`.
                 this.graph.pool.get('_SceneColorPyramid');
+            }
+
+            // Transmission split: opaque materials with transmission > 0
+            // (glass, refractive plastic) draw AFTER the pyramid copy so
+            // their refraction shader can sample a pyramid that contains
+            // the rest of the world (cloth, walls, floor) but not the
+            // transmissive surface itself. ColorFeature.execute filters
+            // them out via `colorPass.transmissionFilter='exclude'`; this
+            // feature reopens the pass with `loadOp='load'` and draws
+            // them with `transmissionFilter='only'`.
+            if (!this.graph.getFeature('TransmissionOpaqueFeature')) {
+                const transmissionFeature = new TransmissionOpaqueFeature(
+                    colorPass,
+                    this.occlusionSystem,
+                    this.clusterLightingRender,
+                );
+                this.graph.addFeature(transmissionFeature);
             }
 
             // P1: transparent pass moved out of ColorFeature (which now

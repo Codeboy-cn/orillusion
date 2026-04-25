@@ -133,12 +133,24 @@ export class ColorFeature extends RenderFeature {
         // continues the same render pass with loadOp='load' after the
         // SceneColorPyramidFeature has snapshotted the opaque-only color
         // buffer. See the P1 transmission plan.
-        this._impl.render(
-            ctx.view,
-            this._occlusion,
-            this._clusterLighting.clusterLightingBuffer,
-            true,  // maskTr — do not touch transparent here
-            false, // maskOp
-        );
+        //
+        // Transmission split: opaque materials with transmission > 0
+        // (glass, refractive plastic) are deferred to TransmissionOpaque-
+        // Feature, which runs after the pyramid copy. That way the
+        // pyramid contains the world *behind* the glass — which is what
+        // refraction needs to sample — instead of the glass itself.
+        const prevFilter = this._impl.transmissionFilter;
+        this._impl.transmissionFilter = 'exclude';
+        try {
+            this._impl.render(
+                ctx.view,
+                this._occlusion,
+                this._clusterLighting.clusterLightingBuffer,
+                true,  // maskTr — do not touch transparent here
+                false, // maskOp
+            );
+        } finally {
+            this._impl.transmissionFilter = prevFilter;
+        }
     }
 }

@@ -28,6 +28,17 @@ export class ColorPassRenderer extends RendererBase {
      *  OIT has its own renderer with a different RTFrame. */
     public oitFilter: 'sorted' | 'weighted' | null = null;
 
+    /** Splits the opaque draw list across two passes so the
+     *  SceneColorPyramid copy can sit between them:
+     *  - `'exclude'` skips materials with `transmissionFactor > 0`
+     *    (used by the main opaque pass — leaves the pyramid free of
+     *    transmission/glass writes so transmission materials sample
+     *    only the *behind-the-glass* world the next phase).
+     *  - `'only'` renders only those materials (used by the
+     *    TransmissionOpaqueFeature continuation pass after the pyramid
+     *    copy). */
+    public transmissionFilter: 'exclude' | 'only' | null = null;
+
     public render(view: View3D, occlusionSystem: OcclusionSystem, clusterLightingBuffer?: ClusterLightingBuffer, maskTr: boolean = false, maskOp: boolean = false) {
         const gpu = view.engine3D.context3D.gpuContext;
         this.renderContext.gpu = gpu;
@@ -148,6 +159,40 @@ export class ColorPassRenderer extends RendererBase {
         // ProfilerUtil.end("colorPass Renderer");
     }
 
+    /** Continuation pass driven by TransmissionOpaqueFeature: reopens
+     *  the color attachment with `loadOp='load'` and draws *only*
+     *  opaque materials whose transmissionFactor > 0. Runs after the
+     *  pyramid copy and before the transparent pass, so the dragon
+     *  (and any other transmission opaque) samples a pyramid that
+     *  contains the cloth/floor/etc. behind it but not the dragon
+     *  itself — which is what the alpha channel and the refraction
+     *  RGB sample both depend on. */
+    public renderTransmissionContinuation(view: View3D, occlusionSystem: OcclusionSystem, clusterLightingBuffer?: ClusterLightingBuffer) {
+        const gpu = view.engine3D.context3D.gpuContext;
+        this.renderContext.gpu = gpu;
+
+        const camera = view.camera;
+        GlobalBindGroup.updateCameraGroup(camera);
+        this.rendererPassState.camera3D = camera;
+
+        const collectInfo = EntityCollect.instance.getRenderNodes(view.scene, camera);
+        if (!collectInfo.opaqueList) return;
+
+        this.renderContext.beginTransparentRenderPass();
+        const renderPassEncoder = this.renderContext.encoder;
+        gpu.bindCamera(renderPassEncoder, camera);
+
+        const prevFilter = this.transmissionFilter;
+        this.transmissionFilter = 'only';
+        try {
+            this.drawNodes(view, this.renderContext, collectInfo.opaqueList, occlusionSystem, clusterLightingBuffer);
+        } finally {
+            this.transmissionFilter = prevFilter;
+        }
+
+        this.renderContext.endRenderPass();
+    }
+
     /**
      * Iterate the visible RenderNodes and submit per-node draws.
      *
@@ -207,6 +252,20 @@ export class ColorPassRenderer extends RendererBase {
                     const mat = renderNode.materials?.[0];
                     if (filter === 'sorted' && mat?.oitMode === 'weighted') continue;
                     if (filter === 'weighted' && mat?.oitMode !== 'weighted') continue;
+                }
+                // Transmission split: keep transmission materials out of
+                // the SceneColorPyramid copy by deferring them to the
+                // continuation pass. Detection looks at the LitMaterial
+                // setter that bumps `transmissionFactor` above 0 — the
+                // gltf parser sets this from KHR_materials_transmission,
+                // and we never read it on materials that don't have a
+                // numeric value (UnlitMaterial etc.) thanks to the typeof
+                // guard below.
+                if (this.transmissionFilter !== null) {
+                    const mat = renderNode.materials?.[0] as any;
+                    const hasTransmission = typeof mat?.transmissionFactor === 'number' && mat.transmissionFactor > 0;
+                    if (this.transmissionFilter === 'exclude' && hasTransmission) continue;
+                    if (this.transmissionFilter === 'only' && !hasTransmission) continue;
                 }
                 if (!renderNode.preInit(this._rendererType)) {
                     renderNode.nodeUpdate(view, this._rendererType, this.rendererPassState, clusterLightingBuffer);

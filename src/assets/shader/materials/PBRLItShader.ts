@@ -216,33 +216,37 @@ export let PBRLItShader: string = /*wgsl*/ `
             // directly. The mode is opt-in to preserve existing
             // demos that share an opaque canvas with other geometry.
             let alphaMode = clamp(materialUniform.transmissionAlphaMode, 0.0, 1.0);
-            // In alpha-cutout mode (Three's transmission_alpha demo) we
-            // approximate MeshPhysicalMaterial's specular-preserving
-            // behavior: the diffuse lobe is replaced by the attenuated
+            // RGB: in alpha-cutout mode (Three's transmission_alpha demo)
+            // we approximate MeshPhysicalMaterial's specular-preserving
+            // behaviour — the diffuse lobe is replaced by the attenuated
             // backdrop sample, but a fixed fraction of the lit signal
-            // (specular + env reflection) survives unattenuated. Without
-            // this, metallic / roughness / lighting tweaks are invisible
-            // at tf=1 (the lit term gets mixed out entirely).
-            // In opaque mode the original "full mix" stays — that's
-            // what existing samples rely on for clean refraction
-            // through colored backdrops.
+            // (specular + env reflection) survives unattenuated. In
+            // opaque mode the original full mix stays; existing samples
+            // rely on it for clean refraction through colored backdrops.
             let lit = ORI_FragmentOutput.color.rgb;
             let diffuseFraction = mix(1.0, 0.75, alphaMode);
             let diffuseLike = lit * diffuseFraction;
-            // We piggyback specularColor.a as a scalar specularIntensity
-            // (Three's KHR_materials_specular). Default 1.0 leaves the
-            // preserved specular-like term at full strength; lowering it
-            // dims highlights / env reflection on transmissive surfaces
-            // without touching F0 (which specularColor.rgb still drives).
+            // specularColor.a is repurposed as a specularIntensity
+            // scalar (Three's KHR_materials_specular). Default 1.0
+            // leaves the preserved specular-like term at full strength.
             let specularBoost = clamp(materialUniform.specularColor.a, 0.0, 1.0);
             let specularLike = (lit - diffuseLike) * specularBoost;
             let baseRGB = mix(diffuseLike, transmittedTinted, tf) + specularLike;
-            // Alpha output: opaque (1.0) by default; in alpha-cutout
-            // mode the material opacity is scaled by (1 - tf * k). k is
-            // softer than before (0.85 not 0.95) so the opacity slider
-            // has visible headroom at high transmission.
+            // Alpha output:
+            //   opaque mode (default): always 1.0.
+            //   cutout mode: drive alpha from the pyramid's alpha so a
+            //     glass surface in front of an *opaque* backdrop (cloth,
+            //     wall) writes alpha=1 and blocks page-bg leak, while a
+            //     glass surface over an empty / canvas-cleared region
+            //     writes alpha=(1-tf) and lets HTML compose through.
+            //     Multiplied by opacity (baseColor.a) so the slider
+            //     keeps acting as a global fade. This relies on the
+            //     TransmissionOpaqueFeature pipeline split — without
+            //     it the pyramid would store the dragon itself and the
+            //     alpha would feed back into a stable 1 or 0.
             let opaqueAlpha = 1.0;
-            let cutoutAlpha = ORI_FragmentOutput.color.a * (1.0 - tf * 0.85);
+            let cutoutBackdropAlpha = transmittedRGBA.a;
+            let cutoutAlpha = ORI_FragmentOutput.color.a * mix(1.0 - tf, 1.0, cutoutBackdropAlpha);
             ORI_FragmentOutput.color = vec4f(
                 baseRGB,
                 mix(opaqueAlpha, cutoutAlpha, alphaMode)
