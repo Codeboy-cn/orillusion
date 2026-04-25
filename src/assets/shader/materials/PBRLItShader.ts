@@ -176,19 +176,34 @@ export let PBRLItShader: string = /*wgsl*/ `
             // space normal's xy, scaled by (ior - 1) * thickness.
             let screenUV = ORI_VertexVarying.fragCoord.xy /
                 vec2f(globalUniform.windowWidth, globalUniform.windowHeight);
-            // Approximate refraction: view-space normal tells us how
-            // the ray bends sideways. Keep this cheap; the P3 roadmap
-            // has a proper refract() + pyramid mip lookup.
+            // Approximate refraction: three.js builds a 3D refracted
+            // ray (thickness * refract(view, normal, ior)) and projects
+            // its exit point back to clip space. We do a cheap 2D
+            // analogue, scaling the in-plane normal by IOR delta. We
+            // intentionally do NOT scale by thickness here: thickness
+            // already drives Beer-Lambert attenuation below, and folding
+            // it into the screen-space offset over-samples distant
+            // pixels in UV space (no projection-matrix compensation).
             let refractStrength = max(materialUniform.ior - 1.0, 0.0) * 0.20;
             let refractOffset = ORI_ShadingInput.Normal.xy * refractStrength;
             let sampleUV = clamp(screenUV + refractOffset, vec2f(0.002), vec2f(0.998));
             let transmittedRGBA = textureSample(sceneColorPyramid, sceneColorPyramidSampler, sampleUV);
             let transmitted = transmittedRGBA.rgb;
-            // Beer-Lambert attenuation through thickness.
+            // Volumetric attenuation. Three.js's
+            // applyVolumeAttenuation uses log-space:
+            //   coeff       = -log(attenuationColor) / attenuationDistance
+            //   transmittance = exp(-coeff * thickness)
+            //                 = pow(attenuationColor, thickness / distance)
+            // which is exactly what KHR_materials_volume specifies and
+            // produces a softer falloff than the (1 - color) Beer-
+            // Lambert variant we used to ship — the color stays in the
+            // expected hue rather than collapsing toward red as soon as
+            // the path length grows.
             var transmittance = vec3f(1.0);
             if (materialUniform.attenuationDistance < 1.0e18 && materialUniform.thicknessFactor > 0.0) {
-                let attn = exp(-(vec3f(1.0) - materialUniform.attenuationColor.rgb) * materialUniform.thicknessFactor / materialUniform.attenuationDistance);
-                transmittance = attn;
+                let safeColor = max(materialUniform.attenuationColor.rgb, vec3f(1e-4));
+                let ratio = materialUniform.thicknessFactor / materialUniform.attenuationDistance;
+                transmittance = pow(safeColor, vec3f(ratio));
             }
             var tf = clamp(materialUniform.transmissionFactor, 0.0, 1.0);
             #if USE_TRANSMISSIONMAP
@@ -224,7 +239,12 @@ export let PBRLItShader: string = /*wgsl*/ `
             // opaque mode the original full mix stays; existing samples
             // rely on it for clean refraction through colored backdrops.
             let lit = ORI_FragmentOutput.color.rgb;
-            let diffuseFraction = mix(1.0, 0.75, alphaMode);
+            // In cutout mode keep half the lit signal as a specular /
+            // env-reflection proxy so polished glass shows the bright
+            // highlights three.js's full PBR pipeline produces; in
+            // opaque mode the previous full-mix behaviour is preserved
+            // so existing samples don't shift.
+            let diffuseFraction = mix(1.0, 0.5, alphaMode);
             let diffuseLike = lit * diffuseFraction;
             // specularColor.a is repurposed as a specularIntensity
             // scalar (Three's KHR_materials_specular). Default 1.0

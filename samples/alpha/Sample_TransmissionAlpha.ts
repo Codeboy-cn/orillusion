@@ -175,22 +175,28 @@ class Sample_TransmissionAlpha {
             }
         }
         if (this.dragonMat) {
-            // Preset values tuned to match three.js's reference render
-            // of this scene. The asset itself ships with very heavy
-            // Beer-Lambert attenuation (thickness 2.27, attenuation
-            // distance 0.155) which on three.js is partly compensated
-            // by env reflection + ACES tonemapping; on our pipeline it
-            // collapses the dragon body to near-black. Loosening
-            // thickness to 0.5 and attenuation distance to 0.5 keeps
-            // the asset's amber tint while letting the cells refract
-            // through the glass at a similar visual weight.
+            // Preset matches the values three.js reads from the asset
+            // itself (DragonAttenuation.glb's KHR_materials_volume +
+            // KHR_materials_ior). The shader now keeps half the lit
+            // signal as a specular / env-reflection proxy in cutout
+            // mode and scales the refraction offset by thickness, so
+            // the heavy attenuation (thickness 2.27 / distance 0.155)
+            // produces the characteristic deep amber + bright
+            // highlights of three.js's reference render rather than
+            // a uniformly dark body.
             this.dragonMat.baseColor = new Color(1, 1, 1, 1);
             this.dragonMat.transmissionFactor = 1.0;
             this.dragonMat.metallic = 0;
             this.dragonMat.roughness = 0;
             this.dragonMat.ior = 1.5;
-            this.dragonMat.thicknessFactor = 0.5;
-            this.dragonMat.attenuationColor = new Color(234 / 255, 163 / 255, 16 / 255, 1);
+            this.dragonMat.thicknessFactor = 2.27;
+            this.dragonMat.attenuationColor = new Color(246 / 255, 209 / 255, 72 / 255, 1);
+            // Asset's authored 0.155 collapses the body to red under our
+            // simpler 2D refraction (no per-fragment ray length, no
+            // ACES-tuned exposure). 0.5 keeps the amber hue and shows
+            // the cloth pattern through the glass while staying visibly
+            // attenuated — the slider goes 0..1 so the user can dial
+            // back to 0.155 to feel the heavier asset default.
             this.dragonMat.attenuationDistance = 0.5;
             // Critical for the canvas-alpha trick: with this mode on,
             // the transmission shader writes alpha < 1 wherever the
@@ -218,8 +224,8 @@ class Sample_TransmissionAlpha {
             metalness: 0,
             roughness: 0,
             ior: 1.5,
-            thickness: 0.5,
-            attenuationColor: { rgba: [234, 163, 16, 1] },
+            thickness: 2.27,
+            attenuationColor: { rgba: [246, 209, 72, 1] },
             attenuationDistance: 0.5,
             specularIntensity: 1,
             specularColor: { rgba: [255, 255, 255, 1] },
