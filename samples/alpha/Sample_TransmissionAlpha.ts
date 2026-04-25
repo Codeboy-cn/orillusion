@@ -237,51 +237,96 @@ class Sample_TransmissionAlpha {
             exposure: 1,
         };
 
-        GUIHelp.addColor(params, 'color').onChange(() => {
-            const c = (params.color as any).rgba; // [r,g,b,a] (0-255)
-            this.dragonMat.baseColor = new Color(c[0] / 255, c[1] / 255, c[2] / 255, this.dragonMat.baseColor.a);
-        });
+        // Helper: rename a controller to a friendlier label and pin a
+        // browser-native tooltip on its row. dat.gui exposes `__li` on
+        // each controller — that's the <li> wrapping label + widget,
+        // so the title attribute kicks in on the whole row hover.
+        const decorate = (ctl: any, label: string, tip: string) => {
+            if (!ctl) return ctl;
+            if (typeof ctl.name === 'function') ctl.name(label);
+            if (ctl.__li) ctl.__li.title = tip;
+            return ctl;
+        };
 
-        GUIHelp.add(params, 'transmission', 0, 1, 0.01).onChange(() => {
-            this.dragonMat.transmissionFactor = params.transmission;
-        });
+        decorate(
+            GUIHelp.addColor(params, 'color').onChange(() => {
+                const c = (params.color as any).rgba;
+                this.dragonMat.baseColor = new Color(c[0] / 255, c[1] / 255, c[2] / 255, this.dragonMat.baseColor.a);
+            }),
+            '基础颜色',
+            'baseColor — 材质本体颜色染色，会乘到漫反射 / 透射结果上。白色 = 不染色',
+        );
 
-        GUIHelp.add(params, 'opacity', 0, 1, 0.01).onChange(() => {
-            // Drive opacity via baseColor.a only — the transmission
-            // shader path multiplies the cut-out alpha by this value
-            // (cutoutAlpha = baseColor.a * (1 - tf * k)), so the
-            // slider takes effect immediately. Switching alphaMode at
-            // runtime would need a pipeline rebuild and a queue swap,
-            // which we don't do here.
-            const a = params.opacity;
-            const c = this.dragonMat.baseColor;
-            this.dragonMat.baseColor = new Color(c.r, c.g, c.b, a);
-        });
+        decorate(
+            GUIHelp.add(params, 'transmission', 0, 1, 0.01).onChange(() => {
+                this.dragonMat.transmissionFactor = params.transmission;
+            }),
+            '透光率',
+            'transmissionFactor (KHR_materials_transmission) — 0 = 实体不透光，1 = 完全玻璃。控制 diffuse 被透射 RGB 替换的比例',
+        );
 
-        GUIHelp.add(params, 'metalness', 0, 1, 0.01).onChange(() => {
-            this.dragonMat.metallic = params.metalness;
-        });
+        decorate(
+            GUIHelp.add(params, 'opacity', 0, 1, 0.01).onChange(() => {
+                // Drive opacity via baseColor.a only — the transmission
+                // shader path uses this directly in the alpha-blend
+                // (srcA = opacity * pyramid.a). Switching alphaMode at
+                // runtime would need a pipeline rebuild + queue swap.
+                const a = params.opacity;
+                const c = this.dragonMat.baseColor;
+                this.dragonMat.baseColor = new Color(c.r, c.g, c.b, a);
+            }),
+            '不透明度',
+            'baseColor.a — 1 = 完全可见, 0 = 完全消失。在玻璃身后是不透明物体（布料）时，等比降低龙身可见度；身后是空（HTML 区域）时不影响（Three 行为）',
+        );
 
-        GUIHelp.add(params, 'roughness', 0, 1, 0.01).onChange(() => {
-            this.dragonMat.roughness = params.roughness;
-        });
+        decorate(
+            GUIHelp.add(params, 'metalness', 0, 1, 0.01).onChange(() => {
+                this.dragonMat.metallic = params.metalness;
+            }),
+            '金属度',
+            'metallic — 0 = 玻璃 / 塑料 / 陶瓷（介电），1 = 金属。金属用 baseColor 当反射颜色，介电用 specularColor (F0)',
+        );
 
-        GUIHelp.add(params, 'ior', 1, 2, 0.01).onChange(() => {
-            this.dragonMat.ior = params.ior;
-        });
+        decorate(
+            GUIHelp.add(params, 'roughness', 0, 1, 0.01).onChange(() => {
+                this.dragonMat.roughness = params.roughness;
+            }),
+            '粗糙度',
+            'roughness — 0 = 镜面光滑（锐利高光），1 = 完全粗糙（漫反射环境）。同时影响 GGX 高光锐度和 IBL mip 层级',
+        );
 
-        GUIHelp.add(params, 'thickness', 0, 5, 0.01).onChange(() => {
-            this.dragonMat.thicknessFactor = params.thickness;
-        });
+        decorate(
+            GUIHelp.add(params, 'ior', 1, 2, 0.01).onChange(() => {
+                this.dragonMat.ior = params.ior;
+            }),
+            '折射率',
+            'ior (KHR_materials_ior) — 真空 = 1.0，水 = 1.33，普通玻璃 = 1.5，水晶 = 1.8，钻石 = 2.4。控制折射偏移和菲涅尔反射强度',
+        );
 
-        GUIHelp.addColor(params, 'attenuationColor').onChange(() => {
-            const c = (params.attenuationColor as any).rgba;
-            this.dragonMat.attenuationColor = new Color(c[0] / 255, c[1] / 255, c[2] / 255, 1);
-        });
+        decorate(
+            GUIHelp.add(params, 'thickness', 0, 5, 0.01).onChange(() => {
+                this.dragonMat.thicknessFactor = params.thickness;
+            }),
+            '厚度',
+            'thicknessFactor (KHR_materials_volume) — 玻璃内部光路长度。配合 attenuationDistance 决定 Beer-Lambert 衰减总量 (pow(attenuationColor, thickness/distance))',
+        );
 
-        GUIHelp.add(params, 'attenuationDistance', 0, 1, 0.01).onChange(() => {
-            this.dragonMat.attenuationDistance = params.attenuationDistance;
-        });
+        decorate(
+            GUIHelp.addColor(params, 'attenuationColor').onChange(() => {
+                const c = (params.attenuationColor as any).rgba;
+                this.dragonMat.attenuationColor = new Color(c[0] / 255, c[1] / 255, c[2] / 255, 1);
+            }),
+            '染色色相',
+            'attenuationColor — 透射光走过玻璃后保留的颜色：琥珀玻璃用金黄，绿酒瓶用绿色，等等',
+        );
+
+        decorate(
+            GUIHelp.add(params, 'attenuationDistance', 0, 1, 0.01).onChange(() => {
+                this.dragonMat.attenuationDistance = params.attenuationDistance;
+            }),
+            '染色距离',
+            'attenuationDistance — 透射光衰减到 1/e 时走过的距离。越小衰减越剧烈（颜色越深、越偏 attenuationColor），越大越接近无染色',
+        );
 
         // specularColor.rgb = F0 for dielectrics (Fresnel at 0°, ~0.04
         // by default; tinting it adjusts grazing-angle reflection hue).
@@ -296,22 +341,38 @@ class Sample_TransmissionAlpha {
                 new Color(c[0] / 255, c[1] / 255, c[2] / 255, k),
             );
         };
-        GUIHelp.add(params, 'specularIntensity', 0, 1, 0.01).onChange(applySpecular);
-        GUIHelp.addColor(params, 'specularColor').onChange(applySpecular);
+        decorate(
+            GUIHelp.add(params, 'specularIntensity', 0, 1, 0.01).onChange(applySpecular),
+            '高光强度',
+            'specularIntensity (KHR_materials_specular) — 介电材质镜面反射的整体强度系数，不改色相只缩放强度。透射模式下还会缩放保留下来的高光项',
+        );
+        decorate(
+            GUIHelp.addColor(params, 'specularColor').onChange(applySpecular),
+            '高光颜色',
+            'specularColor — 介电材质的 F0（菲涅尔正面反射颜色），默认白即标准玻璃。染成淡红可做塑料 / 哑光陶瓷调子；金属度 = 1 时此项失效',
+        );
 
-        GUIHelp.add(params, 'envMapIntensity', 0, 1, 0.01).onChange(() => {
-            (this.dragonMat as any).shader.envIntensity = params.envMapIntensity * this.envMapBaseIntensity;
-        });
+        decorate(
+            GUIHelp.add(params, 'envMapIntensity', 0, 1, 0.01).onChange(() => {
+                (this.dragonMat as any).shader.envIntensity = params.envMapIntensity * this.envMapBaseIntensity;
+            }),
+            '环境光强度',
+            'envIntensity — HDR 环境贴图反射在表面的可见度。0 = 黑环境（只剩主光），1 = 完整 IBL。透射玻璃的「高光感」很大程度来自这一项',
+        );
 
         // We have no global tonemap-exposure knob (ACES is inline in
         // LightingFunction_frag and bakes a fixed exposure). Approximate
         // by scaling both the IBL and the directional light — visually
         // close enough for the demo's purposes.
-        GUIHelp.add(params, 'exposure', 0, 1, 0.01).onChange(() => {
-            const k = params.exposure;
-            this.directLight.intensity = this.lightBaseIntensity * k;
-            (this.dragonMat as any).shader.envIntensity = params.envMapIntensity * this.envMapBaseIntensity * k;
-        });
+        decorate(
+            GUIHelp.add(params, 'exposure', 0, 1, 0.01).onChange(() => {
+                const k = params.exposure;
+                this.directLight.intensity = this.lightBaseIntensity * k;
+                (this.dragonMat as any).shader.envIntensity = params.envMapIntensity * this.envMapBaseIntensity * k;
+            }),
+            '曝光',
+            '近似曝光 — 同时缩放主光和环境光强度。我们的 ACES 是 inline 在 LightingFunction_frag 里的固定曝光，没有专门的最终 tonemap 旋钮，这里用线性缩放近似',
+        );
 
         GUIHelp.open();
     }
