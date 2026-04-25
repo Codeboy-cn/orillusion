@@ -6,6 +6,7 @@ import { SSRSetting } from "./post/SSRSetting";
 import { TAASetting } from "./post/TAASetting";
 import { BloomSetting } from "./post/BloomSetting";
 import { GodRaySetting } from "./post/GodRaySetting";
+import { TonemapSetting } from "./post/TonemapSetting";
 import { VolumetricFogSetting } from "./post/VolumetricFogSetting";
 
 export type RenderSetting = {
@@ -63,6 +64,14 @@ export type RenderSetting = {
      *  through the OIT accum/resolve features instead of the sorted
      *  transparent path. Default false — matches legacy behavior. */
     useOIT: boolean;
+    /**
+     * Final HDR→LDR tonemap. Runs after every other post (Bloom,
+     * FXAA, GodRay, etc.) so the ACES curve sees the composited HDR
+     * signal. Setting `enable=false` reverts to a passthrough pass —
+     * lighting and bloom shaders no longer apply inline ACES, so the
+     * frame will be raw HDR clamped at swapchain encode time.
+     */
+    tonemap: TonemapSetting;
     /**
      * post effect
      */

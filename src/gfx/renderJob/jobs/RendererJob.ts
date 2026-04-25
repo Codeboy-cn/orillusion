@@ -17,6 +17,7 @@ import { DDGIProbeRenderer } from '../passRenderer/ddgi/DDGIProbeRenderer';
 import { ReflectionRenderer } from '../passRenderer/cubeRenderer/ReflectionRenderer';
 import { PassType } from '../passRenderer/state/PassType';
 import { FXAAPost } from '../post/FXAAPost';
+import { TonemapPost } from '../post/TonemapPost';
 
 /**
  * render jobs 
@@ -131,6 +132,15 @@ export class RendererJob {
         this.pointLightShadowRenderer = new PointLightShadowRenderer(ctx);
 
         this.addPost(new FXAAPost());
+        // Final ACES Filmic tonemap. Always attached; PostRenderer
+        // routes `isFinalPass=true` posts to the end of the chain
+        // regardless of attach order, so user posts that come later
+        // (Bloom, GodRay, Outline) still feed their HDR output into
+        // the curve. Disable per-instance via
+        // `setting.render.tonemap.enable = false`.
+        if (view.engine3D.setting.render.tonemap?.enable !== false) {
+            this.addPost(new TonemapPost());
+        }
     }
 
     public addRenderer<T extends RendererBase>(c: Ctor<T>, param?: any): T {

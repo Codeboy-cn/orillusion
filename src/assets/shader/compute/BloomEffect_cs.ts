@@ -96,18 +96,18 @@ fn CsMain( @builtin(workgroup_id) workgroup_id : vec3<u32> , @builtin(global_inv
       return;
   }
   var color = textureLoad(inTex, fragCoord, 0);
-  var linerColor = gammaToLiner(color.rgb);
-  var lum = dot(vec3<f32>(0.2126, 0.7152, 0.0722), linerColor.rgb) ;
-
-  var ret = linerColor.xyz;
-  var contribution = max(0, lum - bloomCfg.luminanceThreshole) ;
-  // if(contribution > 0.0){
-    // ret = linerColor * contribution;
-  ret = ACESToneMapping(linerColor,contribution);
-  // }else{
-  //   ret = vec3f(0.0,0.0,0.0);
-  // }
-  textureStore(outTex, fragCoord, vec4<f32>(vec3f(ret), color.w));
+  // Scene RGB is now linear HDR throughout (ACES is a final post-pass
+  // applied after bloom composites back). Drop the gammaToLiner +
+  // inline ACES; threshold the raw linear luminance directly. The
+  // luminanceThreshold default needs to live in HDR units now (1.0
+  // meaning "lights with intensity > 1 lux equivalent"), not the
+  // pre-tonemap [0..1] range. Bloom intensity also amplifies HDR
+  // values directly without ACES compressing the input.
+  var linearColor = color.rgb;
+  var lum = dot(vec3<f32>(0.2126, 0.7152, 0.0722), linearColor);
+  var contribution = max(0.0, lum - bloomCfg.luminanceThreshole);
+  var ret = linearColor * contribution;
+  textureStore(outTex, fragCoord, vec4<f32>(ret, color.w));
 }
 `
 
@@ -221,12 +221,11 @@ fn CsMain( @builtin(workgroup_id) workgroup_id : vec3<u32> , @builtin(global_inv
 
   // var bloom = textureLoad(_BloomTex, fragCoord, 0).xyz;
   var bloom = textureSampleLevel(_BloomTex, _BloomTexSampler, uv, 0.0).xyz * bloomCfg.bloomIntensity;
-  
-  // tone map
-  bloom = ACESToneMapping(bloom, 1.0);
-  let g = 1.0 / 2.2;
-  bloom = saturate(pow(bloom, vec3<f32>(g)));
- 
+
+  // ACES + gamma now happen in the final TonemapPost. Just additively
+  // composite the linear HDR bloom onto the scene; the post-pass
+  // tonemap reads the combined HDR signal and produces the
+  // shoulder-compressed output for both scene and bloom in one pass.
   color = vec4<f32>(color.xyz + bloom.xyz, color.w);
   textureStore(outTex, fragCoord, color);
 }

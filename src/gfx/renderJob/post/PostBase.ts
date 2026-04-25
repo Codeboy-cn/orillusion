@@ -21,6 +21,10 @@ import { EngineSetting } from '../../../setting/EngineSetting';
  */
 export class PostBase {
     public enable: boolean = true;
+    /** When true, PostRenderer iterates this post AFTER every regular
+     *  post regardless of attach order — used by TonemapPost so the
+     *  ACES curve always lands on the fully-composited HDR signal. */
+    public isFinalPass: boolean = false;
     public postRenderer: PostRenderer;
     public rendererPassState: RendererPassState;
     public _boundCtx: Context3D | null = null;

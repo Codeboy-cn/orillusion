@@ -119,6 +119,11 @@ export class Engine3D {
                 useOIT: false,
                 gpuCull: false,
                 gpuCullTwoPhase: false,
+                tonemap: {
+                    enable: true,
+                    exposure: 1.0,
+                    mode: 'ACES',
+                },
                 postProcessing: {
                     bloom: {
                         downSampleStep: 3,

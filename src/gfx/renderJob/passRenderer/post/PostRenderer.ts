@@ -62,8 +62,22 @@ export class PostRenderer extends RendererBase {
         });
 
         let command = gpu.beginCommandEncoder();
+        // Non-final posts (Bloom, FXAA, GodRay, ...) drain in
+        // attach order — each samples the previous pass via
+        // `lastRenderPassState` so order matters.
         this.postList.forEach((v) => {
-            if (v.enable) {
+            if (v.enable && !v.isFinalPass) {
+                v.render(view, command);
+                if (v.rendererPassState) {
+                    gpu.lastRenderPassState = v.rendererPassState;
+                }
+            }
+        });
+        // Final passes (TonemapPost) always run last regardless of
+        // attach order, so the curve lands on the fully-composited
+        // HDR signal.
+        this.postList.forEach((v) => {
+            if (v.enable && v.isFinalPass) {
                 v.render(view, command);
                 if (v.rendererPassState) {
                     gpu.lastRenderPassState = v.rendererPassState;
