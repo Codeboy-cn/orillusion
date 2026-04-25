@@ -175,20 +175,23 @@ class Sample_TransmissionAlpha {
             }
         }
         if (this.dragonMat) {
-            // Three's params block forces transmission=1 / opacity=1 /
-            // metalness=0 / roughness=0 unconditionally before reading
-            // material values, so the picker starts at "perfect glass".
+            // Preset values tuned to match three.js's reference render
+            // of this scene. The asset itself ships with very heavy
+            // Beer-Lambert attenuation (thickness 2.27, attenuation
+            // distance 0.155) which on three.js is partly compensated
+            // by env reflection + ACES tonemapping; on our pipeline it
+            // collapses the dragon body to near-black. Loosening
+            // thickness to 0.5 and attenuation distance to 0.5 keeps
+            // the asset's amber tint while letting the cells refract
+            // through the glass at a similar visual weight.
+            this.dragonMat.baseColor = new Color(1, 1, 1, 1);
             this.dragonMat.transmissionFactor = 1.0;
             this.dragonMat.metallic = 0;
             this.dragonMat.roughness = 0;
-            this.dragonMat.ior = this.dragonMat.ior || 1.5;
-            this.dragonMat.thicknessFactor = this.dragonMat.thicknessFactor || 0.01;
-            if (!this.dragonMat.attenuationColor) {
-                this.dragonMat.attenuationColor = new Color(1, 1, 1, 1);
-            }
-            if (!isFinite(this.dragonMat.attenuationDistance)) {
-                this.dragonMat.attenuationDistance = 1;
-            }
+            this.dragonMat.ior = 1.5;
+            this.dragonMat.thicknessFactor = 0.5;
+            this.dragonMat.attenuationColor = new Color(234 / 255, 163 / 255, 16 / 255, 1);
+            this.dragonMat.attenuationDistance = 0.5;
             // Critical for the canvas-alpha trick: with this mode on,
             // the transmission shader writes alpha < 1 wherever the
             // glass transmits, so the iframe's HTML backdrop can show
@@ -205,8 +208,9 @@ class Sample_TransmissionAlpha {
     private initGUI() {
         if (!this.dragonMat) return;
 
-        // Mirror three.js example's `params` block, in the same order
-        // and with the same ranges.
+        // Mirror three.js example's params block, in the same order
+        // and with the same ranges. Initial values match the preset
+        // applied to the dragon material in loadDragon().
         const params = {
             color: { rgba: [255, 255, 255, 1] },
             transmission: 1,
@@ -214,28 +218,14 @@ class Sample_TransmissionAlpha {
             metalness: 0,
             roughness: 0,
             ior: 1.5,
-            thickness: 0.01,
-            attenuationColor: { rgba: [255, 255, 255, 1] },
-            attenuationDistance: 1,
+            thickness: 0.5,
+            attenuationColor: { rgba: [234, 163, 16, 1] },
+            attenuationDistance: 0.5,
             specularIntensity: 1,
             specularColor: { rgba: [255, 255, 255, 1] },
             envMapIntensity: 1,
             exposure: 1,
         };
-
-        // Seed UI defaults from the asset's actual material so the
-        // sliders match what's on screen at t=0.
-        const seedColor = this.dragonMat.baseColor;
-        params.color.rgba = [seedColor.r * 255, seedColor.g * 255, seedColor.b * 255, 1];
-        params.metalness = this.dragonMat.metallic;
-        params.roughness = this.dragonMat.roughness;
-        params.ior = this.dragonMat.ior;
-        params.transmission = this.dragonMat.transmissionFactor;
-        params.thickness = Math.min(this.dragonMat.thicknessFactor, 5);
-        const ac = this.dragonMat.attenuationColor;
-        params.attenuationColor.rgba = [ac.r * 255, ac.g * 255, ac.b * 255, 1];
-        const ad = this.dragonMat.attenuationDistance;
-        params.attenuationDistance = isFinite(ad) ? Math.min(ad, 1) : 1;
 
         GUIHelp.addColor(params, 'color').onChange(() => {
             const c = (params.color as any).rgba; // [r,g,b,a] (0-255)
