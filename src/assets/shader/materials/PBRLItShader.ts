@@ -312,7 +312,25 @@ export let PBRLItShader: string = /*wgsl*/ `
             // composite over a transparent backdrop (cells region) —
             // matching three.js's "specular halo over alpha-canvas"
             // behaviour.
-            let bodyRGB = mix(diffuseLike, transmittedTinted, effectiveTf);
+            //
+            // Refracted-alpha gating + attenuation fallback. When the
+            // refraction sample lands on a canvas-empty pixel
+            // (transmittedRGBA.a = 0, e.g. a fragment whose refracted
+            // exit point projects into the cells / HTML region),
+            // textureSampleLevel returns (0,0,0,0) and the standard
+            // transmittedTinted (rgb * transmittance * tint) collapses
+            // to black. We instead fall back to a pure-attenuation
+            // sample — what a beam of WHITE light would look like
+            // after travelling thickness units through the volume.
+            // That is transmittance * tint with the source RGB
+            // implicitly set to white, and it preserves the dragon's
+            // amber body colour over cells so the user sees a
+            // continuously-shaded body whether the fragment refracts
+            // cloth or cells / page-background.
+            let refractCoverage = clamp(transmittedRGBA.a, 0.0, 1.0);
+            let transmittedFallback = transmittance * tint;
+            let transmittedFinal = mix(transmittedFallback, transmittedTinted, refractCoverage);
+            let bodyRGB = mix(diffuseLike, transmittedFinal, effectiveTf);
             let dragonOpaqueRGB = bodyRGB + preservedSpec;
             // Alpha-blend simulation for cutout mode. Three's
             // MeshPhysicalMaterial sets material.transparent=true and
@@ -337,22 +355,28 @@ export let PBRLItShader: string = /*wgsl*/ `
             // compositor reveals the HTML cell at full strength.
             let backdropDirect = textureSample(sceneColorPyramid, sceneColorPyramidSampler, screenUV);
             let opacity = ORI_FragmentOutput.color.a;
-            // Same metalness gating for the alpha-cutout path: pure
-            // metals don't let the iframe HTML show through, they
-            // mirror-reflect the IBL. Scale the alpha-blend term by
-            // metalMask so srcA collapses to 1 at metallic=1 (no HTML
-            // leak even in cutout mode).
-            let srcA = opacity * mix(1.0, backdropDirect.a, metalMask);
-            let cutoutAlpha = srcA + backdropDirect.a * (1.0 - srcA);
-            // Diffuse / transmission part follows the over-operator
-            // alpha-blend with the backdrop sample. Specular is added
-            // unconditionally on top so a glass surface in front of
-            // an alpha:true canvas region (HTML cells) still casts
-            // bright highlights / reflection halos onto the visible
-            // page background — three.js gets this for free because
-            // its PBR writes RGB even when gl_FragColor.a hits 0
-            // (premultiplied compositor adds RGB regardless of alpha).
-            let cutoutBodyRGB = srcA * bodyRGB + (1.0 - srcA) * backdropDirect.a * backdropDirect.rgb;
+            // Body alpha = opacity (uniform across the dragon).
+            // Earlier we used opacity * backdropDirect.a so the
+            // alpha-canvas trick fully revealed HTML through cells,
+            // but that collapsed the dragon's body to invisible at
+            // cells coverage — the user reads it as "no alpha-blend
+            // with the colour cells", which is what three.js's
+            // MeshPhysicalMaterial actually shows at high transmission
+            // (the dragon body does occupy those pixels).
+            let bodySrcA = opacity;
+            // canvasAlpha keeps the cloth-blocks-HTML semantics: at
+            // cloth coverage we end at 1 (premultiplied compositor
+            // skips HTML). At cells (backdrop.a = 0) it stays at
+            // bodySrcA, so HTML still shows through proportionally to
+            // (1 - opacity).
+            let cutoutAlpha = bodySrcA + backdropDirect.a * (1.0 - bodySrcA);
+            // Diffuse / transmission part: opacity blends dragon body
+            // with the cloth (or whatever else has depth at this
+            // pixel). Specular is added unconditionally on top so a
+            // glass surface in front of an alpha:true canvas region
+            // (HTML cells) still casts bright highlights / reflection
+            // halos onto the visible page background.
+            let cutoutBodyRGB = bodySrcA * bodyRGB + (1.0 - bodySrcA) * backdropDirect.a * backdropDirect.rgb;
             let cutoutRGB = cutoutBodyRGB + preservedSpec;
             let outAlpha = mix(1.0, cutoutAlpha, alphaMode);
             let outRGB = mix(dragonOpaqueRGB, cutoutRGB, alphaMode);
