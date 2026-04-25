@@ -189,19 +189,16 @@ class Sample_TransmissionAlpha {
             this.dragonMat.metallic = 0;
             this.dragonMat.roughness = 0;
             this.dragonMat.ior = 1.5;
-            // Lighter than the asset's authored thickness/distance
-            // (2.27 / 0.155). With our simpler 2D refraction (no
-            // per-fragment ray length, no ACES-tuned exposure) the
-            // asset values collapse the body toward solid red because
-            // the path length grows fast and pow() drops the blue
-            // channel hard. thickness=1.0, distance=1.0 keeps the
-            // amber hue mild enough that the cloth/floor checkerboard
-            // is clearly readable through the dragon — i.e. the
-            // dragon visibly does the alpha-blend with whatever has
-            // depth behind it, not just stamps an opaque tint.
-            this.dragonMat.thicknessFactor = 1.0;
+            // Asset-authored values (DragonAttenuation.glb +
+            // KHR_materials_volume / _ior). These are what three.js's
+            // webgl_materials_physical_transmission_alpha demo reads
+            // from `mesh.material.*` and shows in its Controls panel,
+            // so initialising with the same numbers gives a 1:1 visual
+            // match — heavy amber Beer-Lambert attenuation with
+            // ratio thickness/distance ≈ 14.6.
+            this.dragonMat.thicknessFactor = 2.27;
             this.dragonMat.attenuationColor = new Color(246 / 255, 209 / 255, 72 / 255, 1);
-            this.dragonMat.attenuationDistance = 1.0;
+            this.dragonMat.attenuationDistance = 0.155;
             // Critical for the canvas-alpha trick: with this mode on,
             // the transmission shader writes alpha < 1 wherever the
             // glass transmits, so the iframe's HTML backdrop can show
@@ -228,9 +225,9 @@ class Sample_TransmissionAlpha {
             metalness: 0,
             roughness: 0,
             ior: 1.5,
-            thickness: 1.0,
+            thickness: 2.27,
             attenuationColor: { rgba: [246, 209, 72, 1] },
-            attenuationDistance: 1.0,
+            attenuationDistance: 0.155,
             specularIntensity: 1,
             specularColor: { rgba: [255, 255, 255, 1] },
             envMapIntensity: 1,
