@@ -1,4 +1,4 @@
-import { Engine3D, Object3D, Scene3D, View3D, Object3DUtil, Vector3, AtmosphericComponent, DirectLight, CameraUtil, HoverCameraController, Quaternion, MeshRenderer, LitMaterial } from "@orillusion/core";
+import { Engine3D, Object3D, Scene3D, View3D, Object3DUtil, Vector3, AtmosphericComponent, DirectLight, CameraUtil, HoverCameraController, Quaternion, MeshRenderer, BoxGeometry, LitMaterial, Color } from "@orillusion/core";
 import { Stats } from "@orillusion/stats";
 import { ActivationState, CollisionShapeUtil, DebugDrawMode, Generic6DofSpringConstraint, Physics, Rigidbody } from "@orillusion/physics";
 import dat from "dat.gui";
@@ -101,47 +101,53 @@ class Sample_dofSpringConstraint {
         const distance = 0.1; // Distance between bridge segments
         const pierHeight = 5; // Height of the piers
 
-        // HSL → RGB with random hue + fixed mid-tone lightness keeps
-        // the segments visually distinct under linear-HDR + ACES
-        // tonemap (per-channel `Math.random()` collapses too easily
-        // to similar grays once the lighting + tonemap compress
-        // the highlights).
-        const hslColor = () => {
-            const h = Math.random();
-            const s = 0.85;       // strong saturation
-            const l = 0.22;       // dark mid-tone, survives tonemap
-            const c = (1 - Math.abs(2 * l - 1)) * s;
-            const hp = h * 6;
-            const x = c * (1 - Math.abs((hp % 2) - 1));
-            const m = l - c / 2;
-            let r = 0, g = 0, b = 0;
-            if (hp < 1) { r = c; g = x; }
-            else if (hp < 2) { r = x; g = c; }
-            else if (hp < 3) { g = c; b = x; }
-            else if (hp < 4) { g = x; b = c; }
-            else if (hp < 5) { r = x; b = c; }
-            else              { r = c; b = x; }
-            return [r + m, g + m, b + m] as const;
-        };
+        // Hardcoded vivid linear-HDR friendly palette. Random
+        // per-channel colors collapse to indistinguishable pastels
+        // under bright atmospheric IBL because each channel's
+        // contribution is tinted by the same whitish environmental
+        // light. A curated rainbow with one strong channel per
+        // segment gives a set that visibly walks through hues even
+        // after lighting + tonemap.
+        const palette: [number, number, number][] = [
+            [0.5, 0.0, 0.0],   // deep red
+            [0.5, 0.2, 0.0],   // orange
+            [0.5, 0.4, 0.0],   // amber
+            [0.5, 0.5, 0.0],   // yellow
+            [0.2, 0.5, 0.0],   // chartreuse
+            [0.0, 0.5, 0.0],   // green
+            [0.0, 0.5, 0.3],   // teal
+            [0.0, 0.4, 0.5],   // cyan
+            [0.0, 0.2, 0.5],   // sky blue
+            [0.0, 0.0, 0.5],   // deep blue
+            [0.2, 0.0, 0.5],   // indigo
+            [0.4, 0.0, 0.5],   // violet
+            [0.5, 0.0, 0.4],   // magenta
+            [0.5, 0.0, 0.2],   // rose
+            [0.4, 0.1, 0.1],   // brick
+        ];
 
         let bridgeSegments: Rigidbody[] = [];
         for (let i = 0; i < numSegments; i++) {
             const isStatic = i === 0 || i === numSegments - 1;
             const mass = isStatic ? 0 : 2;
             const staticHeight = isStatic ? pierHeight : 0;
-            const [cr, cg, cb] = hslColor();
-            let bridgeObj = Object3DUtil.GetSingleCube(segmentWidth, segmentHeight + staticHeight, segmentDepth, cr, cg, cb);
-            // Object3DUtil.GetSingleCube ships LitMaterial defaults
-            // (metallic=0.1, roughness=0.5). Slightly metallic
-            // surfaces reflect the bright HDR sky into the camera and
-            // wash the diffuse out of the bridge segments. Force a
-            // pure dielectric matte surface so the random baseColor
-            // is what carries the visual identity.
-            const mr = bridgeObj.getComponent(MeshRenderer);
-            if (mr && mr.material instanceof LitMaterial) {
-                mr.material.metallic = 0.0;
-                mr.material.roughness = 1.0;
-            }
+            const [cr, cg, cb] = palette[i % palette.length];
+
+            // Build the bridge segment directly with a fresh
+            // LitMaterial so we can pin metallic=0 / roughness=1
+            // BEFORE the material initializes its GPU resources.
+            // Object3DUtil.GetSingleCube ships defaults (metallic=0.1,
+            // roughness=0.5) which under linear-HDR + ACES + bright
+            // atmospheric IBL washes the random color into a uniform
+            // pastel — flat dielectric matte preserves hue.
+            let bridgeObj = new Object3D();
+            const mat = new LitMaterial();
+            mat.baseColor = new Color(cr, cg, cb, 1);
+            mat.metallic = 0.0;
+            mat.roughness = 1.0;
+            const mr = bridgeObj.addComponent(MeshRenderer);
+            mr.geometry = new BoxGeometry(segmentWidth, segmentHeight + staticHeight, segmentDepth);
+            mr.material = mat;
 
             const posX = i * segmentWidth + i * distance || distance;
             const posY = isStatic ? pierHeight / 2 + segmentHeight / 2 : pierHeight;
