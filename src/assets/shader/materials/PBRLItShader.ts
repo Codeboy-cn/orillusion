@@ -257,7 +257,15 @@ export let PBRLItShader: string = /*wgsl*/ `
                 // opaque + glassy regions (e.g. a window frame).
                 tf = tf * textureSample(transmissionMap, transmissionMapSampler, uv).r;
             #endif
-            let tint = materialUniform.attenuationColor.rgb;
+            // Tint the transmitted backdrop by both baseColor (the
+            // user's material colour, equivalent to three.js's
+            // material.color) AND attenuationColor (the volume tint
+            // along the light path, KHR_materials_volume). Previously
+            // only attenuationColor was applied, so the color slider
+            // had no effect on glass with high transmission — three.js
+            // multiplies both because they describe different physical
+            // quantities (surface tint vs volume absorption).
+            let tint = materialUniform.attenuationColor.rgb * materialUniform.baseColor.rgb;
             let transmittedTinted = transmitted * transmittance * tint;
             // Default behavior matches three.js's regular transmission
             // path on an opaque canvas: mix lit color with the
