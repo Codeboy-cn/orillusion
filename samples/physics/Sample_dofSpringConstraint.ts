@@ -98,7 +98,15 @@ class Sample_dofSpringConstraint {
         const segmentWidth = 1;
         const segmentHeight = 0.4;
         const segmentDepth = 5;
-        const distance = 0.1; // Distance between bridge segments
+        // Physical gap between bridge segments. Was 0.1; with that
+        // gap the segment-cast shadows fell into the visible space
+        // BETWEEN planks, producing dark stripes that visually read
+        // as "shadow seen through transparent segments" — segments
+        // are fully opaque, the dark bands were just the floor in
+        // shadow showing through the gaps. 0.02 is small enough
+        // visually to look like contact while keeping the spring
+        // constraint solver from going degenerate.
+        const distance = 0.02;
         const pierHeight = 5; // Height of the piers
 
         // Hardcoded vivid linear-HDR friendly palette. Random
@@ -142,6 +150,7 @@ class Sample_dofSpringConstraint {
             // pastel — flat dielectric matte preserves hue.
             let bridgeObj = new Object3D();
             const mat = new LitMaterial();
+            mat.alphaMode = 'OPAQUE';   // force opaque blend / depthWrite on
             mat.baseColor = new Color(cr, cg, cb, 1);
             mat.metallic = 0.0;
             mat.roughness = 1.0;
