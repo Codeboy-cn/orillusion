@@ -23,12 +23,15 @@ class Sample_CullMode {
 
         engine.startRenderView(view);
 
-        // add direct light
+        // add direct light. rotationX = 45 keeps the sun above the
+        // horizon so the AtmosphericSky stays in day-mode (the
+        // previous -45 placed it below, dropping the sky into a
+        // dark dusk that made the UnLit plane unreadable).
         let lightObj = new Object3D();
-        lightObj.rotationX = -45;
+        lightObj.rotationX = 45;
         let light = lightObj.addComponent(DirectLight);
         light.lightColor = new Color(1.0, 1.0, 1.0, 1.0);
-        light.intensity = 10;
+        light.intensity = 3;
         scene.addChild(lightObj);
 
         sky.relativeTransform = light.transform;
