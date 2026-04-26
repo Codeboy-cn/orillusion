@@ -121,7 +121,22 @@ export class Engine3D {
                 gpuCullTwoPhase: false,
                 tonemap: {
                     enable: true,
-                    exposure: 1.0,
+                    // 0.6 compensates for the removed inline
+                    // `LinearToGammaSpace` calls in BRDF_frag /
+                    // BsDF_frag / GlobalFog / SSR — those used to
+                    // softly compress IBL / prefilter samples into
+                    // LDR-numerical range before the additive
+                    // composite. Removing them was a correctness
+                    // improvement (IBL stays linear HDR all the way
+                    // to ACES), but the net visual got ~30-50%
+                    // brighter. Pulling exposure to 0.6 brings the
+                    // composited output back near the legacy
+                    // brightness while keeping the linear-correct
+                    // internal pipeline. Three.js's
+                    // `toneMappingExposure = 1.0` lands in similar
+                    // brightness because their IBL prefilter map is
+                    // pre-baked at lower numerical range.
+                    exposure: 0.6,
                     mode: 'ACES',
                 },
                 postProcessing: {
