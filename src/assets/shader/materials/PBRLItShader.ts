@@ -406,7 +406,18 @@ export let PBRLItShader: string = /*wgsl*/ `
             // halos onto the visible page background.
             let cutoutBodyRGB = bodySrcA * bodyRGB + (1.0 - bodySrcA) * backdropDirect.a * backdropDirect.rgb;
             let cutoutRGB = cutoutBodyRGB + preservedSpec;
-            let outAlpha = mix(1.0, cutoutAlpha, alphaMode);
+            // Opaque-branch alpha was hardcoded to 1.0, which made the
+            // sphere fully visible regardless of the user's opacity
+            // slider on materials that flipped the GPU pipeline to
+            // alphaMode='BLEND' (Sample_Transmission). Forward the
+            // computed BaseColor.a (= baseColor.a * maskTex.a from
+            // USE_ALPHA_A) so opacity=0 produces an invisible surface
+            // — three.js's MeshPhysicalMaterial does the equivalent.
+            // For alphaMode='OPAQUE' GPU pipelines the value is
+            // ignored anyway (no blending), so this doesn't change
+            // opaque-glass demos.
+            let outAlphaOpaque = ORI_FragmentOutput.color.a;
+            let outAlpha = mix(outAlphaOpaque, cutoutAlpha, alphaMode);
             let outRGB = mix(dragonOpaqueRGB, cutoutRGB, alphaMode);
             ORI_FragmentOutput.color = vec4f(outRGB, outAlpha);
         #endif
