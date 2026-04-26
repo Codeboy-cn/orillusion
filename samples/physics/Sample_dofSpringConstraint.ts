@@ -1,4 +1,4 @@
-import { Engine3D, Object3D, Scene3D, View3D, Object3DUtil, Vector3, AtmosphericComponent, DirectLight, CameraUtil, HoverCameraController, Quaternion } from "@orillusion/core";
+import { Engine3D, Object3D, Scene3D, View3D, Object3DUtil, Vector3, AtmosphericComponent, DirectLight, CameraUtil, HoverCameraController, Quaternion, MeshRenderer, LitMaterial } from "@orillusion/core";
 import { Stats } from "@orillusion/stats";
 import { ActivationState, CollisionShapeUtil, DebugDrawMode, Generic6DofSpringConstraint, Physics, Rigidbody } from "@orillusion/physics";
 import dat from "dat.gui";
@@ -96,17 +96,52 @@ class Sample_dofSpringConstraint {
     private createBridge() {
         const numSegments = 15;
         const segmentWidth = 1;
-        const segmentHeight = 0.2;
+        const segmentHeight = 0.4;
         const segmentDepth = 5;
         const distance = 0.1; // Distance between bridge segments
         const pierHeight = 5; // Height of the piers
+
+        // HSL → RGB with random hue + fixed mid-tone lightness keeps
+        // the segments visually distinct under linear-HDR + ACES
+        // tonemap (per-channel `Math.random()` collapses too easily
+        // to similar grays once the lighting + tonemap compress
+        // the highlights).
+        const hslColor = () => {
+            const h = Math.random();
+            const s = 0.85;       // strong saturation
+            const l = 0.22;       // dark mid-tone, survives tonemap
+            const c = (1 - Math.abs(2 * l - 1)) * s;
+            const hp = h * 6;
+            const x = c * (1 - Math.abs((hp % 2) - 1));
+            const m = l - c / 2;
+            let r = 0, g = 0, b = 0;
+            if (hp < 1) { r = c; g = x; }
+            else if (hp < 2) { r = x; g = c; }
+            else if (hp < 3) { g = c; b = x; }
+            else if (hp < 4) { g = x; b = c; }
+            else if (hp < 5) { r = x; b = c; }
+            else              { r = c; b = x; }
+            return [r + m, g + m, b + m] as const;
+        };
 
         let bridgeSegments: Rigidbody[] = [];
         for (let i = 0; i < numSegments; i++) {
             const isStatic = i === 0 || i === numSegments - 1;
             const mass = isStatic ? 0 : 2;
             const staticHeight = isStatic ? pierHeight : 0;
-            let bridgeObj = Object3DUtil.GetSingleCube(segmentWidth, segmentHeight + staticHeight, segmentDepth, Math.random(), Math.random(), Math.random());
+            const [cr, cg, cb] = hslColor();
+            let bridgeObj = Object3DUtil.GetSingleCube(segmentWidth, segmentHeight + staticHeight, segmentDepth, cr, cg, cb);
+            // Object3DUtil.GetSingleCube ships LitMaterial defaults
+            // (metallic=0.1, roughness=0.5). Slightly metallic
+            // surfaces reflect the bright HDR sky into the camera and
+            // wash the diffuse out of the bridge segments. Force a
+            // pure dielectric matte surface so the random baseColor
+            // is what carries the visual identity.
+            const mr = bridgeObj.getComponent(MeshRenderer);
+            if (mr && mr.material instanceof LitMaterial) {
+                mr.material.metallic = 0.0;
+                mr.material.roughness = 1.0;
+            }
 
             const posX = i * segmentWidth + i * distance || distance;
             const posY = isStatic ? pierHeight / 2 + segmentHeight / 2 : pierHeight;
