@@ -93,16 +93,13 @@ export class Engine3D {
                 renderState_right: 5,
                 renderState_split: 0.5,
                 quadScale: 1,
-                // hdrExposure 1.5 -> 1.0 compensates for the removal
-                // of intermediate `LinearToGammaSpace` from BxDF env
-                // IBL paths (commit bb408b8) — IBL contributions
-                // stay full HDR linear now, so the legacy 1.5x
-                // amplifier piles on top. 1.0 brings PBR IBL roughly
-                // back to the legacy net brightness without dimming
-                // sky direct render or UnLit / Lambert paths (which
-                // don't read this uniform). Used by BxDF_frag's
-                // indirectionDiffuse (line 81) and indirectionSpec
-                // (line 146).
+                // 1.0 = physically neutral linear-HDR multiplier on
+                // env IBL paths (BxDF_frag indirectionDiffuse +
+                // indirectionSpec). The legacy 1.5 was a magic
+                // boost from the era when intermediate sample paths
+                // were soft-compressed to LDR; in the linear-HDR
+                // pipeline (post-bb408b8) IBL stays full HDR all the
+                // way to TonemapPost, so 1.0 is the correct default.
                 hdrExposure: 1.0,
                 debugQuad: -1,
                 maxPointLight: 1000,
@@ -131,15 +128,11 @@ export class Engine3D {
                 gpuCullTwoPhase: false,
                 tonemap: {
                     enable: true,
-                    // 1.0 matches three.js's `toneMappingExposure`
-                    // default. The legacy IBL HDR-retain
-                    // compensation was previously applied here
-                    // (0.6) but that dimmed UnLit / Lambert / pure-
-                    // texture surfaces too — those don't see the
-                    // IBL retain, so the global dim was wrong for
-                    // them. The compensation now lives in
-                    // `sky.skyExposure` (0.6) which only multiplies
-                    // sky / IBL paths.
+                    // ACES Filmic at exposure 1.0 — matches three.js
+                    // ACESFilmicToneMapping + toneMappingExposure=1.0
+                    // and Filament's neutral default. Acts on the
+                    // composited linear HDR scene right before the
+                    // sRGB-view swapchain encode.
                     exposure: 1.0,
                     mode: 'ACES',
                 },
