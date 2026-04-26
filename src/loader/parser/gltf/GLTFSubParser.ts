@@ -14,6 +14,7 @@ import { GLTFSubParserConverter } from './GLTFSubParserConverter';
 import { PrefabAvatarData } from '../prefab/prefabData/PrefabAvatarData';
 import { PropertyAnimationClip } from '../../../math/AnimationCurveClip';
 import { Context3D } from '../../../gfx/graphics/webGpu/Context3D';
+import { Engine3D } from '../../../Engine3D';
 
 /**
  * @internal
@@ -170,7 +171,26 @@ export class GLTFSubParser {
                 if (image.uri) {
                     let name = image.uri;
                     name = StringUtil.getURLName(name);
-                    textureInfo.dtexture = this.gltf.resources[name];
+                    let preloaded: BitmapTexture2D = this.gltf.resources[name];
+                    // External .gltf path: GLTFParser.load_gltf_textures
+                    // preloads images via FileLoader.loadAsyncBitmapTexture
+                    // which always materializes `rgba8unorm`. When this
+                    // role asks for `'srgb'`, the preloaded texture has
+                    // the wrong format — re-load via Res.loadTexture
+                    // (which keys the cache by url+colorSpace) so
+                    // baseColor / emissive get hardware sRGB decode.
+                    if (colorSpace === 'srgb' && preloaded && (preloaded as any).format !== 'rgba8unorm-srgb') {
+                        // The preloaded BitmapTexture2D's `url` field
+                        // already holds the resolved absolute URL (set
+                        // by GLTFParser.load_gltf_textures via
+                        // FileLoader.loadAsyncBitmapTexture). Falling
+                        // back to image.uri keeps the path working for
+                        // any preload variants that didn't set `url`.
+                        const url = preloaded.url ?? image.uri;
+                        textureInfo.dtexture = await Engine3D.resFor(this.ctx).loadTexture(url, undefined, undefined, 'srgb') as BitmapTexture2D;
+                    } else {
+                        textureInfo.dtexture = preloaded;
+                    }
                 } else if (image.bufferView) {
                     const name = image?.name;
                     let bitmapTexture: BitmapTexture2D = this.gltf.resources[name];
