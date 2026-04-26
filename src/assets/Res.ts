@@ -6,7 +6,7 @@ import { LoaderFunctions } from '../loader/LoaderFunctions';
 import { GLBParser } from '../loader/parser/gltf/GLBParser';
 import { GLTFParser } from '../loader/parser/gltf/GLTFParser';
 import { OBJParser } from '../loader/parser/OBJParser';
-import { BitmapTexture2D } from '../textures/BitmapTexture2D';
+import { BitmapTexture2D, TextureColorSpace } from '../textures/BitmapTexture2D';
 import { BitmapTextureCube } from '../textures/BitmapTextureCube';
 import { HDRTextureCube } from '../textures/HDRTextureCube';
 import { B3DMParser } from '../loader/parser/B3DMParser';
@@ -240,16 +240,35 @@ export class Res {
      * @param url texture path
      * @param loaderFunctions callback
      * @param flipY use flip y or not
+     * @param colorSpace `'srgb'` to load as `rgba8unorm-srgb` (use
+     *               for baseColor / emissive / decal maps that store
+     *               sRGB-encoded color); `'linear'` (default) keeps
+     *               legacy `rgba8unorm` behavior — required for
+     *               normal maps, metallic-roughness packs, AO,
+     *               masks, height / displacement, and any other
+     *               non-color buffer. The default stays `'linear'`
+     *               for back-compat until the sRGB pipeline
+     *               migration is complete; pass `'srgb'` explicitly
+     *               from glTF / sample call sites that load color.
      * @returns
      */
-    public async loadTexture(url: string, loaderFunctions?: LoaderFunctions, flipY?: boolean) {
-        if (this._texturePool.has(url)) {
-            return this._texturePool.get(url);
+    public async loadTexture(
+        url: string,
+        loaderFunctions?: LoaderFunctions,
+        flipY?: boolean,
+        colorSpace: TextureColorSpace = 'linear',
+    ) {
+        // Pool key embeds the colorSpace so the same URL fetched
+        // once as sRGB and once as linear materializes two distinct
+        // GPU textures with the right format each time.
+        const cacheKey = colorSpace === 'srgb' ? url + '#srgb' : url;
+        if (this._texturePool.has(cacheKey)) {
+            return this._texturePool.get(cacheKey);
         }
-        let texture = new BitmapTexture2D(true, this._ctx);
+        let texture = new BitmapTexture2D(true, this._ctx, colorSpace);
         texture.flipY = flipY;
         await texture.load(url, loaderFunctions);
-        this._texturePool.set(url, texture);
+        this._texturePool.set(cacheKey, texture);
         return texture;
     }
 

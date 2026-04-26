@@ -5,7 +5,7 @@ import { TextureCubeStdCreator } from "../gfx/generate/convert/TextureCubeStdCre
 import { Texture } from '../gfx/graphics/webGpu/core/texture/Texture';
 import { Context3D } from '../gfx/graphics/webGpu/Context3D';
 import { StringUtil } from '../util/StringUtil';
-import { BitmapTexture2D } from './BitmapTexture2D';
+import { BitmapTexture2D, TextureColorSpace } from './BitmapTexture2D';
 import { VirtualTexture } from './VirtualTexture';
 
 /**
@@ -16,9 +16,24 @@ export class BitmapTextureCube extends TextureCube {
 
     private _url: string | string[];
 
-    constructor() {
+    /** Color-space contract (see {@link TextureColorSpace}). Defaults
+     *  to `'linear'` for legacy parity; pass `'srgb'` for sRGB-encoded
+     *  panorama / HDR-LDR cube faces so the sampler hardware-decodes. */
+    public colorSpace: TextureColorSpace;
+
+    constructor(colorSpace: TextureColorSpace = 'linear') {
         super();
         this.useMipmap = true;
+        this.colorSpace = colorSpace;
+    }
+
+    /** Picks `rgba8unorm-srgb` when `colorSpace === 'srgb'`, else
+     *  `rgba8unorm`. Used at every place where the cube's `format`
+     *  field used to be hard-coded to `rgba8unorm`. */
+    private get _ldrFormat(): GPUTextureFormat {
+        return this.colorSpace === 'srgb'
+            ? GPUTextureFormat.rgba8unorm_srgb
+            : GPUTextureFormat.rgba8unorm;
     }
 
     protected generateImages(images: HTMLCanvasElement[] | ImageBitmap[] | OffscreenCanvas[] | Texture[], ctx?: Context3D) {
@@ -58,7 +73,7 @@ export class BitmapTextureCube extends TextureCube {
         } else {
             this.uploadBaseImages(this.width, images as any);
             for (let i = 0; i < 6; i++) {
-                let t = new BitmapTexture2D(false, this._boundCtx!);
+                let t = new BitmapTexture2D(false, this._boundCtx!, this.colorSpace);
                 t.format = this.format;
                 t.source = images[i] as any;
                 faceTextures[i] = t.getGPUTexture();
@@ -176,7 +191,7 @@ export class BitmapTextureCube extends TextureCube {
         if (ctx) this._ensureBound(ctx);
         let remain: number = 6;
         let bitmaps: ImageBitmap[] = [];
-        this.format = GPUTextureFormat.rgba8unorm;
+        this.format = this._ldrFormat;
         let that = this;
 
         async function loadImage(index: number, url: string) {
@@ -211,7 +226,7 @@ export class BitmapTextureCube extends TextureCube {
       */
     public async loadStd(url: string, ctx?: Context3D) {
         this._url = url;
-        this.format = GPUTextureFormat.rgba8unorm;
+        this.format = this._ldrFormat;
         if (ctx) this._ensureBound(ctx);
 
         const img = document.createElement('img');
@@ -222,9 +237,9 @@ export class BitmapTextureCube extends TextureCube {
         img.src = /^https?:|^data:|^blob:|^\//.test(url) ? url : new URL(url, (window.parent || window).location.origin + '/').href;
         img.setAttribute('crossOrigin', '');
         await img.decode();
-        let srcTexture = new BitmapTexture2D(false, this._boundCtx);
+        let srcTexture = new BitmapTexture2D(false, this._boundCtx, this.colorSpace);
         srcTexture.name = StringUtil.getURLName(url);
-        srcTexture.format = 'rgba8unorm';
+        srcTexture.format = this._ldrFormat;
         srcTexture.source = await createImageBitmap(img);
 
         let cubeSize = Math.round(Math.log2(srcTexture.width / 4));
