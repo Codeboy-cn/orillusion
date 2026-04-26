@@ -24,11 +24,17 @@ export let Lambert_shader: string = /*wgsl*/ `
         var transformUV1 = materialUniform.transformUV1;
         var transformUV2 = materialUniform.transformUV2;
 
-        var uv = transformUV1.zw * ORI_VertexVarying.fragUV0 + transformUV1.xy; 
-        let baseMapColor = textureSample(baseMap,baseMapSampler,uv);
+        var uv = transformUV1.zw * ORI_VertexVarying.fragUV0 + transformUV1.xy;
+        var baseMapColor = textureSample(baseMap,baseMapSampler,uv);
         if(baseMapColor.a < materialUniform.alphaCutoff) {
             discard;
         }
+        // sRGB-encoded baseMap → decode to linear before lighting
+        // math (mirrors PBRLitShader's #else branch). Skip when
+        // USE_SRGB_ALBEDO marks the texture as hardware-decoded.
+        #if !USE_SRGB_ALBEDO
+            baseMapColor = vec4f(gammaToLiner(baseMapColor.rgb), baseMapColor.a);
+        #endif
 
         var lightColor = vec4<f32>(0.0);
         let lightIndex = getCluster();

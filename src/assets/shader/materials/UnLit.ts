@@ -31,12 +31,24 @@ export let UnLit: string = /*wgsl*/ `
         var transformUV2 = materialUniform.transformUV2;
 
         var uv = transformUV1.zw * ORI_VertexVarying.fragUV0 + transformUV1.xy;
-        let color = textureSample(baseMap,baseMapSampler,uv) ;
+        var color = textureSample(baseMap,baseMapSampler,uv) ;
         if(color.w < materialUniform.alphaCutoff){
             discard ;
         }
-
-        ORI_ShadingInput.BaseColor = color * materialUniform.baseColor ;
+        // Texture color stays in sRGB-encoded numerical form when
+        // the user loads a default rgba8unorm BitmapTexture2D —
+        // shader-side gammaToLiner brings it into linear HDR before
+        // the final ACES TonemapPost + sRGB swapchain encode.
+        // Without this, sRGB-encoded values get re-encoded by the
+        // swapchain view → washed-out / over-bright look.
+        // USE_SRGB_ALBEDO opts out for hardware-decoded
+        // (rgba8unorm-srgb) textures.
+        #if USE_SRGB_ALBEDO
+            ORI_ShadingInput.BaseColor = color * materialUniform.baseColor ;
+        #else
+            color = vec4f(gammaToLiner(color.rgb), color.a);
+            ORI_ShadingInput.BaseColor = color * materialUniform.baseColor ;
+        #endif
         UnLit();
     }
 `

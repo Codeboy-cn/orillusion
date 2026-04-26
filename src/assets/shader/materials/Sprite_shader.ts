@@ -93,6 +93,12 @@ export let Sprite_shader: string = /*wgsl*/ `
         #else
             var sampled = textureSample(baseMap, baseMapSampler, uv);
         #endif
+        // Sprite textures default to sRGB-encoded color (rgba8unorm
+        // bytes from PNG). Decode to linear so the final ACES /
+        // sRGB-swapchain encode lands on real linear values.
+        #if !USE_SRGB_ALBEDO
+            sampled = vec4f(gammaToLiner(sampled.rgb), sampled.a);
+        #endif
         sampled = sampled * materialUniform.color;
 
         if (materialUniform.cornerRadius > 0.0) {
