@@ -19,24 +19,58 @@ export class GridObject extends Object3D {
     }
 
     private buildGeometry() {
-        const vertices = []
-        const indices = []
-		const step = this.size / this.divisions;
-		const halfSize = this.size / 2;
+        // Build the grid as ONE merged mesh of thin triangle-list
+        // boxes (one box per line) instead of a single line-list
+        // primitive. line-list rasterization on Metal in this
+        // engine's pipeline doesn't depth-test correctly against
+        // opaque triangle geometry — grid lines through opaque
+        // cubes / props draw on top instead of being occluded.
+        // Triangle-list boxes go through the standard depth path.
+        // Merging into a single buffer keeps the cost to one draw
+        // call regardless of grid density.
+        const step = this.size / this.divisions;
+        const halfSize = this.size / 2;
         const center = this.divisions / 2;
+        const thickness = halfSize * 0.0008;  // ~0.4 unit at size=1000
+        const t = thickness * 0.5;
 
-        for ( let i = 0, k = - halfSize; i <= this.divisions; i ++, k += step ) {
-            if(i === center )
-                continue;
-			vertices.push( - halfSize, 0, k, halfSize, 0, k );
-			vertices.push( k, 0, - halfSize, k, 0, halfSize );
-		}
-        for( let i = 0; i < vertices.length/3; i +=2 )
-            indices.push(i, i + 1);
+        const positions: number[] = [];
+        const indices: number[] = [];
 
-        let grid = new GeometryBase()
-        grid.setIndices(indices.length > Uint16Array.length ? new Uint32Array(indices) : new Uint16Array(indices));
-        grid.setAttribute(VertexAttributeName.position, new Float32Array(vertices));
+        // Append a thin box centered at (cx, 0, cz) spanning
+        // (lx × ly × lz). 8 verts, 12 triangles per box.
+        const addBox = (cx: number, cz: number, lx: number, lz: number) => {
+            const x0 = cx - lx * 0.5, x1 = cx + lx * 0.5;
+            const y0 = -t,            y1 = t;
+            const z0 = cz - lz * 0.5, z1 = cz + lz * 0.5;
+            const base = positions.length / 3;
+            positions.push(
+                x0, y0, z0,  x1, y0, z0,  x1, y1, z0,  x0, y1, z0,
+                x0, y0, z1,  x1, y0, z1,  x1, y1, z1,  x0, y1, z1,
+            );
+            // 6 faces × 2 triangles
+            const face = (a: number, b: number, c: number, d: number) => {
+                indices.push(base + a, base + b, base + c, base + a, base + c, base + d);
+            };
+            face(0, 1, 2, 3); // -Z
+            face(5, 4, 7, 6); // +Z
+            face(4, 0, 3, 7); // -X
+            face(1, 5, 6, 2); // +X
+            face(3, 2, 6, 7); // +Y
+            face(4, 5, 1, 0); // -Y
+        };
+
+        for (let i = 0, k = -halfSize; i <= this.divisions; i++, k += step) {
+            if (i === center) continue;
+            // Row along X at z=k
+            addBox(0, k, this.size, thickness);
+            // Column along Z at x=k
+            addBox(k, 0, thickness, this.size);
+        }
+
+        const grid = new GeometryBase();
+        grid.setIndices(indices.length > 65535 ? new Uint32Array(indices) : new Uint16Array(indices));
+        grid.setAttribute(VertexAttributeName.position, new Float32Array(positions));
         grid.addSubGeometry({
             indexStart: 0,
             indexCount: indices.length,
@@ -44,13 +78,12 @@ export class GridObject extends Object3D {
             vertexCount: 0,
             firstStart: 0,
             index: 0,
-            topology: 0
-        })
+            topology: 0,
+        });
 
         let mat = new UnLitMaterial();
-        mat.topology = "line-list";
-        mat.baseColor = new Color(1, 1, 1, 0.15);
-        mat.blendMode = BlendMode.ADD;
+        mat.baseColor = new Color(1, 1, 1, 0.5);
+        mat.blendMode = BlendMode.NORMAL;
         mat.castReflection = false;
         let mr = this.addComponent(MeshRenderer);
         mr.geometry = grid;
