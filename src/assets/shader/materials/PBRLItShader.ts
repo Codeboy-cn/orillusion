@@ -285,17 +285,20 @@ export let PBRLItShader: string = /*wgsl*/ `
             // rely on it for clean refraction through colored backdrops.
             let lit = ORI_FragmentOutput.color.rgb;
             // Pull the *real* IBL specular term BxDF_frag exported via
-            // fragData.Specular. In cutout mode we use it as the
-            // preserved-highlight signal on top of refraction, instead
-            // of the previous "50% of lit" approximation. That kept
-            // sliding 高光强度 / 高光颜色 from showing up clearly
-            // because the slider was modulating a tiny fraction of a
-            // lit signal that was already mostly direct-light diffuse.
-            // Now the slider directly drives the visible highlight
-            // strength / hue.
+            // fragData.Specular. Three.js's MeshPhysicalMaterial keeps
+            // the diffuse and specular sums separated, applies
+            // transmission only to the diffuse, and adds specular back
+            // unconditionally. We do the equivalent here by subtracting
+            // spec from the combined lit value to approximate the
+            // diffuse-only term, mixing that with the refracted env
+            // sample, then adding spec back at the end. Without this,
+            // transmission=1 used to wipe out the entire lit signal
+            // (including specular), producing a glass surface with no
+            // visible env reflection / rim highlights — visually much
+            // weaker than three.js at the same parameters.
             let cleanSpec = fragData.Specular;
             let litMinusSpec = max(lit - cleanSpec, vec3f(0.0));
-            let diffuseLike = mix(lit, litMinusSpec, alphaMode);
+            let diffuseLike = litMinusSpec;
             // In cutout mode tint the preserved highlight by
             // specularColor.rgb. The BRDF LUT's AB.g term keeps the
             // base IBL spec partially white regardless of F0, which
@@ -307,9 +310,18 @@ export let PBRLItShader: string = /*wgsl*/ `
             // alphaMode=0 so opaque-queue PBR materials are
             // untouched. We mix back to white at metallic=1 so the
             // chrome path still mirrors the env honestly.
-            let cutoutSpecTint = mix(materialUniform.specularColor.rgb, vec3<f32>(1.0), fragData.Metallic);
-            let tintedSpec = cleanSpec * cutoutSpecTint;
-            let preservedSpec = mix(vec3f(0.0), tintedSpec, alphaMode);
+            // Specular is preserved on top of transmission in BOTH
+            // opaque and cutout branches now (used to be cutout-only,
+            // which made transmission=1 read as a flat refraction with
+            // no env highlights). specularColor.rgb tints the
+            // dielectric F0 to compensate for the BRDF LUT's AB.g
+            // term — without it the user-set 高光颜色 gets diluted by
+            // the time it reaches the visible output. Mix back to
+            // white at metallic=1 so the chrome path mirrors the env
+            // honestly (KHR_materials_specular spec).
+            let specTint = mix(materialUniform.specularColor.rgb, vec3<f32>(1.0), fragData.Metallic);
+            let tintedSpec = cleanSpec * specTint;
+            let preservedSpec = tintedSpec;
             // KHR_materials_transmission spec: "A material with metallic
             // = 1 cannot transmit light." Three.js gets this for free
             // because its PBR multiplies diffuse by kD = (1-F)*(1-
