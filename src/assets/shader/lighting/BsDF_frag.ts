@@ -72,7 +72,10 @@ export let BsDF_frag: string = /*wgsl*/ `
           let MAX_REFLECTION_LOD  = f32(textureNumLevels(prefilterMap)) ;
           irradiance += (globalUniform.skyExposure * textureSampleLevel(prefilterMap, prefilterMapSampler, fragData.N.xyz, 0.8 * (MAX_REFLECTION_LOD) ).rgb);
       #endif
-      irradiance = ORI_ShadingInput.SSS + LinearToGammaSpace(irradiance.rgb);
+      // Irradiance is sampled linear; keep linear (no in-shader gamma)
+      // so the SSS sum stays in linear HDR for the linear-to-sRGB
+      // encode the swapchain handles on present.
+      irradiance = ORI_ShadingInput.SSS + irradiance.rgb;
       fragData.Irradiance = irradiance.rgb ;
 
    

@@ -218,8 +218,9 @@ export let SSR_RayTrace_cs: string = /*wgsl*/ `
   fn getSkyColor() -> vec3<f32>{
     let calcRoughness = clamp(roughness, 0.0, 1.0);
     let MAX_REFLECTION_LOD  = f32(textureNumLevels(prefilterMap)) ;
-    var prefilterColor = textureSampleLevel(prefilterMap, prefilterMapSampler, reflectionDir, calcRoughness * MAX_REFLECTION_LOD);
-    return LinearToGammaSpace(vec3<f32>(prefilterColor.xyz)) * globalUniform.skyExposure;
+    let prefilterColor = textureSampleLevel(prefilterMap, prefilterMapSampler, reflectionDir, calcRoughness * MAX_REFLECTION_LOD);
+    // Linear HDR — composite into the SSR result in linear space.
+    return prefilterColor.xyz * globalUniform.skyExposure;
   }
 
   fn convertColorCoordFromSSRCoord(coord:vec2<i32>) -> vec2<i32>{

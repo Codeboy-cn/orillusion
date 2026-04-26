@@ -341,8 +341,10 @@ export let BRDF_frag: string = /*wgsl*/ `
         let MAX_REFLECTION_LOD  = i32(textureNumLevels(envMap)) ;
         let mip = roughnessToMipmapLevel(roughness,MAX_REFLECTION_LOD);
         let R = 2.0 * dot( v , n ) * n - v ;
+        // envMap stores linear HDR; keep in linear so IBL contribution
+        // accumulates in the same space as direct lighting and gets a
+        // single linear-to-sRGB encode on present.
         var prefilteredColor: vec3<f32> = globalUniform.skyExposure * (textureSampleLevel(envMap, envMapSampler, R , mip ).rgb);
-        prefilteredColor = LinearToGammaSpace(prefilteredColor);
         return prefilteredColor ;
     }
 
