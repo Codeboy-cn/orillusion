@@ -121,22 +121,16 @@ export class Engine3D {
                 gpuCullTwoPhase: false,
                 tonemap: {
                     enable: true,
-                    // 0.6 compensates for the removed inline
-                    // `LinearToGammaSpace` calls in BRDF_frag /
-                    // BsDF_frag / GlobalFog / SSR — those used to
-                    // softly compress IBL / prefilter samples into
-                    // LDR-numerical range before the additive
-                    // composite. Removing them was a correctness
-                    // improvement (IBL stays linear HDR all the way
-                    // to ACES), but the net visual got ~30-50%
-                    // brighter. Pulling exposure to 0.6 brings the
-                    // composited output back near the legacy
-                    // brightness while keeping the linear-correct
-                    // internal pipeline. Three.js's
-                    // `toneMappingExposure = 1.0` lands in similar
-                    // brightness because their IBL prefilter map is
-                    // pre-baked at lower numerical range.
-                    exposure: 0.6,
+                    // 1.0 matches three.js's `toneMappingExposure`
+                    // default. The legacy IBL HDR-retain
+                    // compensation was previously applied here
+                    // (0.6) but that dimmed UnLit / Lambert / pure-
+                    // texture surfaces too — those don't see the
+                    // IBL retain, so the global dim was wrong for
+                    // them. The compensation now lives in
+                    // `sky.skyExposure` (0.6) which only multiplies
+                    // sky / IBL paths.
+                    exposure: 1.0,
                     mode: 'ACES',
                 },
                 postProcessing: {
@@ -214,7 +208,18 @@ export class Engine3D {
                 irradianceChebyshevBias: 0.01, rayNumber: 144, irradianceDistanceBias: 32, indirectIntensity: 1.0,
                 ddgiGamma: 2.2, bounceIntensity: 0.025, probeRoughness: 1, realTimeGI: false, debug: false, autoRenderProbe: false,
             },
-            sky: { type: 'HDRSKY', sky: null, skyExposure: 1.0, defaultFar: 65536, defaultNear: 1 },
+            // skyExposure 1.0 -> 0.6 compensates for the removal of
+            // intermediate `LinearToGammaSpace` from BRDF / BsDF /
+            // GlobalFog / SSR sky-sample paths (commit bb408b8).
+            // Those used to soft-clamp HDR sky samples into LDR-
+            // numerical range before the additive composite; without
+            // the clamp, IBL / sky reflections come in at full HDR
+            // and the average scene gets ~30-50% brighter. Scaling
+            // skyExposure dims sky-direct render, env-IBL diffuse,
+            // env-spec, and SSR sky reflections — exactly the paths
+            // that retain the HDR — without touching UnLit / Lambert
+            // / pure-texture surfaces (which don't sample the sky).
+            sky: { type: 'HDRSKY', sky: null, skyExposure: 0.6, defaultFar: 65536, defaultNear: 1 },
             light: { maxLight: 4096 },
             material: { materialChannelDebug: false, materialDebug: false },
             loader: { numConcurrent: 20 },
