@@ -1,4 +1,4 @@
-import { UnLitMaterial, Color, MeshRenderer, BlendMode, GeometryBase, Vector3, VertexAttributeName } from "..";
+import { UnLitMaterial, Color, MeshRenderer, BlendMode, GeometryBase, VertexAttributeName, BoxGeometry } from "..";
 import { Object3D } from "../core/entities/Object3D";
 
 /**
@@ -58,57 +58,36 @@ export class GridObject extends Object3D {
     }
 
     private addAxis() {
+        // Use a thin BoxGeometry instead of line-list topology for the
+        // colored axis indicators. Line-list rasterization on Metal
+        // has subtle depth interactions in this engine's pipeline
+        // (zPrePass + transparent state) that let the colored axes
+        // draw through opaque geometry — the workaround that fixes it
+        // for triangles (BlendMode.NORMAL → opaque pass, full depth
+        // test) doesn't fully fix it for line-list. Thin triangle-list
+        // boxes use the standard depth path and depth-test the same
+        // way as any other opaque mesh.
         const halfSize = this.size / 2;
-        // Two vertices for one line. The legacy version declared
-        // indices [0,1,2,3] against this two-vertex buffer — indices
-        // 2,3 overran into garbage memory, producing undefined NDC
-        // coordinates that on Metal happened to land at depth ~ 0
-        // (in front of everything). The visual was a phantom second
-        // axis line that drew through opaque geometry, ignoring the
-        // depth test. Index just the valid pair.
-        let vertices = new Float32Array([-halfSize, 0, 0, halfSize, 0, 0])
-        let indexes = new Uint16Array([0, 1])
+        const thickness = halfSize * 0.0008;  // ~0.4 unit at size=500
 
-        let line = new GeometryBase()
-        line.setIndices(indexes);
-        line.setAttribute(VertexAttributeName.position, vertices);
-        line.addSubGeometry({
-            indexStart: 0,
-            indexCount: indexes.length,
-            vertexStart: 0,
-            vertexCount: 0,
-            firstStart: 0,
-            index: 0,
-            topology: 0
-        })
         {
             let x = new Object3D();
             let mr = x.addComponent(MeshRenderer);
-            mr.geometry = line;
+            mr.geometry = new BoxGeometry(this.size, thickness, thickness);
             let mat = mr.material = new UnLitMaterial();
             mat.baseColor = new Color(1, 0, 0, 1);
-            // BlendMode.NORMAL keeps the axis in the opaque pass with
-            // full depthCompare='less_equal' + depthWrite=true, so
-            // the cube (also opaque) correctly occludes the portions
-            // of the axis behind its front face. The legacy ADD blend
-            // pushed the line into the transparent pass where the
-            // pipeline depth target diverged in subtle ways and the
-            // line drew through opaque geometry on Metal.
             mat.blendMode = BlendMode.NORMAL;
             mat.castReflection = false;
-            mat.topology = 'line-list';
             this.addChild(x)
         }
         {
             let z = new Object3D();
-            z.rotationY = 90;
             let mr = z.addComponent(MeshRenderer);
-            mr.geometry = line;
+            mr.geometry = new BoxGeometry(thickness, thickness, this.size);
             let mat = mr.material = new UnLitMaterial();
             mat.baseColor = new Color(0, 1, 0, 1);
             mat.blendMode = BlendMode.NORMAL;
             mat.castReflection = false;
-            mat.topology = 'line-list';
             this.addChild(z)
         }
     }
