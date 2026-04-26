@@ -8,6 +8,7 @@ import {
     LitMaterial,
     MeshRenderer,
     Object3D,
+    RendererMask,
     Scene3D,
     SkyRenderer,
     SphereGeometry,
@@ -82,6 +83,15 @@ class Sample_Transmission {
     private async createSphere() {
         const obj = new Object3D();
         const mr = obj.addComponent(MeshRenderer);
+        // Skip zPrePass for this transmission/blend material —
+        // PassGenerate.createDepthPass doesn't fully mirror the
+        // alphaMode='BLEND' + transmission state of the COLOR pass,
+        // so the auto-generated DEPTH pipeline ends up with a
+        // BindGroupLayout that disagrees with COLOR at runtime
+        // (BindGroupLayout "fspbrlitshader 26" vs "28" mismatch).
+        // The transparent pass loads existing depth anyway, so a
+        // pre-depth contribution from this mesh isn't needed.
+        mr.addMask(RendererMask.IgnoreDepthPass);
         mr.geometry = new SphereGeometry(20, 64, 32);
 
         // Match three.js MeshPhysicalMaterial defaults from the demo
