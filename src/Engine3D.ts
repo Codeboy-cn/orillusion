@@ -147,7 +147,17 @@ export class Engine3D {
                         upSampleBlurSize: 9,
                         upSampleBlurSigma: 1.0,
                         luminanceThreshole: 1.0,
-                        bloomIntensity: 1.0,
+                        // Bumped 1.0 → 2.5 to compensate for the
+                        // composite simplification: legacy code did
+                        // `bloom = saturate(pow(ACES(bloom), 1/2.2))`
+                        // before adding to scene — that hid a ~2x
+                        // brightness boost from the gamma curve plus a
+                        // saturation clip. After bb408b8 the bloom is
+                        // linearly added to the HDR scene and only
+                        // tonemapped at the final TonemapPost; net
+                        // visual is much subtler. 2.5 brings the
+                        // emissive halo back near the legacy look.
+                        bloomIntensity: 2.5,
                         hdr: 1.0
                     },
                     globalFog: {
