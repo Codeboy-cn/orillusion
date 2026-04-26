@@ -68,7 +68,12 @@ export class GridObject extends Object3D {
         // boxes use the standard depth path and depth-test the same
         // way as any other opaque mesh.
         const halfSize = this.size / 2;
-        const thickness = halfSize * 0.0008;  // ~0.4 unit at size=500
+        // ~1 unit cross-section at size=1000 (1 world unit). Thicker
+        // than strictly necessary visually, but eliminates any
+        // depth-precision / sub-pixel concerns that thinner geometry
+        // could introduce — boxes need enough Z-range so their
+        // back-face is clearly behind opaque cube fragments.
+        const thickness = halfSize * 0.002;
 
         {
             let x = new Object3D();
