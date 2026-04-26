@@ -32,7 +32,14 @@ export class Context3D extends CEventDispatcher {
 
     public adapter: GPUAdapter;
     public device: GPUDevice;
+    /** The format pipelines target — the sRGB view variant, so the
+     *  GPU does the linear→sRGB encode at write time. Must match the
+     *  view created in `GPUContext.beginRenderPass`. */
     public presentationFormat: GPUTextureFormat;
+    /** The non-sRGB swapchain configure format. Chromium rejects
+     *  sRGB variants in `GPUCanvasContext.configure`, so the canvas
+     *  is configured non-sRGB and an sRGB view is created on top. */
+    private _swapchainConfigureFormat: GPUTextureFormat;
 
     /** Back-reference to the owning Engine3D. Populated by `new Engine3D()`
      *  immediately after constructing this Context3D. Used by per-context
@@ -116,8 +123,27 @@ export class Context3D extends CEventDispatcher {
         });
         if (!this.device) throw new Error('Your browser does not support WebGPU!');
         this.device.label = `device-${Context3D._nextLabel++}`;
-        this.presentationFormat = navigator.gpu.getPreferredCanvasFormat();
-        console.log(`[Context3D] presentationFormat = ${this.presentationFormat}`);
+        // Configure swapchain with the preferred non-sRGB format
+        // (Chromium rejects `*-srgb` as a canvas configure format),
+        // but expose the sRGB view variant via `viewFormats` so
+        // pipelines and per-frame `getCurrentTexture().createView()`
+        // can request hardware linear→sRGB encode at write time.
+        // The pipeline target format we publish (presentationFormat)
+        // is the sRGB *view* format — that's what fragment shaders
+        // are validated against, and what GPUContext.ts uses when
+        // it builds the colorAttachment view.
+        const preferred = navigator.gpu.getPreferredCanvasFormat();
+        if (preferred === 'bgra8unorm') {
+            this.presentationFormat = 'bgra8unorm-srgb' as GPUTextureFormat;
+            this._swapchainConfigureFormat = 'bgra8unorm';
+        } else if (preferred === 'rgba8unorm') {
+            this.presentationFormat = 'rgba8unorm-srgb' as GPUTextureFormat;
+            this._swapchainConfigureFormat = 'rgba8unorm';
+        } else {
+            this.presentationFormat = preferred;
+            this._swapchainConfigureFormat = preferred;
+        }
+        console.log(`[Context3D] presentationFormat = ${this.presentationFormat} (preferred=${preferred})`);
         // Catch *every* validation / out-of-memory error from the device so
         // silent D3D12 failures (e.g. shadow pipeline creation, depth texture
         // copy) surface in the console instead of just "no shadows".
@@ -169,7 +195,10 @@ export class Context3D extends CEventDispatcher {
         this.context = this.canvas.getContext('webgpu');
         this.context.configure({
             device: this.device,
-            format: this.presentationFormat,
+            format: this._swapchainConfigureFormat,
+            viewFormats: this._swapchainConfigureFormat !== this.presentationFormat
+                ? [this.presentationFormat]
+                : undefined,
             usage: GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT,
             alphaMode: 'premultiplied',
             colorSpace: `srgb`

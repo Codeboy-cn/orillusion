@@ -159,7 +159,8 @@ export let BsDF_frag: string = /*wgsl*/ `
         color = vec3<f32>(clearCoatLayer.rgb/fragData.Albedo.a) ; 
       #endif
       
-      let retColor = (LinearToGammaSpace(color.rgb));
+      // Linear HDR out; swapchain does the linear-to-sRGB encode.
+      let retColor = color.rgb;
       ORI_FragmentOutput.color = vec4<f32>( retColor ,fragData.Albedo.a) ;
   }
 

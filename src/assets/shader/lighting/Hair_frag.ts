@@ -313,7 +313,8 @@ export let Hair_frag: string = /*wgsl*/ `
         ORI_FragmentOutput.worldPos = vec4<f32>(ORI_VertexVarying.vWorldPos.xyzw);
     #endif
   
-    let finalColor =  LinearToGammaSpace(vec3f(specColor + indirectResult) ) ;
+    // Linear HDR out; swapchain does the linear-to-sRGB encode.
+    let finalColor = vec3f(specColor + indirectResult);
     ORI_FragmentOutput.color = vec4<f32>( finalColor ,fragData.Albedo.a) ;
     // ORI_FragmentOutput.color = vec4<f32>( vec3f(specColor) ,fragData.Albedo.a) ;
 }

@@ -157,11 +157,21 @@ export class GPUContextInstance {
         } else {
             let att0 = renderPassState.renderPassDescriptor.colorAttachments[0];
             if (att0) {
+                // Create the swapchain view in the publicized
+                // `presentationFormat` (sRGB variant). The underlying
+                // canvas texture is the non-sRGB configure format,
+                // and `viewFormats` registered the sRGB variant so
+                // the view does the linear→sRGB encode on write.
+                // Match this format to what pipelines were built
+                // against — pipelines use `ctx.presentationFormat`.
+                const viewDesc: GPUTextureViewDescriptor = {
+                    format: this.ctx.presentationFormat,
+                };
                 if (renderPassState.multisample > 0) {
                     att0.view = renderPassState.multiTexture.createView();
-                    att0.resolveTarget = this.ctx.context.getCurrentTexture().createView();
+                    att0.resolveTarget = this.ctx.context.getCurrentTexture().createView(viewDesc);
                 } else {
-                    att0.view = this.ctx.context.getCurrentTexture().createView();
+                    att0.view = this.ctx.context.getCurrentTexture().createView(viewDesc);
                 }
             }
             return command.beginRenderPass(renderPassState.renderPassDescriptor);

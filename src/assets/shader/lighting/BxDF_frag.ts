@@ -192,7 +192,11 @@ export let BxDF_frag: string = /*wgsl*/ `
         color = clearCoatColor ;
       #endif
       
-        var retColor = (LinearToGammaSpace(color.rgb));
+        // Output linear HDR — the swapchain runs sRGB-srgb format
+        // so the GPU does the linear-to-sRGB encode on present.
+        // Doing both would double-encode (washed out). TonemapPost
+        // is the LDR clamp/curve before this.
+        var retColor = color.rgb;
         retColor += fragData.Emissive.xyz ;
 
         var viewColor = vec4<f32>( retColor.rgb * fragData.Albedo.w, fragData.Albedo.a) ;
