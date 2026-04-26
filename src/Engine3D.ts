@@ -93,7 +93,17 @@ export class Engine3D {
                 renderState_right: 5,
                 renderState_split: 0.5,
                 quadScale: 1,
-                hdrExposure: 1.5,
+                // hdrExposure 1.5 -> 1.0 compensates for the removal
+                // of intermediate `LinearToGammaSpace` from BxDF env
+                // IBL paths (commit bb408b8) — IBL contributions
+                // stay full HDR linear now, so the legacy 1.5x
+                // amplifier piles on top. 1.0 brings PBR IBL roughly
+                // back to the legacy net brightness without dimming
+                // sky direct render or UnLit / Lambert paths (which
+                // don't read this uniform). Used by BxDF_frag's
+                // indirectionDiffuse (line 81) and indirectionSpec
+                // (line 146).
+                hdrExposure: 1.0,
                 debugQuad: -1,
                 maxPointLight: 1000,
                 maxDirectLight: 4,
@@ -208,18 +218,7 @@ export class Engine3D {
                 irradianceChebyshevBias: 0.01, rayNumber: 144, irradianceDistanceBias: 32, indirectIntensity: 1.0,
                 ddgiGamma: 2.2, bounceIntensity: 0.025, probeRoughness: 1, realTimeGI: false, debug: false, autoRenderProbe: false,
             },
-            // skyExposure 1.0 -> 0.6 compensates for the removal of
-            // intermediate `LinearToGammaSpace` from BRDF / BsDF /
-            // GlobalFog / SSR sky-sample paths (commit bb408b8).
-            // Those used to soft-clamp HDR sky samples into LDR-
-            // numerical range before the additive composite; without
-            // the clamp, IBL / sky reflections come in at full HDR
-            // and the average scene gets ~30-50% brighter. Scaling
-            // skyExposure dims sky-direct render, env-IBL diffuse,
-            // env-spec, and SSR sky reflections — exactly the paths
-            // that retain the HDR — without touching UnLit / Lambert
-            // / pure-texture surfaces (which don't sample the sky).
-            sky: { type: 'HDRSKY', sky: null, skyExposure: 0.6, defaultFar: 65536, defaultNear: 1 },
+            sky: { type: 'HDRSKY', sky: null, skyExposure: 1.0, defaultFar: 65536, defaultNear: 1 },
             light: { maxLight: 4096 },
             material: { materialChannelDebug: false, materialDebug: false },
             loader: { numConcurrent: 20 },
