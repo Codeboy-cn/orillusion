@@ -59,8 +59,15 @@ export class GridObject extends Object3D {
 
     private addAxis() {
         const halfSize = this.size / 2;
-        let vertices = new Float32Array([-halfSize,0,0, halfSize,0,0])
-        let indexes = new Uint16Array([0, 1, 2, 3])
+        // Two vertices for one line. The legacy version declared
+        // indices [0,1,2,3] against this two-vertex buffer — indices
+        // 2,3 overran into garbage memory, producing undefined NDC
+        // coordinates that on Metal happened to land at depth ~ 0
+        // (in front of everything). The visual was a phantom second
+        // axis line that drew through opaque geometry, ignoring the
+        // depth test. Index just the valid pair.
+        let vertices = new Float32Array([-halfSize, 0, 0, halfSize, 0, 0])
+        let indexes = new Uint16Array([0, 1])
 
         let line = new GeometryBase()
         line.setIndices(indexes);
@@ -79,8 +86,15 @@ export class GridObject extends Object3D {
             let mr = x.addComponent(MeshRenderer);
             mr.geometry = line;
             let mat = mr.material = new UnLitMaterial();
-            mat.baseColor = new Color(1, 0, 0, 0.5);
-            mat.blendMode = BlendMode.ADD;
+            mat.baseColor = new Color(1, 0, 0, 1);
+            // BlendMode.NORMAL keeps the axis in the opaque pass with
+            // full depthCompare='less_equal' + depthWrite=true, so
+            // the cube (also opaque) correctly occludes the portions
+            // of the axis behind its front face. The legacy ADD blend
+            // pushed the line into the transparent pass where the
+            // pipeline depth target diverged in subtle ways and the
+            // line drew through opaque geometry on Metal.
+            mat.blendMode = BlendMode.NORMAL;
             mat.castReflection = false;
             mat.topology = 'line-list';
             this.addChild(x)
@@ -91,8 +105,8 @@ export class GridObject extends Object3D {
             let mr = z.addComponent(MeshRenderer);
             mr.geometry = line;
             let mat = mr.material = new UnLitMaterial();
-            mat.baseColor = new Color(0, 1, 0, 0.5);
-            mat.blendMode = BlendMode.ADD;
+            mat.baseColor = new Color(0, 1, 0, 1);
+            mat.blendMode = BlendMode.NORMAL;
             mat.castReflection = false;
             mat.topology = 'line-list';
             this.addChild(z)
