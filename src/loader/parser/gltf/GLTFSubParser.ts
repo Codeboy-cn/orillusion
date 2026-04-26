@@ -162,7 +162,7 @@ export class GLTFSubParser {
         return this._meshParser.parse(meshId);
     }
 
-    public async parseTexture(index: number) {
+    public async parseTexture(index: number, colorSpace: 'srgb' | 'linear' = 'linear') {
         let textureInfo = this.gltf.textures[index];
         if (textureInfo && !textureInfo.dtexture) {
             if (textureInfo && textureInfo.source != null) {
@@ -176,7 +176,7 @@ export class GLTFSubParser {
                     let bitmapTexture: BitmapTexture2D = this.gltf.resources[name];
                     if (!bitmapTexture) {
                         let buffer = this.parseBufferView(image.bufferView);
-                        bitmapTexture = new BitmapTexture2D(true, this.ctx);
+                        bitmapTexture = new BitmapTexture2D(true, this.ctx, colorSpace);
                         let img = new Blob([buffer], { type: image.mimeType });
                         await bitmapTexture.loadFromBlob(img);
                     }

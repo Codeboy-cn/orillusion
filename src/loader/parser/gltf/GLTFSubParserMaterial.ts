@@ -80,7 +80,10 @@ export class GLTFSubParserMaterial {
                         dmaterial.baseMapOffsetSize = offsetSize;
                     }
                 }
-                const texture = await this.parseTexture(baseColorTexture.index);
+                // glTF baseColorTexture is the only color channel that
+                // stores sRGB-encoded bytes; the rest (normal, mr, ao,
+                // transmission scalar, thickness) are linear data.
+                const texture = await this.parseTexture(baseColorTexture.index, 'srgb');
                 if (texture) {
                     dmaterial.baseColorTexture = texture;
                 } else {
@@ -194,7 +197,9 @@ export class GLTFSubParserMaterial {
         }
 
         if (emissiveTexture) {
-            const texture = await this.parseTexture(emissiveTexture.index);
+            // emissiveTexture is sRGB-encoded color (KHR + glTF spec
+            // 2.0 §3.9.3) — same hardware decode as baseColor.
+            const texture = await this.parseTexture(emissiveTexture.index, 'srgb');
             if (texture) {
                 dmaterial.emissiveTexture = texture;
             } else {
@@ -211,8 +216,8 @@ export class GLTFSubParserMaterial {
         return dmaterial;
     }
 
-    private async parseTexture(index: number) {
-        return this.subParser.parseTexture(index);
+    private async parseTexture(index: number, colorSpace: 'srgb' | 'linear' = 'linear') {
+        return this.subParser.parseTexture(index, colorSpace);
     }
 
     private errorMiss(e, info?) {

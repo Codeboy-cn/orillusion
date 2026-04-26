@@ -247,6 +247,20 @@ export class GLTFSubParserConverter {
 
                     if (baseColorTexture) {
                         physicMaterial.setTexture("baseMap", baseColorTexture);
+                        // Only flip USE_SRGB_ALBEDO when the underlying
+                        // GPU texture format is `rgba8unorm-srgb` (set
+                        // by the GLB embedded path in
+                        // GLTFSubParser.parseTexture). The external-
+                        // .gltf URL path still preloads via
+                        // FileLoader.loadAsyncBitmapTexture without a
+                        // colorSpace argument → format stays
+                        // `rgba8unorm`, and the shader needs its
+                        // software `gammaToLiner` decode. Mismatching
+                        // here would render the asset double-decoded
+                        // (too dark) or non-decoded (too bright).
+                        if ((baseColorTexture as any).format === 'rgba8unorm-srgb') {
+                            physicMaterial.shader.setDefine("USE_SRGB_ALBEDO", true);
+                        }
                     }
 
                     if (normalTexture) {
