@@ -147,8 +147,15 @@ export let SSR_RayTrace_cs: string = /*wgsl*/ `
       }
       rayTraceRet.skyColor = getSkyColor();
     }else{
+      // Mirror (roughness == 0) and out-of-range roughness skip the
+      // ray-trace loop. Legacy code wrote skyColor = 0 here, which
+      // SSR_IS_cs's mix(oc, skyColor, 1 - alpha) then EXTRAPOLATES
+      // past via alpha = -1 (mix factor 2) — producing oc.rgb = 0
+      // and a hard-edged black artifact on every roughness-0 surface.
+      // Sample the sky directly so mirrors at least show the sky
+      // reflection (correct under perfect-mirror semantics).
       rayTraceRet.alpha = -1.0;
-      rayTraceRet.skyColor = vec3<f32>(0.0);
+      rayTraceRet.skyColor = getSkyColor();
     }
 
     rayTraceRet.roughness = roughness;

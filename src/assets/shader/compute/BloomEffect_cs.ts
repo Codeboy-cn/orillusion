@@ -97,13 +97,18 @@ fn CsMain( @builtin(workgroup_id) workgroup_id : vec3<u32> , @builtin(global_inv
   }
   var color = textureLoad(inTex, fragCoord, 0);
   // Scene RGB is now linear HDR throughout (ACES is a final post-pass
-  // applied after bloom composites back). Drop the gammaToLiner +
-  // inline ACES; threshold the raw linear luminance directly. The
-  // luminanceThreshold default needs to live in HDR units now (1.0
-  // meaning "lights with intensity > 1 lux equivalent"), not the
-  // pre-tonemap [0..1] range. Bloom intensity also amplifies HDR
-  // values directly without ACES compressing the input.
-  var linearColor = color.rgb;
+  // applied after bloom composites back). Threshold the raw linear
+  // luminance directly. Bloom intensity amplifies HDR values
+  // without ACES compressing the input first.
+  //
+  // ret = linearColor * contribution can run away on metallic
+  // surfaces reflecting bright HDR sky (linearColor >> 1, contribution
+  // also >> 1 → ret = linearColor^2 effectively). Cap the bloom
+  // input to a soft 4.0 ceiling so a luminance-5.0 specular highlight
+  // produces a bloom around 4*4 = 16 max instead of e.g. 5*4 = 20+ —
+  // legacy pipeline relied on the pre-bloom LinearToGammaSpace to keep
+  // values in [0,1]; we pin it explicitly here.
+  var linearColor = min(color.rgb, vec3<f32>(4.0));
   var lum = dot(vec3<f32>(0.2126, 0.7152, 0.0722), linearColor);
   var contribution = max(0.0, lum - bloomCfg.luminanceThreshole);
   var ret = linearColor * contribution;
