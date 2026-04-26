@@ -339,6 +339,18 @@ export class Texture implements GPUSamplerDescriptor {
         sizeCount: number = 1,
         sampleCount: number = 0,
     ) {
+        // sRGB-encoded LDR formats are not in the WebGPU
+        // storage-binding-capable list; requesting STORAGE_BINDING
+        // on them throws a validation error at GPUTexture create.
+        // BitmapTexture2D / BitmapTextureCube switched to
+        // `rgba8unorm-srgb` for hardware sRGB decode; they never
+        // need to be storage-bound (storage-write paths run on
+        // separate compute RTs in `rgba16float` / `rgba8unorm`),
+        // so it's safe to drop the bit unconditionally for sRGB
+        // formats.
+        if (typeof format === 'string' && format.endsWith('-srgb')) {
+            usage &= ~GPUTextureUsage.STORAGE_BINDING;
+        }
         this.width = width;
         this.height = height;
         this.format = format;

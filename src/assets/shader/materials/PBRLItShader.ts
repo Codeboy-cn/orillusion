@@ -69,8 +69,14 @@ export let PBRLItShader: string = /*wgsl*/ `
 
         #if USE_SRGB_ALBEDO
             ORI_ShadingInput.BaseColor = textureSample(baseMap, baseMapSampler, uv )  ;
-            // ORI_ShadingInput.BaseColor = sRGBToLinear(ORI_ShadingInput.BaseColor.rgb)  ;
-            ORI_ShadingInput.BaseColor = vec4<f32>( ORI_ShadingInput.BaseColor * materialUniform.baseColor.rgb, ORI_ShadingInput.BaseColor.w * materialUniform.baseColor.a)  ;
+            // Sampled value is already linear (rgba8unorm-srgb hardware
+            // decode), so no software gammaToLiner. Modulate component-
+            // wise with baseColor — rgb*rgb, alpha*alpha. The previous
+            // form did vec4*vec3 which WGSL rejects (no matching
+            // overload); compilation only failed for assets that
+            // actually flipped USE_SRGB_ALBEDO, which was an uncommon
+            // path until glTF auto-set it post-#1.
+            ORI_ShadingInput.BaseColor = vec4<f32>( ORI_ShadingInput.BaseColor.rgb * materialUniform.baseColor.rgb, ORI_ShadingInput.BaseColor.a * materialUniform.baseColor.a)  ;
         #else
             ORI_ShadingInput.BaseColor = textureSample(baseMap, baseMapSampler, uv )  ;
             ORI_ShadingInput.BaseColor = vec4f(gammaToLiner(ORI_ShadingInput.BaseColor.rgb),ORI_ShadingInput.BaseColor.a)  ;
