@@ -51,10 +51,11 @@ class Sample_Transmission {
 
         this.scene = new Scene3D();
 
-        // HDR cube for both visible background (SkyRenderer) and IBL
-        // (scene.envMap). The three.js demo uses royal_esplanade_2k.hdr;
-        // we substitute the HDR shipped with the project.
-        const hdr = await this.engine.res.loadHDRTextureCube('/hdri/sunset.hdr');
+        // HDR cube — both visible background (SkyRenderer) AND IBL
+        // (scene.envMap). Royal Esplanade is the same HDR the three.js
+        // reference demo ships with — Poly Haven CC0 / public domain,
+        // direct port for visual parity.
+        const hdr = await this.engine.res.loadHDRTextureCube('/hdri/royal_esplanade_1k.hdr');
         const sky = this.scene.addComponent(SkyRenderer);
         sky.map = hdr;
         this.scene.envMap = hdr;
