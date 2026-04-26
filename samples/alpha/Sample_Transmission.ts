@@ -171,7 +171,20 @@ class Sample_Transmission {
             );
         });
         GUIHelp.add(params, 'transmission', 0, 1, 0.01).onChange(() => {
-            this.mat.transmissionFactor = params.transmission;
+            // Drive the uniform directly to avoid LitMaterial's
+            // transmissionFactor setter, which flips the
+            // USE_TRANSMISSION define when value crosses 0. Flipping
+            // the define recompiles the COLOR pass with a new
+            // BindGroupLayout while the auto-generated DEPTH pass
+            // still holds the old one — every subsequent zPrePass
+            // tries to bind a mismatched group and floods the console
+            // with GPUValidationError. Keeping the define pinned
+            // (via the initial transmissionFactor = 1 in createSphere)
+            // and only changing the runtime uniform value gives the
+            // same visual effect at 0 (transmission factor = 0
+            // mathematically yields no transmission contribution)
+            // without the layout churn.
+            (this.mat as any).shader.setUniformFloat('transmissionFactor', params.transmission);
         });
         GUIHelp.add(params, 'opacity', 0, 1, 0.01).onChange(() => {
             const c = this.mat.baseColor;
