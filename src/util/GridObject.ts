@@ -82,7 +82,17 @@ export class GridObject extends Object3D {
         });
 
         let mat = new UnLitMaterial();
-        mat.baseColor = new Color(1, 1, 1, 0.5);
+        // NORMAL blend at alpha=0.25 visually approximates the
+        // legacy ADD blend at alpha=0.15 on typical mid-gray /
+        // grass-green backgrounds (ADD: dst + src*0.15 ≈
+        // dst*1.15 lift; NORMAL: dst*0.75 + src*0.25 ≈ same
+        // perceived contrast). The trade-off is mandatory:
+        // ADD blend bumps the material to the transparent pass
+        // where line / thin-box depth tests don't hold against
+        // opaque triangles in this engine, so the grid would draw
+        // through cubes. NORMAL keeps it in the opaque pass with
+        // standard depth handling.
+        mat.baseColor = new Color(1, 1, 1, 0.25);
         mat.blendMode = BlendMode.NORMAL;
         mat.castReflection = false;
         let mr = this.addComponent(MeshRenderer);
@@ -113,7 +123,7 @@ export class GridObject extends Object3D {
             let mr = x.addComponent(MeshRenderer);
             mr.geometry = new BoxGeometry(this.size, thickness, thickness);
             let mat = mr.material = new UnLitMaterial();
-            mat.baseColor = new Color(1, 0, 0, 1);
+            mat.baseColor = new Color(1, 0, 0, 0.7);
             mat.blendMode = BlendMode.NORMAL;
             mat.castReflection = false;
             this.addChild(x)
@@ -123,7 +133,7 @@ export class GridObject extends Object3D {
             let mr = z.addComponent(MeshRenderer);
             mr.geometry = new BoxGeometry(thickness, thickness, this.size);
             let mat = mr.material = new UnLitMaterial();
-            mat.baseColor = new Color(0, 1, 0, 1);
+            mat.baseColor = new Color(0, 1, 0, 0.7);
             mat.blendMode = BlendMode.NORMAL;
             mat.castReflection = false;
             this.addChild(z)
