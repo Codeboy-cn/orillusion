@@ -124,17 +124,21 @@ export class OITPassRenderer extends RendererBase {
         for (const node of collectInfo.transparentList) {
             const mat = node.materials?.[0];
             if (!mat || mat.oitMode !== 'weighted') continue;
-            // preInit triggers PassGenerate.createOITPass via
-            // RenderNode.castNeedPass when the material is first
-            // touched; nodeUpdate propagates current uniform / texture
-            // state to the OIT pass's bind groups, including the
-            // clusterLightingBuffer bindings (`clustersUniform`, etc.).
-            // The cloned PBR shader the OIT pass runs declares those
-            // uniforms — passing null here used to cause "not set
-            // clustersUniform buffer" + a TypeError in getGroupLayout.
-            if (!node.preInit(this.passType)) {
-                node.nodeUpdate(view, this.passType, this.rendererPassState, clusterLightingBuffer);
-            }
+            // ALWAYS call nodeUpdate — not just on first init.
+            //
+            // nodeUpdate is where `renderShader.apply()` runs, and apply
+            // is where `materialDataUniformBuffer.apply()` uploads the
+            // dirty uniform buffer to the GPU. The earlier guard
+            // `if (!node.preInit(passType))` skipped nodeUpdate after
+            // the first frame, freezing the OIT pass's uniforms — so
+            // dragging the alpha slider in WBOIT mode appeared to do
+            // nothing (the buffer was marked dirty but apply never ran
+            // to flush it). nodeUpdate itself contains an
+            // `if (renderShader.pipeline) renderShader.apply(...);
+            // continue;` early-return at the top, so per-frame calls
+            // don't re-do the heavy texture/binding setup once the
+            // pipeline exists. Same pattern ColorPassRenderer uses.
+            node.nodeUpdate(view, this.passType, this.rendererPassState, clusterLightingBuffer);
             node.renderPass2(view, this.passType, this.rendererPassState, clusterLightingBuffer, encoder);
         }
 
