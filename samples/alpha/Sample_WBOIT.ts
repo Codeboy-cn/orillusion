@@ -89,7 +89,7 @@ class Sample_WBOIT {
         xySpacing: 2.0,
         zSpacing: 2.0,
         doubleSide: true,
-        roughness: 0.5,
+        roughness: 0.3,
         frustumSize: 14,
     };
 
@@ -137,21 +137,30 @@ class Sample_WBOIT {
     }
 
     async initScene() {
-        // One DirectLight + a uniform-grey IBL cube. UnLit ignores both,
-        // Lambert uses both for diffuse + env irradiance, PBR uses both
-        // for full GGX BRDF + IBL. Background stays black because no
-        // SkyRenderer is attached — the cubemap drives lighting only.
+        // One DirectLight + a dim uniform-grey IBL cube. UnLit ignores
+        // both, Lambert uses both for diffuse + env irradiance, PBR
+        // uses both for full GGX BRDF + IBL. Background stays black
+        // because no SkyRenderer is attached — the cubemap drives
+        // lighting only.
+        //
+        // Both lighting terms are dialled WAY down on purpose. The
+        // demo's main signal is the saturated palette; brighter lighting
+        // (intensity ~4 + sky 0.5) made PBR multiply baseColor by so
+        // much white-ish irradiance that everything tonemapped to
+        // pastel and the algorithm comparison got muddier than it
+        // should be. With sky 0.1 + direct 1.5, hue stays readable
+        // and PBR still shows visible NdotL shading + specular pop.
         const lightObj = new Object3D();
         lightObj.rotationX = 35;
         lightObj.rotationY = 130;
         const dl = lightObj.addComponent(DirectLight);
         dl.lightColor = KelvinUtil.color_temperature_to_rgb(6500);
-        dl.intensity = 4;
+        dl.intensity = 1.5;
         dl.castShadow = false;
         this.scene.addChild(lightObj);
 
         this.scene.envMap = new SolidColorSky(
-            new Color(0.5, 0.5, 0.5, 1.0),
+            new Color(0.1, 0.1, 0.1, 1.0),
             this.engine.context3D,
         );
 
