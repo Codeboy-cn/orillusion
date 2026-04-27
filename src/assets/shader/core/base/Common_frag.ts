@@ -56,22 +56,46 @@ export let Common_frag: string = /*wgsl*/ `
     #endif
 
     #if USE_OIT_ACCUM
-      // Weighted-Blended OIT (McGuire and Bavoil 2013). BxDF_frag
-      // pre-multiplies the lit RGB by alpha (BxDF_frag.ts ~line 202
-      // emits vec4(retColor.rgb * Albedo.w, Albedo.a)), so the .rgb
-      // here is already lit*alpha. WBOIT compositing wants
-      // accum.rgb = sum(color * alpha * w), accum.a = sum(alpha * w),
-      // reveal.r  = product(1 - alpha). With pre-mul rgb we just
-      // multiply by w; reveal is written via gBuffer.r = alpha and
-      // the multiplicative blend mode picks the (1 - alpha) factor.
-      // WGSL spec reserves leading double-underscore identifiers for
-      // the implementation; single-underscore prefixes here.
+      // Weighted-Blended OIT (McGuire and Bavoil 2013, Eq. 7).
+      //
+      // BxDF_frag / UnLit_frag pre-multiply rgb by alpha, so the .rgb
+      // here is already lit·α. WBOIT compositing wants:
+      //   accum.rgb = sum(rgb · α · w)   →  we multiply by w
+      //   accum.a   = sum(α · w)         →  we write α·w into the .a slot
+      //   reveal.r  = product(1 − α)     →  multiplicative blend on gBuffer.r
+      //
+      // Weight formula per the paper: w = alpha * clamp(0.03 / (1e-5 + (z/200)^4), 1e-2, 3e3).
+      //
+      // The previous implementation did two things wrong:
+      //   1. fed fragCoord.z (post-projection NDC depth in [0,1]) into
+      //      the formula. The paper's z is LINEAR eye-space depth in
+      //      world units (centred around the [0, ~200] expected by the
+      //      z/200 term). NDC depth packs non-linearly and for anything
+      //      past the near plane saturates the depth term to its 3000
+      //      cap, making every fragment's weight identical. With
+      //      identical weights, accum.rgb / accum.a degenerates to a
+      //      plain colour average — every transparent stack rendered
+      //      as "milky averaged" regardless of alpha (the alpha factor
+      //      cancels in the ratio when w is constant).
+      //   2. used alpha^4 + depth_term (additive, with alpha
+      //      exponentiated) instead of alpha · depth_term
+      //      (multiplicative). The additive form let the depth-
+      //      saturated 3000 dominate so alpha had no effect at all on
+      //      the contribution; the multiplicative form scales the
+      //      per-fragment contribution by alpha directly.
+      //
+      // Compute linear depth from the world-space position via the view
+      // matrix — globalUniform.viewMat is already bound. Take abs(z)
+      // because the camera looks down −z in eye space.
+      //
+      // WGSL spec reserves leading double-underscore identifiers; we
+      // use single-underscore prefixes.
       {
         let _oitAlpha = clamp(ORI_FragmentOutput.color.a, 0.0, 1.0);
-        let _oitZ = vertex_varying.fragCoord.z;
-        let _oitW = clamp(
-          pow(_oitAlpha + 0.01, 4.0) +
-          max(min(0.3 / (1e-5 + pow(_oitZ / 200.0, 4.0)), 3000.0), 0.01),
+        let _eyePos = (globalUniform.viewMat * vec4<f32>(ORI_VertexVarying.vWorldPos.xyz, 1.0)).xyz;
+        let _oitZ = abs(_eyePos.z);
+        let _oitW = _oitAlpha * clamp(
+          0.03 / (1e-5 + pow(_oitZ / 200.0, 4.0)),
           0.01, 3000.0
         );
         ORI_FragmentOutput.color = vec4<f32>(ORI_FragmentOutput.color.rgb * _oitW, _oitAlpha * _oitW);
