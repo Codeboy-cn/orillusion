@@ -257,8 +257,27 @@ class Sample_WBOIT {
      * `sorted` and `weighted` share alphaMode='BLEND' but route through
      * different OIT features; `hash` uses alphaMode='HASH' (opaque
      * queue + per-fragment hash discard) and oitMode is irrelevant.
+     *
+     * Alpha=1 short-circuits to OPAQUE regardless of mode. WBOIT's
+     * accum/reveal formula averages every contributing fragment
+     * weighted by depth_term — and the front-vs-back depth_term
+     * ratio in our scene is only ~3-5x, so even at alpha=1 the
+     * front sphere only contributes ~30-40% of the final pixel and
+     * back layers visibly bleed through. Sorted at alpha=1 is
+     * naturally opaque (src*1 + dst*0 = src) but routing it through
+     * OPAQUE here keeps all three modes' alpha=1 endpoint visually
+     * consistent (truly opaque, front fragment dominates per pixel).
+     *
+     * The OIT_ACCUM/REVEAL textures get cleared each frame even when
+     * the transparent list is empty — see OITPassRenderer.render's
+     * "always begin/end the pass" block — so toggling alpha back
+     * down out of OPAQUE doesn't leave a stale WBOIT ghost.
      */
     private applyModeToMaterial(m: AlphaMaterial, mode: Mode) {
+        if (this.params.alpha >= 1.0) {
+            m.alphaMode = 'OPAQUE';
+            return;
+        }
         if (mode === 'hash') {
             m.alphaMode = 'HASH';
         } else {
