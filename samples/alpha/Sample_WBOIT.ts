@@ -277,6 +277,47 @@ class Sample_WBOIT {
         GUIHelp.add(this.params, 'alpha', 0.0, 1.0, 0.01).onChange(() => this.updateMaterials());
 
         GUIHelp.endFolder();
+
+        // ---- Mouse-event recorder ----------------------------------
+        // Press Space to toggle recording. While recording, mouse
+        // events (down/up/move/wheel) are timestamped and appended.
+        // `Export JSON` downloads the recording as a .json file the
+        // user can replay or inspect. `Clear` resets the buffer.
+        const recorder = new MouseRecorder();
+        recorder.attach();
+        const recorderProxy = {
+            recording: false,
+            events: 0,
+            'Export JSON': () => recorder.export(),
+            'Clear': () => recorder.clear(),
+        };
+        // Live status — `.listen()` makes dat.gui re-read the values
+        // each frame so the toggle / counter reflect recorder state.
+        GUIHelp.addFolder('Mouse recorder (Space toggles)');
+        GUIHelp.add(recorderProxy, 'recording').listen();
+        GUIHelp.add(recorderProxy, 'events').listen();
+        GUIHelp.add(recorderProxy, 'Export JSON');
+        GUIHelp.add(recorderProxy, 'Clear');
+        GUIHelp.endFolder();
+        // Spacebar handler — bridge keyboard → recorder. Sync proxy
+        // values after each toggle so the GUI display updates.
+        window.addEventListener('keydown', (e) => {
+            // Skip when typing into a focused input/textarea (the
+            // GUIHelp dropdowns / sliders use various input elements).
+            const t = e.target as HTMLElement | null;
+            if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+            if (e.code !== 'Space') return;
+            e.preventDefault();
+            recorder.toggle();
+            recorderProxy.recording = recorder.isRecording;
+            recorderProxy.events = recorder.eventCount;
+        });
+        // Continuously refresh the event counter while recording so
+        // the GUI shows live progress without per-event GUI updates.
+        setInterval(() => {
+            recorderProxy.recording = recorder.isRecording;
+            recorderProxy.events = recorder.eventCount;
+        }, 200);
     }
 
     /**
@@ -314,6 +355,134 @@ function hslToRgb(h: number, s: number, l: number): [number, number, number] {
     const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
     const p = 2 * l - q;
     return [hue2rgb(p, q, h + 1 / 3), hue2rgb(p, q, h), hue2rgb(p, q, h - 1 / 3)];
+}
+
+/**
+ * Lightweight mouse-event recorder. Captures timestamped down/up/move/
+ * wheel events into a JSON-serializable buffer; download writes a
+ * .json file the user can replay or post for debugging.
+ *
+ * `mousemove` is throttled at ~60 Hz (16ms) so a 30-second drag doesn't
+ * produce a 300 KB JSON full of redundant per-frame samples.
+ */
+class MouseRecorder {
+    public isRecording = false;
+    private startTime = 0;
+    private events: Array<Record<string, any>> = [];
+    private lastMoveT = 0;
+    private boundMouseDown = (e: MouseEvent) => this.onMouse('mousedown', e);
+    private boundMouseUp = (e: MouseEvent) => this.onMouse('mouseup', e);
+    private boundMouseMove = (e: MouseEvent) => this.onMouseMove(e);
+    private boundWheel = (e: WheelEvent) => this.onWheel(e);
+
+    public get eventCount() {
+        return this.events.length;
+    }
+
+    public attach() {
+        window.addEventListener('mousedown', this.boundMouseDown, { capture: true });
+        window.addEventListener('mouseup', this.boundMouseUp, { capture: true });
+        window.addEventListener('mousemove', this.boundMouseMove, { capture: true });
+        window.addEventListener('wheel', this.boundWheel, { capture: true, passive: true });
+    }
+
+    public toggle() {
+        if (this.isRecording) this.stop();
+        else this.start();
+    }
+
+    public start() {
+        this.isRecording = true;
+        this.startTime = performance.now();
+        this.lastMoveT = 0;
+        // Don't clear `events` — let user explicitly Clear if they
+        // want a fresh buffer, otherwise pause/resume appends.
+        this.events.push({ t: 0, type: 'recording-start', wallClock: Date.now() });
+        console.log('[recorder] start');
+    }
+
+    public stop() {
+        if (!this.isRecording) return;
+        this.events.push({ t: this.now(), type: 'recording-stop' });
+        this.isRecording = false;
+        console.log(`[recorder] stop — ${this.events.length} events`);
+    }
+
+    public clear() {
+        this.events.length = 0;
+        this.lastMoveT = 0;
+        console.log('[recorder] cleared');
+    }
+
+    public export() {
+        const json = JSON.stringify(
+            {
+                version: 1,
+                viewportW: window.innerWidth,
+                viewportH: window.innerHeight,
+                devicePixelRatio: window.devicePixelRatio,
+                events: this.events,
+            },
+            null,
+            2,
+        );
+        const blob = new Blob([json], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+        a.href = url;
+        a.download = `mouse-recording-${stamp}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        console.log(`[recorder] exported ${this.events.length} events`);
+    }
+
+    private now() {
+        return Math.round(performance.now() - this.startTime);
+    }
+
+    private onMouse(type: string, e: MouseEvent) {
+        if (!this.isRecording) return;
+        this.events.push({
+            t: this.now(),
+            type,
+            x: e.clientX,
+            y: e.clientY,
+            button: e.button,
+            buttons: e.buttons,
+        });
+    }
+
+    private onMouseMove(e: MouseEvent) {
+        if (!this.isRecording) return;
+        const t = this.now();
+        // 60 Hz cap on mousemove — most browsers fire ~120-300 Hz on
+        // raw mouse input which produces enormous JSON otherwise.
+        if (t - this.lastMoveT < 16) return;
+        this.lastMoveT = t;
+        this.events.push({
+            t,
+            type: 'mousemove',
+            x: e.clientX,
+            y: e.clientY,
+            buttons: e.buttons,
+        });
+    }
+
+    private onWheel(e: WheelEvent) {
+        if (!this.isRecording) return;
+        this.events.push({
+            t: this.now(),
+            type: 'wheel',
+            x: e.clientX,
+            y: e.clientY,
+            dx: e.deltaX,
+            dy: e.deltaY,
+            dz: e.deltaZ,
+        });
+    }
 }
 
 new Sample_WBOIT().run();
