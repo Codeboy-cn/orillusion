@@ -246,8 +246,23 @@ class Sample_WBOIT {
      * `sorted` and `weighted` share alphaMode='BLEND' but route through
      * different OIT features; `hash` uses alphaMode='HASH' (opaque
      * queue + per-fragment hash discard) and oitMode is irrelevant.
+     *
+     * Alpha=1 is special-cased to route through OPAQUE regardless of
+     * mode. WBOIT's accum/reveal formula still averages every
+     * contributing fragment at alpha=1 (the depth-weight ratio between
+     * front and back layers is finite, ~3-5x for our scene), so the
+     * cluster looks semi-transparent even though every material is
+     * "fully opaque". OPAQUE alphaMode gives the regular depth-write
+     * + no-blend pipeline where the front-most fragment fully
+     * occludes everything behind it. Sorted at alpha=1 already looks
+     * correct (alpha-over with src_alpha=1 is `src*1 + dst*0 = src`)
+     * but routing it through OPAQUE here is harmless and consistent.
      */
     private applyModeToMaterial(m: AlphaMaterial, mode: Mode) {
+        if (this.params.alpha >= 1.0) {
+            m.alphaMode = 'OPAQUE';
+            return;
+        }
         if (mode === 'hash') {
             m.alphaMode = 'HASH';
         } else {
