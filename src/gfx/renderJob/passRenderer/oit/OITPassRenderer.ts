@@ -108,7 +108,16 @@ export class OITPassRenderer extends RendererBase {
         this.rendererPassState.camera3D = camera;
 
         const collectInfo = EntityCollect.instance.getRenderNodes(view.scene, camera);
-        if (!collectInfo.transparentList || collectInfo.transparentList.length === 0) return;
+        const transparents = collectInfo.transparentList ?? [];
+        // Don't early-return when there are no weighted materials. The
+        // companion TransparentResolveFeature runs unconditionally and
+        // composites OIT_ACCUM / OIT_REVEAL onto the colour buffer
+        // every frame; if we skip the begin/end of THIS render pass,
+        // those side-band textures retain their previous-frame contents
+        // and the resolve feature blends a ghost of the last weighted-
+        // OIT scene over today's opaque-only render. Always open/close
+        // the pass so the rendererPassState's clear loadOp zeroes
+        // accum and re-fills reveal to white before the resolve reads.
 
         const command = gpu.beginCommandEncoder();
         // OIT writes to side-band accum/reveal targets, not to the main
@@ -121,7 +130,7 @@ export class OITPassRenderer extends RendererBase {
         const encoder = gpu.beginRenderPass(command, this.rendererPassState);
 
         gpu.bindCamera(encoder, camera);
-        for (const node of collectInfo.transparentList) {
+        for (const node of transparents) {
             const mat = node.materials?.[0];
             if (!mat || mat.oitMode !== 'weighted') continue;
             // ALWAYS call nodeUpdate — not just on first init.

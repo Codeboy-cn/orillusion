@@ -195,7 +195,18 @@ class Sample_WBOIT {
      * mutate live transforms / geometry slot-by-slot.
      */
     private buildSpheres() {
-        for (const obj of this.sphereObjs) this.scene.removeChild(obj);
+        // Aggressive teardown: removeChild alone leaves the
+        // RenderNode + Material + their generated derived passes
+        // (OIT_ACCUM etc.) alive on the JS heap. EntityCollect's
+        // bookkeeping IS cleaned via onDisable, but the renderShader
+        // collect map can hold stale per-pass entries that re-attach
+        // on rebuild and produce a transparent-stack ghost that
+        // overlays the new opaque cluster. Calling destroy(true)
+        // tears the whole renderer down before the array is cleared.
+        for (const obj of this.sphereObjs) {
+            this.scene.removeChild(obj);
+            obj.destroy(true);
+        }
         this.sphereObjs.length = 0;
         this.sphereMaterials.length = 0;
 
