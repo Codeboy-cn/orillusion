@@ -80,6 +80,7 @@ class Sample_WBOIT {
     private sphereMaterials: AlphaMaterial[] = [];
     private sphereObjs: Object3D[] = [];
     private palette: Color[] = [];
+    private lightObj!: Object3D;
 
     private params = {
         mode: 'sorted' as Mode,
@@ -88,7 +89,7 @@ class Sample_WBOIT {
         radius: 1.0,
         xySpacing: 2.0,
         zSpacing: 2.0,
-        doubleSide: true,
+        doubleSide: false,
         roughness: 0.3,
         frustumSize: 14,
     };
@@ -156,19 +157,37 @@ class Sample_WBOIT {
         // saturated knee (output ~0.7) — bright and saturated without
         // the >1 plateau where adjacent channels round to white. The
         // shadow side stays visible thanks to the 30% ambient floor.
-        const lightObj = new Object3D();
-        lightObj.rotationX = 25;
-        lightObj.rotationY = 45;
-        const dl = lightObj.addComponent(DirectLight);
+        this.lightObj = new Object3D();
+        this.lightObj.rotationX = 25;
+        this.lightObj.rotationY = 45;
+        const dl = this.lightObj.addComponent(DirectLight);
         dl.lightColor = KelvinUtil.color_temperature_to_rgb(6500);
         dl.intensity = 2.0;
         dl.castShadow = false;
-        this.scene.addChild(lightObj);
+        this.scene.addChild(this.lightObj);
 
         this.scene.envMap = new SolidColorSky(
             new Color(0.2, 0.2, 0.2, 1.0),
             this.engine.context3D,
         );
+
+        // Light tracks camera. Without this, rotating to the back of
+        // the scene shows the unlit (NdotL≈0) side of every sphere
+        // and the whole cluster goes grey. requestAnimationFrame syncs
+        // the light's roll/pitch to the HoverCameraController's so the
+        // camera-facing surfaces are always lit.
+        const ctrl = this.camera.object3D.getComponent(HoverCameraController);
+        if (ctrl) {
+            const tick = () => {
+                // 25° pitch above the camera, opposite yaw side → light
+                // comes from "above and behind" the camera, lighting
+                // whatever hemisphere is facing the lens.
+                this.lightObj.rotationX = ctrl.pitch + 25;
+                this.lightObj.rotationY = ctrl.roll + 180;
+                requestAnimationFrame(tick);
+            };
+            requestAnimationFrame(tick);
+        }
 
         this.buildSpheres();
     }
