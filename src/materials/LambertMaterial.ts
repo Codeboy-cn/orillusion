@@ -36,7 +36,14 @@ export class LambertMaterial extends Material {
         shaderState.castShadow = false;
         shaderState.receiveEnv = false;
         shaderState.acceptGI = false;
-        shaderState.useLight = false;
+        // Lambert_shader.ts iterates cluster lights via getCluster() /
+        // getLight() to compute the diffuse term. `useLight=false`
+        // gates the cluster-light buffer binding; turning it off here
+        // meant the shader looped over a never-bound buffer, every
+        // light.lightType compared to garbage data, and the
+        // accumulator stayed at zero — so Lambert spheres came out
+        // grey (only the env irradiance contributed). Lambert needs
+        // lights, leave useLight at its `true` default.
 
         let newShader = new Shader();
         newShader.addRenderPass(colorPass);

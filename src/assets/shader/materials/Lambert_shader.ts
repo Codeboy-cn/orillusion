@@ -73,9 +73,21 @@ export let Lambert_shader: string = /*wgsl*/ `
         }
 
         let irradiance: vec3f = getReflectionsEnv(ORI_VertexVarying.vWorldNormal, ORI_VertexVarying.vWorldPos.xyz, 1.0);
-        let color = lightColor * baseMapColor * materialUniform.baseColor;
-        
-        ORI_ShadingInput.BaseColor = vec4f(color.rgb + irradiance, baseMapColor.a);
+        let albedo = baseMapColor.rgb * materialUniform.baseColor.rgb;
+        // Direct: light · NdotL · albedo. Indirect: env irradiance ·
+        // albedo (modulating env by surface colour gives the ambient
+        // term its hue, matching PBR's diffuse IBL behaviour). Adding
+        // raw irradiance — as the previous version did — washed every
+        // shadow-side fragment to a uniform env-grey regardless of
+        // sphere colour.
+        let directDiffuse = lightColor.rgb * albedo;
+        let indirectDiffuse = irradiance * albedo;
+        // Output alpha must combine the texture's alpha AND the
+        // material's baseColor.a uniform. The previous version only
+        // forwarded baseMapColor.a, so per-material alpha sliders had
+        // no effect on Lambert's transparent rendering.
+        let outAlpha = baseMapColor.a * materialUniform.baseColor.a;
+        ORI_ShadingInput.BaseColor = vec4f(directDiffuse + indirectDiffuse, outAlpha);
         if(ORI_ShadingInput.BaseColor.a > 1.0){
             ORI_ShadingInput.BaseColor.a = 1.0;
         }
