@@ -216,12 +216,8 @@ export class Camera3D extends ComponentBase {
         this.far = far;
         this._projectionMatrix.perspective(this.fov, this.aspect, this.near, this.far);
         this.type = CameraType.perspective;
-        
-        // update jitter offset
-        if(this._useJitterProjection){
-            this._jitterOffsetX = this._projectionMatrix.get(0, 2);
-            this._jitterOffsetY = this._projectionMatrix.get(1, 2);
-        }
+
+        this._captureJitterBase();
     }
 
     /**
@@ -283,11 +279,7 @@ export class Camera3D extends ComponentBase {
         this.type = CameraType.ortho;
         this._projectionMatrix.orthoOffCenter(this.left, this.right, this.bottom, this.top, this.near, this.far);
 
-        // update jitter offset
-        if(this._useJitterProjection){
-            this._jitterOffsetX = this._projectionMatrix.get(0, 2);
-            this._jitterOffsetY = this._projectionMatrix.get(1, 2);
-        }
+        this._captureJitterBase();
     }
 
     /**
@@ -547,6 +539,35 @@ export class Camera3D extends ComponentBase {
             this._jitterOffsetList.push(offset);
         }
         this._jitterOffsetList.reverse();
+        // Capture the un-jittered baseline of the projection-matrix slot
+        // we'll be writing into. TAAPost typically calls enable AFTER
+        // perspective()/ortho2() has built the matrix, so the captures
+        // inside those functions were a no-op (the flag was still
+        // false). Capturing here makes either call order work.
+        this._captureJitterBase();
+    }
+
+    /**
+     * Snapshot the projection-matrix slot we drive with TAA jitter, so
+     * each frame writes `base + this-frame-jitter` instead of adding
+     * onto the previously-jittered matrix (which would accumulate as
+     * an unbounded random walk).
+     *
+     * Slot depends on camera type:
+     *   - perspective: (row=0, col=2) and (row=1, col=2). After the
+     *     perspective divide (clip.w = -z), the z-coefficient term
+     *     produces a constant NDC offset.
+     *   - ortho: (row=0, col=3) and (row=1, col=3) — the translation
+     *     column. clip.w = 1 here, so any z-coefficient shift would
+     *     scale linearly with depth (different layers would jitter
+     *     different amounts, breaking TAA reprojection). Translation-
+     *     column shift gives a constant NDC offset like perspective.
+     */
+    private _captureJitterBase() {
+        if (!this._useJitterProjection) return;
+        const col = this.type === CameraType.ortho ? 3 : 2;
+        this._jitterOffsetX = this._projectionMatrix.get(0, col);
+        this._jitterOffsetY = this._projectionMatrix.get(1, col);
     }
 
     private generateRandomOffset(): Vector2 {
@@ -567,15 +588,18 @@ export class Camera3D extends ComponentBase {
         this._jitterX = num1 / this.viewPort.width;
         this._jitterY = num2 / this.viewPort.height;
 
-        // set offset xy if not set
-        if(!this._jitterOffsetX || !this._jitterOffsetY){
-            this._jitterOffsetX = this._projectionMatrix.get(0, 2);
-            this._jitterOffsetY = this._projectionMatrix.get(1, 2);
-        }
-        let offsetX = this._jitterOffsetX + this._jitterX;
-        let offsetY = this._jitterOffsetY + this._jitterY;
-        this._projectionMatrix.set(0, 2, offsetX);
-        this._projectionMatrix.set(1, 2, offsetY);
+        // Always overwrite the slot with `base + this-frame-jitter`,
+        // never `current_slot + this-frame-jitter`. The previous code
+        // re-captured `_jitterOffsetX/Y` whenever they were falsy
+        // (which is true for any centered camera, where the base is 0)
+        // — that re-capture pulled last frame's jittered value as the
+        // new "base", causing a random walk that grew unboundedly.
+        // Bases are now snapshot once in _captureJitterBase().
+        const baseX = this._jitterOffsetX ?? 0;
+        const baseY = this._jitterOffsetY ?? 0;
+        const col = this.type === CameraType.ortho ? 3 : 2;
+        this._projectionMatrix.set(0, col, baseX + this._jitterX);
+        this._projectionMatrix.set(1, col, baseY + this._jitterY);
 
         this._jitterFrameIndex++;
     }
