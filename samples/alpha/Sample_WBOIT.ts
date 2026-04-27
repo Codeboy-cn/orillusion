@@ -70,7 +70,11 @@ class Sample_WBOIT {
         camera.perspective(45, this.engine.aspect, 0.5, 2000.0);
         // Centre the 3×3 panel; pull camera back enough to frame all
         // nine spheres comfortably.
-        camera.object3D.addComponent(HoverCameraController).setCamera(0, 0, 18);
+        // Pull camera off-axis (yaw 25°, pitch -15°) so the cube's
+        // depth difference is visible — front-face corners overlap
+        // back-face corners on screen, giving the sorted vs weighted
+        // comparison something to depth-sort.
+        camera.object3D.addComponent(HoverCameraController).setCamera(25, -15, 16);
 
         this.view = new View3D();
         this.view.scene = this.scene;
@@ -91,12 +95,18 @@ class Sample_WBOIT {
         directLight.castShadow = false;
         this.scene.addChild(this.lightObj3D);
 
-        // 3×3 panel of 9 spheres in the XY plane (z=0). Spacing matches
-        // sphere diameter exactly so neighbours touch edge-to-edge for
-        // mutual surface intersection (visible as the "wrong-tint" rings
-        // in `sorted` mode, smoothed away by `weighted`). 9 entries from
-        // a saturated palette so each sphere reads as a distinct colour
-        // through the alpha overlap.
+        // 3×3 grid laid out so each row sits at a different z depth.
+        // From camera looking along -z:
+        //   row 0 (top)    → z = +3 (farthest from camera, drawn first)
+        //   row 1 (middle) → z =  0
+        //   row 2 (bottom) → z = -3 (closest, drawn last)
+        // Columns within a row vary x (-3, 0, +3) so neighbours
+        // overlap on screen with the row above/below — that gives the
+        // sorted vs weighted comparison something real to depth-sort.
+        // α=0.85 keeps each front sphere visibly covering the back
+        // sphere behind it; the residual 15% transmittance carries
+        // the algorithm difference (sorted = clean stacking from
+        // front, weighted = averaged regardless of order).
         const palette = [
             new Color(1.00, 0.40, 0.45),  // [0,0]
             new Color(0.40, 0.80, 1.00),  // [0,1]
@@ -110,7 +120,12 @@ class Sample_WBOIT {
         ];
 
         const radius = 1.6;
-        const spacing = radius * 1.8;     // overlap by ~10% of diameter
+        const xySpacing = radius * 2.0;   // half-overlap on screen
+        const zSpacing = radius * 1.8;    // distinct depth per row
+        // none = both sides of the sphere render so a translucent
+        // sphere shows its own far hemisphere through the near one
+        // (default back-face cull would slice each sphere into a
+        // bowl). Critical for translucent geometry.
         const geom = new SphereGeometry(radius, 32, 24);
 
         let colorIdx = 0;
@@ -119,20 +134,20 @@ class Sample_WBOIT {
                 const sphere = new Object3D();
                 const m = new LitMaterial();
                 const c = palette[colorIdx++];
-                m.baseColor = new Color(c.r, c.g, c.b, 0.6);
+                m.baseColor = new Color(c.r, c.g, c.b, 0.85);
                 m.roughness = 0.5;
                 m.metallic = 0;
                 m.alphaMode = 'BLEND';
                 m.oitMode = this._initMode;
+                m.doubleSide = true;
                 const r = sphere.addComponent(MeshRenderer);
                 r.geometry = geom;
                 r.material = m;
-                // Lay out symmetrically around origin: cols 0,1,2 →
-                // x = -spacing, 0, +spacing; same for rows on the
-                // y axis. z = 0 keeps everything in one plane.
-                sphere.transform.x = (col - 1) * spacing;
-                sphere.transform.y = (1 - row) * spacing;
-                sphere.transform.z = 0;
+                // X / Y centred around origin; Z stepped per row so
+                // top row sits behind, bottom row sits in front.
+                sphere.transform.x = (col - 1) * xySpacing;
+                sphere.transform.y = (1 - row) * xySpacing;
+                sphere.transform.z = (1 - row) * zSpacing;
                 this.scene.addChild(sphere);
                 this.sphereMaterials.push(m);
             }
