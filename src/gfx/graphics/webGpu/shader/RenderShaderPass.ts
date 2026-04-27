@@ -503,7 +503,14 @@ export class RenderShaderPass extends ShaderPassBase {
 
     protected preCompileShader(stage: ShaderStage, code: string) {
         let shader: string = code;
-        if (shader.indexOf(`version `) != -1) {
+        // Detect a GLSL `#version XXX core` directive. The previous
+        // check was a naive `indexOf('version ')` substring scan,
+        // which happily matched the English word "version" sitting in
+        // a WGSL comment and incorrectly routed the shader through
+        // the GLSL→WGSL converter (which then crashed on #include).
+        // Anchor on `#version` followed by a digit at start-of-line
+        // so we only catch the actual GLSL directive.
+        if (/^\s*#version\s+\d/m.test(shader)) {
             var wgsl = ShaderConverter.convertGLSL(shader);
             shader = wgsl.sourceCode;
         }
