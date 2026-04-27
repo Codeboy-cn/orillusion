@@ -123,20 +123,41 @@ class Sample_Transmission {
     }
 
     private makeAlphaMap(): BitmapTexture2D {
-        // 2×2 conceptual stripe pattern, scaled up to 64×64 because
-        // BitmapTexture2D's GPU upload path enforces a 32-pixel
-        // minimum dimension (smaller textures produce a non-filtering
-        // sampler that's incompatible with the LitMaterial bind group).
-        // Each 32×32 quadrant matches a UV quarter of the sphere.
+        // Horizontal stripe pattern that wraps as 4 rings around the
+        // sphere — matches the three.js demo's visual where the
+        // alpha-cut produces 4 floating bands separated by transparent
+        // gaps (poles compress to thin caps, equator strip is the
+        // widest band).
+        //
+        // Texture is 32 wide × 128 tall: width hits the 32-px minimum
+        // the WebGPU filtering-sampler path requires, height is split
+        // into 4 horizontal rows so each 32×32 row maps to a quarter
+        // of the sphere's V-range. Rows alternate white (alpha=1,
+        // surface visible) and black (alpha=0, surface cut away).
+        // 8 horizontal rows alternating opaque (alpha=1, surface
+        // visible) and transparent (alpha=0, surface cut away). When
+        // the sphere's V coordinate runs pole-to-pole, this produces
+        // 4 floating bands (small cap at top, two large bowls in the
+        // middle, small cap at bottom) separated by 4 see-through
+        // gaps — matches the alpha-stripe look in three.js's
+        // webgpu_materials_transmission demo.
+        //
+        // Canvas2D `fillStyle = '#000000'` produces alpha=255 (opaque
+        // black), not alpha=0. clearRect on a fresh canvas leaves
+        // alpha=0; only the visible rows get filled white afterward.
+        const stripeCount = 8;
+        const stripeHeight = 32;
         const canvas = document.createElement('canvas');
-        canvas.width = 64;
-        canvas.height = 64;
+        canvas.width = 32;
+        canvas.height = stripeCount * stripeHeight;
         const ctx = canvas.getContext('2d')!;
-        ctx.fillStyle = '#ffffff';   // opaque cells
-        ctx.fillRect(0, 0, 64, 64);
-        ctx.fillStyle = '#000000';   // transparent cells (top-right + bottom-left)
-        ctx.fillRect(32, 0, 32, 32);
-        ctx.fillRect(0, 32, 32, 32);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#ffffff';
+        for (let i = 0; i < stripeCount; i++) {
+            if (i % 2 === 0) {
+                ctx.fillRect(0, i * stripeHeight, canvas.width, stripeHeight);
+            }
+        }
 
         // useMipmap=true so the texture spawns a filtering sampler
         // compatible with the LitMaterial bind group.
