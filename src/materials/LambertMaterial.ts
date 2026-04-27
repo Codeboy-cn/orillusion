@@ -6,6 +6,8 @@ import { Context3D } from '../gfx/graphics/webGpu/Context3D';
 import { Texture } from '../gfx/graphics/webGpu/core/texture/Texture';
 import { Color } from '../math/Color';
 import { Vector4 } from '../math/Vector4';
+import { BlendMode } from './BlendMode';
+import { AlphaMode } from './LitMaterial';
 
 
 /**
@@ -14,6 +16,8 @@ import { Vector4 } from '../math/Vector4';
  * @group Material
  */
 export class LambertMaterial extends Material {
+    private _alphaMode: AlphaMode = 'OPAQUE';
+
     /**
      * @constructor
      */
@@ -38,6 +42,53 @@ export class LambertMaterial extends Material {
         newShader.addRenderPass(colorPass);
         this.shader = newShader;
         this.baseMap = Engine3D.resFor(ctx).grayTexture;
+    }
+
+    /** glTF-aligned alpha handling. Mirrors LitMaterial.alphaMode so
+     *  Lambert-shaded transparency uses the same routing rules. */
+    public get alphaMode(): AlphaMode {
+        return this._alphaMode;
+    }
+
+    public set alphaMode(mode: AlphaMode) {
+        this._alphaMode = mode;
+        const colorPass = this.shader.getDefaultColorShader();
+        const state = colorPass.shaderState;
+        switch (mode) {
+            case 'OPAQUE':
+                state.transparent = false;
+                state.alphaToCoverageEnabled = false;
+                state.blendMode = BlendMode.NONE;
+                state.depthWriteEnabled = true;
+                colorPass.setDefine('USE_ALPHAHASH', false);
+                colorPass.renderOrder = 0;
+                break;
+            case 'MASK':
+                state.transparent = false;
+                state.alphaToCoverageEnabled = true;
+                state.blendMode = BlendMode.NONE;
+                state.depthWriteEnabled = true;
+                colorPass.setDefine('USE_ALPHAHASH', false);
+                colorPass.renderOrder = 0;
+                break;
+            case 'HASH':
+                state.transparent = false;
+                state.alphaToCoverageEnabled = false;
+                state.blendMode = BlendMode.NONE;
+                state.depthWriteEnabled = true;
+                colorPass.setDefine('USE_ALPHAHASH', true);
+                colorPass.renderOrder = 0;
+                break;
+            case 'BLEND':
+                state.transparent = true;
+                state.alphaToCoverageEnabled = false;
+                state.blendMode = BlendMode.NORMAL;
+                state.depthWriteEnabled = false;
+                colorPass.setDefine('USE_ALPHAHASH', false);
+                colorPass.renderOrder = 3000;
+                break;
+        }
+        this._notifyRenderClassificationDirty();
     }
 
     /**

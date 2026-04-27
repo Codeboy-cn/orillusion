@@ -9,6 +9,7 @@ export let Lambert_shader: string = /*wgsl*/ `
     #include "UnLitMaterialUniform_frag"
     #include "EnvMap_frag"
     #include "ReflectionCG"
+    #include "AlphaHash_frag"
 
     @group(1) @binding(auto)
     var baseMapSampler: sampler;
@@ -29,6 +30,16 @@ export let Lambert_shader: string = /*wgsl*/ `
         if(baseMapColor.a < materialUniform.alphaCutoff) {
             discard;
         }
+
+        #if USE_ALPHAHASH
+            // Stochastic alpha test (Wyman 2017) — see PBRLitShader for
+            // the full rationale. Alpha includes the materialUniform.baseColor.a
+            // factor since that's what drives the user-visible slider.
+            let _hashAlpha = baseMapColor.a * materialUniform.baseColor.a;
+            if (_hashAlpha < alphaHash3D(ORI_VertexVarying.vWorldPos.xyz)) {
+                discard;
+            }
+        #endif
         // sRGB-encoded baseMap → decode to linear before lighting
         // math (mirrors PBRLitShader's #else branch). Skip when
         // USE_SRGB_ALBEDO marks the texture as hardware-decoded.

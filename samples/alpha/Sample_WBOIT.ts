@@ -2,12 +2,18 @@ import { GUIHelp } from "@orillusion/debug/GUIHelp";
 import {
     CameraUtil,
     Color,
+    DirectLight,
     Engine3D,
     HoverCameraController,
+    KelvinUtil,
+    LambertMaterial,
+    LitMaterial,
+    Material,
     MeshRenderer,
     Object3D,
     PostProcessingComponent,
     Scene3D,
+    SolidColorSky,
     SphereGeometry,
     TAAPost,
     UnLitMaterial,
@@ -15,6 +21,18 @@ import {
 } from "@orillusion/core";
 
 type Mode = 'sorted' | 'weighted' | 'hash';
+type MaterialType = 'unlit' | 'pbr' | 'lambert';
+
+// Materials we use here all expose a glTF-style `alphaMode` setter
+// (added in src/materials/{LitMaterial,UnLitMaterial,LambertMaterial}.ts).
+// Material is the engine base class that lacks alphaMode/oitMode in its
+// public type; declare the narrow shape we actually call against.
+type AlphaMaterial = Material & {
+    alphaMode: 'OPAQUE' | 'MASK' | 'BLEND' | 'HASH';
+    oitMode: 'sorted' | 'weighted';
+    baseColor: Color;
+    doubleSide: boolean;
+};
 
 /**
  * Transparency-algorithm showcase: 3×3×3 grid of 27 translucent spheres
@@ -59,12 +77,13 @@ class Sample_WBOIT {
     scene: Scene3D;
     view: View3D;
 
-    private sphereMaterials: UnLitMaterial[] = [];
+    private sphereMaterials: AlphaMaterial[] = [];
     private sphereObjs: Object3D[] = [];
     private palette: Color[] = [];
 
     private params = {
         mode: 'weighted' as Mode,
+        material: 'unlit' as MaterialType,
         alpha: 0.85,
         radius: 1.0,
         xySpacing: 2.0,
@@ -118,11 +137,40 @@ class Sample_WBOIT {
     }
 
     async initScene() {
-        // UnLitMaterial = no lighting, no shading. Each sphere shows
-        // its baseColor flat-shaded; this strips out lit-shading
-        // gradients so any visible artifact is purely from the
-        // transparency algorithm being demonstrated.
+        // One DirectLight + a uniform-grey IBL cube. UnLit ignores both,
+        // Lambert uses both for diffuse + env irradiance, PBR uses both
+        // for full GGX BRDF + IBL. Background stays black because no
+        // SkyRenderer is attached — the cubemap drives lighting only.
+        const lightObj = new Object3D();
+        lightObj.rotationX = 35;
+        lightObj.rotationY = 130;
+        const dl = lightObj.addComponent(DirectLight);
+        dl.lightColor = KelvinUtil.color_temperature_to_rgb(6500);
+        dl.intensity = 4;
+        dl.castShadow = false;
+        this.scene.addChild(lightObj);
+
+        this.scene.envMap = new SolidColorSky(
+            new Color(0.5, 0.5, 0.5, 1.0),
+            this.engine.context3D,
+        );
+
         this.buildSpheres();
+    }
+
+    /** Construct a fresh material of the requested type. Each sphere
+     *  gets its own material instance so per-sphere palette colours are
+     *  preserved and EntityCollect's `Reference` map tracks them
+     *  individually. */
+    private createMaterial(): AlphaMaterial {
+        switch (this.params.material) {
+            case 'pbr':
+                return new LitMaterial() as unknown as AlphaMaterial;
+            case 'lambert':
+                return new LambertMaterial() as unknown as AlphaMaterial;
+            default:
+                return new UnLitMaterial() as unknown as AlphaMaterial;
+        }
     }
 
     /**
@@ -144,10 +192,14 @@ class Sample_WBOIT {
             for (let row = 0; row < 3; row++) {
                 for (let col = 0; col < 3; col++) {
                     const sphere = new Object3D();
-                    const m = new UnLitMaterial();
+                    const m = this.createMaterial();
                     const c = this.palette[idx++];
                     m.baseColor = new Color(c.r, c.g, c.b, alpha);
                     m.doubleSide = doubleSide;
+                    // PBR-only knobs — feature-detect via `in` since
+                    // AlphaMaterial doesn't include them.
+                    if ('roughness' in m) (m as any).roughness = this.params.roughness;
+                    if ('metallic' in m) (m as any).metallic = 0;
                     this.applyModeToMaterial(m, this.params.mode);
                     const r = sphere.addComponent(MeshRenderer);
                     r.geometry = geom;
@@ -180,7 +232,7 @@ class Sample_WBOIT {
      * different OIT features; `hash` uses alphaMode='HASH' (opaque
      * queue + per-fragment hash discard) and oitMode is irrelevant.
      */
-    private applyModeToMaterial(m: UnLitMaterial, mode: Mode) {
+    private applyModeToMaterial(m: AlphaMaterial, mode: Mode) {
         if (mode === 'hash') {
             m.alphaMode = 'HASH';
         } else {
@@ -203,20 +255,37 @@ class Sample_WBOIT {
             console.log('[transparency] mode →', v);
         });
 
+        GUIHelp.add(this.params, 'material', ['unlit', 'pbr', 'lambert']).onChange((v: string) => {
+            this.params.material = v as MaterialType;
+            // Material class itself differs (UnLitMaterial / LitMaterial /
+            // LambertMaterial) — we have to construct fresh instances and
+            // re-bind to the renderers. Tear down and rebuild the lattice;
+            // alphaMode/oitMode/baseColor get reapplied during build.
+            this.buildSpheres();
+            console.log('[material] →', v);
+        });
+
         GUIHelp.add(this.params, 'alpha', 0.0, 1.0, 0.01).onChange(() => this.updateMaterials());
 
         GUIHelp.endFolder();
     }
 
     /**
-     * Generate `count` distinct, saturated colours by golden-ratio
-     * hue stepping. Avoids palette repetition for the 27-sphere cube.
+     * Generate `count` distinct, vivid colours via golden-ratio hue
+     * stepping at full saturation. Lightness varies with i so we don't
+     * just get a rainbow — adjacent spheres in different rows differ
+     * not only in hue but in brightness, giving the demo more visible
+     * contrast between overlapping layers (the original 0.7/0.6 HSL
+     * came out too pastel once stacks of 27 averaged through WBOIT).
      */
     private generatePalette(count: number): Color[] {
         const out: Color[] = [];
         for (let i = 0; i < count; i++) {
             const h = (i * 0.61803398875) % 1;
-            const [r, g, b] = hslToRgb(h, 0.7, 0.6);
+            // Lightness alternates 0.4 / 0.55 / 0.7 across i so visually
+            // adjacent spheres tend to land in different brightness bands.
+            const l = 0.4 + (i % 3) * 0.15;
+            const [r, g, b] = hslToRgb(h, 1.0, l);
             out.push(new Color(r, g, b));
         }
         return out;
