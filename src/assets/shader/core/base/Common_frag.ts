@@ -55,6 +55,67 @@ export let Common_frag: string = /*wgsl*/ `
       #endif
     #endif
 
+    #if USE_OIT_DEPTH_PEEL_DEPTH
+      // Dual Depth Peeling — depth-extraction sub-pass.
+      //
+      // Babylon-style algorithm: each pixel maintains (depth_min,
+      // depth_max) in an RG32F MRT cleared to (-MAX_DEPTH, -MAX_DEPTH).
+      // Every transparent fragment writes vec4(-fragDepth, fragDepth)
+      // and the attachment is configured with MAX blend (per-channel),
+      // so after one geometry pass the MRT contains:
+      //
+      //   .r = max(-d_i)  =  -min(d_i)   →  nearest fragment depth
+      //   .g = max( d_i)                 →  furthest fragment depth
+      //
+      // Subsequent peel iterations (stage 3) read the previous-pass
+      // depth MRT, skip fragments whose depth is at the boundary
+      // (already rendered) or outside (already peeled), and write the
+      // depth of the next-nearest / next-furthest fragments. Stage 2
+      // implements only the init pass — full per-iteration peeling
+      // logic with prev-pass texelFetch lands in stage 3.
+      //
+      // fragCoord is the @builtin(position) — its .z is NDC depth in
+      // [0, 1], the same value the depth-test uses, which is what we
+      // want to peel by.
+      let _ddpDepth = ORI_VertexVarying.fragCoord.z;
+      ORI_FragmentOutput.color = vec4<f32>(-_ddpDepth, _ddpDepth, 0.0, 0.0);
+    #endif
+
+    #if USE_OIT_DEPTH_PEEL_FRONT
+      // Dual Depth Peeling — front-color accumulation sub-pass.
+      //
+      // The front-color MRT accumulates layers in front-to-back order
+      // via the over operator. For each peeled layer:
+      //   newFront = prevFront + (1 - prevFront.a) * (rgb*α, α)
+      //
+      // When any layer reaches α=1, prevFront.a becomes 1 and all
+      // subsequent contributions are zeroed — the front-most fragment
+      // dominates and α=1 is naturally opaque. This is the property
+      // weighted-blended OIT cannot replicate at small scene scales.
+      //
+      // Stage 2 outputs the premultiplied current-layer colour. Stage 3
+      // adds the texelFetch of prev-pass front MRT and the over-operator
+      // composition. Until then the result is just "first peeled layer"
+      // which roughly matches the init pass's contribution.
+      let _ddpAlpha = clamp(ORI_FragmentOutput.color.a, 0.0, 1.0);
+      ORI_FragmentOutput.color = vec4<f32>(ORI_FragmentOutput.color.rgb * _ddpAlpha, _ddpAlpha);
+    #endif
+
+    #if USE_OIT_DEPTH_PEEL_BACK
+      // Dual Depth Peeling — back-color accumulation sub-pass.
+      //
+      // The back-color MRT accumulates layers in back-to-front order via
+      // an under-blend (associative). Final composite (in resolve
+      // feature, stage 4):
+      //   final = bg·(1 - frontA) + frontColor + (1 - frontA)·backColor
+      //
+      // Stage 2 outputs premultiplied current-layer colour; stage 3 adds
+      // the layer-discrimination logic (only fragments at the current
+      // peel iteration's furthest depth contribute here).
+      let _ddpAlpha = clamp(ORI_FragmentOutput.color.a, 0.0, 1.0);
+      ORI_FragmentOutput.color = vec4<f32>(ORI_FragmentOutput.color.rgb * _ddpAlpha, _ddpAlpha);
+    #endif
+
     #if USE_OIT_ACCUM
       // Weighted-Blended OIT (McGuire and Bavoil 2013, Eq. 7).
       //

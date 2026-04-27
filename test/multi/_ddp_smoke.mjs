@@ -38,13 +38,24 @@ async function main() {
                 m.oitMode = 'depth-peel';
                 count++;
             }
-            return 'flipped ' + count;
+            // Sleep one frame so castNeedPass / createDepthPeelPasses
+            // had a chance to run.
+            await new Promise(r => requestAnimationFrame(r));
+            // Inspect first material's shader for the three derived passes.
+            const mat0 = sample.sphereMaterials[0];
+            const passShader = mat0.shader.passShader;
+            const passTypes = [];
+            for (const [k, v] of passShader) {
+                passTypes.push({ type: k, count: v.length });
+            }
+            return JSON.stringify({ flipped: count, passTypes });
         })()
     `);
     await new Promise(r => setTimeout(r, 800));
     const after = errors.length;
 
-    process.stdout.write(`result: ${result}\n`);
+    process.stdout.write(`result: ${JSON.stringify(result)}\n`);
+    process.stdout.write(`total logs: ${errors.length}\n`);
     process.stdout.write(`new errors: ${after - before}\n`);
     if (after > before) {
         for (const e of errors.slice(before)) process.stdout.write('  ' + e + '\n');
@@ -52,4 +63,4 @@ async function main() {
     process.exit(after - before === 0 ? 0 : 1);
 }
 
-main().catch(e => { process.stderr.write(e.stack + '\n'); process.exit(2); });
+main().catch(e => { process.stderr.write('CAUGHT: ' + (e.stack || e.message || String(e)) + '\n'); process.exit(2); });

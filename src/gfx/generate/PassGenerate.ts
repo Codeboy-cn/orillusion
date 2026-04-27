@@ -9,6 +9,9 @@ import { CastShadowMaterialPass } from '../../materials/multiPass/CastShadowMate
 import { CastPointShadowMaterialPass } from '../../materials/multiPass/CastPointShadowMaterialPass';
 import { DepthMaterialPass } from '../../materials/multiPass/DepthMaterialPass';
 import { OITAccumPass } from '../../materials/multiPass/OITAccumPass';
+import { DDPDepthPass } from '../../materials/multiPass/DDPDepthPass';
+import { DDPFrontPass } from '../../materials/multiPass/DDPFrontPass';
+import { DDPBackPass } from '../../materials/multiPass/DDPBackPass';
 import { RenderShaderPass } from '../..';
 import { bindCtx, Context3D } from '../graphics/webGpu/Context3D';
 
@@ -269,11 +272,9 @@ export class PassGenerate {
      * attachments. The DualDepthPeelingRenderer cycles through the
      * three pass types per peel iteration.
      *
-     * STAGE 1 (this commit): no-op stub. The shader-side
-     * `USE_OIT_DEPTH_PEEL_*` blocks (stage 2) and the per-iteration
-     * pipeline state requirements (stage 3) need to land first; until
-     * they do, this method intentionally returns to keep depth-peel
-     * materials falling through the sorted path without crashing.
+     * Per-target blend states (MAX-MAX for depth, over for front,
+     * under for back) are wired in {@link RenderShaderPass.createPipeline}
+     * via the per-pass-type branches that match `this.passType`.
      *
      * No-op if the depth-peel passes already exist for this material.
      *
@@ -282,28 +283,91 @@ export class PassGenerate {
      *               its passShader map)
      */
     public static createDepthPeelPasses(renderNode: RenderNode, shader: Shader) {
-        // Stage 1 stub — see method docblock. Stage 3 implementation
-        // will mirror createOITPass's clone-from-COLOR pattern, but
-        // produce three passes:
-        //
-        //   const depthPass = new DDPDepthPass(colorPass.vsName, colorPass.fsName);
-        //   const frontPass = new DDPFrontPass(colorPass.vsName, colorPass.fsName);
-        //   const backPass  = new DDPBackPass(colorPass.vsName, colorPass.fsName);
-        //
-        //   for each pass: clone uniforms / textures / defines / non-blend
-        //                  shaderState; setDefine the matching
-        //                  USE_OIT_DEPTH_PEEL_* flag; bindCtx + preCompile;
-        //                  shader.addRenderPass.
-        //
-        // Each pass also overrides depthWriteEnabled=false (depth comes
-        // from the shared GBuffer load), transparent=true, and a
-        // pass-type-specific blend mode (MAX for depth, over for front,
-        // under for back). The blend mode is applied at pipeline-build
-        // time in RenderShaderPass.buildPipeline based on this.passType,
-        // same way OIT_ACCUM gets its custom (one/one + zero/one-minus-src)
-        // blend wired in `RenderShaderPass.ts:859-868`.
-        void renderNode;
-        void shader;
+        const colorPassList = shader.getDefaultShaders();
+        if (!colorPassList) return;
+
+        // For every color sub-shader (multi-material setups can have
+        // more than one) generate the three depth-peel sub-passes.
+        // Idempotent: skip whichever subset already exists.
+        for (let jj = 0; jj < colorPassList.length; jj++) {
+            const colorPass = colorPassList[jj];
+
+            const existingDepth = shader.getSubShaders(PassType.OIT_DEPTH_PEEL_DEPTH);
+            const existingFront = shader.getSubShaders(PassType.OIT_DEPTH_PEEL_FRONT);
+            const existingBack = shader.getSubShaders(PassType.OIT_DEPTH_PEEL_BACK);
+
+            const wantDepth = !existingDepth || existingDepth.length <= jj;
+            const wantFront = !existingFront || existingFront.length <= jj;
+            const wantBack = !existingBack || existingBack.length <= jj;
+
+            if (wantDepth) {
+                this._addDepthPeelClone(
+                    renderNode,
+                    shader,
+                    colorPass,
+                    new DDPDepthPass(colorPass.vsName, colorPass.fsName),
+                    'USE_OIT_DEPTH_PEEL_DEPTH',
+                );
+            }
+            if (wantFront) {
+                this._addDepthPeelClone(
+                    renderNode,
+                    shader,
+                    colorPass,
+                    new DDPFrontPass(colorPass.vsName, colorPass.fsName),
+                    'USE_OIT_DEPTH_PEEL_FRONT',
+                );
+            }
+            if (wantBack) {
+                this._addDepthPeelClone(
+                    renderNode,
+                    shader,
+                    colorPass,
+                    new DDPBackPass(colorPass.vsName, colorPass.fsName),
+                    'USE_OIT_DEPTH_PEEL_BACK',
+                );
+            }
+        }
+    }
+
+    /** Helper: clones a COLOR pass into a DDP sub-pass with the given
+     *  `USE_OIT_DEPTH_PEEL_*` flag. Mirrors the clone strategy used by
+     *  {@link createOITPass} — every define / uniform / texture from the
+     *  color pass is copied so the sub-pass runs the SAME PBR / UnLit /
+     *  Lambert lighting program. The matching peel define is set last
+     *  so it overrides any cloned `false`. */
+    private static _addDepthPeelClone(
+        renderNode: RenderNode,
+        shader: Shader,
+        colorPass: RenderShaderPass,
+        pass: RenderShaderPass,
+        peelDefine: 'USE_OIT_DEPTH_PEEL_DEPTH' | 'USE_OIT_DEPTH_PEEL_FRONT' | 'USE_OIT_DEPTH_PEEL_BACK',
+    ): void {
+        // Clone non-blend shader state. depth/transparent/blendMode are
+        // owned by the DDP* pass class so they survive the override path.
+        for (const key in colorPass.shaderState) {
+            if (key === 'depthWriteEnabled' || key === 'transparent' || key === 'blendMode') continue;
+            (pass.shaderState as any)[key] = (colorPass.shaderState as any)[key];
+        }
+
+        for (const uniformName in colorPass.uniforms) {
+            pass.setUniform(uniformName, colorPass.getUniform(uniformName));
+        }
+        for (const textureName in colorPass.textures) {
+            const tex = colorPass.getTexture(textureName);
+            if (tex) pass.setTexture(textureName, tex);
+        }
+        for (const defineName in colorPass.defineValue) {
+            pass.setDefine(defineName, colorPass.defineValue[defineName]);
+        }
+        // Set the peel-specific define LAST so cloned `false`s from the
+        // color pass cannot override it.
+        pass.setDefine(peelDefine, true);
+
+        const ctx = this._ctxOf(renderNode);
+        if (ctx) bindCtx(pass, ctx);
+        pass.preCompile(renderNode.geometry);
+        shader.addRenderPass(pass);
     }
 
     static createReflectionPass(renderNode: RenderNode, shader: Shader) {
