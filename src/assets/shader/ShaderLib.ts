@@ -161,9 +161,15 @@ export class ShaderLib {
     }
 
     public static register(keyName: string, code: string) {
-        if (!ShaderLib[keyName.toLowerCase()]) {
-            ShaderLib[keyName.toLowerCase()] = code;
-        }
+        // Always overwrite. Skipping on duplicate keys means vite HMR
+        // can't propagate edits to *_frag.ts shader strings — the new
+        // source gets re-imported, register() is called again with the
+        // updated code, but the old code stays cached. Subsequent
+        // preCompile reads the stale source. This produced the
+        // confusing "works only after toggle / hard refresh" symptom
+        // when the shader edit changed compositing behaviour
+        // (e.g. UnLit_frag's USE_OIT_ACCUM pre-mul branch).
+        ShaderLib[keyName.toLowerCase()] = code;
     }
 
     public static getShader(keyName: string): string {
