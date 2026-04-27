@@ -2,17 +2,15 @@ import { GUIHelp } from "@orillusion/debug/GUIHelp";
 import {
     CameraUtil,
     Color,
-    DirectLight,
     Engine3D,
     HoverCameraController,
-    KelvinUtil,
-    LitMaterial,
     MeshRenderer,
     Object3D,
     PostProcessingComponent,
     Scene3D,
     SphereGeometry,
     TAAPost,
+    UnLitMaterial,
     View3D,
 } from "@orillusion/core";
 
@@ -61,10 +59,9 @@ class Sample_WBOIT {
     scene: Scene3D;
     view: View3D;
 
-    private sphereMaterials: LitMaterial[] = [];
+    private sphereMaterials: UnLitMaterial[] = [];
     private sphereObjs: Object3D[] = [];
     private palette: Color[] = [];
-    private directLight!: DirectLight;
 
     private params = {
         mode: 'weighted' as Mode,
@@ -103,13 +100,10 @@ class Sample_WBOIT {
 
         this.scene = new Scene3D();
         this.camera = CameraUtil.createCamera3DObject(this.scene);
-        // Orthographic projection: frustumSize ≈ vertical world-unit
-        // span. Cluster occupies ~6 units; 14 leaves comfortable margin.
-        this.camera.ortho2(this.params.frustumSize, 0.5, 2000.0);
-        // HoverCameraController only manipulates transform — projection
-        // stays orthographic. Yaw/pitch values pulled off-axis so the
-        // 3×3×3 cube's depth layers separate visually.
-        this.camera.object3D.addComponent(HoverCameraController).setCamera(25, -15, 30);
+        this.camera.perspective(45, this.engine.aspect, 0.5, 2000.0);
+        // Yaw/pitch off-axis so the 3×3×3 cube's depth layers separate
+        // visually. Distance set so the cluster fills the frame.
+        this.camera.object3D.addComponent(HoverCameraController).setCamera(25, -15, 16);
 
         this.view = new View3D();
         this.view.scene = this.scene;
@@ -132,18 +126,10 @@ class Sample_WBOIT {
     }
 
     async initScene() {
-        // Single DirectLight, no shadows, no sky/IBL. Engine's default
-        // envMap is a black cubemap, so all visible lighting comes
-        // from this one direct source.
-        const lightObj = new Object3D();
-        lightObj.rotationX = 35;
-        lightObj.rotationY = 130;
-        this.directLight = lightObj.addComponent(DirectLight);
-        this.directLight.lightColor = KelvinUtil.color_temperature_to_rgb(6500);
-        this.directLight.intensity = 8;
-        this.directLight.castShadow = false;
-        this.scene.addChild(lightObj);
-
+        // UnLitMaterial = no lighting, no shading. Each sphere shows
+        // its baseColor flat-shaded; this strips out lit-shading
+        // gradients so any visible artifact is purely from the
+        // transparency algorithm being demonstrated.
         this.buildSpheres();
     }
 
@@ -158,7 +144,7 @@ class Sample_WBOIT {
         this.sphereObjs.length = 0;
         this.sphereMaterials.length = 0;
 
-        const { radius, xySpacing, zSpacing, alpha, roughness, doubleSide } = this.params;
+        const { radius, xySpacing, zSpacing, alpha, doubleSide } = this.params;
         const geom = new SphereGeometry(radius, 32, 24);
 
         let idx = 0;
@@ -166,11 +152,9 @@ class Sample_WBOIT {
             for (let row = 0; row < 3; row++) {
                 for (let col = 0; col < 3; col++) {
                     const sphere = new Object3D();
-                    const m = new LitMaterial();
+                    const m = new UnLitMaterial();
                     const c = this.palette[idx++];
                     m.baseColor = new Color(c.r, c.g, c.b, alpha);
-                    m.roughness = roughness;
-                    m.metallic = 0;
                     m.doubleSide = doubleSide;
                     this.applyModeToMaterial(m, this.params.mode);
                     const r = sphere.addComponent(MeshRenderer);
@@ -188,12 +172,11 @@ class Sample_WBOIT {
     }
 
     private updateMaterials() {
-        const { alpha, roughness, doubleSide, mode } = this.params;
+        const { alpha, doubleSide, mode } = this.params;
         for (let i = 0; i < this.sphereMaterials.length; i++) {
             const m = this.sphereMaterials[i];
             const c = this.palette[i];
             m.baseColor = new Color(c.r, c.g, c.b, alpha);
-            m.roughness = roughness;
             m.doubleSide = doubleSide;
             this.applyModeToMaterial(m, mode);
         }
@@ -205,7 +188,7 @@ class Sample_WBOIT {
      * different OIT features; `hash` uses alphaMode='HASH' (opaque
      * queue + per-fragment hash discard) and oitMode is irrelevant.
      */
-    private applyModeToMaterial(m: LitMaterial, mode: Mode) {
+    private applyModeToMaterial(m: UnLitMaterial, mode: Mode) {
         if (mode === 'hash') {
             m.alphaMode = 'HASH';
         } else {
@@ -244,7 +227,6 @@ class Sample_WBOIT {
         });
 
         GUIHelp.add(this.params, 'alpha', 0.0, 1.0, 0.01).onChange(() => this.updateMaterials());
-        GUIHelp.add(this.params, 'roughness', 0.0, 1.0, 0.01).onChange(() => this.updateMaterials());
 
         GUIHelp.endFolder();
     }

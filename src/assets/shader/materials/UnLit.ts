@@ -6,6 +6,7 @@ export let UnLit: string = /*wgsl*/ `
     #include "Common_frag"
     #include "UnLit_frag"
     #include "UnLitMaterialUniform_frag"
+    #include "AlphaHash_frag"
 
     #if USE_CUSTOMUNIFORM
         struct MaterialUniform {
@@ -49,6 +50,16 @@ export let UnLit: string = /*wgsl*/ `
             color = vec4f(gammaToLiner(color.rgb), color.a);
             ORI_ShadingInput.BaseColor = color * materialUniform.baseColor ;
         #endif
+
+        #if USE_ALPHAHASH
+            // Stochastic alpha test (Wyman 2017): see PBRLitShader for
+            // the full rationale. Lives in the opaque pipeline because
+            // alphaMode='HASH' sets renderOrder=0 + depthWriteEnabled=true.
+            if (ORI_ShadingInput.BaseColor.a < alphaHash3D(ORI_VertexVarying.vWorldPos.xyz)) {
+                discard;
+            }
+        #endif
+
         UnLit();
     }
 `
