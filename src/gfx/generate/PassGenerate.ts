@@ -247,6 +247,28 @@ export class PassGenerate {
                 const tex = colorPass.getTexture(textureName);
                 if (tex) pass.setTexture(textureName, tex);
             }
+            // Clone storage / uniform buffers (lightBuffer,
+            // reflectionBuffer, clusterBuffer, ...). RenderNode.nodeUpdate
+            // sets these on the COLOR pass during first-init, gated by
+            // "if (!pass.<TexOrField>)" so they only run once per pass.
+            // Cloning textures alone (above) flips that gate to true on
+            // the OIT pass, so the storage-buffer setters that share
+            // the gate would be skipped — leaving the OIT pass with
+            // reflectionMap-the-texture but no reflectionBuffer-the-
+            // storage-buffer, blowing up reBuild's getGroupLayout when
+            // it looks for the buffer by name.
+            const cb = (colorPass as any)._bufferDic as Map<string, any> | undefined;
+            if (cb) {
+                cb.forEach((buf, name) => {
+                    if (!buf) return;
+                    // Pick the right setter based on the buffer's class.
+                    if ((buf.constructor && buf.constructor.name === 'UniformGPUBuffer')) {
+                        (pass as any).setUniformBuffer(name, buf);
+                    } else {
+                        (pass as any).setStorageBuffer(name, buf);
+                    }
+                });
+            }
             for (const defineName in colorPass.defineValue) {
                 pass.setDefine(defineName, colorPass.defineValue[defineName]);
             }
