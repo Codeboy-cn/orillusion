@@ -14,7 +14,7 @@ import { Material } from "./Material";
  *            the pipeline additionally enables alpha-to-coverage for
  *            smooth edges (foliage, fences).
  *  - BLEND:  transparent queue, hardware straight-alpha blending. */
-export type AlphaMode = 'OPAQUE' | 'MASK' | 'BLEND';
+export type AlphaMode = 'OPAQUE' | 'MASK' | 'BLEND' | 'HASH';
 
 export class LitMaterial extends Material {
 
@@ -296,6 +296,7 @@ export class LitMaterial extends Material {
                 state.blendMode = BlendMode.NONE;
                 state.depthWriteEnabled = true;
                 colorPass.setDefine('USE_ALPHACUT', false);
+                colorPass.setDefine('USE_ALPHAHASH', false);
                 colorPass.renderOrder = 0;
                 break;
             case 'MASK':
@@ -304,6 +305,21 @@ export class LitMaterial extends Material {
                 state.blendMode = BlendMode.NONE;
                 state.depthWriteEnabled = true;
                 colorPass.setDefine('USE_ALPHACUT', true);
+                colorPass.setDefine('USE_ALPHAHASH', false);
+                colorPass.renderOrder = 0;
+                break;
+            case 'HASH':
+                // Stochastic transparency: routes through the opaque
+                // queue (writes depth, no blending), but a per-fragment
+                // hash discard converges to true alpha when combined
+                // with TAA's sub-pixel camera jitter. Without TAA the
+                // image looks dithered.
+                state.transparent = false;
+                state.alphaToCoverageEnabled = false;
+                state.blendMode = BlendMode.NONE;
+                state.depthWriteEnabled = true;
+                colorPass.setDefine('USE_ALPHACUT', false);
+                colorPass.setDefine('USE_ALPHAHASH', true);
                 colorPass.renderOrder = 0;
                 break;
             case 'BLEND':
@@ -312,6 +328,7 @@ export class LitMaterial extends Material {
                 state.blendMode = BlendMode.NORMAL;
                 state.depthWriteEnabled = false;
                 colorPass.setDefine('USE_ALPHACUT', false);
+                colorPass.setDefine('USE_ALPHAHASH', false);
                 // EntityCollect.addRenderNode classifies into transparentList
                 // by `renderOrder >= 3000`. The blendMode setter only bumps
                 // it for ADD/SOFT_ADD/MUL/SCREEN — `BlendMode.NORMAL` (which

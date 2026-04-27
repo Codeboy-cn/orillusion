@@ -5,6 +5,7 @@ export let PBRLItShader: string = /*wgsl*/ `
     #include "Common_vert"
     #include "Common_frag"
     #include "BxDF_frag"
+    #include "AlphaHash_frag"
 
     @group(1) @binding(auto)
     var baseMapSampler: sampler;
@@ -94,6 +95,18 @@ export let PBRLItShader: string = /*wgsl*/ `
         #if USE_ALPHACUT
             if( (ORI_ShadingInput.BaseColor.a - materialUniform.alphaCutoff) <= 0.0 ){
                 // discard kills the fragment; no need to write @location outputs.
+                discard;
+            }
+        #endif
+
+        #if USE_ALPHAHASH
+            // Stochastic alpha test: per-fragment threshold from a
+            // spatial hash of world position. Combined with TAA jitter
+            // the result converges to true alpha over a few frames.
+            // Routes through the opaque queue (depthWriteEnabled=true),
+            // so writes interact correctly with depth-buffer consumers
+            // (shadows, SSR, SSAO, transmission backdrop).
+            if (ORI_ShadingInput.BaseColor.a < alphaHash3D(ORI_VertexVarying.vWorldPos.xyz)) {
                 discard;
             }
         #endif

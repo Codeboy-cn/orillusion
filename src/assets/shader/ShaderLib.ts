@@ -44,6 +44,7 @@ import { MatrixShader } from './math/MatrixShader';
 import { ClusterLight } from './core/struct/ClusterLight';
 import { Hair_frag } from './lighting/Hair_frag';
 import { BsDF_frag } from './lighting/BsDF_frag';
+import { AlphaHash_frag } from './lighting/AlphaHash_frag';
 import { UnLit } from './materials/UnLit';
 import { Sprite_shader } from './materials/Sprite_shader';
 import { Lambert_shader } from './materials/Lambert_shader';
@@ -118,6 +119,7 @@ export class ShaderLib {
         ShaderLib.register('Hair_frag', Hair_frag);
         ShaderLib.register('BxDF_frag', BxDF_frag);
         ShaderLib.register('BsDF_frag', BsDF_frag);
+        ShaderLib.register('AlphaHash_frag', AlphaHash_frag);
         ShaderLib.register('UnLit_frag', UnLit_frag);
         ShaderLib.register('UnLit', UnLit);
         ShaderLib.register('Sprite', Sprite_shader);
