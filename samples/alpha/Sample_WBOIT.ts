@@ -84,7 +84,7 @@ class Sample_WBOIT {
     private params = {
         mode: 'weighted' as Mode,
         material: 'pbr' as MaterialType,
-        alpha: 0.85,
+        alpha: 1.0,
         radius: 1.0,
         xySpacing: 2.0,
         zSpacing: 2.0,
