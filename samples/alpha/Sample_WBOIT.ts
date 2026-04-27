@@ -135,6 +135,27 @@ class Sample_WBOIT {
 
         await this.initScene();
         this.initGUI();
+
+        // Debug hook for the alpha-sweep probe (test/multi/_wboit_probe.mjs).
+        // Exposes the params + the same update path the GUI uses, so the
+        // probe can drive alpha / mode / material exactly the way a user
+        // would. No-op in normal sample usage; remove before committing to
+        // main if you want to keep the surface lean.
+        (globalThis as any).__wboit = {
+            setAlpha: (v: number) => {
+                this.params.alpha = v;
+                this.updateMaterials();
+            },
+            setMode: (m: Mode) => {
+                this.params.mode = m;
+                for (const mat of this.sphereMaterials) this.applyModeToMaterial(mat, m);
+            },
+            setMaterial: (mt: MaterialType) => {
+                this.params.material = mt;
+                this.buildSpheres();
+            },
+            params: this.params,
+        };
     }
 
     async initScene() {
@@ -261,12 +282,19 @@ class Sample_WBOIT {
      * Alpha=1 short-circuits to OPAQUE regardless of mode. WBOIT's
      * accum/reveal formula averages every contributing fragment
      * weighted by depth_term — and the front-vs-back depth_term
-     * ratio in our scene is only ~3-5x, so even at alpha=1 the
-     * front sphere only contributes ~30-40% of the final pixel and
-     * back layers visibly bleed through. Sorted at alpha=1 is
-     * naturally opaque (src*1 + dst*0 = src) but routing it through
-     * OPAQUE here keeps all three modes' alpha=1 endpoint visually
-     * consistent (truly opaque, front fragment dominates per pixel).
+     * ratio in our scene is only ~2-5x (4-unit cluster against a
+     * 0.5/2000 near/far frustum, so the paper's z/200 normalisation
+     * lands deep in the "all weights ~= 3000" saturation regime),
+     * so even at alpha=1 the front sphere contributes ~35% of the
+     * final pixel and back layers visibly bleed through. This is a
+     * fundamental property of WBOIT, not a bug — the standard fix
+     * (paper §3.2, Babylon, three.js) is to route alpha=1 through
+     * the regular opaque queue where depth-test makes the front
+     * fragment authoritatively win. We do the same: alpha=1 →
+     * OPAQUE; alpha<1 → BLEND/WBOIT/sorted. The visual is a small
+     * discontinuity at exactly alpha=1, in exchange for both halves
+     * looking right (front-fragment-correct opaque, smooth
+     * weighted-blend transparent).
      *
      * The OIT_ACCUM/REVEAL textures get cleared each frame even when
      * the transparent list is empty — see OITPassRenderer.render's
@@ -286,7 +314,9 @@ class Sample_WBOIT {
             // previous run) and no OIT pass gets created → next OIT
             // frame finds no pass to bind → black canvas.
             m.oitMode = mode;
-            m.alphaMode = 'BLEND';
+            // Alpha = 1 short-circuits to OPAQUE so the front fragment
+            // wins via depth-test (see class doc above).
+            m.alphaMode = m.baseColor.a >= 1.0 ? 'OPAQUE' : 'BLEND';
         }
     }
 
