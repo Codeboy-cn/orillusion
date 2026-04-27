@@ -270,6 +270,17 @@ class Sample_WBOIT {
     private initGUI() {
         GUIHelp.addFolder('WBOIT demo');
 
+        // Single source of truth for "user committed a GUI change"
+        // logging. Dropdowns fire onChange on selection (already a
+        // mouse-up event); sliders fire onChange continuously during
+        // drag and onFinishChange on release. We use onFinishChange
+        // for sliders so the log lands once when the user lets go,
+        // not on every micro-step of the drag — exactly matching the
+        // user's "log on mouse-up" requirement.
+        const logCommit = (control: string, value: unknown) => {
+            console.log(`[gui] ${control} = ${JSON.stringify(value)}`);
+        };
+
         GUIHelp.add(this.params, 'mode', ['sorted', 'weighted', 'hash']).onChange((v: string) => {
             this.params.mode = v as Mode;
             // Pure in-place mutation — alphaMode setter on each
@@ -278,7 +289,7 @@ class Sample_WBOIT {
             // don't need to tear down and rebuild the sphere lattice
             // when crossing the BLEND ↔ HASH boundary.
             for (const m of this.sphereMaterials) this.applyModeToMaterial(m, v as Mode);
-            console.log('[transparency] mode →', v);
+            logCommit('mode', v);
         });
 
         GUIHelp.add(this.params, 'material', ['unlit', 'pbr', 'lambert']).onChange((v: string) => {
@@ -288,10 +299,12 @@ class Sample_WBOIT {
             // re-bind to the renderers. Tear down and rebuild the lattice;
             // alphaMode/oitMode/baseColor get reapplied during build.
             this.buildSpheres();
-            console.log('[material] →', v);
+            logCommit('material', v);
         });
 
-        GUIHelp.add(this.params, 'alpha', 0.0, 1.0, 0.01).onChange(() => this.updateMaterials());
+        GUIHelp.add(this.params, 'alpha', 0.0, 1.0, 0.01)
+            .onChange(() => this.updateMaterials())
+            .onFinishChange((v: number) => logCommit('alpha', v));
 
         GUIHelp.endFolder();
 
@@ -305,8 +318,8 @@ class Sample_WBOIT {
         const recorderProxy = {
             recording: false,
             events: 0,
-            'Export JSON': () => recorder.export(),
-            'Clear': () => recorder.clear(),
+            'Export JSON': () => { recorder.export(); logCommit('recorder', 'export'); },
+            'Clear': () => { recorder.clear(); logCommit('recorder', 'clear'); },
         };
         // Live status — `.listen()` makes dat.gui re-read the values
         // each frame so the toggle / counter reflect recorder state.
@@ -328,6 +341,7 @@ class Sample_WBOIT {
             recorder.toggle();
             recorderProxy.recording = recorder.isRecording;
             recorderProxy.events = recorder.eventCount;
+            logCommit('recorder', recorder.isRecording ? 'start' : 'stop');
         });
         // Continuously refresh the event counter while recording so
         // the GUI shows live progress without per-event GUI updates.
