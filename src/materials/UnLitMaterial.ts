@@ -79,6 +79,9 @@ export class UnLitMaterial extends Material {
                 colorPass.renderOrder = 3000;
                 break;
         }
+        // Live alphaMode toggles change which EntityCollect bucket
+        // attached renderers should be in. See LitMaterial setter.
+        this._notifyRenderClassificationDirty();
     }
 
     public set baseMap(texture: Texture) {

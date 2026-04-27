@@ -10,6 +10,7 @@ import { Vector3 } from "../math/Vector3";
 import { Vector4 } from "../math/Vector4";
 import { BlendMode } from "./BlendMode";
 import { UUID } from "../util/Global";
+import { Reference } from "../util/Reference";
 
 export class Material {
 
@@ -285,5 +286,27 @@ export class Material {
 
     public applyUniform() {
         this._shader.applyUniform();
+    }
+
+    /**
+     * Re-bucket every renderer holding this material into the right
+     * EntityCollect queue (opaque vs transparent). Subclass alphaMode
+     * setters call this after flipping pass.renderOrder so live
+     * `alphaMode = 'BLEND'` ↔ `'HASH'` toggles take effect on the
+     * frame they fire — no rebuild required.
+     *
+     * Walks `Reference.getReference(this)` (the material→user back-
+     * channel populated by RenderNode `set materials`) and calls
+     * `refreshRenderClassification()` on each user. The duck-type
+     * check avoids importing RenderNode here (cyclic).
+     */
+    protected _notifyRenderClassificationDirty() {
+        const refs = Reference.getInstance().getReference(this);
+        if (!refs) return;
+        refs.forEach((_, target) => {
+            if (target && typeof (target as any).refreshRenderClassification === 'function') {
+                (target as any).refreshRenderClassification();
+            }
+        });
     }
 }

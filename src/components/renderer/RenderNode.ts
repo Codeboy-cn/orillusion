@@ -247,6 +247,38 @@ export class RenderNode extends ComponentBase {
         super.onDisable?.();
     }
 
+    /**
+     * Recompute renderOrder from current pass states and re-bucket
+     * this renderer in EntityCollect (opaque vs transparent map).
+     *
+     * Called when a material's alphaMode flips at runtime — the
+     * pass.renderOrder changes (3000 ↔ 0), but EntityCollect classifies
+     * once at addRenderNode time. Without this nudge the renderer
+     * stays in its old list and gets drawn through the wrong pipeline
+     * (e.g. WBOIT continues drawing a HASH-toggled material).
+     *
+     * Materials hop into this via Reference.getReference(material)
+     * to find every renderer holding them; sample code can also call
+     * it directly after manual state changes.
+     */
+    public refreshRenderClassification(): void {
+        if (!this._enable) return;
+        const scene = this.transform?.scene3D;
+        if (!scene) return;
+
+        let sort = 0;
+        for (let i = 0; i < this._materials.length; i++) {
+            const passArray = this._materials[i].getPass(PassType.COLOR);
+            if (!passArray || passArray.length === 0) continue;
+            const pass = passArray[0];
+            if (pass.renderOrder >= 3000) {
+                sort = sort > pass.renderOrder ? sort : pass.renderOrder;
+            }
+        }
+        this.renderOrder = sort;
+        EntityCollect.instance.addRenderNode(scene, this);
+    }
+
     public selfCloneMaterials(key: string): this {
         let newMaterials = [];
         for (let i = 0, c = this.materials.length; i < c; i++) {

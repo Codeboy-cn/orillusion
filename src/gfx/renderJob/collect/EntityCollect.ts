@@ -197,12 +197,26 @@ export class EntityCollect {
         } else if (!RenderLayerUtil.hasMask(renderNode.renderLayer, RenderLayer.None)) {
 
         } else {
-            let list = this.getPashList(root, renderNode);
-            if (list) {
-                let index = list.indexOf(renderNode);
-                if (index != -1) {
-                    list.splice(index, 1);
-                }
+            // Search BOTH opaque and transparent lists, not the one
+            // matching `renderNode.renderOrder`. When a material's
+            // alphaMode toggles live (e.g. BLEND ↔ HASH ↔ OPAQUE),
+            // pass.renderOrder flips from 3000 to 0 (or back), but
+            // the renderer is still sitting in the OLD list. If we
+            // only look in the list matching the NEW renderOrder we
+            // find nothing and silently leave the renderer in the
+            // wrong bucket — it gets rendered through both pipelines
+            // (the stale OIT/sorted-transparent path for the old
+            // bucket, plus the new opaque path), producing a
+            // ghosted "previous render is still showing" visual.
+            const opList = this._op_RenderNodes.get(root);
+            if (opList) {
+                const opIdx = opList.indexOf(renderNode);
+                if (opIdx !== -1) opList.splice(opIdx, 1);
+            }
+            const trList = this._tr_RenderNodes.get(root);
+            if (trList) {
+                const trIdx = trList.indexOf(renderNode);
+                if (trIdx !== -1) trList.splice(trIdx, 1);
             }
         }
 

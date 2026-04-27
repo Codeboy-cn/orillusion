@@ -345,6 +345,11 @@ export class LitMaterial extends Material {
                 colorPass.renderOrder = 3000;
                 break;
         }
+        // Live BLEND ↔ HASH toggles flip pass.renderOrder, which
+        // changes which EntityCollect bucket this renderer should be
+        // in. Notify so attached renderers re-classify on the next
+        // frame; without this they stay in the original queue.
+        this._notifyRenderClassificationDirty();
     }
 
     /**

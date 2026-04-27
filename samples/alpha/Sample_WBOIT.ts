@@ -74,13 +74,6 @@ class Sample_WBOIT {
         frustumSize: 14,
     };
 
-    // Tracks the last mode we processed in the GUI handler. dat.gui
-    // updates `params.mode` BEFORE firing onChange, so reading
-    // `params.mode` in the handler gives the new value, not the old.
-    // We keep our own previous-value snapshot to detect the
-    // BLEND ↔ HASH boundary that needs a sphere rebuild.
-    private _lastMode: Mode = 'weighted';
-
     private camera!: ReturnType<typeof CameraUtil.createCamera3DObject>;
 
     private _initMode: Mode = (() => {
@@ -118,7 +111,6 @@ class Sample_WBOIT {
         post.addPost(TAAPost);
 
         this.params.mode = this._initMode;
-        this._lastMode = this._initMode;
         this.palette = this.generatePalette(27);
 
         await this.initScene();
@@ -201,28 +193,13 @@ class Sample_WBOIT {
         GUIHelp.addFolder('WBOIT demo');
 
         GUIHelp.add(this.params, 'mode', ['sorted', 'weighted', 'hash']).onChange((v: string) => {
-            // Use _lastMode (the previous value WE captured) — NOT
-            // params.mode — because dat.gui has already written
-            // params.mode = v before this callback fires.
-            const wasHash = this._lastMode === 'hash';
-            const isHash = v === 'hash';
             this.params.mode = v as Mode;
-            this._lastMode = v as Mode;
-            // Crossing BLEND ↔ HASH flips alphaMode, which flips
-            // pass.renderOrder (3000 ↔ 0). EntityCollect buckets
-            // renderers into opaque vs transparent maps ONCE at
-            // registration; mutating renderOrder later doesn't move
-            // them between maps. So HASH materials in a previously-
-            // transparent slot would still be drawn via the OIT /
-            // sorted-transparent pipeline. Easiest fix: rebuild the
-            // spheres so they're freshly registered with the new
-            // renderOrder. Within BLEND modes (sorted/weighted) we
-            // can just flip oitMode on the live materials.
-            if (wasHash !== isHash) {
-                this.buildSpheres();
-            } else {
-                for (const m of this.sphereMaterials) this.applyModeToMaterial(m, v as Mode);
-            }
+            // Pure in-place mutation — alphaMode setter on each
+            // material now triggers re-bucketing in EntityCollect
+            // (see Material._notifyRenderClassificationDirty), so we
+            // don't need to tear down and rebuild the sphere lattice
+            // when crossing the BLEND ↔ HASH boundary.
+            for (const m of this.sphereMaterials) this.applyModeToMaterial(m, v as Mode);
             console.log('[transparency] mode →', v);
         });
 
