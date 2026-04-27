@@ -82,7 +82,7 @@ class Sample_WBOIT {
     private palette: Color[] = [];
 
     private params = {
-        mode: 'sorted' as Mode,
+        mode: 'weighted' as Mode,
         material: 'pbr' as MaterialType,
         alpha: 0.85,
         radius: 1.0,
@@ -97,7 +97,7 @@ class Sample_WBOIT {
 
     private _initMode: Mode = (() => {
         const m = (globalThis as any).__VERIFY_MODE;
-        return (m === 'weighted' || m === 'hash') ? m : 'sorted';
+        return (m === 'sorted' || m === 'hash') ? m : 'weighted';
     })();
 
     async run() {
