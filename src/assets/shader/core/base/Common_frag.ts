@@ -56,22 +56,26 @@ export let Common_frag: string = /*wgsl*/ `
     #endif
 
     #if USE_OIT_ACCUM
-      // Weighted-Blended OIT (McGuire & Bavoil 2013). Reuses the
-      // FragmentOutput struct slots verbatim: .color becomes the
-      // accumulation attachment (RGBA16F), .gBuffer becomes the
-      // reveal attachment (R8 — only .r is sampled). Pipeline blend
-      // states for these targets are set in RenderShaderPass when
-      // passType === PassType.OIT_ACCUM.
+      // Weighted-Blended OIT (McGuire and Bavoil 2013). BxDF_frag
+      // pre-multiplies the lit RGB by alpha (BxDF_frag.ts ~line 202
+      // emits vec4(retColor.rgb * Albedo.w, Albedo.a)), so the .rgb
+      // here is already lit*alpha. WBOIT compositing wants
+      // accum.rgb = sum(color * alpha * w), accum.a = sum(alpha * w),
+      // reveal.r  = product(1 - alpha). With pre-mul rgb we just
+      // multiply by w; reveal is written via gBuffer.r = alpha and
+      // the multiplicative blend mode picks the (1 - alpha) factor.
+      // WGSL spec reserves leading double-underscore identifiers for
+      // the implementation; single-underscore prefixes here.
       {
-        let __alpha = clamp(ORI_FragmentOutput.color.a, 0.0, 1.0);
-        let __z = vertex_varying.fragCoord.z;
-        let __w = clamp(
-          pow(__alpha + 0.01, 4.0) +
-          max(min(0.3 / (1e-5 + pow(__z / 200.0, 4.0)), 3000.0), 0.01),
+        let _oitAlpha = clamp(ORI_FragmentOutput.color.a, 0.0, 1.0);
+        let _oitZ = vertex_varying.fragCoord.z;
+        let _oitW = clamp(
+          pow(_oitAlpha + 0.01, 4.0) +
+          max(min(0.3 / (1e-5 + pow(_oitZ / 200.0, 4.0)), 3000.0), 0.01),
           0.01, 3000.0
         );
-        ORI_FragmentOutput.color = vec4<f32>(ORI_FragmentOutput.color.rgb * __alpha, __alpha) * __w;
-        ORI_FragmentOutput.gBuffer = vec4<f32>(__alpha, 0.0, 0.0, 0.0);
+        ORI_FragmentOutput.color = vec4<f32>(ORI_FragmentOutput.color.rgb * _oitW, _oitAlpha * _oitW);
+        ORI_FragmentOutput.gBuffer = vec4<f32>(_oitAlpha, 0.0, 0.0, 0.0);
       }
     #endif
 

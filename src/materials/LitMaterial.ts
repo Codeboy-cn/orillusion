@@ -296,6 +296,7 @@ export class LitMaterial extends Material {
                 state.blendMode = BlendMode.NONE;
                 state.depthWriteEnabled = true;
                 colorPass.setDefine('USE_ALPHACUT', false);
+                colorPass.renderOrder = 0;
                 break;
             case 'MASK':
                 state.transparent = false;
@@ -303,6 +304,7 @@ export class LitMaterial extends Material {
                 state.blendMode = BlendMode.NONE;
                 state.depthWriteEnabled = true;
                 colorPass.setDefine('USE_ALPHACUT', true);
+                colorPass.renderOrder = 0;
                 break;
             case 'BLEND':
                 state.transparent = true;
@@ -310,6 +312,20 @@ export class LitMaterial extends Material {
                 state.blendMode = BlendMode.NORMAL;
                 state.depthWriteEnabled = false;
                 colorPass.setDefine('USE_ALPHACUT', false);
+                // EntityCollect.addRenderNode classifies into transparentList
+                // by `renderOrder >= 3000`. The blendMode setter only bumps
+                // it for ADD/SOFT_ADD/MUL/SCREEN — `BlendMode.NORMAL` (which
+                // 'BLEND' picks) is excluded there because NORMAL is also
+                // used by opaque-with-discard sprites. alphaMode='BLEND'
+                // is the unambiguous "real transparent" signal, so opt the
+                // pass into the transparent queue here. Without this,
+                // transparent fragments get rendered in the opaque pass —
+                // which "works" only when other opaque geometry already
+                // wrote depth at those pixels (ground, walls, etc.); over
+                // sky pixels (cleared depth = 1.0, sky doesn't write
+                // depth), the late-drawn sky's `less_equal` test passes
+                // and overwrites the transparent's color.
+                colorPass.renderOrder = 3000;
                 break;
         }
     }

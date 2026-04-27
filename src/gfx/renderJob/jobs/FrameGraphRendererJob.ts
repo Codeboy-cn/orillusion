@@ -259,7 +259,7 @@ export class FrameGraphRendererJob extends ForwardRenderJob {
             }
             if (useOIT) {
                 if (!this.graph.getFeature('TransparentOITFeature')) {
-                    const oitFeature = new TransparentOITFeature(ctx, this.occlusionSystem);
+                    const oitFeature = new TransparentOITFeature(ctx, this.occlusionSystem, this.clusterLightingRender);
                     oitFeature.registerResources(this.graph.pool);
                     this.graph.addFeature(oitFeature);
                 }

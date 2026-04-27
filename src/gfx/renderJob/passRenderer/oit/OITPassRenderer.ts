@@ -9,6 +9,7 @@ import { GBufferFrame } from '../../frame/GBufferFrame';
 import { RTFrame } from '../../frame/RTFrame';
 import { RTResourceMap } from '../../frame/RTResourceMap';
 import { OcclusionSystem } from '../../occlusion/OcclusionSystem';
+import { ClusterLightingBuffer } from '../cluster/ClusterLightingBuffer';
 import { RTResourceConfig } from '../../config/RTResourceConfig';
 import { RendererBase } from '../RendererBase';
 import { PassType } from '../state/PassType';
@@ -99,7 +100,7 @@ export class OITPassRenderer extends RendererBase {
         void RTResourceConfig;
     }
 
-    public render(view: View3D, _occlusion: OcclusionSystem): void {
+    public render(view: View3D, _occlusion: OcclusionSystem, clusterLightingBuffer?: ClusterLightingBuffer): void {
         const gpu = view.engine3D.context3D.gpuContext;
         const camera = view.camera;
         GlobalBindGroup.updateCameraGroup(camera);
@@ -110,6 +111,13 @@ export class OITPassRenderer extends RendererBase {
         if (!collectInfo.transparentList || collectInfo.transparentList.length === 0) return;
 
         const command = gpu.beginCommandEncoder();
+        // OIT writes to side-band accum/reveal targets, not to the main
+        // color cursor. Save/restore `gpu.lastRenderPassState` around
+        // the OIT pass so the post-chain reader (PostFeature →
+        // _FinalColor → lastRenderPassState.getLastRenderTexture) keeps
+        // pointing at the colorBuffer pass state set by SortedTransparent
+        // / Resolve, not at the OIT_ACCUM RT.
+        const _savedLastPS = gpu.lastRenderPassState;
         const encoder = gpu.beginRenderPass(command, this.rendererPassState);
 
         gpu.bindCamera(encoder, camera);
@@ -119,14 +127,19 @@ export class OITPassRenderer extends RendererBase {
             // preInit triggers PassGenerate.createOITPass via
             // RenderNode.castNeedPass when the material is first
             // touched; nodeUpdate propagates current uniform / texture
-            // state to the OIT pass's bind groups.
+            // state to the OIT pass's bind groups, including the
+            // clusterLightingBuffer bindings (`clustersUniform`, etc.).
+            // The cloned PBR shader the OIT pass runs declares those
+            // uniforms — passing null here used to cause "not set
+            // clustersUniform buffer" + a TypeError in getGroupLayout.
             if (!node.preInit(this.passType)) {
-                node.nodeUpdate(view, this.passType, this.rendererPassState, null);
+                node.nodeUpdate(view, this.passType, this.rendererPassState, clusterLightingBuffer);
             }
-            node.renderPass2(view, this.passType, this.rendererPassState, null, encoder);
+            node.renderPass2(view, this.passType, this.rendererPassState, clusterLightingBuffer, encoder);
         }
 
         gpu.endPass(encoder);
         gpu.endCommandEncoder(command);
+        gpu.lastRenderPassState = _savedLastPS;
     }
 }

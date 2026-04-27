@@ -411,6 +411,17 @@ export class RenderShaderPass extends ShaderPassBase {
      */
     public apply(ctx: Context3D, geometry: GeometryBase, rendererPassState: RendererPassState, noticeFun?: Function) {
         bindCtx(this, ctx);
+        // First apply path of a derived pass (OIT_ACCUM, SHADOW, …) hits
+        // materialDataUniformBuffer with an EMPTY uniformNodes list —
+        // initDataUniform only runs inside reBuild's createGroupLayouts.
+        // The early-return in MaterialDataUniformGPUBuffer.apply meant
+        // the GPU buffer was never written for the derived pass, so the
+        // shader read all-zero `materialUniform.baseColor` (including
+        // baseColor.a = 0, which collapsed the OIT alpha to 0 and
+        // produced an empty accumulation buffer). Apply BEFORE and
+        // AFTER reBuild so the freshly-populated uniformNodes do their
+        // first GPU upload on the same frame the pass is built.
+        const wasFirstBuild = !this.pipeline;
         this.materialDataUniformBuffer.apply(ctx);
 
         // Plan B: rebuild only when shader state changes or first time.
@@ -425,6 +436,10 @@ export class RenderShaderPass extends ShaderPassBase {
             if (noticeFun) {
                 noticeFun();
             }
+        }
+        if (wasFirstBuild) {
+            this.materialDataUniformBuffer.onChange();
+            this.materialDataUniformBuffer.apply(ctx);
         }
 
         if (this._textureChange && this._textureGroup != -1) {

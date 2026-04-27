@@ -1,6 +1,7 @@
 import { Context3D } from '../../../graphics/webGpu/Context3D';
 import { OITPassRenderer, OIT_ACCUM_TEX, OIT_REVEAL_TEX } from '../../passRenderer/oit/OITPassRenderer';
 import { OcclusionSystem } from '../../occlusion/OcclusionSystem';
+import { ClusterLightingRender } from '../../passRenderer/cluster/ClusterLightingRender';
 import { RenderTexture } from '../../../../textures/RenderTexture';
 import { RTResourceMap } from '../../frame/RTResourceMap';
 import { FeatureContext, RenderFeature } from '../RenderFeature';
@@ -31,12 +32,14 @@ export class TransparentOITFeature extends RenderFeature {
 
     private readonly _ctx: Context3D;
     private readonly _occlusion: OcclusionSystem;
+    private readonly _clusterLighting: ClusterLightingRender;
     private _renderer: OITPassRenderer | null = null;
 
-    constructor(ctx: Context3D, occlusion: OcclusionSystem) {
+    constructor(ctx: Context3D, occlusion: OcclusionSystem, clusterLighting: ClusterLightingRender) {
         super();
         this._ctx = ctx;
         this._occlusion = occlusion;
+        this._clusterLighting = clusterLighting;
     }
 
     public registerResources(pool: { registerExternal<T>(name: string, getter: () => T): void }): void {
@@ -57,6 +60,6 @@ export class TransparentOITFeature extends RenderFeature {
         if (!this._renderer) {
             this._renderer = new OITPassRenderer(this._ctx);
         }
-        this._renderer.render(ctx.view, this._occlusion);
+        this._renderer.render(ctx.view, this._occlusion, this._clusterLighting.clusterLightingBuffer);
     }
 }
