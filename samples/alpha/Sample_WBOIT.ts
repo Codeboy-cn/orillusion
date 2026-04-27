@@ -210,8 +210,24 @@ class Sample_WBOIT {
         GUIHelp.addFolder('WBOIT demo');
 
         GUIHelp.add(this.params, 'mode', ['sorted', 'weighted', 'hash']).onChange((v: string) => {
+            const wasHash = this.params.mode === 'hash';
+            const isHash = v === 'hash';
             this.params.mode = v as Mode;
-            for (const m of this.sphereMaterials) this.applyModeToMaterial(m, v as Mode);
+            // Crossing BLEND ↔ HASH flips alphaMode, which flips
+            // pass.renderOrder (3000 ↔ 0). EntityCollect buckets
+            // renderers into opaque vs transparent maps ONCE at
+            // registration; mutating renderOrder later doesn't move
+            // them between maps. So HASH materials in a previously-
+            // transparent slot would still be drawn via the OIT /
+            // sorted-transparent pipeline. Easiest fix: rebuild the
+            // spheres so they're freshly registered with the new
+            // renderOrder. Within BLEND modes (sorted/weighted) we
+            // can just flip oitMode on the live materials.
+            if (wasHash !== isHash) {
+                this.buildSpheres();
+            } else {
+                for (const m of this.sphereMaterials) this.applyModeToMaterial(m, v as Mode);
+            }
             console.log('[transparency] mode →', v);
         });
 
