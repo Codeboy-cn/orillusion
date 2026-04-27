@@ -393,6 +393,12 @@ export class RenderNode extends ComponentBase {
             const mat = this.materials[i];
             if (mat.oitMode === 'weighted') {
                 PassGenerate.createOITPass(this, mat.shader);
+            } else if (mat.oitMode === 'depth-peel') {
+                // Dual Depth Peeling derived passes (3 sub-pass types
+                // per material: depth peel / front color / back color).
+                // Same lazy/idempotent contract as createOITPass — call
+                // costs nothing once the passes exist.
+                PassGenerate.createDepthPeelPasses(this, mat.shader);
             }
         }
     }

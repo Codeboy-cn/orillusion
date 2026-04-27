@@ -28,29 +28,43 @@ export class Material {
 
     public enable: boolean = true;
 
-    private _oitMode: 'sorted' | 'weighted' = 'sorted';
+    private _oitMode: 'sorted' | 'weighted' | 'depth-peel' = 'sorted';
 
-    /** Order-independent transparency mode opt-in. `sorted` (default)
-     *  uses the back-to-front sorted transparent pass. `weighted`
-     *  routes the material through the Weighted-Blended OIT
-     *  accumulation feature when `engine.setting.render.useOIT` is
-     *  true; otherwise it falls back to the sorted path.
+    /** Order-independent transparency mode opt-in.
      *
-     *  Setter notifies attached renderers so the OIT_ACCUM derived
-     *  pass gets lazily generated when flipping `'sorted' → 'weighted'`
-     *  at runtime. Without this, callers had to follow up with an
-     *  alphaMode setter call to provoke `refreshRenderClassification`
-     *  → `castNeedPass` — which only worked because alphaMode setters
-     *  fire `_notifyRenderClassificationDirty`. The two-step "set
-     *  oitMode FIRST, alphaMode SECOND" dance is no longer required.
+     *  - `'sorted'` (default): back-to-front sorted alpha-blend. Cheap,
+     *    correct between meshes, but in-mesh triangle order is geometry-
+     *    based not depth-based so self-overlapping meshes (spheres,
+     *    torus) show banding.
+     *  - `'weighted'`: McGuire-Bavoil 2013 Weighted-Blended OIT. Single-
+     *    pass, order-independent, no in-mesh banding. Approximate —
+     *    accum.rgb/accum.a degenerates to a depth-weighted average so
+     *    α=1 looks averaged-milky at small scene scales (the front-vs-
+     *    back depth-weight ratio saturates the paper's z/200 norm).
+     *    Use for unbounded transparent layer counts: particles, smoke,
+     *    foliage, hair cards.
+     *  - `'depth-peel'`: Dual depth peeling (Babylon-style). Multi-pass
+     *    (passCount × 2 layers), order-correct over operator. α=1 is
+     *    cleanly opaque — front fragment dominates because subsequent
+     *    layers get multiplied by (1 - frontColor.a) = 0. Hard layer
+     *    count limit (default 10). Use for hero glass, scientific
+     *    visualization, layered architectural geometry.
+     *
+     *  All three only take effect when `engine.setting.render.useOIT`
+     *  is true (otherwise everything falls through the sorted path).
+     *
+     *  Setter notifies attached renderers so the corresponding derived
+     *  pass(es) get lazily generated when flipping mode at runtime.
+     *  Without this, callers had to follow up with an alphaMode setter
+     *  call to provoke `refreshRenderClassification` → `castNeedPass`.
      *
      *  Documented at Material-level (not LitMaterial) so any future
      *  material subclass (particle, decal) can opt in. */
-    public get oitMode(): 'sorted' | 'weighted' {
+    public get oitMode(): 'sorted' | 'weighted' | 'depth-peel' {
         return this._oitMode;
     }
 
-    public set oitMode(value: 'sorted' | 'weighted') {
+    public set oitMode(value: 'sorted' | 'weighted' | 'depth-peel') {
         if (this._oitMode === value) return;
         this._oitMode = value;
         this._notifyRenderClassificationDirty();

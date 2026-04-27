@@ -15,6 +15,7 @@ import { SceneColorPyramidFeature } from '../graph/features/SceneColorPyramidFea
 import { SortedTransparentFeature } from '../graph/features/SortedTransparentFeature';
 import { TransmissionOpaqueFeature } from '../graph/features/TransmissionOpaqueFeature';
 import { TransparentOITFeature } from '../graph/features/TransparentOITFeature';
+import { TransparentDualDepthPeelingFeature } from '../graph/features/TransparentDualDepthPeelingFeature';
 import { TransparentResolveFeature } from '../graph/features/TransparentResolveFeature';
 import { PostFeature } from '../graph/features/PostFeature';
 import { GUIFeature } from '../graph/features/GUIFeature';
@@ -262,6 +263,18 @@ export class FrameGraphRendererJob extends ForwardRenderJob {
                     const oitFeature = new TransparentOITFeature(ctx, this.occlusionSystem, this.clusterLightingRender);
                     oitFeature.registerResources(this.graph.pool);
                     this.graph.addFeature(oitFeature);
+                }
+                // Dual Depth Peeling runs alongside WBOIT — each
+                // feature filters to materials matching its own
+                // oitMode, so a scene can mix `'sorted'`, `'weighted'`,
+                // and `'depth-peel'` materials and each goes through
+                // the right pipeline. Stage 1: feature is wired but
+                // its renderer is a no-op stub; depth-peel materials
+                // currently fall through to the sorted path.
+                if (!this.graph.getFeature('TransparentDualDepthPeelingFeature')) {
+                    const ddpFeature = new TransparentDualDepthPeelingFeature(ctx, this.occlusionSystem, this.clusterLightingRender);
+                    ddpFeature.registerResources(this.graph.pool);
+                    this.graph.addFeature(ddpFeature);
                 }
                 if (!this.graph.getFeature('TransparentResolveFeature')) {
                     this.graph.addFeature(new TransparentResolveFeature(ctx));

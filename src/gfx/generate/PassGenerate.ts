@@ -261,6 +261,51 @@ export class PassGenerate {
         }
     }
 
+    /**
+     * Dual depth peeling pass generator (Babylon-style OIT). For each
+     * material color pass, clones THREE derived passes — one per sub-
+     * pass-type (DEPTH / FRONT / BACK) — each with the corresponding
+     * `USE_OIT_DEPTH_PEEL_*` define set so the shader writes the right
+     * attachments. The DualDepthPeelingRenderer cycles through the
+     * three pass types per peel iteration.
+     *
+     * STAGE 1 (this commit): no-op stub. The shader-side
+     * `USE_OIT_DEPTH_PEEL_*` blocks (stage 2) and the per-iteration
+     * pipeline state requirements (stage 3) need to land first; until
+     * they do, this method intentionally returns to keep depth-peel
+     * materials falling through the sorted path without crashing.
+     *
+     * No-op if the depth-peel passes already exist for this material.
+     *
+     * @param renderNode the renderer that owns this material
+     * @param shader the material's shader (passes will be added to
+     *               its passShader map)
+     */
+    public static createDepthPeelPasses(renderNode: RenderNode, shader: Shader) {
+        // Stage 1 stub — see method docblock. Stage 3 implementation
+        // will mirror createOITPass's clone-from-COLOR pattern, but
+        // produce three passes:
+        //
+        //   const depthPass = new DDPDepthPass(colorPass.vsName, colorPass.fsName);
+        //   const frontPass = new DDPFrontPass(colorPass.vsName, colorPass.fsName);
+        //   const backPass  = new DDPBackPass(colorPass.vsName, colorPass.fsName);
+        //
+        //   for each pass: clone uniforms / textures / defines / non-blend
+        //                  shaderState; setDefine the matching
+        //                  USE_OIT_DEPTH_PEEL_* flag; bindCtx + preCompile;
+        //                  shader.addRenderPass.
+        //
+        // Each pass also overrides depthWriteEnabled=false (depth comes
+        // from the shared GBuffer load), transparent=true, and a
+        // pass-type-specific blend mode (MAX for depth, over for front,
+        // under for back). The blend mode is applied at pipeline-build
+        // time in RenderShaderPass.buildPipeline based on this.passType,
+        // same way OIT_ACCUM gets its custom (one/one + zero/one-minus-src)
+        // blend wired in `RenderShaderPass.ts:859-868`.
+        void renderNode;
+        void shader;
+    }
+
     static createReflectionPass(renderNode: RenderNode, shader: Shader) {
         let colorPassList = shader.getDefaultShaders();
         for (let jj = 0; jj < colorPassList.length; jj++) {
