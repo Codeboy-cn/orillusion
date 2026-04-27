@@ -21,8 +21,18 @@ import { PassType } from '../../gfx/renderJob/passRenderer/state/PassType';
  * @group Material
  */
 export class OITAccumPass extends RenderShaderPass {
-    constructor() {
-        super(`PBRLItShader`, `PBRLItShader`);
+    /**
+     * @param vs / fs — registered shader names. Default to PBRLitShader
+     *   so existing LitMaterial-based callers keep working unchanged.
+     *   PassGenerate.createOITPass passes the COLOR pass's own vsName/
+     *   fsName so the OIT pipeline runs the SAME fragment program the
+     *   color pass would have run (PBRLit for LitMaterial, UnLit for
+     *   UnLitMaterial, …). Without this, an UnLit material running
+     *   `oitMode='weighted'` would fail to bind because the cloned OIT
+     *   pass still expected the full PBR uniform set.
+     */
+    constructor(vs: string = `PBRLItShader`, fs: string = `PBRLItShader`) {
+        super(vs, fs);
         this.setShaderEntry(`VertMain`, `FragMain`);
         this.passType = PassType.OIT_ACCUM;
         const state = this.shaderState;

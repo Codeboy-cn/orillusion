@@ -218,7 +218,13 @@ export class PassGenerate {
             const existing = shader.getSubShaders(PassType.OIT_ACCUM);
             if (existing && existing.length > jj) continue;
 
-            const pass = new OITAccumPass();
+            // Use the COLOR pass's own vs/fs so the OIT accumulation
+            // pipeline runs the SAME fragment program. Without this,
+            // OITAccumPass's PBRLitShader default would try to bind
+            // PBR-only uniforms (clearcoat*, transmission*, *MapOffsetSize)
+            // for materials whose color pass is e.g. UnLit, blowing up
+            // in initDataUniform with "size" undefined.
+            const pass = new OITAccumPass(colorPass.vsName, colorPass.fsName);
 
             // Clone shaderState — we want the same culling / front-face
             // / topology / lighting flags / receive-env etc as the
