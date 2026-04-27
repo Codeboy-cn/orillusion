@@ -276,6 +276,13 @@ export class RenderNode extends ComponentBase {
             }
         }
         this.renderOrder = sort;
+        // Re-cast derived passes so an alphaMode/oitMode flip that
+        // newly demands a pass (e.g. oitMode going 'sorted' → 'weighted'
+        // needs an OIT_ACCUM pass that didn't exist while the material
+        // was OPAQUE) lazily creates it. createOITPass is idempotent
+        // (it skips when the pass is already there) so this is cheap
+        // even when nothing actually changed.
+        this.castNeedPass();
         EntityCollect.instance.addRenderNode(scene, this);
     }
 
