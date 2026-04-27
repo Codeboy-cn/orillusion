@@ -275,7 +275,10 @@ export class RenderNode extends ComponentBase {
                 sort = sort > pass.renderOrder ? sort : pass.renderOrder;
             }
         }
+        const prev = this.renderOrder;
         this.renderOrder = sort;
+        // DIAGNOSTIC — remove after WBOIT/HASH toggle is confirmed working
+        console.log(`[refresh] renderer ${this.instanceID?.slice?.(0, 6)} renderOrder ${prev} → ${sort}`);
         EntityCollect.instance.addRenderNode(scene, this);
     }
 
