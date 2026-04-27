@@ -867,6 +867,45 @@ export class RenderShaderPass extends ShaderPassBase {
             };
         }
 
+        // Dual Depth Peeling per-target blend wiring (Babylon-style).
+        //
+        // OIT_DEPTH_PEEL_DEPTH writes (-d, d) to RG32F and uses MAX
+        // blending per-channel so multiple fragments at the same pixel
+        // converge to (-min, max). The B/A channels are unused — kept
+        // at MAX as well for symmetry, they stay at the cleared
+        // -MAX_DEPTH value because shader writes 0 there.
+        //
+        // OIT_DEPTH_PEEL_FRONT and _BACK use overwrite blending
+        // (one/zero). Their accumulation is done in the shader via
+        // texelFetch of the previous-iteration MRT plus an arithmetic
+        // composite, then the result overwrites the current MRT. This
+        // keeps blend wiring simple and lets the shader express the
+        // exact `(1-prevA) * α * rgb` over operator without relying on
+        // hardware blend factor combinations.
+        if (this.passType === PassType.OIT_DEPTH_PEEL_DEPTH && targets.length >= 1) {
+            targets[0].blend = {
+                color: { srcFactor: 'one', dstFactor: 'one', operation: 'max' },
+                alpha: { srcFactor: 'one', dstFactor: 'one', operation: 'max' },
+            };
+        }
+        if (this.passType === PassType.OIT_DEPTH_PEEL_FRONT && targets.length >= 1) {
+            targets[0].blend = {
+                color: { srcFactor: 'one', dstFactor: 'zero', operation: 'add' },
+                alpha: { srcFactor: 'one', dstFactor: 'zero', operation: 'add' },
+            };
+        }
+        if (this.passType === PassType.OIT_DEPTH_PEEL_BACK && targets.length >= 1) {
+            // Back uses under-blend for back-to-front associative
+            // accumulation: dst = src.a*src.rgb + (1-src.a)*dst, with
+            // the shader emitting un-premultiplied (rgb, α). Babylon
+            // expresses this as src=ONE_MINUS_DST_ALPHA, dst=ONE for
+            // the under-blend convention.
+            targets[0].blend = {
+                color: { srcFactor: 'one-minus-dst-alpha', dstFactor: 'one', operation: 'add' },
+                alpha: { srcFactor: 'one-minus-dst-alpha', dstFactor: 'one', operation: 'add' },
+            };
+        }
+
         let renderPipelineDescriptor: GPURenderPipelineDescriptor = {
             label: this.vsName + '|' + this.fsName,
             layout: layouts,

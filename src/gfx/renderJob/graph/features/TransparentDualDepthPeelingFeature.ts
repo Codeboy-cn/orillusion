@@ -1,11 +1,8 @@
 import { Context3D } from '../../../graphics/webGpu/Context3D';
 import {
     DualDepthPeelingRenderer,
-    DDP_DEPTH_TEX_0,
-    DDP_DEPTH_TEX_1,
-    DDP_FRONT_TEX_0,
-    DDP_FRONT_TEX_1,
-    DDP_BACK_TEX,
+    DDP_FRONT_TEX,
+    DDP_FRONT_DEPTH_TEX,
 } from '../../passRenderer/oit/DualDepthPeelingRenderer';
 import { OcclusionSystem } from '../../occlusion/OcclusionSystem';
 import { ClusterLightingRender } from '../../passRenderer/cluster/ClusterLightingRender';
@@ -40,13 +37,7 @@ export class TransparentDualDepthPeelingFeature extends RenderFeature {
     public readonly name = 'TransparentDualDepthPeelingFeature';
     public readonly stage = RenderStage.Transparent;
     public readonly reads = [COLOR_BUFFER, SCENE_COLOR_PYRAMID];
-    public readonly writes = [
-        DDP_DEPTH_TEX_0,
-        DDP_DEPTH_TEX_1,
-        DDP_FRONT_TEX_0,
-        DDP_FRONT_TEX_1,
-        DDP_BACK_TEX,
-    ];
+    public readonly writes = [DDP_FRONT_TEX, DDP_FRONT_DEPTH_TEX];
 
     private readonly _ctx: Context3D;
     private readonly _occlusion: OcclusionSystem;
@@ -65,7 +56,7 @@ export class TransparentDualDepthPeelingFeature extends RenderFeature {
         // pool so the eventual TransparentDualDepthPeelingResolveFeature
         // (stage 4) and any debug visualisation features can resolve
         // them by name.
-        for (const tex of [DDP_DEPTH_TEX_0, DDP_DEPTH_TEX_1, DDP_FRONT_TEX_0, DDP_FRONT_TEX_1, DDP_BACK_TEX]) {
+        for (const tex of [DDP_FRONT_TEX, DDP_FRONT_DEPTH_TEX]) {
             pool.registerExternal<RenderTexture>(tex, () => RTResourceMap.getTexture(this._ctx, tex));
         }
     }

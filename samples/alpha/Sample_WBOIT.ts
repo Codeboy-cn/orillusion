@@ -20,7 +20,7 @@ import {
     View3D,
 } from "@orillusion/core";
 
-type Mode = 'sorted' | 'weighted' | 'hash';
+type Mode = 'sorted' | 'weighted' | 'depth-peel' | 'hash';
 type MaterialType = 'unlit' | 'pbr' | 'lambert';
 
 // Materials we use here all expose a glTF-style `alphaMode` setter
@@ -29,7 +29,7 @@ type MaterialType = 'unlit' | 'pbr' | 'lambert';
 // public type; declare the narrow shape we actually call against.
 type AlphaMaterial = Material & {
     alphaMode: 'OPAQUE' | 'MASK' | 'BLEND' | 'HASH';
-    oitMode: 'sorted' | 'weighted';
+    oitMode: 'sorted' | 'weighted' | 'depth-peel';
     baseColor: Color;
     doubleSide: boolean;
 };
@@ -278,7 +278,7 @@ class Sample_WBOIT {
     }
 
     /**
-     * Map the GUI's three-way `mode` to the underlying material flags.
+     * Map the GUI's four-way `mode` to the underlying material flags.
      *
      * Each mode uses its own algorithm independent of alpha — the
      * three axes (mode, material, alpha) are orthogonal, so flipping
@@ -292,13 +292,26 @@ class Sample_WBOIT {
      *     normalisation saturates), so 27 layers get averaged ~equally
      *     and the cluster looks "milky averaged" even at α=1. This is
      *     the documented WBOIT behaviour at small scene scales — not
-     *     a bug. Use sorted or hash at α=1 if you want opaque.
+     *     a bug. Use sorted, depth-peel, or hash at α=1 if you want
+     *     opaque. Use weighted for unbounded transparent layer counts
+     *     (particles, smoke, foliage).
      *
      *   - `sorted`: alphaMode='BLEND' + oitMode='sorted' → back-to-
      *     front per-mesh sort + alpha blend. At α=1 the over operator
      *     `src*α + dst*(1-α)` collapses to `src` so the front fragment
      *     authoritatively wins; cluster looks opaque (modulo the
      *     within-sphere triangle-order banding documented up top).
+     *
+     *   - `depth-peel`: alphaMode='BLEND' + oitMode='depth-peel' →
+     *     order-correct OIT via depth peeling (Babylon-style). Each
+     *     transparent fragment runs through a private depth buffer
+     *     with depth-test + depth-write enabled, so the front-most
+     *     fragment per pixel wins via GPU depth-test. At α=1 this is
+     *     fully opaque (front blocks bg). Stage-3 MVP: only the front
+     *     layer renders; back layers are depth-occluded rather than
+     *     N-iteration-peeled. Use for hero glass / scientific viz
+     *     where α=1 must be exactly opaque AND in-mesh banding must
+     *     not appear.
      *
      *   - `hash`: alphaMode='HASH' + opaque queue + per-fragment hash
      *     discard. At α=1 the discard threshold is 1.0 so no fragments
@@ -332,7 +345,7 @@ class Sample_WBOIT {
             console.log(`[gui] ${control} = ${JSON.stringify(value)}`);
         };
 
-        GUIHelp.add(this.params, 'mode', ['sorted', 'weighted', 'hash']).onChange((v: string) => {
+        GUIHelp.add(this.params, 'mode', ['sorted', 'weighted', 'depth-peel', 'hash']).onChange((v: string) => {
             this.params.mode = v as Mode;
             // Pure in-place mutation — alphaMode setter on each
             // material now triggers re-bucketing in EntityCollect

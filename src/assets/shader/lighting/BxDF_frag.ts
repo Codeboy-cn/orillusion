@@ -234,14 +234,23 @@ export let BxDF_frag: string = /*wgsl*/ `
           fragData.Albedo.a
         ) ;
 
-        #if USE_CASTREFLECTION
-          ORI_FragmentOutput.gBuffer = gBuffer ;
+        #if USE_OIT_DEPTH_PEEL
+          // DDP sub-passes use a single-attachment FragmentOutput
+          // (color only, no gBuffer). Common_frag's USE_OIT_DEPTH_PEEL_*
+          // blocks rewrite .color downstream of this — write the lit
+          // colour straight here so the depth-peel block has the same
+          // shading inputs it would have on the COLOR pass.
+          ORI_FragmentOutput.color = vec4<f32>(retColor.rgb, fragData.Albedo.a) ;
         #else
-          ORI_FragmentOutput.gBuffer = gBuffer ;
-          #if USE_OIT_ACCUM
-            ORI_FragmentOutput.color = viewColorPremul ;
+          #if USE_CASTREFLECTION
+            ORI_FragmentOutput.gBuffer = gBuffer ;
           #else
-            ORI_FragmentOutput.color = vec4<f32>(retColor.rgb, fragData.Albedo.a) ;
+            ORI_FragmentOutput.gBuffer = gBuffer ;
+            #if USE_OIT_ACCUM
+              ORI_FragmentOutput.color = viewColorPremul ;
+            #else
+              ORI_FragmentOutput.color = vec4<f32>(retColor.rgb, fragData.Albedo.a) ;
+            #endif
           #endif
         #endif
 

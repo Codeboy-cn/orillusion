@@ -16,6 +16,7 @@ import { SortedTransparentFeature } from '../graph/features/SortedTransparentFea
 import { TransmissionOpaqueFeature } from '../graph/features/TransmissionOpaqueFeature';
 import { TransparentOITFeature } from '../graph/features/TransparentOITFeature';
 import { TransparentDualDepthPeelingFeature } from '../graph/features/TransparentDualDepthPeelingFeature';
+import { TransparentDualDepthPeelingResolveFeature } from '../graph/features/TransparentDualDepthPeelingResolveFeature';
 import { TransparentResolveFeature } from '../graph/features/TransparentResolveFeature';
 import { PostFeature } from '../graph/features/PostFeature';
 import { GUIFeature } from '../graph/features/GUIFeature';
@@ -278,6 +279,14 @@ export class FrameGraphRendererJob extends ForwardRenderJob {
                 }
                 if (!this.graph.getFeature('TransparentResolveFeature')) {
                     this.graph.addFeature(new TransparentResolveFeature(ctx));
+                }
+                // DDP composite — runs at AfterTransparent like
+                // TransparentResolveFeature so depth-peel materials
+                // get composited after both opaque and any sorted /
+                // weighted transparent rendering. Pre-multiplied over
+                // operator so α=1 is fully opaque.
+                if (!this.graph.getFeature('TransparentDualDepthPeelingResolveFeature')) {
+                    this.graph.addFeature(new TransparentDualDepthPeelingResolveFeature(ctx));
                 }
             }
         }

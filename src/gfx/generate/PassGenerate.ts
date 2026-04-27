@@ -361,8 +361,13 @@ export class PassGenerate {
             pass.setDefine(defineName, colorPass.defineValue[defineName]);
         }
         // Set the peel-specific define LAST so cloned `false`s from the
-        // color pass cannot override it.
+        // color pass cannot override it. Also flip the umbrella
+        // `USE_OIT_DEPTH_PEEL` so shader code that just needs to know
+        // "this is some depth-peel sub-pass" (e.g. FragmentOutput
+        // single-attachment selection, gBuffer-write skipping in
+        // BxDF_frag / UnLit_frag) can branch on a single flag.
         pass.setDefine(peelDefine, true);
+        pass.setDefine('USE_OIT_DEPTH_PEEL', true);
 
         const ctx = this._ctxOf(renderNode);
         if (ctx) bindCtx(pass, ctx);

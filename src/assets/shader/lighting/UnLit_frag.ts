@@ -26,23 +26,31 @@ export let UnLit_frag: string = /*wgsl*/ `
             alpha
           ) ;
 
-          #if USE_CASTREFLECTION
-            ORI_FragmentOutput.gBuffer = gBuffer ;
+          #if USE_OIT_DEPTH_PEEL
+            // DDP sub-passes use a single-attachment FragmentOutput.
+            // Common_frag's USE_OIT_DEPTH_PEEL_* blocks rewrite .color
+            // downstream of this — emit the straight-alpha colour here
+            // so the depth-peel block has correct shading inputs.
+            ORI_FragmentOutput.color = vec4<f32>(ORI_ShadingInput.BaseColor.rgb, alpha) ;
           #else
-            ORI_FragmentOutput.gBuffer = gBuffer ;
-            #if USE_OIT_ACCUM
-              // WBOIT compositing math (Common_frag's USE_OIT_ACCUM block,
-              // McGuire-Bavoil 2013) expects PRE-MULTIPLIED rgb so that
-              // accum.rgb / accum.a recovers the source colour exactly.
-              // UnLit's normal output is non-pre-mul (to match
-              // BlendMode.NORMAL's straight-alpha factors on the regular
-              // COLOR pass); for the OIT_ACCUM pass we switch to pre-mul.
-              // Without this, every UnLit fragment going through WBOIT
-              // had final = rgb / alpha — alpha cancelled, so the demo's
-              // alpha slider did nothing in 'weighted' mode.
-              ORI_FragmentOutput.color = viewColorPremul ;
+            #if USE_CASTREFLECTION
+              ORI_FragmentOutput.gBuffer = gBuffer ;
             #else
-              ORI_FragmentOutput.color = vec4<f32>(ORI_ShadingInput.BaseColor.rgb, alpha) ;
+              ORI_FragmentOutput.gBuffer = gBuffer ;
+              #if USE_OIT_ACCUM
+                // WBOIT compositing math (Common_frag's USE_OIT_ACCUM block,
+                // McGuire-Bavoil 2013) expects PRE-MULTIPLIED rgb so that
+                // accum.rgb / accum.a recovers the source colour exactly.
+                // UnLit's normal output is non-pre-mul (to match
+                // BlendMode.NORMAL's straight-alpha factors on the regular
+                // COLOR pass); for the OIT_ACCUM pass we switch to pre-mul.
+                // Without this, every UnLit fragment going through WBOIT
+                // had final = rgb / alpha — alpha cancelled, so the demo's
+                // alpha slider did nothing in 'weighted' mode.
+                ORI_FragmentOutput.color = viewColorPremul ;
+              #else
+                ORI_FragmentOutput.color = vec4<f32>(ORI_ShadingInput.BaseColor.rgb, alpha) ;
+              #endif
             #endif
           #endif
     }

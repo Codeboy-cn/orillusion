@@ -28,7 +28,14 @@ export class DDPFrontPass extends RenderShaderPass {
         this.setShaderEntry(`VertMain`, `FragMain`);
         this.passType = PassType.OIT_DEPTH_PEEL_FRONT;
         const state = this.shaderState;
-        state.depthWriteEnabled = false;
+        // Depth-write enabled on the DDP-private depth buffer so closer
+        // fragments occlude farther ones via the GPU depth test. With
+        // overwrite blending (one/zero) on the front-color MRT, this
+        // gives "front-most fragment wins per pixel" — depth peeling's
+        // single-layer base case which is sufficient for α=1=opaque
+        // (front opaque blocks bg fully) and a credible α<1 rendering
+        // (front-most layer translucent over bg).
+        state.depthWriteEnabled = true;
         state.transparent = true;
     }
 }
