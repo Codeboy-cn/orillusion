@@ -274,15 +274,19 @@ class Sample_WBOIT {
      * down out of OPAQUE doesn't leave a stale WBOIT ghost.
      */
     private applyModeToMaterial(m: AlphaMaterial, mode: Mode) {
-        if (this.params.alpha >= 1.0) {
-            m.alphaMode = 'OPAQUE';
-            return;
-        }
         if (mode === 'hash') {
             m.alphaMode = 'HASH';
         } else {
-            m.alphaMode = 'BLEND';
+            // Order matters: set oitMode FIRST, alphaMode SECOND. The
+            // alphaMode setter fires _notifyRenderClassificationDirty
+            // → refreshRenderClassification → castNeedPass, which
+            // reads `mat.oitMode === 'weighted'` to decide whether to
+            // create the OIT_ACCUM pass. If we set alphaMode first,
+            // castNeedPass sees the OLD oitMode (e.g. 'sorted' from a
+            // previous run) and no OIT pass gets created → next OIT
+            // frame finds no pass to bind → black canvas.
             m.oitMode = mode;
+            m.alphaMode = 'BLEND';
         }
     }
 

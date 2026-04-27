@@ -632,9 +632,24 @@ export class RenderNode extends ComponentBase {
                     // }
 
                     let reflectionEntries = GlobalBindGroup.getReflectionEntries(view.scene);
-                    if (!renderShader.reflectionMap && reflectionEntries && reflectionEntries.reflectionMap) {
-                        renderShader.setTexture(`reflectionMap`, reflectionEntries.reflectionMap);
-                        renderShader.setStorageBuffer(`reflectionBuffer`, reflectionEntries.storageGPUBuffer);
+                    if (reflectionEntries && reflectionEntries.reflectionMap) {
+                        // Set the texture and the storage-buffer
+                        // independently. The previous gating
+                        // `if (!renderShader.reflectionMap)` skipped
+                        // BOTH whenever the texture was already set.
+                        // For derived passes (e.g. an OIT pass whose
+                        // texture clone in createOITPass copied the
+                        // reflectionMap reference), the gate flipped
+                        // false and the storage buffer never got bound
+                        // → reBuild's getGroupLayout crashed reading
+                        // `reflectionBuffer`. Each binding is now
+                        // gated only on its own state.
+                        if (!renderShader.reflectionMap) {
+                            renderShader.setTexture(`reflectionMap`, reflectionEntries.reflectionMap);
+                        }
+                        if (!renderShader.getStorageBuffer(`reflectionBuffer`)) {
+                            renderShader.setStorageBuffer(`reflectionBuffer`, reflectionEntries.storageGPUBuffer);
+                        }
                     }
 
                     if (renderShader.pipeline) {
