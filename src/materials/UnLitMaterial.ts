@@ -32,6 +32,8 @@ export class UnLitMaterial extends Material {
     }
 
     public set alphaMode(mode: AlphaMode) {
+        // Idempotent guard — see LambertMaterial.alphaMode for rationale.
+        if (this._alphaMode === mode) return;
         this._alphaMode = mode;
         const colorPass = this.shader.getDefaultColorShader();
         const state = colorPass.shaderState;

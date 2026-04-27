@@ -58,6 +58,15 @@ export class LambertMaterial extends Material {
     }
 
     public set alphaMode(mode: AlphaMode) {
+        // Idempotent guard: setting the same mode twice in a row was
+        // running the full state-mutation switch + firing
+        // _notifyRenderClassificationDirty on every renderer holding
+        // this material. With Sample_WBOIT's 27-sphere lattice, a
+        // GUI mode flip was triggering 27 × 2 = 54 reclassifications
+        // even when most of those were no-ops. Skipping the no-op
+        // path collapses the cost to the spheres that actually needed
+        // a queue change.
+        if (this._alphaMode === mode) return;
         this._alphaMode = mode;
         const colorPass = this.shader.getDefaultColorShader();
         const state = colorPass.shaderState;
