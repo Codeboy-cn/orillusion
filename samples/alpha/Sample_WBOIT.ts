@@ -279,46 +279,42 @@ class Sample_WBOIT {
 
     /**
      * Map the GUI's three-way `mode` to the underlying material flags.
-     * `sorted` and `weighted` share alphaMode='BLEND' but route through
-     * different OIT features; `hash` uses alphaMode='HASH' (opaque
-     * queue + per-fragment hash discard) and oitMode is irrelevant.
      *
-     * Alpha=1 short-circuits to OPAQUE regardless of mode. WBOIT's
-     * accum/reveal formula averages every contributing fragment
-     * weighted by depth_term — and the front-vs-back depth_term
-     * ratio in our scene is only ~2-5x (4-unit cluster against a
-     * 0.5/2000 near/far frustum, so the paper's z/200 normalisation
-     * lands deep in the "all weights ~= 3000" saturation regime),
-     * so even at alpha=1 the front sphere contributes ~35% of the
-     * final pixel and back layers visibly bleed through. This is a
-     * fundamental property of WBOIT, not a bug — the standard fix
-     * (paper §3.2, Babylon, three.js) is to route alpha=1 through
-     * the regular opaque queue where depth-test makes the front
-     * fragment authoritatively win. We do the same: alpha=1 →
-     * OPAQUE; alpha<1 → BLEND/WBOIT/sorted. The visual is a small
-     * discontinuity at exactly alpha=1, in exchange for both halves
-     * looking right (front-fragment-correct opaque, smooth
-     * weighted-blend transparent).
+     * Each mode uses its own algorithm independent of alpha — the
+     * three axes (mode, material, alpha) are orthogonal, so flipping
+     * any one of them must produce an observable change. Alpha = 1.0
+     * is NOT special-cased; whatever algorithm the mode dictates runs
+     * end-to-end at the alpha the user picked.
      *
-     * The OIT_ACCUM/REVEAL textures get cleared each frame even when
-     * the transparent list is empty — see OITPassRenderer.render's
-     * "always begin/end the pass" block — so toggling alpha back
-     * down out of OPAQUE doesn't leave a stale WBOIT ghost.
+     *   - `weighted`: alphaMode='BLEND' + oitMode='weighted' → WBOIT
+     *     accum/reveal. At α=1 with our 4-unit cluster the front-vs-
+     *     back depth-weight ratio is only ~2-5x (the paper's z/200
+     *     normalisation saturates), so 27 layers get averaged ~equally
+     *     and the cluster looks "milky averaged" even at α=1. This is
+     *     the documented WBOIT behaviour at small scene scales — not
+     *     a bug. Use sorted or hash at α=1 if you want opaque.
+     *
+     *   - `sorted`: alphaMode='BLEND' + oitMode='sorted' → back-to-
+     *     front per-mesh sort + alpha blend. At α=1 the over operator
+     *     `src*α + dst*(1-α)` collapses to `src` so the front fragment
+     *     authoritatively wins; cluster looks opaque (modulo the
+     *     within-sphere triangle-order banding documented up top).
+     *
+     *   - `hash`: alphaMode='HASH' + opaque queue + per-fragment hash
+     *     discard. At α=1 the discard threshold is 1.0 so no fragments
+     *     drop and the cluster looks opaque. At α<1 the dither pattern
+     *     is visible per frame; TAA convergence smooths it over time.
      */
     private applyModeToMaterial(m: AlphaMaterial, mode: Mode) {
         if (mode === 'hash') {
             m.alphaMode = 'HASH';
         } else {
-            // Either order works now: oitMode setter and alphaMode
-            // setter both fire _notifyRenderClassificationDirty →
+            // Either order works: oitMode setter and alphaMode setter
+            // both fire _notifyRenderClassificationDirty →
             // refreshRenderClassification → castNeedPass, so the
-            // OIT_ACCUM pass is lazily created regardless of which
-            // setter ran first. Previous code required oitMode FIRST
-            // because oitMode was a public field with no notification.
+            // OIT_ACCUM pass is lazily created regardless of order.
             m.oitMode = mode;
-            // Alpha = 1 short-circuits to OPAQUE so the front fragment
-            // wins via depth-test (see class doc above).
-            m.alphaMode = m.baseColor.a >= 1.0 ? 'OPAQUE' : 'BLEND';
+            m.alphaMode = 'BLEND';
         }
     }
 
