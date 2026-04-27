@@ -244,7 +244,20 @@ export class Shader {
     }
 
     public destroy(force?: boolean) {
-        this.getDefaultColorShader().destroy(force);
+        // Destroy ALL passes — COLOR, OIT_ACCUM, SHADOW, REFLECTION,
+        // DEPTH, GI, etc. The previous implementation only destroyed
+        // the COLOR pass, leaking RenderShaderPass instances and their
+        // GPU resources (uniform buffers, bind groups, pipelines,
+        // textures, materialDataUniformBuffer). This bit hardest on
+        // material-type swaps (e.g. PBR → UnLit via buildSpheres
+        // destroy+rebuild) where N derived passes per renderer × N
+        // renderers leaked per swap.
+        for (const passList of this.passShader.values()) {
+            for (const pass of passList) {
+                pass.destroy(force);
+            }
+        }
+        this.passShader.clear();
     }
 
     public clone() {

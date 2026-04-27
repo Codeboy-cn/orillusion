@@ -156,6 +156,10 @@ class Sample_WBOIT {
             },
             params: this.params,
         };
+        // Direct sample reference for probes that need to mutate
+        // sphereMaterials / sphereObjs without going through the
+        // helper API (e.g. test bare oitMode flip).
+        (globalThis as any).__wboit_sample = this;
     }
 
     async initScene() {
@@ -305,14 +309,12 @@ class Sample_WBOIT {
         if (mode === 'hash') {
             m.alphaMode = 'HASH';
         } else {
-            // Order matters: set oitMode FIRST, alphaMode SECOND. The
-            // alphaMode setter fires _notifyRenderClassificationDirty
-            // → refreshRenderClassification → castNeedPass, which
-            // reads `mat.oitMode === 'weighted'` to decide whether to
-            // create the OIT_ACCUM pass. If we set alphaMode first,
-            // castNeedPass sees the OLD oitMode (e.g. 'sorted' from a
-            // previous run) and no OIT pass gets created → next OIT
-            // frame finds no pass to bind → black canvas.
+            // Either order works now: oitMode setter and alphaMode
+            // setter both fire _notifyRenderClassificationDirty →
+            // refreshRenderClassification → castNeedPass, so the
+            // OIT_ACCUM pass is lazily created regardless of which
+            // setter ran first. Previous code required oitMode FIRST
+            // because oitMode was a public field with no notification.
             m.oitMode = mode;
             // Alpha = 1 short-circuits to OPAQUE so the front fragment
             // wins via depth-test (see class doc above).

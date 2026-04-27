@@ -28,15 +28,33 @@ export class Material {
 
     public enable: boolean = true;
 
+    private _oitMode: 'sorted' | 'weighted' = 'sorted';
+
     /** Order-independent transparency mode opt-in. `sorted` (default)
      *  uses the back-to-front sorted transparent pass. `weighted`
      *  routes the material through the Weighted-Blended OIT
      *  accumulation feature when `engine.setting.render.useOIT` is
      *  true; otherwise it falls back to the sorted path.
      *
+     *  Setter notifies attached renderers so the OIT_ACCUM derived
+     *  pass gets lazily generated when flipping `'sorted' → 'weighted'`
+     *  at runtime. Without this, callers had to follow up with an
+     *  alphaMode setter call to provoke `refreshRenderClassification`
+     *  → `castNeedPass` — which only worked because alphaMode setters
+     *  fire `_notifyRenderClassificationDirty`. The two-step "set
+     *  oitMode FIRST, alphaMode SECOND" dance is no longer required.
+     *
      *  Documented at Material-level (not LitMaterial) so any future
      *  material subclass (particle, decal) can opt in. */
-    public oitMode: 'sorted' | 'weighted' = 'sorted';
+    public get oitMode(): 'sorted' | 'weighted' {
+        return this._oitMode;
+    }
+
+    public set oitMode(value: 'sorted' | 'weighted') {
+        if (this._oitMode === value) return;
+        this._oitMode = value;
+        this._notifyRenderClassificationDirty();
+    }
 
     private _defaultSubShader: RenderShaderPass;
 
