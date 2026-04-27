@@ -41,12 +41,21 @@ export let BxDF_frag: string = /*wgsl*/ `
 
       fragData.NoV = saturate(dot(fragData.N, fragData.V)) ;
 
-      // F0 = canonical 0.04 dielectric (Schlick approx for ior=1.5
-      // glass) modulated by specularColor (KHR_materials_specular).
-      // Default specularColor (1,1,1) keeps F0 at 0.04 — equivalent to
-      // the previous hard-coded value. A non-white pick tints grazing-
-      // angle reflection without inflating the entire BRDF balance.
-      let dielectricF0 = vec3<f32>(0.04) * materialUniform.specularColor.rgb;
+      // F0 derived from IOR via the Schlick approximation:
+      //   F0 = ((ior - 1) / (ior + 1))^2
+      // Matches three.js's MeshPhysicalMaterial. At the canonical
+      // ior=1.5 this collapses to 0.04 (the legacy hard-coded value),
+      // so existing demos that don't touch ior get unchanged visuals.
+      // Pulling ior down (water = 1.33, F0 ≈ 0.02) softens the rim
+      // Fresnel; pushing it up (sapphire / diamond, ior 1.77 / 2.42,
+      // F0 ≈ 0.077 / 0.17) lights it up. This is also why IOR has
+      // visible effect on a transmissive surface even at thickness=0
+      // — F0 governs the lit-signal Fresnel split between
+      // specular reflection and transmitted refraction.
+      // specularColor (KHR_materials_specular) modulates the result
+      // for non-physical hue tints (default white = no tint).
+      let iorF0 = pow((materialUniform.ior - 1.0) / max(materialUniform.ior + 1.0, 1e-4), 2.0);
+      let dielectricF0 = vec3<f32>(iorF0) * materialUniform.specularColor.rgb;
       fragData.F0 = mix(dielectricF0, fragData.Albedo.rgb, fragData.Metallic);
       // fragData.F0 = gammaToLiner(fragData.F0);
       
