@@ -208,18 +208,27 @@ export let BxDF_frag: string = /*wgsl*/ `
         var retColor = color.rgb;
         retColor += fragData.Emissive.xyz ;
 
-        var viewColor = vec4<f32>( retColor.rgb * fragData.Albedo.w, fragData.Albedo.a) ;
-
-        // let finalMatrix = globalUniform.projMat * globalUniform.viewMat ;
-        // let nMat = mat3x3<f32>(finalMatrix[0].xyz,finalMatrix[1].xyz,finalMatrix[2].xyz) ;
-        // let ORI_NORMALMATRIX = transpose(inverse( nMat ));
+        // viewColorPremul: rgb·alpha. Used by the gBuffer pack (deferred
+        // path expects pre-mul albedo encoding) AND by the OIT_ACCUM
+        // pass (WBOIT compositing wants pre-mul source so accum.rgb /
+        // accum.a recovers the original colour).
+        //
+        // The COLOR pass writes NON pre-mul. BlendMode.NORMAL's blend
+        // factors (SRC_ALPHA, ONE_MINUS_SRC_ALPHA) already multiply src
+        // by alpha at blend time — feeding pre-mul rgb on top of that
+        // double-multiplies, producing rgb·alpha² and visibly darkening
+        // every transparent fragment. With 27 stacked layers at
+        // alpha=0.85 the cumulative under-contribution is ~70% per
+        // layer instead of 85%, washing saturated palettes into pastel
+        // grey. Mirror the UnLit_frag fix: pre-mul only on USE_OIT_ACCUM.
+        var viewColorPremul = vec4<f32>( retColor.rgb * fragData.Albedo.w, fragData.Albedo.a) ;
 
         var vNormal = ORI_VertexVarying.vWorldNormal.rgb ;
 
         let gBuffer = packNHMDGBuffer(
           ORI_VertexVarying.fragCoord.z,
           fragData.Albedo.rgb,
-          viewColor.rgb,
+          viewColorPremul.rgb,
           vec3f(fragData.Roughness,fragData.Metallic,fragData.Ao),
           vNormal,
           fragData.Albedo.a
@@ -229,7 +238,11 @@ export let BxDF_frag: string = /*wgsl*/ `
           ORI_FragmentOutput.gBuffer = gBuffer ;
         #else
           ORI_FragmentOutput.gBuffer = gBuffer ;
-          ORI_FragmentOutput.color = viewColor ;
+          #if USE_OIT_ACCUM
+            ORI_FragmentOutput.color = viewColorPremul ;
+          #else
+            ORI_FragmentOutput.color = vec4<f32>(retColor.rgb, fragData.Albedo.a) ;
+          #endif
         #endif
 
           // var uvx = ORI_VertexVarying.fragCoord.x / globalUniform.windowWidth;
