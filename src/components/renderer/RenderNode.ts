@@ -68,7 +68,13 @@ export class RenderNode extends ComponentBase {
 
     public init(param?: any) {
         this.renderOrder = 0;
-        this.rendererMask = RendererMask.Default;
+        // Don't reset rendererMask here — the default initializer
+        // (`_rendererMask = RendererMask.Default`) already covers fresh
+        // instances, and subclass constructors (e.g. SkinnedMeshRenderer2
+        // adding RendererMask.SkinnedMesh) run BEFORE this init via
+        // ComponentBase.__init. Overwriting here erases those subclass-
+        // added flags and silently breaks pass generation (USE_SKELETON
+        // gating in PassGenerate.createShadowPass/createDepthPass).
         this.instanceID = GetCountInstanceID().toString();
 
         this._computes = [];

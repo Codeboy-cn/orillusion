@@ -25,14 +25,24 @@ export let VertexFunction_vert: string = /*wgsl*/ `
     var vertexPosition = vertex.position;
     var vertexNormal = vertex.normal;
 
+    // glTF 2.0 spec: skinned-mesh vertex positions are pre-transformed
+    // into world-bind frame by the exporter, and the skinning matrix
+    // (sum of weight * jointWorld * invBind) maps them from world-bind
+    // to current world. The mesh node worldMatrix is intentionally
+    // IGNORED — multiplying it in would double-transform the vertex
+    // when the mesh node has a non-identity world (e.g. Kira's
+    // Kira_Hair_A.0020 at Y=-0.404). User transforms applied to the
+    // loader root reach the skinned mesh through the bone chain
+    // (joints live-parented under the gltf ancestor), not through
+    // mesh node lineage.
     #if USE_METAHUMAN
         ${MorphTarget_shader.getMorphTargetCalcVertex()}
         #if USE_JOINT_VEC8
             let skeletonNormal = getSkeletonWorldMatrix_8(vertex.joints0, vertex.weights0, vertex.joints1, vertex.weights1);
-            ORI_MATRIX_M *= skeletonNormal ;
+            ORI_MATRIX_M = skeletonNormal ;
         #else
             let skeletonNormal = getSkeletonWorldMatrix_4(vertex.joints0, vertex.weights0);
-            ORI_MATRIX_M *= skeletonNormal ;
+            ORI_MATRIX_M = skeletonNormal ;
         #endif
     #else
         #if USE_MORPHTARGETS
@@ -42,10 +52,10 @@ export let VertexFunction_vert: string = /*wgsl*/ `
         #if USE_SKELETON
             #if USE_JOINT_VEC8
                 let skeletonNormal = getSkeletonWorldMatrix_8(vertex.joints0, vertex.weights0, vertex.joints1, vertex.weights1);
-                ORI_MATRIX_M *= skeletonNormal ;
+                ORI_MATRIX_M = skeletonNormal ;
             #else
                 let skeletonNormal = getSkeletonWorldMatrix_4(vertex.joints0, vertex.weights0);
-                ORI_MATRIX_M *= skeletonNormal ;
+                ORI_MATRIX_M = skeletonNormal ;
             #endif
         #endif
     #endif

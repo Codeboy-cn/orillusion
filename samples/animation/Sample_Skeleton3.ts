@@ -1,8 +1,8 @@
 import { GUIHelp } from "@orillusion/debug/GUIHelp";
-import { Object3D, Scene3D, Engine3D, AtmosphericComponent, CameraUtil, HoverCameraController, View3D, SkeletonAnimationComponent, LitMaterial, MeshRenderer, BoxGeometry, DirectLight, KelvinUtil, Time, Object3DUtil, BoundingBox, SkinnedMeshRenderer, AnimatorComponent } from "@orillusion/core";
+import { Object3D, Scene3D, Engine3D, AtmosphericComponent, CameraUtil, HoverCameraController, View3D, DirectLight, KelvinUtil, Time, Object3DUtil, AnimatorComponent } from "@orillusion/core";
 import { GUIUtil } from "@samples/utils/GUIUtil";
 
-// Sample to use SkeletonAnimationComponent
+// Sample to drive AnimatorComponent — multi-clip mix, cross-fade, GUI controls.
 class Sample_Skeleton3 {
     engine: Engine3D;
     lightObj3D: Object3D;

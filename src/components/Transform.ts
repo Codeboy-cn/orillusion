@@ -599,6 +599,7 @@ export class Transform extends ComponentBase {
         if (this._localRot.x != value) {
             this._localRot.x = value;
             WasmMatrix.setRotation(this.index, this._localRot.x, this._localRot.y, this._localRot.z);
+            this._localRotQuat.fromEulerAngles(this._localRot.x, this._localRot.y, this._localRot.z);
             this.notifyLocalChange();
             this.onRotationChange?.();
 
@@ -619,6 +620,7 @@ export class Transform extends ComponentBase {
         if (this._localRot.y != value) {
             this._localRot.y = value;
             WasmMatrix.setRotation(this.index, this._localRot.x, this._localRot.y, this._localRot.z);
+            this._localRotQuat.fromEulerAngles(this._localRot.x, this._localRot.y, this._localRot.z);
             this.notifyLocalChange();
             this.onRotationChange?.();
 
@@ -639,6 +641,7 @@ export class Transform extends ComponentBase {
         if (this._localRot.z != value) {
             this._localRot.z = value;
             WasmMatrix.setRotation(this.index, this._localRot.x, this._localRot.y, this._localRot.z);
+            this._localRotQuat.fromEulerAngles(this._localRot.x, this._localRot.y, this._localRot.z);
             this.notifyLocalChange();
             this.onRotationChange?.();
 
@@ -699,6 +702,13 @@ export class Transform extends ComponentBase {
 
         WasmMatrix.setRotation(this.index, v.x, v.y, v.z);
         this._localRot.copyFrom(v);
+        // Keep _localRotQuat in sync — multiple downstream consumers
+        // (CCDIK.composeWorldQuat, retargeter, look-at) read
+        // localQuaternion to compose world rotations. Without this sync,
+        // the quat field stays at its default (0,0,0,1) after Euler-only
+        // setup like buildSkeletonPose, and quat-based world rotation
+        // composition silently produces wrong results.
+        this._localRotQuat.fromEulerAngles(v.x, v.y, v.z);
         this.notifyLocalChange();
 
         if (this.eventRotationChange) {

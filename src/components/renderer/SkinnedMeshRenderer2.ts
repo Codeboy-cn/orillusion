@@ -6,7 +6,7 @@ import { StorageGPUBuffer } from "../../gfx/graphics/webGpu/core/buffer/StorageG
 import { PassType } from "../../gfx/renderJob/passRenderer/state/PassType";
 import { RendererPassState } from "../../gfx/renderJob/passRenderer/state/RendererPassState";
 import { ClusterLightingBuffer } from "../../gfx/renderJob/passRenderer/cluster/ClusterLightingBuffer";
-import { AnimatorComponent, GeometryBase, LitMaterial, Matrix4, RegisterComponent } from "../..";
+import { AnimatorComponent, GeometryBase, LitMaterial, Material, Matrix4, RegisterComponent } from "../..";
 
 /**
  * Skin Mesh Renderer Component
@@ -40,25 +40,96 @@ export class SkinnedMeshRenderer2 extends MeshRenderer {
         }
         this.skinInverseBindMatrices = matrixList;
         super.geometry = value;
+        // Force USE_SKELETON on any materials that were already attached.
+        // (Materials may have been set before geometry; covers both orders.)
+        this._forceSkeletonDefine();
+    }
+
+    public get materials(): Material[] {
+        return super.materials;
+    }
+
+    /**
+     * Override the materials setter so we can stamp `USE_SKELETON = true`
+     * on every material's pass(es) AFTER `super.materials` has run
+     * `initPipeline`. Why this is needed:
+     *
+     *   - glTF often shares one LitMaterial across multiple primitives
+     *     (Kira: skin-driven `Kira_Hair_A.0020` and the static
+     *     `Kira_Hair_A` reuse the same `matkey_<name>` cached material).
+     *   - The first time the material is attached to a non-skinned
+     *     MeshRenderer, `initPipeline` calls `preCompile`, which runs
+     *     `preDefine(geometry-without-joints0)` and writes
+     *     `USE_SKELETON = false` into the pass's defineValue map.
+     *   - When the same material is later attached to a
+     *     SkinnedMeshRenderer2, `initPipeline` sees the pass already has
+     *     `shaderReflection` and SKIPS preCompile entirely → the stale
+     *     `USE_SKELETON = false` sticks, the vertex shader's skinning
+     *     branch is preprocessed out, and the mesh renders unskinned at
+     *     the mesh node's worldMatrix (Kira's "head + jacket detached
+     *     from bones" symptom).
+     *
+     * `setDefine` flips `_shaderChange` / `_valueChange`, so the next
+     * `nodeUpdate` re-runs `preCompile` (this time WITH the skin's
+     * geometry that has joints0) and rebuilds the pipeline with
+     * USE_SKELETON correctly applied.
+     */
+    public set materials(value: Material[]) {
+        super.materials = value;
+        this._forceSkeletonDefine();
+    }
+
+    private _forceSkeletonDefine() {
+        const list = this._materials;
+        if (!list || list.length === 0) return;
+        const passTypes = [PassType.COLOR, PassType.SHADOW, PassType.DEPTH, PassType.POINT_SHADOW];
+        for (const mat of list) {
+            const ps = (mat as any)?.shader?.passShader;
+            if (!ps) continue;
+            for (const pt of passTypes) {
+                const passes = ps.get?.(pt);
+                if (!passes) continue;
+                for (const pass of passes) pass.setDefine('USE_SKELETON', true);
+            }
+        }
     }
 
     public start() {
         super.start();
+        // If GLTFSubParserConverter has already wired our skeletonAnimation
+        // (the common case — it does so via either direct assignment when
+        // the skin's root node was already converted, or via the
+        // `_pendingSkinned` queue once that node IS processed), keep it.
+        //
+        // Without this guard the unconditional reassignment below picks up
+        // the WRONG animator in scenes with multiple skinned characters:
+        // start() fires asynchronously, and by then the top-ancestor walk
+        // climbs all the way to scene3D root and getComponentsInChild()
+        // returns animators from EVERY loaded GLB. The first match wins —
+        // so a Soldier SMR loaded after Michelle was binding its mesh to
+        // Michelle's animator (verified via Sample_AnimationRetargeting).
+        if (this.skeletonAnimation) return;
+
         this.skeletonAnimation = this.object3D.getComponent(AnimatorComponent);
-        if (!this.skeletonAnimation) {
-            let comps = this.object3D.parentObject.parentObject.getComponentsInChild(AnimatorComponent);
-            if (comps.length > 0) {
-                this.skeletonAnimation = comps[0];
-            }
-            let parentObj = this.object3D;
-            while (!this.skeletonAnimation && parentObj) {
-                this.skeletonAnimation = parentObj.getComponentFromParent(AnimatorComponent);
-                if (parentObj.parent) {
-                    parentObj = parentObj.parent.object3D;
-                }
-            }
+        if (this.skeletonAnimation) return;
+
+        // Last-resort fallback: the AnimatorComponent often lives on a
+        // SIBLING node of this mesh — for glTFs like Kira's, the skin's
+        // joint root (e.g. spine_03) and the mesh node (e.g. Kira_Hair_A)
+        // are cousins under the gltf loader root, not parent-child.
+        // Walking only UP the parent chain misses such layouts. Walk up
+        // to the highest ancestor and then search descendants. NOTE: in
+        // multi-character scenes this can mis-bind across GLBs — the
+        // guard above prevents the loader-wired binding from being
+        // overwritten, so this branch only runs when no wiring exists.
+        let topAncestor: Object3D = this.object3D;
+        while (topAncestor.parent && (topAncestor.parent.object3D as Object3D)) {
+            topAncestor = topAncestor.parent.object3D as Object3D;
         }
-        // this.skinInverseBindMatrices = this.skeletonAnimation.inverseBindMatrices;
+        const found = topAncestor.getComponentsInChild(AnimatorComponent);
+        if (found.length > 0) {
+            this.skeletonAnimation = found[0];
+        }
     }
 
     public get blendShape() {
@@ -142,13 +213,39 @@ export class SkinnedMeshRenderer2 extends MeshRenderer {
             let passes = material.getPass(passType);
             if (passes) for (let i = 0; i < passes.length; i++) {
                 const renderShader = passes[i];
-                if (!renderShader.pipeline && this.mSkeletonAnimation) {
+                // Bind the skin storage buffers ONCE when the renderShader
+                // first sees an Animator linked to this renderer. The old
+                // gate `!renderShader.pipeline && mSkeletonAnimation`
+                // missed Kira-style rigs where the Animator lives on a
+                // sibling node — `start()` fires too late, the pipeline is
+                // built without skeleton bindings, and the gate never fires
+                // again. We instead track per-pass which renderShader has
+                // already been bound and bind on the first frame
+                // mSkeletonAnimation is non-null. The pipeline gets
+                // (re)created on the next pipeline build with proper
+                // bindings.
+                if (this.mSkeletonAnimation && !this._skinBoundShaders.has(renderShader)) {
+                    const hadPipeline = !!(renderShader as any).pipeline;
                     renderShader.setStorageBuffer('jointsMatrixIndexTable', this.mSkeletonAnimation.jointMatrixIndexTableBuffer);
                     renderShader.setStorageBuffer('jointsInverseMatrix', this.mInverseBindMatrixBuffer);
                     renderShader.setStorageBuffer('jointsIndexMapingTable', this.mJointIndexTableBuffer);
+                    if (hadPipeline) {
+                        // Pipeline was built before skin storage buffers
+                        // were bound (typical for glTFs whose Animator
+                        // lives on a sibling of the mesh node). Force a
+                        // rebuild so the new bind group includes the
+                        // skin entries — without this, frame 0 renders
+                        // skinned meshes at degenerate positions.
+                        (renderShader as any).pipeline = null;
+                        (renderShader as any)._valueChange = true;
+                    }
+                    this._skinBoundShaders.add(renderShader);
                 }
             }
         }
         super.nodeUpdate(view, passType, renderPassState, clusterLightingBuffer);
     }
+
+    /** Per-renderShader memoization for skin-buffer binding (see nodeUpdate). */
+    private _skinBoundShaders: WeakSet<any> = new WeakSet();
 }
