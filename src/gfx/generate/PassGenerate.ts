@@ -169,29 +169,31 @@ export class PassGenerate {
             const colorPass = colorListPass[i];
             // Mirror color pass's USE_TANGENT (see createShadowPass for rationale).
             let useTangent = colorPass.defineValue[`USE_TANGENT`] === true;
+            // `getSubShaders` returns `[] || []` — never null/undefined.
+            // The previous guard `!depthPassList` was always false on a
+            // fresh shader, so DepthMaterialPass was never registered
+            // and the prepass had no pipeline to draw with.
             let depthPassList = shader.getSubShaders(PassType.DEPTH);
-            if (!depthPassList && colorPass.shaderState.useZ) {
-                if (!depthPassList || depthPassList.length < i) {
-                    let depthPass = new DepthMaterialPass();
-                    depthPass.setTexture(`baseMap`, colorPass.getTexture(`baseMap`));
-                    // Same rationale as createShadowPass — mirror unconditionally.
-                    depthPass.setDefine(`USE_TANGENT`, useTangent);
-                    if (use_skeleton) {
-                        depthPass.setDefine(`USE_SKELETON`, use_skeleton);
-                    }
-                    if (useMorphTargets) {
-                        depthPass.setDefine(`USE_MORPHTARGETS`, useMorphTargets);
-                    }
-                    if (useMorphNormals) {
-                        depthPass.setDefine(`USE_MORPHNORMALS`, useMorphNormals);
-                    }
-                    depthPass.cullMode = colorPass.cullMode;
-                    depthPass.frontFace = colorPass.frontFace;
-                    const ctx = this._ctxOf(renderNode);
-                    if (ctx) bindCtx(depthPass, ctx);
-                    depthPass.preCompile(renderNode.geometry);
-                    shader.addRenderPass(depthPass);
+            if (depthPassList.length <= i && colorPass.shaderState.useZ) {
+                let depthPass = new DepthMaterialPass();
+                depthPass.setTexture(`baseMap`, colorPass.getTexture(`baseMap`));
+                // Same rationale as createShadowPass — mirror unconditionally.
+                depthPass.setDefine(`USE_TANGENT`, useTangent);
+                if (use_skeleton) {
+                    depthPass.setDefine(`USE_SKELETON`, use_skeleton);
                 }
+                if (useMorphTargets) {
+                    depthPass.setDefine(`USE_MORPHTARGETS`, useMorphTargets);
+                }
+                if (useMorphNormals) {
+                    depthPass.setDefine(`USE_MORPHNORMALS`, useMorphNormals);
+                }
+                depthPass.cullMode = colorPass.cullMode;
+                depthPass.frontFace = colorPass.frontFace;
+                const ctx = this._ctxOf(renderNode);
+                if (ctx) bindCtx(depthPass, ctx);
+                depthPass.preCompile(renderNode.geometry);
+                shader.addRenderPass(depthPass);
             }
         }
     }

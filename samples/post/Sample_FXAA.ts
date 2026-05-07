@@ -15,6 +15,9 @@ class Sample_Bloom {
 				shadow: {
 					shadowSize: 2048,
 				},
+				render:{
+					zPrePass: true,
+				}
 			},
 		});
 

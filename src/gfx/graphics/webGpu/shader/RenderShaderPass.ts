@@ -948,9 +948,29 @@ export class RenderShaderPass extends ShaderPassBase {
 
         if (renderPassState.zPreTexture || renderPassState.depthTexture) {
             if (this._boundCtx!.engine!.setting.render.zPrePass && renderPassState.zPreTexture && shaderState.useZ) {
+                // zPrePass color-pass:
+                //   - `less_equal` tolerates 1-ULP NDC z drift between
+                //     ZPassShader_vs (depth-only pipeline) and Common_vert
+                //     (lit pipeline). The hardware can rearrange the
+                //     `projMat * viewMat * worldPos` math differently in
+                //     each pipeline so bit-exact equality isn't reliable.
+                //   - `depthWriteEnabled: true` lets the color pass refine
+                //     the depth attachment in place. Combined with
+                //     `less_equal`, this makes the post-color depth
+                //     identical to the no-prepass path, so downstream
+                //     consumers (post-effects, transparent compositing)
+                //     see consistent depth regardless of `zPrePass`.
+                //   - **Early-Z is still active.** The depth test runs
+                //     before the fragment shader; overdrawn fragments are
+                //     rejected before the lit shader runs — that's the
+                //     core benefit of the prepass and it's preserved.
+                //     The depth write happens AFTER the fragment shader,
+                //     only for fragments that already passed the test,
+                //     and writes essentially the same value the prepass
+                //     wrote — a no-op for the depth field.
                 renderPipelineDescriptor[`depthStencil`] = {
-                    depthWriteEnabled: false,
-                    depthCompare: GPUCompareFunction.less,
+                    depthWriteEnabled: true,
+                    depthCompare: GPUCompareFunction.less_equal,
                     format: renderPassState.zPreTexture.format,
                 };
             } else {
