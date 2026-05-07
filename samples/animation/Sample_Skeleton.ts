@@ -80,6 +80,7 @@ class Sample_Skeleton {
             directLight.castShadow = true;
             directLight.intensity = 3;
             directLight.shadowBoundFar = 200;
+            directLight.enableCSM = true;
             GUIUtil.renderDirLight(directLight);
             scene.addChild(this.lightObj3D);
         }

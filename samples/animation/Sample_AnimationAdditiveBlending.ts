@@ -92,6 +92,7 @@ class Sample_AnimationAdditiveBlending {
         dl.lightColor = KelvinUtil.color_temperature_to_rgb(5800);
         dl.castShadow = true; dl.intensity = 2.5;
         dl.shadowBoundFar = 30;
+        dl.enableCSM = true;
         this.scene.addChild(this.light);
 
         // Xbot — Mixamo's "Y Bot" rig as the workhorse for additive blending.

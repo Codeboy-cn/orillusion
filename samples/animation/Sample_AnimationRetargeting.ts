@@ -17,6 +17,7 @@ import {
     Object3DUtil, AnimatorComponent, Retargeter, MeshRenderer,
     PostProcessingComponent, FXAAPost, Vector3,
 } from "@orillusion/core";
+import { GUIUtil } from "@samples/utils/GUIUtil";
 
 class Sample_AnimationRetargeting {
     engine: Engine3D;
@@ -68,9 +69,12 @@ class Sample_AnimationRetargeting {
         this.light.rotationX = 144;
         const dl = this.light.addComponent(DirectLight);
         dl.lightColor = KelvinUtil.color_temperature_to_rgb(5800);
-        dl.castShadow = true; dl.intensity = 2.5;
+        dl.castShadow = true; 
+        dl.intensity = 2.5;
         dl.shadowBoundFar = 30;
+        dl.enableCSM = true;
         this.scene.addChild(this.light);
+        GUIUtil.renderDirLight(dl);
 
         // ---------- Source: Michelle (plays SambaDance) ----------
         // Michelle's glTF Character holds rotationX = +90°, Soldier's

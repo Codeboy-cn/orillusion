@@ -237,10 +237,157 @@ export class GUIUtil {
         GUIHelp.add(light, 'debugCSM').onChange(() => this.refreshDirectLightDebug(light));
         GUIHelp.add(light, 'debugShadowBound').onChange(() => this.refreshDirectLightDebug(light));
 
+        // Shadow-map debug overlay: when toggled on, render each CSM
+        // cascade's depth texture into a stacked column of canvases at
+        // the top-left corner of the screen. Off by default — pure
+        // diagnostic, costs a per-frame readback per cascade.
+        const shadowmapState = { showShadowmap: !!GUIUtil._shadowOverlays.get(light)?.show };
+        GUIHelp.add(shadowmapState, 'showShadowmap').onChange((v: boolean) => {
+            if (v) GUIUtil._enableShadowmapOverlay(light);
+            else GUIUtil._disableShadowmapOverlay(light);
+        });
+
         GUIUtil._addBiasReadout(light);
 
         open && GUIHelp.open();
         GUIHelp.endFolder();
+    }
+
+    /**
+     * Per-light state for the optional shadow-map debug overlay.
+     * `WeakMap` so canvases get GC'd if the light is destroyed.
+     */
+    private static _shadowOverlays = new WeakMap<DirectLight, {
+        show: boolean;
+        canvases: HTMLCanvasElement[];
+        intervalId: number | null;
+    }>();
+
+    private static _enableShadowmapOverlay(light: DirectLight) {
+        const existing = GUIUtil._shadowOverlays.get(light);
+        if (existing && existing.show) return;
+
+        // Cascade count comes from the engine setting; fall back to the
+        // light's own cascadeNum if the setting isn't reachable yet
+        // (GUI built before startRenderView).
+        const view: View3D | undefined = light.transform?.view3D;
+        const engineCascades = view?.engine3D?.setting?.shadow?.maxCascades ?? 4;
+        const cascadeCount = Math.min(engineCascades, 4);
+        const tile = 192;
+
+        const canvases: HTMLCanvasElement[] = [];
+        for (let i = 0; i < cascadeCount; i++) {
+            const canvas = document.createElement('canvas');
+            canvas.style.position = 'fixed';
+            canvas.style.left = '8px';
+            canvas.style.top = (8 + i * (tile + 4)) + 'px';
+            canvas.style.width = tile + 'px';
+            canvas.style.height = tile + 'px';
+            canvas.style.zIndex = '999999';
+            canvas.style.border = '1px solid #ffd400';
+            canvas.style.background = '#222';
+            canvas.style.imageRendering = 'pixelated';
+            canvas.title = `Directional-light shadow map cascade ${i} (depth, contrast-stretched)`;
+            document.body.appendChild(canvas);
+            canvases.push(canvas);
+        }
+
+        let busy = false;
+        const tick = async () => {
+            if (busy) return;
+            const v: View3D | undefined = light.transform?.view3D;
+            const shadowPass: any = v?.renderGraph?.getPass('ShadowPass');
+            const states = shadowPass?._rendererPassStates;
+            if (!states || !v) return;
+            busy = true;
+            try {
+                const ctx3D = v.engine3D.context3D as any;
+                const device: GPUDevice = ctx3D.device;
+                const gpu = ctx3D.gpuContext;
+                // Cascade slots for this directional light start at
+                // `light.shadowIndex`; CSM uses `cascadeNum` slots.
+                const baseSlot = (light as any).shadowIndex ?? 0;
+                for (let c = 0; c < cascadeCount; c++) {
+                    const tex: any = states[baseSlot + c]?.depthTexture;
+                    if (!tex || !tex.getGPUTexture) continue;
+                    const w: number = tex.width;
+                    const h: number = tex.height;
+                    const bytesPerRow = Math.ceil((w * 4) / 256) * 256;
+                    const buf = device.createBuffer({
+                        size: bytesPerRow * h,
+                        usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
+                    });
+                    const cmd = gpu.beginCommandEncoder();
+                    cmd.copyTextureToBuffer(
+                        { texture: tex.getGPUTexture(), aspect: 'depth-only', origin: { x: 0, y: 0, z: 0 } },
+                        { buffer: buf, bytesPerRow, rowsPerImage: h },
+                        { width: w, height: h, depthOrArrayLayers: 1 },
+                    );
+                    gpu.endCommandEncoder(cmd);
+                    await buf.mapAsync(GPUMapMode.READ);
+                    const src = new Float32Array(buf.getMappedRange().slice(0));
+                    buf.unmap();
+                    buf.destroy();
+
+                    // Per-cascade contrast stretch on the non-cleared
+                    // range, so caster shapes show up regardless of
+                    // absolute depth scale (cascades far from the camera
+                    // sit near 1.0, the near cascade near 0).
+                    let mn = Infinity, mx = -Infinity;
+                    const stride = bytesPerRow / 4;
+                    for (let y = 0; y < h; y++) {
+                        for (let x = 0; x < w; x++) {
+                            const d = src[y * stride + x];
+                            if (d < 1.0) {
+                                if (d < mn) mn = d;
+                                if (d > mx) mx = d;
+                            }
+                        }
+                    }
+                    if (mn === Infinity) { mn = 0; mx = 1; }
+                    const range = (mx - mn) || 1;
+
+                    const canvas = canvases[c];
+                    if (!canvas.isConnected) continue; // disabled mid-readback
+                    if (canvas.width !== w) canvas.width = w;
+                    if (canvas.height !== h) canvas.height = h;
+                    const ctx2d = canvas.getContext('2d')!;
+                    const img = ctx2d.createImageData(w, h);
+                    for (let y = 0; y < h; y++) {
+                        for (let x = 0; x < w; x++) {
+                            const d = src[y * stride + x];
+                            const v = d >= 1.0 ? 0 : Math.max(0, Math.min(255, Math.floor(((d - mn) / range) * 255)));
+                            const i = (y * w + x) * 4;
+                            img.data[i] = v;
+                            img.data[i + 1] = v;
+                            img.data[i + 2] = v;
+                            img.data[i + 3] = 255;
+                        }
+                    }
+                    ctx2d.putImageData(img, 0, 0);
+                }
+            } catch {
+                // best-effort debug — swallow transient GPU errors
+            } finally {
+                busy = false;
+            }
+        };
+        // ~5 fps is plenty for visual debugging; readback every frame
+        // would stall the main queue.
+        const intervalId = window.setInterval(tick, 200);
+        GUIUtil._shadowOverlays.set(light, { show: true, canvases, intervalId });
+    }
+
+    private static _disableShadowmapOverlay(light: DirectLight) {
+        const state = GUIUtil._shadowOverlays.get(light);
+        if (!state) return;
+        state.show = false;
+        if (state.intervalId !== null) {
+            clearInterval(state.intervalId);
+            state.intervalId = null;
+        }
+        for (const c of state.canvases) c.remove();
+        state.canvases = [];
     }
 
     /**
