@@ -56,7 +56,7 @@ class Sample_Skeleton {
             man.scaleX = 30;
             man.scaleY = 30;
             man.scaleZ = 30;
-            man.rotationZ = 90;
+            // man.rotationZ = 90;
             scene.addChild(man);
 
             let animator = man.getComponentsInChild(AnimatorComponent)[0];
