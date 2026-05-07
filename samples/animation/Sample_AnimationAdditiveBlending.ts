@@ -33,7 +33,7 @@ import {
     PostProcessingComponent, FXAAPost, Vector3,
 } from "@orillusion/core";
 
-const BASE_ACTIONS = ['None', 'idle', 'walk', 'run'];
+const BASE_ACTIONS = ['None', 'idle', 'walk', 'run', 'sneak_pose', 'sad_pose', 'agree', 'headShake'];
 const ADDITIVE_ACTIONS = ['sneak_pose', 'sad_pose', 'agree', 'headShake'];
 
 class Sample_AnimationAdditiveBlending {
@@ -47,7 +47,7 @@ class Sample_AnimationAdditiveBlending {
     activeBaseAction = 'idle';
     additiveWeights: { [name: string]: number } = {
         sneak_pose: 0,
-        sad_pose: 1,
+        sad_pose: 0,
         agree: 0,
         headShake: 0,
     };
@@ -63,7 +63,7 @@ class Sample_AnimationAdditiveBlending {
         const camera = CameraUtil.createCamera3DObject(this.scene);
         camera.perspective(45, engine.aspect, 0.1, 100);
         const ctrl = camera.object3D.addComponent(HoverCameraController);
-        ctrl.setCamera(0, -10, 6, new Vector3(0, 1.0, 0));
+        ctrl.setCamera(-90, -10, 6, new Vector3(0, 1.0, 0));
         ctrl.maxDistance = 30;
 
         const view = new View3D();
@@ -102,6 +102,7 @@ class Sample_AnimationAdditiveBlending {
         // Initial state: all clips off, then activate `idle` as base.
         for (const cs of this.animator.clipsState) cs.weight = 0;
         this.animator.playAnim('idle');
+        this.animator.timeScale = this.timeScale;
 
         // Each additive pose lives on its own layer, blend mode Additive.
         // The layer reads its clip's curves and applies (clip - rest) × weight
@@ -143,7 +144,7 @@ class Sample_AnimationAdditiveBlending {
 
         // ---- General Speed ----
         GUIHelp.addFolder('General Speed').open();
-        GUIHelp.add(this, 'timeScale', 0.0, 1.5, 0.01).name('modify time scale').onChange((v: number) => {
+        GUIHelp.add(this, 'timeScale', 0, 1.5, 0.01).name('modify time scale').onChange((v: number) => {
             this.animator.timeScale = v;
         });
         GUIHelp.endFolder();

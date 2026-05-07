@@ -487,7 +487,7 @@ export class AnimatorComponent extends ComponentBase {
                         Vector3.HELP_0.lerp(this._boneScale, scale, clipState.weight / totalWeight);
                         this._boneScale.copyFrom(Vector3.HELP_0);
                     }
-                   // obj.transform.localScale = this._boneScale;
+                    obj.transform.localScale = this._boneScale;
                 }
             }
         }
@@ -611,7 +611,9 @@ export class AnimatorComponent extends ComponentBase {
             // First-time resolve: scan the clip's curves for the actual
             // keyframe time range so we know whether to treat it as a static
             // pose or an animated overlay.
-            if (!layer._resolved) this._resolveLayer(layer, clip);
+            if (!layer._resolved){
+                 this._resolveLayer(layer, clip);
+            }
 
             if (layer._isStaticPose) {
                 // Pin to the last keyframe so the sample is stable (= target
@@ -623,7 +625,7 @@ export class AnimatorComponent extends ComponentBase {
                 if (clip.loopTime || (span > 0 && layer.time > layer._lastKeyTime)) {
                     if (span > 0) {
                         layer.time = layer._firstKeyTime + ((layer.time - layer._firstKeyTime) % span);
-                    }
+                    } 
                 }
             }
 
@@ -689,30 +691,30 @@ export class AnimatorComponent extends ComponentBase {
                     if (hasRot) {
                         const curve = clip.rotationCurves.get(joint.bonePath);
                         const v4 = curve.getValue(layer.time) as Vector4;
+                        // Capture layer-time values immediately — `getValue`
+                        // returns a SHARED `_cacheValue` instance, the next
+                        // call (refTime below) would otherwise overwrite v4.
                         this._layerRot.set(v4.x, v4.y, v4.z, v4.w);
+                        // Reference rotation = clip at first keyframe.
                         const r4 = curve.getValue(refTime) as Vector4;
-                        // Additive math: layer represents an absolute
-                        // rotation track. We want `delta` = "the
-                        // rotation needed to go from ref-pose to
-                        // current frame", then add it on top of the
-                        // base pose.
-                        //
-                        // Under v' = q v q⁻¹ (right-handed Hamilton):
-                        //   delta = layer * inv(ref)  — applies inv(ref)
-                        //     first to undo the ref pose, then `layer`
-                        //     to reach current. Verified with a Y30→
-                        //     Y30+X60 test (delta should be X60° alone,
-                        //     and `q * ref⁻¹` produces exactly that;
-                        //     `ref⁻¹ * q` instead leaves residual Y).
-                        //   result = base * delta — right-multiply puts
-                        //     `delta` in the bone's local frame, on top
-                        //     of base. Left-multiply (`delta * base`)
-                        //     would express delta in world frame and
-                        //     skew direction with base pose — that was
-                        //     the original bug that flipped the pose.
+                        // delta represents "rotation from clip start to
+                        // current time" in the BONE-LOCAL frame, so we
+                        // build it as inv(refRot) * layerRot — the same
+                        // ordering three.js's `AnimationUtils.makeClipAdditive`
+                        // bakes into its delta keys.
                         this._layerInvBaseQuat.set(-r4.x, -r4.y, -r4.z, r4.w);
-                        this._layerDeltaQuat.multiply(this._layerRot, this._layerInvBaseQuat);
+                        this._layerDeltaQuat.multiply(this._layerInvBaseQuat, this._layerRot);
+                        // identity → delta scaled by weight
                         this._layerSlerpedQuat.slerp(this._layerIdentityQuat, this._layerDeltaQuat, layer.weight);
+                        // result = base * scaled-delta — right-multiply so
+                        // delta is applied in the bone's local frame
+                        // (matches three.js PropertyMixer._slerpAdditive:
+                        // `work = base * delta; dst = slerp(base, work, t)`
+                        // ≡ `dst = base * slerp(identity, delta, t)`).
+                        // The previous left-multiply (`delta * base`)
+                        // applied delta in the PARENT frame, flipping the
+                        // perceived rotation direction (e.g. Xbot's
+                        // sneak_pose tilted backward instead of forward).
                         this._layerOutQuat.multiply(obj.localQuaternion, this._layerSlerpedQuat);
                         obj.localQuaternion = this._layerOutQuat;
                     }
