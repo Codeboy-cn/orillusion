@@ -209,6 +209,27 @@ export class Context3D extends CEventDispatcher {
         this._resizeObserver = new ResizeObserver(async () => {
             this.updateSize();
             const { Texture } = await import('./core/texture/Texture');
+            // Don't destroy the old GPU textures inline — `updateSize`
+            // synchronously fires the RESIZE event, which makes every
+            // RenderTexture allocate a new GPU texture and queue the old
+            // one in the delay-destroy list. But the current frame's
+            // command buffer was already submitted referencing the OLD
+            // texture; if we destroy now (a single microtask away after
+            // `await import`), the GPU dequeues the submit AFTER the
+            // destroy and reports
+            //   "Destroyed texture [...rgba32float] used in a submit".
+            // `queue.onSubmittedWorkDone()` resolves only after every
+            // command buffer submitted up to this point has fully
+            // executed on the GPU — by then no live submit can still
+            // reference the old textures, so destroying is safe.
+            try {
+                if (this.device && !this.lost) {
+                    await this.device.queue.onSubmittedWorkDone();
+                }
+            } catch {
+                // device might have been lost between the await and the
+                // resolve; the destroy below is a no-op in that case.
+            }
             Texture.destroyTexture(this);
         });
 
