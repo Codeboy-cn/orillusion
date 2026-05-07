@@ -1,12 +1,12 @@
 /**
- * Coarse-grained execution phase for a RenderFeature. Provides a stable
+ * Coarse-grained execution phase for a RenderGraphPass. Provides a stable
  * sort key when the declarative reads/writes graph has multiple valid
  * topological orderings — tie-break is stage-first, insertion-order
  * second. Stages are ordered by the numeric enum value.
  *
  * Hooks exposed between the mainstream phases (AfterOpaque,
  * AfterTransparent, AfterPost) are the insertion points users are
- * expected to target for custom features (refraction, opaque-only post,
+ * expected to target for custom passes (refraction, opaque-only post,
  * TAA sharpen, etc.).
  *
  * @group Graph

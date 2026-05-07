@@ -1,7 +1,6 @@
 import { Engine3D } from "..";
 import { CEventListener } from "../event/CEventListener";
 import { ShadowLightsCollect } from "../gfx/renderJob/collect/ShadowLightsCollect";
-import { FrameGraphRendererJob } from "../gfx/renderJob/jobs/FrameGraphRendererJob";
 import { RenderGraph } from "../gfx/renderJob/graph/RenderGraph";
 import { PickFire } from "../io/PickFire";
 import { Vector4 } from "../math/Vector4";
@@ -75,16 +74,11 @@ export class View3D extends CEventListener {
         this._viewPort = value;
     }
 
-    /**
-     * Frame Graph bound to this view's engine. Only populated when
-     * `engine.setting.render.useFrameGraph = true` — the view's
-     * render job is a `FrameGraphRendererJob` in that case and owns
-     * the graph. Returns null under the legacy path so callers can
-     * cleanly feature-detect.
-     */
+    /** Frame Graph bound to this view's engine. The view's render
+     *  job owns it (constructed during `engine.startRenderView`).
+     *  Returns null only when the engine has not yet started a
+     *  render job for this view. */
     public get renderGraph(): RenderGraph | null {
-        const job = this.engine3D?.getRenderJob(this);
-        if (job instanceof FrameGraphRendererJob) return job.graph;
-        return null;
+        return this.engine3D?.getRenderJob(this)?.graph ?? null;
     }
 }

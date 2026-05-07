@@ -105,8 +105,10 @@ export class GodRayPost extends PostBase {
         this.godRayCompute.setSamplerTexture('inTex', this.getLastRenderTexture());
         this.godRayCompute.setStorageTexture(`outTex`, this.godRayTexture);
 
-        let shadowRenderer = view.engine3D.renderJobs.get(view).shadowMapPassRenderer;
-        this.godRayCompute.setSamplerTexture(`shadowMap`, shadowRenderer.depth2DArrayTexture);
+        const shadowMap = view.renderGraph?.pool.get(`_MainShadowMap`) as any;
+        if (shadowMap) {
+            this.godRayCompute.setSamplerTexture(`shadowMap`, shadowMap);
+        }
 
         this.godRaySetting = godRaySetting;
 

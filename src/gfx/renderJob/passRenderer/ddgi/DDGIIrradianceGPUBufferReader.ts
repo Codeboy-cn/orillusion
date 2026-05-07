@@ -2,12 +2,12 @@
 import { CEventDispatcher } from "../../../../event/CEventDispatcher";
 import { RenderTexture } from "../../../../textures/RenderTexture";
 import { bindCtx, Context3D } from "../../../graphics/webGpu/Context3D";
-import { DDGIProbeRenderer, GIRenderCompleteEvent } from "./DDGIProbeRenderer";
+import { GIPass, GIRenderCompleteEvent } from "../../graph/passes/GIPass";
 
 export let IrradianceDataReaderCompleteEvent: CEvent = new CEvent('IrradianceDataReaderCompleteEvent');
 export class DDGIIrradianceGPUBufferReader extends CEventDispatcher {
     private readFlag = false;
-    private probeRenderer: DDGIProbeRenderer;
+    private probeRenderer: GIPass;
     private opColorBuffer: GPUBuffer;
     private opDepthBuffer: GPUBuffer;
     private srcColorMap: RenderTexture;
@@ -17,7 +17,7 @@ export class DDGIIrradianceGPUBufferReader extends CEventDispatcher {
     public opColorArray: Float32Array;
     public _boundCtx: Context3D | null = null;
 
-    public initReader(ctx: Context3D, probeRender: DDGIProbeRenderer, colorMap: RenderTexture, depthMap: RenderTexture) {
+    public initReader(ctx: Context3D, probeRender: GIPass, colorMap: RenderTexture, depthMap: RenderTexture) {
         this.probeRenderer = probeRender;
         this.srcColorMap = colorMap;
         this.srcDepthMap = depthMap;

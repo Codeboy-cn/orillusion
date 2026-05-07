@@ -7,7 +7,7 @@ import { RTFrame } from '../frame/RTFrame';
 import { RTResourceMap } from '../frame/RTResourceMap';
 import { ComputeShader } from '../../../gfx/graphics/webGpu/shader/ComputeShader';
 import { RTResourceConfig } from '../config/RTResourceConfig';
-import { PostRenderer } from '../passRenderer/post/PostRenderer';
+import { PostPass } from '../graph/passes/PostPass';
 import { View3D } from '../../../core/View3D';
 import { Reference } from '../../../util/Reference';
 import { CResizeEvent } from '../../../event/CResizeEvent';
@@ -21,11 +21,11 @@ import { EngineSetting } from '../../../setting/EngineSetting';
  */
 export class PostBase {
     public enable: boolean = true;
-    /** When true, PostRenderer iterates this post AFTER every regular
+    /** When true, PostPass iterates this post AFTER every regular
      *  post regardless of attach order — used by TonemapPost so the
      *  ACES curve always lands on the fully-composited HDR signal. */
     public isFinalPass: boolean = false;
-    public postRenderer: PostRenderer;
+    public postRenderer: PostPass;
     public rendererPassState: RendererPassState;
     public _boundCtx: Context3D | null = null;
     private _resourceCreated: boolean = false;

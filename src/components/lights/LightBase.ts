@@ -7,6 +7,7 @@ import { Transform } from '../Transform';
 import { GILighting } from './GILighting';
 import { LightData } from './LightData';
 import { ShadowLightsCollect } from '../../gfx/renderJob/collect/ShadowLightsCollect';
+import { ReflectionPass } from '../../gfx/renderJob/graph/passes/ReflectionPass';
 import { IESProfiles } from './IESProfiles';
 import { ILight } from './ILight';
 
@@ -98,9 +99,12 @@ export class LightBase extends ComponentBase implements ILight {
 
         const view = this.transform.view3D;
         if (view) {
-            const job = view.engine3D?.renderJobs.get(view);
-            const renderer = job?.reflectionRenderer;
-            if (renderer) renderer.forceUpdate();
+            // ReflectionPass owns the cube-face cache; bumping its
+            // dirty flag ensures the next frame re-renders all probes
+            // with the new lighting. graph-only path — legacy pre-FG
+            // code path is no longer reachable.
+            const reflectionPass = view.renderGraph?.getPass<ReflectionPass>('ReflectionPass');
+            reflectionPass?.forceUpdate();
         }
     }
 

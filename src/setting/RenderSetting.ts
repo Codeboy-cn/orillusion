@@ -39,7 +39,7 @@ export type RenderSetting = {
     /** GPU-driven culling — when true, frustum + (when paired with
      *  Hi-Z) occlusion tests run on the GPU per mesh instance and
      *  produce a `drawIndexedIndirect` arg buffer. The compute pass
-     *  is fully implemented in `GPUCullFeature` /
+     *  is fully implemented in `GPUCullPass` /
      *  `GPUFrustumCull_cs`; what's still skeleton is the
      *  `ColorPassRenderer.drawNodes` consumer that actually issues
      *  the indirect call (the existing per-node iteration coexists).

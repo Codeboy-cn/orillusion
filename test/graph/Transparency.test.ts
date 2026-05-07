@@ -7,10 +7,10 @@ import {
     Object3D,
     LitMaterial,
     Material,
-    SceneColorPyramidFeature,
-    SortedTransparentFeature,
-    TransparentOITFeature,
-    TransparentResolveFeature,
+    SceneColorPyramidPass,
+    SortedTransparentPass,
+    TransparentOITPass,
+    TransparentResolvePass,
     SCENE_COLOR_PYRAMID,
     OIT_ACCUM_TEX,
     OIT_REVEAL_TEX,
@@ -23,7 +23,7 @@ import {
 //
 // - P0.1: per-instance MSAA setting + LitMaterial.alphaMode + the
 //   alpha-to-coverage pipeline plumb.
-// - P1.1: SceneColorPyramidFeature registers and exposes the
+// - P1.1: SceneColorPyramidPass registers and exposes the
 //   `_SceneColorPyramid` handle.
 // - P1.2: LitMaterial.transmissionFactor setter flips USE_TRANSMISSION.
 // - P2: useOIT toggles the WBOIT features into the graph; sorted +
@@ -36,7 +36,7 @@ await test('Engine3D defaults expose msaa and useOIT settings', async () => {
     engine.dispose()
 })
 
-await test('SceneColorPyramidFeature registers and exposes _SceneColorPyramid', async () => {
+await test('SceneColorPyramidPass registers and exposes _SceneColorPyramid', async () => {
     const engine = await Engine3D.init({
         setting: { render: { useFrameGraph: true } as any },
     })
@@ -51,8 +51,8 @@ await test('SceneColorPyramidFeature registers and exposes _SceneColorPyramid', 
     engine.startRenderView(view)
     await delay(120)
 
-    const feature = view.renderGraph!.getFeature('SceneColorPyramidFeature') as SceneColorPyramidFeature | null
-    if (!feature) throw new Error('SceneColorPyramidFeature not registered')
+    const feature = view.renderGraph!.getPass('SceneColorPyramidPass') as SceneColorPyramidPass | null
+    if (!feature) throw new Error('SceneColorPyramidPass not registered')
     expect(feature.stage).toEqual(RenderStage.AfterOpaque)
     expect(feature.writes.length).toEqual(1)
     expect(feature.writes[0]).toEqual(SCENE_COLOR_PYRAMID)
@@ -65,7 +65,7 @@ await test('SceneColorPyramidFeature registers and exposes _SceneColorPyramid', 
     engine.dispose()
 })
 
-await test('SortedTransparentFeature is registered with filter=all when useOIT is off', async () => {
+await test('SortedTransparentPass is registered with filter=all when useOIT is off', async () => {
     const engine = await Engine3D.init({
         setting: { render: { useFrameGraph: true, useOIT: false } as any },
     })
@@ -80,12 +80,12 @@ await test('SortedTransparentFeature is registered with filter=all when useOIT i
     engine.startRenderView(view)
     await delay(120)
 
-    const sorted = view.renderGraph!.getFeature('SortedTransparentFeature') as SortedTransparentFeature | null
-    if (!sorted) throw new Error('SortedTransparentFeature not registered')
+    const sorted = view.renderGraph!.getPass('SortedTransparentPass') as SortedTransparentPass | null
+    if (!sorted) throw new Error('SortedTransparentPass not registered')
     expect(sorted.stage).toEqual(RenderStage.Transparent)
     // OIT features should NOT be in the graph when useOIT is false.
-    expect(!!view.renderGraph!.getFeature('TransparentOITFeature')).toEqual(false)
-    expect(!!view.renderGraph!.getFeature('TransparentResolveFeature')).toEqual(false)
+    expect(!!view.renderGraph!.getPass('TransparentOITPass')).toEqual(false)
+    expect(!!view.renderGraph!.getPass('TransparentResolvePass')).toEqual(false)
 
     engine.dispose()
 })
@@ -105,13 +105,13 @@ await test('useOIT=true registers OIT + Resolve features alongside sorted', asyn
     engine.startRenderView(view)
     await delay(120)
 
-    const oit = view.renderGraph!.getFeature('TransparentOITFeature') as TransparentOITFeature | null
-    const resolve = view.renderGraph!.getFeature('TransparentResolveFeature') as TransparentResolveFeature | null
-    const sorted = view.renderGraph!.getFeature('SortedTransparentFeature') as SortedTransparentFeature | null
+    const oit = view.renderGraph!.getPass('TransparentOITPass') as TransparentOITPass | null
+    const resolve = view.renderGraph!.getPass('TransparentResolvePass') as TransparentResolvePass | null
+    const sorted = view.renderGraph!.getPass('SortedTransparentPass') as SortedTransparentPass | null
 
-    if (!oit) throw new Error('TransparentOITFeature not registered')
-    if (!resolve) throw new Error('TransparentResolveFeature not registered')
-    if (!sorted) throw new Error('SortedTransparentFeature not registered')
+    if (!oit) throw new Error('TransparentOITPass not registered')
+    if (!resolve) throw new Error('TransparentResolvePass not registered')
+    if (!sorted) throw new Error('SortedTransparentPass not registered')
 
     expect(oit.stage).toEqual(RenderStage.Transparent)
     expect(resolve.stage).toEqual(RenderStage.AfterTransparent)

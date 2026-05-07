@@ -98,7 +98,7 @@ export class GBufferPost extends PostBase {
     }
 
     private _createGBufferPostResources() {
-        let rtFrame = GBufferFrame.getGBufferFrame("ColorPassGBuffer", this._boundCtx!);
+        let rtFrame = GBufferFrame.getGBufferFrame(GBufferFrame.colorPass_GBuffer, this._boundCtx!);
         this.currentRenderTexture = rtFrame.getColorTexture();
         this.gBufferTexture = rtFrame.getCompressGBufferTexture();
 
@@ -121,14 +121,14 @@ export class GBufferPost extends PostBase {
         this.uniformBuffer.setInt32("state", this._state);
 
         let globalUniform = GlobalBindGroup.getCameraGroup(this.view.camera);
-        let rtFrame = GBufferFrame.getGBufferFrame("ColorPassGBuffer", this._boundCtx!);
+        let rtFrame = GBufferFrame.getGBufferFrame(GBufferFrame.colorPass_GBuffer, this._boundCtx!);
         let gBufferTexture = rtFrame.getCompressGBufferTexture();
 
         let reflectionSetting = this.setting.reflectionSetting;
         let reflectionsGBufferFrame = GBufferFrame.getGBufferFrame(GBufferFrame.reflections_GBuffer, this._boundCtx!, reflectionSetting.width, reflectionSetting.height);
         let reflectionsGBufferTexture = reflectionsGBufferFrame.getCompressGBufferTexture();
 
-        let envMap = this.view.engine3D.renderJobs.get(this.view).reflectionRenderer.outTexture;
+        let envMap = this.view.renderGraph?.pool.get(`_ReflectionCubeMap`) as any;
 
         this.testCompute = new ComputeShader(TestComputeLoadBuffer);
         this.testCompute.setUniformBuffer('globalUniform', globalUniform.uniformGPUBuffer);

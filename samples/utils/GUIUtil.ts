@@ -672,9 +672,10 @@ export class GUIUtil {
             component.object3D.transform.enable = false;
         });
 
-        let ddgiProbeRenderer = renderJob.ddgiProbeRenderer;
+        let giPass = view.renderGraph?.getPass<any>('GIPass');
         GUIHelp.addButton('showRays', () => {
-            let array = ddgiProbeRenderer.irradianceComputePass['depthRaysBuffer'].readBuffer();
+            if (!giPass?.irradianceComputePass) return;
+            let array = giPass.irradianceComputePass['depthRaysBuffer'].readBuffer();
             let count = engine.setting.gi.probeXCount * engine.setting.gi.probeYCount * engine.setting.gi.probeZCount
             for (let j = 0; j < count; j++) {
                 let probeIndex = j;
@@ -719,8 +720,9 @@ export class GUIUtil {
         f.open();
         let renderJob = view.engine3D.getRenderJob(view);
         let engine = view.engine3D;
-        if (renderJob.postRenderer) {
-            let debugTextures = renderJob.postRenderer.debugTextures;
+        const postPass = view.renderGraph?.getPass<any>('PostPass');
+        if (postPass) {
+            let debugTextures = postPass.debugTextures;
             let debugTextureObj = { normalRender: -1 };
             for (let i = 0; i < debugTextures.length; i++) {
                 const tex = debugTextures[i];

@@ -156,7 +156,7 @@ export class SSRPost extends PostBase {
         this.SSR_RayTraceCompute.setStorageBuffer(`rayTraceBuffer`, this.rayTraceData);
         this.SSR_RayTraceCompute.setStorageBuffer(`historyPosition`, this.historyPosition);
 
-        let rtFrame = GBufferFrame.getGBufferFrame("ColorPassGBuffer", this._boundCtx!);
+        let rtFrame = GBufferFrame.getGBufferFrame(GBufferFrame.colorPass_GBuffer, this._boundCtx!);
         let gBufferTexture = rtFrame.getCompressGBufferTexture();
 
         this.SSR_RayTraceCompute.setSamplerTexture("gBufferTexture", gBufferTexture);
@@ -193,7 +193,7 @@ export class SSRPost extends PostBase {
         this.SSR_Blend_Compute.setStorageBuffer(`rayTraceBuffer`, this.rayTraceData);
         this.SSR_Blend_Compute.setUniformBuffer('globalUniform', globalUniform.uniformGPUBuffer);
 
-        let rtFrame = GBufferFrame.getGBufferFrame("ColorPassGBuffer", this._boundCtx!);
+        let rtFrame = GBufferFrame.getGBufferFrame(GBufferFrame.colorPass_GBuffer, this._boundCtx!);
         let gBufferTexture = rtFrame.getCompressGBufferTexture();
 
         this.SSR_Blend_Compute.setSamplerTexture("gBufferTexture", gBufferTexture);

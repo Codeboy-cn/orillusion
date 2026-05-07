@@ -1,5 +1,5 @@
 import { GUIHelp } from '@orillusion/debug/GUIHelp';
-import { AtmosphericComponent, BoxGeometry, CameraUtil, DirectLight, Engine3D, ForwardRenderJob, HoverCameraController, LitMaterial, MeshRenderer, Object3D, Scene3D, View3D } from '@orillusion/core';
+import { AtmosphericComponent, BoxGeometry, CameraUtil, DirectLight, Engine3D, HoverCameraController, LitMaterial, MeshRenderer, Object3D, Scene3D, View3D } from '@orillusion/core';
 import { BunnySimulator } from "./softbody/BunnySimulator";
 
 export class Demo_Softbody {

@@ -672,18 +672,29 @@ export class RenderNode extends ComponentBase {
                     let bdrflutTex = Engine3D.resFor(view.engine3D?.context3D).getTexture(`BRDFLUT`);
                     renderShader.setTexture(`brdflutMap`, bdrflutTex);
 
-                    let renderJob = view.engine3D.renderJobs.get(view);
-                    let shadowRenderer = renderJob.shadowMapPassRenderer;
-                    if (shadowRenderer && shadowRenderer.depth2DArrayTexture) {
-                        renderShader.setTexture(`shadowMap`, shadowRenderer.depth2DArrayTexture);
+                    // v2 shadow map binding: read the depth-array textures
+                    // through the graph pool. The legacy paths
+                    // `renderJob.shadowMapPassRenderer / pointLightShadowRenderer`
+                    // were v1 ForwardRenderJob fields that no longer exist
+                    // after the v2 rewrite — leaving them in place silently
+                    // skipped the setTexture calls so the lit pipeline's
+                    // bind group came up 2 entries short of its layout
+                    // ("BindGroupLayout 26 vs 24" errors at first frame).
+                    const graph = view.renderGraph;
+                    if (graph) {
+                        if (graph.pool.has('_MainShadowMap')) {
+                            const depth2DArrayTexture = graph.pool.get('_MainShadowMap');
+                            if (depth2DArrayTexture) {
+                                renderShader.setTexture(`shadowMap`, depth2DArrayTexture as any);
+                            }
+                        }
+                        if (graph.pool.has('_PointShadowCubeArray')) {
+                            const cubeArrayTexture = graph.pool.get('_PointShadowCubeArray');
+                            if (cubeArrayTexture) {
+                                renderShader.setTexture(`pointShadowMap`, cubeArrayTexture as any);
+                            }
+                        }
                     }
-                    // let shadowLight = ShadowLights.list;
-                    // if (shadowLight.length) {
-                    let pointShadowRenderer = renderJob.pointLightShadowRenderer;
-                    if (pointShadowRenderer && pointShadowRenderer.cubeArrayTexture) {
-                        renderShader.setTexture(`pointShadowMap`, pointShadowRenderer.cubeArrayTexture);
-                    }
-                    // }
 
                     let iesTexture = IESProfiles.iesTexture;
                     if (iesTexture) {

@@ -8,10 +8,9 @@ import { version } from '../package.json';
 
 import { Context3D } from './gfx/graphics/webGpu/Context3D';
 
-import { ForwardRenderJob } from './gfx/renderJob/jobs/ForwardRenderJob';
-import { FrameGraphRendererJob } from './gfx/renderJob/jobs/FrameGraphRendererJob';
 import { GlobalBindGroup } from './gfx/graphics/webGpu/core/bindGroups/GlobalBindGroup';
 import { Interpolator } from './math/TimeInterpolator';
+import { ForwardRendererJob } from './gfx/renderJob/jobs/ForwardRendererJob';
 import { RendererJob } from './gfx/renderJob/jobs/RendererJob';
 import { Res } from './assets/Res';
 import { ShaderLib } from './assets/shader/ShaderLib';
@@ -439,7 +438,7 @@ export class Engine3D {
 
     // -------- render view setup --------
 
-    private _startRenderJob(view: View3D): RendererJob {
+    private _startRenderJob(view: View3D, JobCtor: new (view: View3D) => RendererJob = ForwardRendererJob): RendererJob {
         view.engine3D = this;
         // Bind camera to this engine's context so render-time lookups
         // (`GlobalBindGroup._ctxFromCamera`, `CameraUtil` math helpers)
@@ -455,9 +454,7 @@ export class Engine3D {
                 }
             }
         }
-        let renderJob: RendererJob = this.setting.render.useFrameGraph
-            ? new FrameGraphRendererJob(view)
-            : new ForwardRenderJob(view);
+        const renderJob: RendererJob = new JobCtor(view);
         this.renderJobs.set(view, renderJob);
 
         if (this.setting.pick.mode == `pixel`) {
@@ -470,9 +467,9 @@ export class Engine3D {
         return renderJob;
     }
 
-    public startRenderView(view: View3D): RendererJob {
+    public startRenderView(view: View3D, JobCtor?: new (view: View3D) => RendererJob): RendererJob {
         this.views = [view];
-        let job = this._startRenderJob(view);
+        let job = this._startRenderJob(view, JobCtor);
         // Drive the render-job lifecycle synchronously here: previously
         // `start()` ran on the first RAF tick from the shared render
         // loop, which meant any synchronous user code between
@@ -489,10 +486,10 @@ export class Engine3D {
         return job;
     }
 
-    public startRenderViews(views: View3D[]) {
+    public startRenderViews(views: View3D[], JobCtor?: new (view: View3D) => RendererJob) {
         this.views = views;
         for (let v of views) {
-            const job = this._startRenderJob(v);
+            const job = this._startRenderJob(v, JobCtor);
             if (!job.renderState) job.start();
         }
         Engine3D._ensureLoop();

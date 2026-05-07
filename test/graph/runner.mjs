@@ -23,16 +23,16 @@ const TIMEOUT_MS = 25000;
 
 const TARGETS = [
     './graph/RenderGraph.test.ts',
-    './graph/FrameGraphRendererJob.test.ts',
-    './graph/ClusterLightingFeature.test.ts',
-    './graph/PreDepthFeature.test.ts',
-    './graph/ShadowFeature.test.ts',
-    './graph/PointShadowFeature.test.ts',
-    './graph/ReflectionFeature.test.ts',
-    './graph/GIFeature.test.ts',
-    './graph/ColorFeature.test.ts',
-    './graph/PostFeature.test.ts',
-    './graph/GUIFeature.test.ts',
+    './graph/ForwardRendererJob.test.ts',
+    './graph/ClusterLightingPass.test.ts',
+    './graph/PreDepthPass.test.ts',
+    './graph/ShadowPass.test.ts',
+    './graph/PointShadowPass.test.ts',
+    './graph/ReflectionPass.test.ts',
+    './graph/GIPass.test.ts',
+    './graph/ColorPass.test.ts',
+    './graph/PostPass.test.ts',
+    './graph/GUIPass.test.ts',
 ];
 
 async function runOne(win, target) {
