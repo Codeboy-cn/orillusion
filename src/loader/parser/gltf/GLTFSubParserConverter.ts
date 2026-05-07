@@ -432,14 +432,27 @@ export class GLTFSubParserConverter {
                     // If the AnimatorComponent doesn't exist yet (skeleton
                     // node hasn't been converted), queue this renderer so
                     // `convertSkeletonAnim` can wire it up when it runs.
+                    //
+                    // For glTFs with multiple skins sharing one skeleton
+                    // (Soldier.glb: skin0 = 49-joint body, skin1 = 2-joint
+                    // visor), `convertSkeletonAnim` only ever drains the
+                    // queue of `skeletonNode.dnode.skeleton` (= the larger
+                    // skin we picked above as the avatar source). Push
+                    // every smr to *that* queue, not to the smaller skin's
+                    // own queue — otherwise the visor SMR would never get
+                    // wired and `start()`'s top-ancestor fallback would
+                    // bind it to whichever AnimatorComponent it finds
+                    // first in the scene (Michelle's, in the retargeting
+                    // sample → the visor mesh follows Michelle's head).
                     const animOnSkeleton = (skeletonNode.dnode && skeletonNode.dnode['nodeObj'])
                         ? (skeletonNode.dnode['nodeObj'] as Object3D).getComponent(AnimatorComponent)
                         : null;
                     if (animOnSkeleton) {
                         smr.skeletonAnimation = animOnSkeleton;
                     } else {
-                        if (!nodeInfo.skin._pendingSkinned) nodeInfo.skin._pendingSkinned = [];
-                        nodeInfo.skin._pendingSkinned.push(smr);
+                        const queueOwner = (skeletonNode.dnode && skeletonNode.dnode['skeleton']) || nodeInfo.skin;
+                        if (!queueOwner._pendingSkinned) queueOwner._pendingSkinned = [];
+                        queueOwner._pendingSkinned.push(smr);
                     }
                 } else {
                     geometry ||= this.createGeometryBase(modelName, attribArrays, primitive);
