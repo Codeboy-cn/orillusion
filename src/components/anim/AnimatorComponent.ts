@@ -72,7 +72,29 @@ export class AnimatorComponent extends ComponentBase {
     }
 
     public start(): void {
-        // this._rendererList = this.object3D.getComponentsInChild(SkinnedMeshRenderer2);
+        // Re-parent the skeleton's root joint now that we are attached to
+        // a scene. Why this is needed: in the clone path, buildSkeletonPose
+        // runs while `Object3D.instantiate()` is still constructing the
+        // cloned subtree — `this.object3D.parent` is null at that moment
+        // (the parent link is set by the OUTER instantiate call AFTER
+        // `cloneTo` returns). The fallback in buildSkeletonPose can't
+        // attach to scene3D either (the cloned subtree isn't in the scene
+        // yet), so the root joint is born orphaned and the skinned mesh
+        // ignores the cloned root's world transform — Sample_Skeleton2
+        // sees three soldiers stacked at the origin instead of at
+        // x=-10/-100/100. By start() time the cloned hierarchy is fully
+        // wired, so gltfParent resolves and the joint inherits the
+        // correct world transform.
+        if (this.root && !this.root.parent) {
+            const gltfParent = this.object3D.parent
+                ? (this.object3D.parent.object3D as Object3D)
+                : null;
+            if (gltfParent) {
+                gltfParent.addChild(this.root);
+            } else if (this.object3D.transform.scene3D) {
+                this.object3D.transform.scene3D.addChild(this.root);
+            }
+        }
     }
 
     private debug() {
@@ -237,6 +259,25 @@ export class AnimatorComponent extends ComponentBase {
                 // so meshes whose mesh node has a non-identity worldMatrix
                 // (Kira_Hair_A.0020 at Y=-0.404) are no longer
                 // double-transformed.
+                // Try to parent immediately. In the glTF-loader path,
+                // `this.object3D` is already wired into the loader's tree
+                // when buildSkeletonPose runs, so gltfParent resolves and
+                // we attach right away (preserving existing behavior).
+                //
+                // In the clone path, however, `Object3D.instantiate()`
+                // attaches `tmp` to its outer parent ONLY AFTER calling
+                // each component's `cloneTo(tmp)`. So at this moment
+                // `this.object3D.parent` is null and scene3D is null
+                // too (the cloned subtree is still detached). The root
+                // joint would end up unparented, which decouples it
+                // from the cloned hierarchy's world transform — visible
+                // in Sample_Skeleton2 as cloned soldiers ignoring
+                // `soldier2.x = -100`.
+                //
+                // When that happens, leave `this.root` orphaned and let
+                // `start()` re-parent it once the cloned subtree has been
+                // added to the scene (Object3D parent chain is then
+                // wired and gltfParent resolves correctly).
                 const gltfParent = this.object3D.parent
                     ? (this.object3D.parent.object3D as Object3D)
                     : null;

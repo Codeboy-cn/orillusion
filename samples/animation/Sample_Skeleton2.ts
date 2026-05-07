@@ -56,9 +56,7 @@ class Sample_Skeleton2 {
             directLight.lightColor = KelvinUtil.color_temperature_to_rgb(5355);
             directLight.castShadow = true;
             directLight.intensity = 3;
-            directLight.shadowBoundWidth = 512;
-            directLight.shadowBoundHeight = 512;
-            directLight.shadowBoundFar = 512;
+            directLight.enableCSM = true;
             GUIHelp.init();
             GUIUtil.renderDirLight(directLight);
             scene.addChild(this.lightObj3D);
@@ -66,12 +64,9 @@ class Sample_Skeleton2 {
 
         {
             // load model with skeletion animation
-            let rootNode = await this.engine.res.loadGltf('gltfs/glb/Soldier.glb');
-            let character = rootNode.getObjectByName('Character') as Object3D;
-            character.scaleX = 0.3;
-            character.scaleY = 0.3;
-            character.scaleZ = 0.3;
-            character.rotationY = 180;
+            let soldier = await this.engine.res.loadGltf('gltfs/glb/Soldier.glb');
+            soldier.scaleX = soldier.scaleY = soldier.scaleZ = 20;
+            soldier.rotationY = 180;
 
             // enum animation names
             var animName = ['Idle', 'Walk', 'Run', 'TPose'];
@@ -80,14 +75,14 @@ class Sample_Skeleton2 {
             let maxRow = Math.floor(maxCount / maxCol);
             // Clone 100 players to play different animations
             for (var i = 0; i < maxCount; i++) {
-                let cloneObj = character.clone();
+                let cloneObj = soldier.clone();
 
                 let row = Math.floor(i / maxCol);
                 let col = Math.floor(i % maxCol);
 
                 cloneObj.x = (maxCol * -0.5 + col) * 30;
                 cloneObj.z = (maxRow * -0.5 + row) * 30;
-                cloneObj.rotationX = -90;
+                // cloneObj.rotationX = -90;
                 scene.addChild(cloneObj);
 
                 let animation = cloneObj.getComponentsInChild(AnimatorComponent)[0];

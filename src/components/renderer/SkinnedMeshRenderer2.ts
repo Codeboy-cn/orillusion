@@ -117,18 +117,26 @@ export class SkinnedMeshRenderer2 extends MeshRenderer {
         // SIBLING node of this mesh — for glTFs like Kira's, the skin's
         // joint root (e.g. spine_03) and the mesh node (e.g. Kira_Hair_A)
         // are cousins under the gltf loader root, not parent-child.
-        // Walking only UP the parent chain misses such layouts. Walk up
-        // to the highest ancestor and then search descendants. NOTE: in
-        // multi-character scenes this can mis-bind across GLBs — the
-        // guard above prevents the loader-wired binding from being
-        // overwritten, so this branch only runs when no wiring exists.
-        let topAncestor: Object3D = this.object3D;
-        while (topAncestor.parent && (topAncestor.parent.object3D as Object3D)) {
-            topAncestor = topAncestor.parent.object3D as Object3D;
-        }
-        const found = topAncestor.getComponentsInChild(AnimatorComponent);
-        if (found.length > 0) {
-            this.skeletonAnimation = found[0];
+        // Walking only UP the parent chain misses such layouts.
+        //
+        // Walk up ONE ancestor at a time, and at each level search that
+        // ancestor's subtree for an animator. Stop at the closest
+        // enclosing animator. This is critical for scenes with multiple
+        // skinned characters (e.g. Sample_Skeleton2 cloning Soldier, or
+        // Sample_AnimationRetargeting with two GLBs side-by-side):
+        // walking all the way to scene root and taking found[0] would
+        // bind every cloned mesh to whichever character was loaded first
+        // — making clones appear to share one skeleton.
+        let cursor: Object3D = this.object3D;
+        while (cursor) {
+            const found = cursor.getComponentsInChild(AnimatorComponent);
+            if (found.length > 0) {
+                this.skeletonAnimation = found[0];
+                return;
+            }
+            const parent = cursor.parent && (cursor.parent.object3D as Object3D);
+            if (!parent) break;
+            cursor = parent;
         }
     }
 
