@@ -103,17 +103,24 @@ fn main(vertex:VertexAttributes) -> VertexOutput {
     #endif
 
     #if USE_SKELETON
+        // glTF 2.0 skinning: the skinning matrix already produces
+        // world-space positions (sum of weight * jointWorld * invBind),
+        // so we OVERWRITE worldMatrix instead of multiplying. Multiplying
+        // would fold in the mesh node's worldMatrix a second time —
+        // visible on Sample_Skeleton (man.scaleX = 30) as a 30×-larger
+        // shadow that doesn't match the actual mesh. Matches the color
+        // pass: VertexFunction_vert sets ORI_MATRIX_M = skeletonNormal.
         #if USE_JOINT_VEC8
-          worldMatrix *= getSkeletonWorldMatrix_8(vertex.joints0, vertex.weights0, vertex.joints1, vertex.weights1);
+          worldMatrix = getSkeletonWorldMatrix_8(vertex.joints0, vertex.weights0, vertex.joints1, vertex.weights1);
         #else
-          worldMatrix *= getSkeletonWorldMatrix_4(vertex.joints0, vertex.weights0);
+          worldMatrix = getSkeletonWorldMatrix_4(vertex.joints0, vertex.weights0);
         #endif
     #endif
 
     var worldPos = worldMatrix * vec4<f32>(vertexPosition, 1.0) ;
     var vPos = shadowMatrix * worldPos;
 
-    return VertexOutput(vertex.uv, vPos );  
+    return VertexOutput(vertex.uv, vPos );
 }
 `
 
@@ -207,12 +214,15 @@ fn main(vertex:VertexAttributes) -> VertexOutput {
         UpdateWorldMatrixToRTE_PrivatePtr(u32(vertex.index), &worldMatrix);
     }
 
+    // Skinning OVERWRITES worldMatrix (glTF 2.0 skinning matrix already
+    // produces world-space positions). Same fix as shadowCastMap_vert
+    // and matches VertexFunction_vert for the color pass.
     #if USE_METAHUMAN
         ${MorphTarget_shader.getMorphTargetCalcVertex()}
         #if USE_JOINT_VEC8
-            worldMatrix *= getSkeletonWorldMatrix_8(vertex.joints0, vertex.weights0, vertex.joints1, vertex.weights1);
+            worldMatrix = getSkeletonWorldMatrix_8(vertex.joints0, vertex.weights0, vertex.joints1, vertex.weights1);
         #else
-            worldMatrix *= getSkeletonWorldMatrix_4(vertex.joints0, vertex.weights0);
+            worldMatrix = getSkeletonWorldMatrix_4(vertex.joints0, vertex.weights0);
         #endif
     #endif
 
@@ -222,15 +232,15 @@ fn main(vertex:VertexAttributes) -> VertexOutput {
 
     #if USE_SKELETON
         #if USE_JOINT_VEC8
-          worldMatrix *= getSkeletonWorldMatrix_8(vertex.joints0, vertex.weights0, vertex.joints1, vertex.weights1);
+          worldMatrix = getSkeletonWorldMatrix_8(vertex.joints0, vertex.weights0, vertex.joints1, vertex.weights1);
         #else
-          worldMatrix *= getSkeletonWorldMatrix_4(vertex.joints0, vertex.weights0);
+          worldMatrix = getSkeletonWorldMatrix_4(vertex.joints0, vertex.weights0);
         #endif
     #endif
 
     var worldPos = worldMatrix * vec4<f32>(vertexPosition, 1.0) ;
     var vPos = shadowMatrix * worldPos;
-    return VertexOutput(vertex.uv, worldPos.xyz , vPos ); 
+    return VertexOutput(vertex.uv, worldPos.xyz , vPos );
 }
 `
 
