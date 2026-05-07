@@ -3,36 +3,46 @@
  * hip's translation, optionally) from a source AnimatorComponent to a
  * target AnimatorComponent each frame.
  *
- * **Rotation channel — source-bind-frame delta with full Character FK.**
- * For every retargeted bone:
+ * **Rotation channel — per-bone world offset + Character
+ * pre-alignment.** Per retargeted bone we apply
  *
- *   delta_in_sourceBind = inv(bindWorld_S) * currentWorld_S
- *   desired_world_T     = bindWorld_T * delta_in_sourceBind
- *                       = bindWorld_T * inv(bindWorld_S) * currentWorld_S
- *   target.localQ       = inv(parentCurrentWorld_T) * desired_world_T
+ *   target_world[bone] = sourceCurrentWorld[bone] * offset[bone]
+ *   target.localQ      = inv(targetParentCurrentWorld) * target_world
  *
- * The semantics: "measure source's motion in its OWN bind frame, then
- * apply that motion in target's OWN bind frame." When the two rigs'
- * bind world rotations match — e.g. when the sample sets
- * `sourceRoot.rotationY = +90` and `targetRoot.rotationY = -90` so the
- * Mixamo Character offsets cancel into a common world bind hipsbone
- * orientation of (-0.5, 0.5, 0.5, 0.5) — this collapses to the simple
- * world-aligned form `delta_world * bindWorld_T`. When the bind worlds
- * differ — Michelle's hipsbone bind world = identity vs Soldier's
- * = 180°Y, because their authored T-pose orientations are opposite —
- * the bind-frame form auto-aligns and still transfers anatomical
- * motion. A naive world-aligned delta against opposite bind frames
- * folds the target's hips backward and twists the spine.
+ * with `offset[bone] = inv(bindWorldS[srcBone]) * bindWorldT[tgtBone]`
+ * cached at `buildMapping` from each rig's bind-pose world rotations
+ * (FK over `bindLocal * Character`).
  *
- * Including the Character (skeleton root) rotation in the FK chain is
- * what makes the bind worlds reflect the *posed* rigs, not just the
- * raw glTF bone hierarchy. Without it, the bind frames diverge
- * unconditionally and bone-local-axis mismatches at the hipsbone fold
- * the target sideways even on rigs that *would* otherwise align.
+ * At TPose this collapses to `target_world == bindWorldT[bone]` —
+ * target's bone sits at its own authored bind world, so the per-bone
+ * skin matrix `target_world * inv(bindWorldT)` is identity, **no mesh
+ * distortion at any joint**. During motion the skin matrix becomes
+ * `sourceCurrentWorld * inv(bindWorldS)` — i.e. source's own
+ * world-space delta from its bind — so target replays source's
+ * anatomical motion regardless of how each rig's bind localQ is
+ * authored.
+ *
+ * Naive world copy without offsets (`target_world = sourceCurW`
+ * directly) was tried and produced a ~180° skin-matrix rotation at
+ * the foot joint when source's and target's foot bind worlds differ
+ * by a half-turn (Michelle's foot bind world ≈ 180° around an
+ * out-and-down axis; Soldier's ≈ +90°X) — the soles flipped upward.
+ * The per-bone offset above is the only formula that handles
+ * arbitrary bind orientation differences cleanly.
+ *
+ * **Bind-facing pre-alignment (`alignTPoseFacing`, default on).**
+ * Mixamo Michelle's Character holds `rotationX = +90°`, Soldier's
+ * `-90°`, leaving their TPose hip worlds 180°Y apart. At
+ * `buildMapping` we capture `Q_align = bindWorldS_root *
+ * inv(bindWorldT_root)` and pre-multiply it onto target's Character
+ * localQuaternion (in place). This rotates target's whole skeleton
+ * uniformly in world so its bind hip world matches source's, then
+ * the per-bone offsets are computed from the post-rotation
+ * bindWorldT values. Set `alignTPoseFacing: false` for duet scenes
+ * where you want target to face its own authored direction.
  *
  * **Translation channel — hip position only, with optional height
- * scaling.** Mirrors three.js `SkeletonUtils.retarget`'s
- * `preserveHipPosition` semantics:
+ * scaling:
  *
  *   delta_charLocal_S = sourceHip.localPosition - bindHipLocal_S
  *   delta_world       = rootRot_S * delta_charLocal_S
@@ -41,16 +51,17 @@
  *
  * Children bones never receive position updates — Mixamo characters
  * have different bone-segment lengths, and forcing source positions
- * onto target bones distorts the mesh shape (limbs end up in wrong
- * places relative to body proportions). The hip is the one bone where
- * translation is meaningful: it carries root motion (jumps, walks,
- * crouches), and scaling its delta by the rig height ratio keeps
- * Soldier from "flying" or "sinking" relative to a taller Michelle.
+ * onto target bones distorts the mesh shape. The hip is the one bone
+ * where translation is meaningful: it carries root motion (jumps,
+ * walks, crouches), and scaling its delta by the rig height ratio
+ * keeps Soldier from "flying" or "sinking" relative to a taller
+ * Michelle.
  *
  * Bone resolution between the two rigs:
  *   1. explicit `nameMap` in the config (highest priority)
- *   2. exact (case-insensitive) name match, with `mixamorig:` /
- *      `Armature|` prefixes stripped
+ *   2. exact (case-insensitive) name match, with the prefixes listed
+ *      in `bonePrefixes` stripped (default `['mixamorig:', 'Armature|']`
+ *      covers Mixamo + Blender exporters; override per-rig as needed)
  *
  * @group Animation
  */
@@ -60,26 +71,25 @@ import type { AnimatorComponent } from "../AnimatorComponent";
 import type { PrefabAvatarData } from "../../../loader/parser/prefab/prefabData/PrefabAvatarData";
 
 export interface RetargeterConfig {
-    source: AnimatorComponent;
-    target: AnimatorComponent;
     /** Optional explicit source-bone-name → target-bone-name mapping. */
     nameMap?: Map<string, string> | { [src: string]: string };
     /** Bone names on the source that should be ignored. */
     excludeSourceBones?: Set<string>;
     /**
-     * When true (default) the retargeter computes a world-space delta
-     * from each rig's bind pose so the target tracks the source's
-     * motion even when the two rigs have different bind orientations.
-     * Set to false for same-rig retargeting where you really want a
-     * strict identity copy of local rotations.
+     * When true (default), run the bind-frame-delta retarget
+     * (`desired = bindWorld_T * inv(bindWorld_S) * currentWorld_S`)
+     * with bind worlds FK'd over each rig's Character + boneData
+     * chain. When false, just copy each source bone's
+     * `localQuaternion` straight onto the target — only correct for
+     * same-rig retargeting where target's bind matches source's
+     * exactly AND no Character-level rotation differences exist.
      */
     useRestOffset?: boolean;
     /**
      * If true, the hip (root joint) position is locked to the target's
      * bind pose — root motion (jumps, walks, crouches) is dropped.
      * Default false: the source hip's position delta is replayed on
-     * the target, scaled by `heightScale`. Equivalent to three.js's
-     * `SkeletonUtils.retarget(... { preserveHipPosition })`.
+     * the target, scaled by `heightScale`.
      */
     preserveHipPosition?: boolean;
     /**
@@ -90,6 +100,26 @@ export interface RetargeterConfig {
      * under-jump on a 1.6m target. Default 1.0 (no scaling).
      */
     heightScale?: number;
+    /**
+     * When true (default), auto-rotate target's Character node at
+     * `buildMapping` so its bind hip world matches source's — target
+     * ends up facing source's world direction in TPose. Set false
+     * for duet scenes where you want target to face its own authored
+     * direction.
+     */
+    alignTPoseFacing?: boolean;
+    /**
+     * Bone-name prefixes to strip during fuzzy name matching, in
+     * priority order. Defaults to `['mixamorig:', 'Armature|']` which
+     * covers the standard Mixamo and Blender exporter conventions.
+     * Set to `[]` to require exact (case-insensitive) name match —
+     * useful when bones are already canonicalized or when prefix
+     * stripping would create ambiguous matches between rigs that
+     * legitimately share a prefix as part of the name. Comparisons
+     * are case-insensitive and the first matching prefix wins; only
+     * one prefix is removed per bone name.
+     */
+    bonePrefixes?: string[];
 }
 
 interface ResolvedPair {
@@ -105,14 +135,28 @@ export class Retargeter {
     private _useRestOffset: boolean;
     private _preserveHipPosition: boolean;
     private _heightScale: number;
+    private _alignTPoseFacing: boolean;
+    private _bonePrefixes: string[];
 
     private _resolved: ResolvedPair[] | null = null;
     /** target boneName → source boneName, for quick reverse lookup in apply(). */
     private _tgtToSrc: Map<string, string> = new Map();
-    /** source bone bind worldQ (FK starting from source root rotation). */
+    /** source bone bind worldQ (FK starting from source Character rotation). */
     private _bindWorldS: Map<string, Quaternion> = new Map();
-    /** target bone bind worldQ (FK starting from target root rotation). */
+    /**
+     * target bone bind worldQ (FK starting from target Character
+     * rotation, AFTER any auto-rotation `alignTPoseFacing` applied).
+     */
     private _bindWorldT: Map<string, Quaternion> = new Map();
+    /**
+     * Per-bone world-space retarget offset cache (keyed by *target*
+     * bone name): `inv(bindWorldS[srcBone]) * bindWorldT[tgtBone]`.
+     * Applied as `target_world = sourceCurrentWorld * offset[bone]`,
+     * so at TPose target stays at its own bind world (no mesh
+     * distortion at any bone) and during motion source's world delta
+     * from bind drives target.
+     */
+    private _offset: Map<string, Quaternion> = new Map();
     /** source rig root (Character node) rotation captured at buildMapping. */
     private _rootRotS = new Quaternion();
     /** target rig root (Character node) rotation captured at buildMapping. */
@@ -123,20 +167,18 @@ export class Retargeter {
     private _bindHipLocalPosS = new Vector3();
     private _bindHipLocalPosT = new Vector3();
     /** scratch reusable quaternions/vectors to avoid per-frame GC pressure. */
-    private _scratchA = new Quaternion();
-    private _scratchB = new Quaternion();
-    private _scratchInvBindS = new Quaternion();
     private _scratchInvParentT = new Quaternion();
     private _scratchInvRootRotT = new Quaternion();
+    private _scratchOut = new Quaternion();
     private _scratchHipDelta = new Vector3();
     private _scratchHipPos = new Vector3();
     /** per-bone tracked currentWorldQ during apply(); reused, cleared each call. */
     private _currentWorldS: Map<string, Quaternion> = new Map();
     private _currentWorldT: Map<string, Quaternion> = new Map();
 
-    constructor(cfg: RetargeterConfig) {
-        this._source = cfg.source;
-        this._target = cfg.target;
+    constructor(source: AnimatorComponent, target: AnimatorComponent, cfg: RetargeterConfig) {
+        this._source = source;
+        this._target = target;
         if (!cfg.nameMap) {
             this._nameMap = new Map();
         } else if (cfg.nameMap instanceof Map) {
@@ -148,13 +190,16 @@ export class Retargeter {
         this._useRestOffset = cfg.useRestOffset ?? true;
         this._preserveHipPosition = cfg.preserveHipPosition ?? false;
         this._heightScale = cfg.heightScale ?? 1.0;
+        this._alignTPoseFacing = cfg.alignTPoseFacing ?? true;
+        this._bonePrefixes = cfg.bonePrefixes ?? ['mixamorig:', 'Armature|'];
     }
 
     /**
-     * Build the source→target bone mapping + capture rest-pose world
-     * rotations (including each rig's Character root rotation) and the
-     * hip-pair bind translations. Called lazily on the first `apply()`;
-     * can be re-called explicitly if either avatar changes.
+     * Build the source→target bone mapping + capture each rig's
+     * Character (root) rotation, target's per-bone bind worldQ, and
+     * the hip-pair bind translations. Called lazily on the first
+     * `apply()`; can be re-called explicitly if either avatar
+     * changes.
      */
     public buildMapping(): void {
         const srcAvatar = this._source.getAvatar();
@@ -177,11 +222,11 @@ export class Retargeter {
             if (mapped && targetNames.has(mapped)) {
                 tgtName = mapped;
             } else {
-                const stripped = stripPrefix(srcBone.boneName);
+                const stripped = this._stripPrefix(srcBone.boneName);
                 for (const t of targetNames) {
                     if (t === srcBone.boneName ||
                         t.toLowerCase() === srcBone.boneName.toLowerCase() ||
-                        stripPrefix(t).toLowerCase() === stripped.toLowerCase()) {
+                        this._stripPrefix(t).toLowerCase() === stripped.toLowerCase()) {
                         tgtName = t;
                         break;
                     }
@@ -195,33 +240,26 @@ export class Retargeter {
         }
         this._resolved = out;
 
-        // Capture the Character (rig root) rotation for both rigs.
-        // This is the rotation Sample_AnimationRetargeting sets via
-        // `sourceRoot.rotationY = 90` etc., NOT the bind rotation
-        // baked into the glTF — the bind rotation may have been
-        // overwritten by the sample. We use whatever the rig's
-        // Character node is currently rotated to as the FK starting
-        // frame and as the source/target frame for the hip position
-        // channel below. Captured unconditionally so the position
-        // channel is available even with `useRestOffset: false`.
+        // Capture each rig's Character (skeleton-root) rotation. This
+        // is the rotation the sample sets via `sourceRoot.rotationY`
+        // etc., NOT necessarily the bind rotation baked into the glTF
+        // — the bind may have been overwritten by the sample. Used as
+        // the FK starting frame for `currentWorld_S` and `bindWorld_T`,
+        // and as the source/target frame for the hip position channel.
         const srcRootBone = srcAvatar.boneData.length > 0
             ? this._source.getJointObject(srcAvatar.boneData[0].boneName) : null;
         const tgtRootBone = tgtAvatar.boneData.length > 0
             ? this._target.getJointObject(out[0]?.tgtName ?? tgtAvatar.boneData[0].boneName) : null;
-        if (srcRootBone?.parent) {
-            const charLocalQ = (srcRootBone.parent as any).object3D?.localQuaternion as Quaternion | undefined;
-            if (charLocalQ) this._rootRotS.copyFrom(charLocalQ);
-            else this._rootRotS.set(0, 0, 0, 1);
-        } else {
-            this._rootRotS.set(0, 0, 0, 1);
-        }
-        if (tgtRootBone?.parent) {
-            const charLocalQ = (tgtRootBone.parent as any).object3D?.localQuaternion as Quaternion | undefined;
-            if (charLocalQ) this._rootRotT.copyFrom(charLocalQ);
-            else this._rootRotT.set(0, 0, 0, 1);
-        } else {
-            this._rootRotT.set(0, 0, 0, 1);
-        }
+        // The bone's `parent` is a glTF-loader-side wrapper (Bone /
+        // Joint), whose engine-side Object3D is on `.object3D`. The
+        // Character node IS that Object3D — that's the one whose
+        // localQuaternion gives us the rig's root rotation.
+        const srcCharObj = srcRootBone?.parent ? (srcRootBone.parent as any).object3D : null;
+        const tgtCharObj = tgtRootBone?.parent ? (tgtRootBone.parent as any).object3D : null;
+        if (srcCharObj?.localQuaternion) this._rootRotS.copyFrom(srcCharObj.localQuaternion);
+        else this._rootRotS.set(0, 0, 0, 1);
+        if (tgtCharObj?.localQuaternion) this._rootRotT.copyFrom(tgtCharObj.localQuaternion);
+        else this._rootRotT.set(0, 0, 0, 1);
 
         // Identify the hip pair (root joint = the source bone with no
         // parent in skeleton) and capture its bind localPosition for
@@ -246,10 +284,60 @@ export class Retargeter {
         if (!this._useRestOffset) return;
 
         // Pre-compute bind worldQ via FK over the bind-pose local
-        // quats, with Character rotation as the starting frame.
-        // boneData is in DFS order so parents come before children.
+        // quats for both rigs, using each rig's current Character
+        // rotation as the starting frame. boneData is DFS so parents
+        // come before children.
         computeBindWorldRotations(srcAvatar, this._rootRotS, this._bindWorldS);
         computeBindWorldRotations(tgtAvatar, this._rootRotT, this._bindWorldT);
+
+        // Auto-rotate target's Character node so its bind hip world
+        // matches source's. This is the only way to achieve "target
+        // faces source's direction in TPose" without distorting the
+        // mesh: the rotation lifts the entire target uniformly in
+        // world while leaving every bone's localQ at its authored bind
+        // value. After this we update `_rootRotT` and re-FK the bind
+        // worlds so the per-bone offsets below see the post-rotation
+        // values.
+        if (this._alignTPoseFacing && tgtCharObj) {
+            const rootSrc = this._hipSrcName ?? out[0]?.srcName;
+            const rootTgt = this._hipTgtName ?? out[0]?.tgtName;
+            const bindWS = rootSrc ? this._bindWorldS.get(rootSrc) : undefined;
+            const bindWT = rootTgt ? this._bindWorldT.get(rootTgt) : undefined;
+            if (bindWS && bindWT) {
+                // Q_align = bindWS * inv(bindWT) — rotate target's
+                // Character by this and its bind hip world becomes bindWS.
+                const invBindWT = new Quaternion(-bindWT.x, -bindWT.y, -bindWT.z, bindWT.w);
+                const qAlign = new Quaternion();
+                qAlign.multiply(bindWS, invBindWT);
+                const oldChar = new Quaternion();
+                oldChar.copyFrom(tgtCharObj.localQuaternion);
+                const newChar = new Quaternion();
+                newChar.multiply(qAlign, oldChar);
+                tgtCharObj.localQuaternion = newChar;
+                this._rootRotT.copyFrom(newChar);
+                computeBindWorldRotations(tgtAvatar, this._rootRotT, this._bindWorldT);
+            }
+        }
+
+        // Pre-compute per-bone world-space offsets:
+        //   offset[bone] = inv(bindWorldS[srcBone]) * bindWorldT[tgtBone]
+        // Used per frame as
+        //   target_world[bone] = sourceCurrentWorld[bone] * offset[bone]
+        // At TPose target_world == bindWorldT[bone] → target stays in
+        // its own bind, *no* mesh distortion at any bone. During motion
+        // the per-bone skin matrix collapses to source's own world
+        // delta from its bind — anatomical motion transfers cleanly
+        // even when bind world orientations differ across rigs.
+        this._offset.clear();
+        for (const pair of out) {
+            const bws = this._bindWorldS.get(pair.srcName);
+            const bwt = this._bindWorldT.get(pair.tgtName);
+            if (!bws || !bwt) continue;
+            const off = new Quaternion();
+            const invBws = new Quaternion(-bws.x, -bws.y, -bws.z, bws.w);
+            off.multiply(invBws, bwt);
+            this._offset.set(pair.tgtName, off);
+        }
     }
 
     public get resolvedMapping(): ReadonlyArray<[string, string]> {
@@ -279,61 +367,53 @@ export class Retargeter {
         const tgtAvatar = this._target.getAvatar();
         if (!srcAvatar || !tgtAvatar) return;
 
-        // Step 1: source FK from rootRotS over current sourceBone.localQuaternions.
-        this._currentWorldS.clear();
+        // Step 1: source FK in DFS order to get each source bone's
+        // current world rotation.
+        const cwS = this._currentWorldS;
+        cwS.clear();
         for (const bone of srcAvatar.boneData) {
             const obj = this._source.getJointObject(bone.boneName);
             if (!obj) continue;
-            const local = obj.localQuaternion;
-            const worldQ = new Quaternion();
-            if (bone.parentBoneName && this._currentWorldS.has(bone.parentBoneName)) {
-                worldQ.multiply(this._currentWorldS.get(bone.parentBoneName)!, local);
+            const w = new Quaternion();
+            if (bone.parentBoneName && cwS.has(bone.parentBoneName)) {
+                w.multiply(cwS.get(bone.parentBoneName)!, obj.localQuaternion);
             } else {
-                worldQ.multiply(this._rootRotS, local);
+                w.multiply(this._rootRotS, obj.localQuaternion);
             }
-            this._currentWorldS.set(bone.boneName, worldQ);
+            cwS.set(bone.boneName, w);
         }
 
-        // Step 2: walk target bones in hierarchy order. Compute localQ
-        // as inv(parentCurrentWorldT) * (delta_W * bindWorldT) for any
-        // bone with a source pair; otherwise propagate target's own
-        // current localQ so child bones see their parent's NEW world rot.
-        this._currentWorldT.clear();
+        // Step 2: target FK in DFS order. For retargeted bones:
+        //   target_world[bone] = sourceCurrentWorld[srcBone] * offset[bone]
+        //   target.localQ = inv(parentCurrentWorld_T) * target_world
+        // The per-bone offset (`inv(bindWorldS) * bindWorldT_aligned`)
+        // ensures target stays at its own bind world in TPose (no skin
+        // distortion) and gets source's world delta from bind during
+        // motion. Non-retargeted bones FK from their existing localQ.
+        const cwT = this._currentWorldT;
+        cwT.clear();
         for (const bone of tgtAvatar.boneData) {
             const obj = this._target.getJointObject(bone.boneName);
             if (!obj) continue;
-
-            let parentWorldT: Quaternion;
-            if (bone.parentBoneName && this._currentWorldT.has(bone.parentBoneName)) {
-                parentWorldT = this._currentWorldT.get(bone.parentBoneName)!;
-            } else {
-                parentWorldT = this._rootRotT;
-            }
-
+            const parent = bone.parentBoneName && cwT.has(bone.parentBoneName)
+                ? cwT.get(bone.parentBoneName)!
+                : this._rootRotT;
             const srcName = this._tgtToSrc.get(bone.boneName);
-            const srcCurrentW = srcName ? this._currentWorldS.get(srcName) : undefined;
-            const srcBindW = srcName ? this._bindWorldS.get(srcName) : undefined;
-            const tgtBindW = this._bindWorldT.get(bone.boneName);
-
-            const worldQ = new Quaternion();
-            if (srcCurrentW && srcBindW && tgtBindW) {
-                // delta_in_sourceBind = inv(srcBindW) * srcCurrentW
-                this._scratchInvBindS.set(-srcBindW.x, -srcBindW.y, -srcBindW.z, srcBindW.w);
-                this._scratchA.multiply(this._scratchInvBindS, srcCurrentW);
-                // desired worldQ_T = tgtBindW * delta_in_sourceBind
-                worldQ.multiply(tgtBindW, this._scratchA);
-                // localQ_T = inv(parentWorldT) * desired_worldQ_T
-                this._scratchInvParentT.set(-parentWorldT.x, -parentWorldT.y, -parentWorldT.z, parentWorldT.w);
-                this._scratchB.multiply(this._scratchInvParentT, worldQ);
-                obj.localQuaternion = this._scratchB;
+            const srcCurW = srcName ? cwS.get(srcName) : undefined;
+            const offset = this._offset.get(bone.boneName);
+            const w = new Quaternion();
+            if (srcCurW && offset) {
+                w.multiply(srcCurW, offset);
+                this._scratchInvParentT.set(-parent.x, -parent.y, -parent.z, parent.w);
+                this._scratchOut.multiply(this._scratchInvParentT, w);
+                obj.localQuaternion = this._scratchOut;
             } else {
-                const local = obj.localQuaternion;
-                worldQ.multiply(parentWorldT, local);
+                w.multiply(parent, obj.localQuaternion);
             }
-            this._currentWorldT.set(bone.boneName, worldQ);
+            cwT.set(bone.boneName, w);
         }
 
-        // Step 3: hip translation (root motion).
+        // Hip translation (root motion).
         this._applyHipPosition();
     }
 
@@ -371,10 +451,19 @@ export class Retargeter {
         );
         targetHip.localPosition = this._scratchHipPos;
     }
-}
 
-function stripPrefix(name: string): string {
-    return name.replace(/^mixamorig:/i, '').replace(/^Armature\|/i, '');
+    /**
+     * Strip the first matching prefix in `_bonePrefixes` (case-insensitive)
+     * from a bone name. Used for fuzzy cross-rig name matching when no
+     * explicit `nameMap` entry is provided.
+     */
+    private _stripPrefix(name: string): string {
+        const lower = name.toLowerCase();
+        for (const p of this._bonePrefixes) {
+            if (lower.startsWith(p.toLowerCase())) return name.slice(p.length);
+        }
+        return name;
+    }
 }
 
 function computeBindWorldRotations(avatar: PrefabAvatarData, rootRot: Quaternion, out: Map<string, Quaternion>): void {

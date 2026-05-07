@@ -1,5 +1,5 @@
 import { FloatArray } from "../matrix/WasmMatrix";
-import { Engine3D, Matrix4, MeshRenderer, Object3D, PrefabAvatarData, Quaternion, RenderNode, RendererMask, RendererMaskUtil, SkinnedMeshRenderer2, StorageGPUBuffer, Time, Vector3, Vector4, View3D } from "../..";
+import { Engine3D, Matrix4, MeshRenderer, Object3D, PrefabAvatarData, Quaternion, RenderNode, RendererMask, RendererMaskUtil, Retargeter, RetargeterConfig, SkinnedMeshRenderer2, StorageGPUBuffer, Time, Vector3, Vector4, View3D } from "../..";
 import { PropertyAnimationClip } from "../../math/AnimationCurveClip";
 import { RegisterComponent } from "../../util/SerializeDecoration";
 import { ComponentBase } from "../ComponentBase";
@@ -47,6 +47,8 @@ export class AnimatorComponent extends ComponentBase {
 
     /** IK solvers, run after layer mix. */
     private _ikSolvers: Array<{ solve(animator: AnimatorComponent): void }> = [];
+
+    private _retargeter: Retargeter;
 
     public init(param?: any): void {
         this.propertyCache = new Map<RenderNode, Map<string, (value: number) => void>>();
@@ -134,6 +136,25 @@ export class AnimatorComponent extends ComponentBase {
             this._blendShapeStart = true;
         } else {
             console.warn(`not has blendShape ${shapeName}`);
+        }
+    }
+
+    public retargetTo(target: AnimatorComponent, cfg?: RetargeterConfig ) {
+        if (target) {
+            // Silence the target's own animator so the retargeter is the
+            // sole driver of the bones. `clipState.weight = 0` alone is
+            // not enough — `AnimatorComponent.updateSkeletonAnim` writes
+            // bone localPosition/Rotation from the current clip's curves
+            // unconditionally each frame, ignoring weight. Null out the
+            // current clip so the per-frame write is skipped entirely.
+            for (const cs of target.clipsState) cs.weight = 0;
+            (target as any)._currentSkeletonClip = null;
+
+            // Both rigs use the `mixamorig:` prefix → exact-name match resolves
+            // every bone. No name map needed.
+            this._retargeter = new Retargeter(this, target, cfg ?? {});
+        } else {
+            this._retargeter = null;
         }
     }
 
@@ -316,6 +337,11 @@ export class AnimatorComponent extends ComponentBase {
         if (this._stateMachine) this._stateMachine.evaluate(this, delta);
 
         this.updateTime();
+
+        // Apply retarget
+        if (this._retargeter) {
+            this._retargeter.apply();
+        }
 
         // Base pose: layer 0 = the existing weighted-clip mix.
         let mixClip: PropertyAnimationClipState[] = [];
@@ -591,7 +617,7 @@ export class AnimatorComponent extends ComponentBase {
     /**
      * After the base pose has been written to the joint Object3Ds, apply each
      * stacked layer in turn. Override layers lerp toward the layer pose;
-     * Additive layers use the three.js `makeClipAdditive` math:
+     * Additive layers use `makeClipAdditive` math:
      *   delta = sample(layer.time) - sample(firstKeyTime)
      *   result = base + delta * weight
      *
@@ -642,7 +668,7 @@ export class AnimatorComponent extends ComponentBase {
                 const hasScale = clip.useSkeletonScale && clip.scaleCurves.has(joint.bonePath);
                 if (!hasPos && !hasRot && !hasScale) continue;
 
-                // For additive blending, three.js's `makeClipAdditive` bakes
+                // For additive blending, `makeClipAdditive` bakes
                 // a per-clip delta = (clip - clip.first) at clip-load time.
                 // We do the same math at sample time so sneak_pose's first
                 // keyframe (a T-pose-ish stand) acts as the zero reference,
@@ -700,17 +726,15 @@ export class AnimatorComponent extends ComponentBase {
                         // delta represents "rotation from clip start to
                         // current time" in the BONE-LOCAL frame, so we
                         // build it as inv(refRot) * layerRot — the same
-                        // ordering three.js's `AnimationUtils.makeClipAdditive`
-                        // bakes into its delta keys.
+                        // ordering `makeClipAdditive` bakes into its delta keys.
                         this._layerInvBaseQuat.set(-r4.x, -r4.y, -r4.z, r4.w);
                         this._layerDeltaQuat.multiply(this._layerInvBaseQuat, this._layerRot);
                         // identity → delta scaled by weight
                         this._layerSlerpedQuat.slerp(this._layerIdentityQuat, this._layerDeltaQuat, layer.weight);
                         // result = base * scaled-delta — right-multiply so
                         // delta is applied in the bone's local frame
-                        // (matches three.js PropertyMixer._slerpAdditive:
                         // `work = base * delta; dst = slerp(base, work, t)`
-                        // ≡ `dst = base * slerp(identity, delta, t)`).
+                        // ≡ `dst = base * slerp(identity, delta, t)`.
                         // The previous left-multiply (`delta * base`)
                         // applied delta in the PARENT frame, flipping the
                         // perceived rotation direction (e.g. Xbot's

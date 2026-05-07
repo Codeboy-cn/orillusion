@@ -1,6 +1,4 @@
 /**
- * Port of three.js `webgpu_animation_retargeting`.
- *
  * Loads two Mixamo characters from `models/gltf/`:
  *
  *   Source : `Michelle.glb`  — comes with a baked SambaDance + TPose.
@@ -11,12 +9,6 @@
  * skeleton via `Retargeter`. Both rigs share the `mixamorig:` prefix on
  * every bone, so the retargeter's exact-name pass resolves all 67 bones
  * without needing an explicit name map.
- *
- * GUI parity with three.js (single root toggle):
- *   helpers.visible — labeled "show helpers" — toggles whether the source
- *                     character is visible. (Three.js uses it to toggle
- *                     SkeletonHelper visibility; we toggle the source mesh
- *                     so the user can see the *retargeted* character alone.)
  */
 import { GUIHelp } from "@orillusion/debug/GUIHelp";
 import {
@@ -34,13 +26,11 @@ class Sample_AnimationRetargeting {
     sourceRoot: Object3D;
     sourceAnimator: AnimatorComponent;
     targetAnimator: AnimatorComponent;
-    retargeter: Retargeter;
 
     helpers = { visible: true };
 
     async run() {
         const engine = this.engine = await Engine3D.init({
-            renderLoop: () => this.onTick(),
             setting: { shadow: { autoUpdate: true, updateFrameRate: 1, shadowSize: 2048 } },
         });
         this.scene = new Scene3D();
@@ -69,7 +59,7 @@ class Sample_AnimationRetargeting {
     async initScene() {
         GUIHelp.init();
 
-        // Floor (three.js places both characters on a small ground plane).
+        // add ground plane.
         this.scene.addChild(Object3DUtil.GetSingleCube(40, 0.2, 40, 0.6, 0.6, 0.6));
 
         // Light
@@ -83,57 +73,41 @@ class Sample_AnimationRetargeting {
         this.scene.addChild(this.light);
 
         // ---------- Source: Michelle (plays SambaDance) ----------
+        // Michelle's glTF Character holds rotationX = +90°, Soldier's
+        // holds -90°, so their TPose hip worlds face opposite world
+        // directions. The Retargeter's `alignTPoseFacing` (default on)
+        // pre-multiplies a one-shot rotation into Soldier's Character
+        // node so his bind hip world matches Michelle's, then runs
+        // naive world-copy retargeting so Soldier's bones overlay
+        // Michelle's at every frame.
         this.sourceRoot = await this.engine.res.loadGltf('gltfs/three/Michelle.glb');
         this.scene.addChild(this.sourceRoot);
-        // Set position AFTER addChild so the transform is hooked into the
-        // scene's update graph — assigning .x on a parent-less Object3D
-        // sometimes doesn't propagate before the first scene update.
-        // Stand them ~3.5 m apart (Mixamo characters are ~1.8 m tall and
-        // their dance / idle poses can swing arms across ±0.6 m), facing
-        // each other so the retargeting symmetry reads at a glance.
-        this.sourceRoot.x = -1.8;
-        this.sourceRoot.rotationY = 90;          // face +X (toward Soldier)
+        this.sourceRoot.x = -1.0;
+        this.sourceRoot.rotationY = 90;
         this.sourceAnimator = this.sourceRoot.getComponentsInChild(AnimatorComponent)[0];
         this.sourceAnimator.playAnim('SambaDance');
 
         // ---------- Target: Soldier (no own animation; driven by retargeter) ----------
         const targetRoot = await this.engine.res.loadGltf('gltfs/three/Soldier.glb');
         this.scene.addChild(targetRoot);
-        targetRoot.x = 1.8;
-        targetRoot.rotationY = -90;              // face -X (toward Michelle)
+        targetRoot.x = 1.0;
+        targetRoot.rotationY = -90;
         this.targetAnimator = targetRoot.getComponentsInChild(AnimatorComponent)[0];
-        // Silence the target's own animator so the retargeter is the
-        // sole driver of the bones. `clipState.weight = 0` alone is
-        // not enough — `AnimatorComponent.updateSkeletonAnim` writes
-        // bone localPosition/Rotation from the current clip's curves
-        // unconditionally each frame, ignoring weight. Null out the
-        // current clip so the per-frame write is skipped entirely.
-        for (const cs of this.targetAnimator.clipsState) cs.weight = 0;
-        (this.targetAnimator as any)._currentSkeletonClip = null;
 
-        // Both rigs use the `mixamorig:` prefix → exact-name match resolves
-        // every bone. No name map needed.
-        this.retargeter = new Retargeter({
-            source: this.sourceAnimator,
-            target: this.targetAnimator,
-        });
+        this.sourceAnimator.retargetTo(this.targetAnimator);
 
         this._buildGUI();
         return true;
     }
 
     private _buildGUI() {
-        // Match three.js: one toggle, "show helpers".
+        // one toggle, "show helpers".
         GUIHelp.add(this.helpers, 'visible').name('show helpers').onChange((v: boolean) => {
             // Toggle the source mesh visibility — gives the same "isolate the
-            // retargeted character" UX as three.js's helper toggle.
+            // retargeted character" UX helper toggle.
             const renderers = this.sourceRoot.getComponentsInChild(MeshRenderer);
             for (const r of renderers) r.enable = v;
         });
-    }
-
-    onTick() {
-        if (this.retargeter) this.retargeter.apply();
     }
 }
 
