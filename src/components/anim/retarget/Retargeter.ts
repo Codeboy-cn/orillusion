@@ -3,19 +3,32 @@
  * hip's translation, optionally) from a source AnimatorComponent to a
  * target AnimatorComponent each frame.
  *
- * **Rotation channel — world-space delta with full Character FK.**
+ * **Rotation channel — source-bind-frame delta with full Character FK.**
  * For every retargeted bone:
  *
- *   delta_world = currentWorld_S * inv(bindWorld_S)
- *   desired_world_T = delta_world * bindWorld_T
- *   target.localQ = inv(parentCurrentWorld_T) * desired_world_T
+ *   delta_in_sourceBind = inv(bindWorld_S) * currentWorld_S
+ *   desired_world_T     = bindWorld_T * delta_in_sourceBind
+ *                       = bindWorld_T * inv(bindWorld_S) * currentWorld_S
+ *   target.localQ       = inv(parentCurrentWorld_T) * desired_world_T
+ *
+ * The semantics: "measure source's motion in its OWN bind frame, then
+ * apply that motion in target's OWN bind frame." When the two rigs'
+ * bind world rotations match — e.g. when the sample sets
+ * `sourceRoot.rotationY = +90` and `targetRoot.rotationY = -90` so the
+ * Mixamo Character offsets cancel into a common world bind hipsbone
+ * orientation of (-0.5, 0.5, 0.5, 0.5) — this collapses to the simple
+ * world-aligned form `delta_world * bindWorld_T`. When the bind worlds
+ * differ — Michelle's hipsbone bind world = identity vs Soldier's
+ * = 180°Y, because their authored T-pose orientations are opposite —
+ * the bind-frame form auto-aligns and still transfers anatomical
+ * motion. A naive world-aligned delta against opposite bind frames
+ * folds the target's hips backward and twists the spine.
  *
  * Including the Character (skeleton root) rotation in the FK chain is
- * what makes this work across rigs whose per-bone bind orientations
- * differ — a bone-local-frame delta would silently hit anti-parallel
- * axes on Mixamo cross-rig (Michelle vs Soldier) and fold the target
- * sideways. With Character rotation folded in, the bind world frames
- * align between rigs and the world delta transfers anatomical motion.
+ * what makes the bind worlds reflect the *posed* rigs, not just the
+ * raw glTF bone hierarchy. Without it, the bind frames diverge
+ * unconditionally and bone-local-axis mismatches at the hipsbone fold
+ * the target sideways even on rigs that *would* otherwise align.
  *
  * **Translation channel — hip position only, with optional height
  * scaling.** Mirrors three.js `SkeletonUtils.retarget`'s
@@ -304,11 +317,11 @@ export class Retargeter {
 
             const worldQ = new Quaternion();
             if (srcCurrentW && srcBindW && tgtBindW) {
-                // delta = srcCurrentW * inv(srcBindW)
+                // delta_in_sourceBind = inv(srcBindW) * srcCurrentW
                 this._scratchInvBindS.set(-srcBindW.x, -srcBindW.y, -srcBindW.z, srcBindW.w);
-                this._scratchA.multiply(srcCurrentW, this._scratchInvBindS);
-                // desired worldQ_T = delta * tgtBindW
-                worldQ.multiply(this._scratchA, tgtBindW);
+                this._scratchA.multiply(this._scratchInvBindS, srcCurrentW);
+                // desired worldQ_T = tgtBindW * delta_in_sourceBind
+                worldQ.multiply(tgtBindW, this._scratchA);
                 // localQ_T = inv(parentWorldT) * desired_worldQ_T
                 this._scratchInvParentT.set(-parentWorldT.x, -parentWorldT.y, -parentWorldT.z, parentWorldT.w);
                 this._scratchB.multiply(this._scratchInvParentT, worldQ);
