@@ -23,7 +23,7 @@ import {
     Object3D, Scene3D, Engine3D, AtmosphericComponent, CameraUtil,
     HoverCameraController, View3D, DirectLight, KelvinUtil,
     Object3DUtil, AnimatorComponent, Retargeter, MeshRenderer,
-    PostProcessingComponent, FXAAPost, Vector3, SkinnedMeshRenderer2,
+    PostProcessingComponent, FXAAPost, Vector3,
 } from "@orillusion/core";
 
 class Sample_AnimationRetargeting {
@@ -110,66 +110,6 @@ class Sample_AnimationRetargeting {
         // current clip so the per-frame write is skipped entirely.
         for (const cs of this.targetAnimator.clipsState) cs.weight = 0;
         (this.targetAnimator as any)._currentSkeletonClip = null;
-        await new Promise(r => setTimeout(r, 200));
-        // Force-rebind every SMR within each root to its rightful Animator.
-        // The glTF loader's `_pendingSkinned` queue is per-skin; when a
-        // single character has multiple skins (Soldier has body skin +
-        // visor skin), the SMR for one skin can race the animator wiring
-        // and end up bound to a stale / cross-character animator. Iterate
-        // each root explicitly here to guarantee correctness.
-        const fixSMRBindings = (root: Object3D, anim: AnimatorComponent) => {
-            const stack = [root];
-            while (stack.length) {
-                const cur = stack.pop()!;
-                const comps = (cur as any).components;
-                if (comps?.values) {
-                    for (const c of comps.values()) {
-                        if ((c as any)?.constructor?.name === 'SkinnedMeshRenderer2') {
-                            (c as any).skeletonAnimation = anim;
-                        }
-                    }
-                }
-                for (const ch of (cur.entityChildren ?? []) as Object3D[]) stack.push(ch);
-            }
-        };
-        fixSMRBindings(this.sourceRoot, this.sourceAnimator);
-        fixSMRBindings(targetRoot, this.targetAnimator);
-        // Probe AnimatorComponent's root joint worldPosition — that's
-        // what drives the SkinnedMesh shader (mesh node transform is
-        // ignored per glTF skinning spec).
-        const sRootJoint = (this.sourceAnimator as any).root as Object3D;
-        const tRootJoint = (this.targetAnimator as any).root as Object3D;
-        if (sRootJoint) {
-            const w = sRootJoint.transform.worldPosition;
-            const p = sRootJoint.parent?.object3D as any;
-            console.log(`  source root joint '${sRootJoint.name}' parent='${p?.name ?? '?'}' wp=(${w.x.toFixed(3)},${w.y.toFixed(3)},${w.z.toFixed(3)})`);
-        }
-        if (tRootJoint) {
-            const w = tRootJoint.transform.worldPosition;
-            const p = tRootJoint.parent?.object3D as any;
-            console.log(`  target root joint '${tRootJoint.name}' parent='${p?.name ?? '?'}' wp=(${w.x.toFixed(3)},${w.y.toFixed(3)},${w.z.toFixed(3)})`);
-        }
-        // Dump scene tree
-        const dump = (obj: any, depth: number) => {
-            const wp = obj.transform?.worldPosition;
-            const ls = obj.transform?.localScale;
-            const renderers: string[] = [];
-            for (const c of obj.components ?? new Map()) {
-                const name = c[0]?.name || '?';
-                if (name.includes('Renderer') || name.includes('MeshRenderer') || name.includes('Animator') || name.includes('Light') || name.includes('Camera')) {
-                    renderers.push(name);
-                }
-            }
-            const ren = renderers.length ? `[${renderers.join(',')}]` : '';
-            const wpStr = wp ? `wp=(${wp.x.toFixed(2)},${wp.y.toFixed(2)},${wp.z.toFixed(2)})` : '';
-            const lsStr = ls && (ls.x !== 1 || ls.y !== 1 || ls.z !== 1) ? `ls=(${ls.x.toFixed(3)},${ls.y.toFixed(3)},${ls.z.toFixed(3)})` : '';
-            console.log(`${'  '.repeat(depth)}${obj.name || '?'} ${ren} ${wpStr} ${lsStr}`);
-            for (const child of obj.entityChildren ?? []) dump(child, depth + 1);
-        };
-        console.log('========= SCENE TREE =========');
-        dump(this.scene, 0);
-        console.log('========= END SCENE TREE =========');
-
 
         // Both rigs use the `mixamorig:` prefix → exact-name match resolves
         // every bone. No name map needed.
@@ -177,8 +117,6 @@ class Sample_AnimationRetargeting {
             source: this.sourceAnimator,
             target: this.targetAnimator,
         });
-        const mapping = this.retargeter.resolvedMapping;
-        console.log(`[retarget] resolved ${mapping.length} same-name bone pairs (Mixamo → Mixamo)`);
 
         this._buildGUI();
         return true;
