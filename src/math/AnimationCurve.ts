@@ -224,12 +224,41 @@ export class AnimationCurve {
 
     private findCurve(time: number, out: { lhsIndex: number; rhsIndex: number }) {
         let frames = this.curve;
-        for (let i = 1; i < frames.length; i++) {
+        const n = frames.length;
+        // Empty / single keyframe: collapse both sides to index 0.
+        if (n <= 1) {
+            out.lhsIndex = 0;
+            out.rhsIndex = 0;
+            return;
+        }
+        // Time at or before the first keyframe: clamp to [0, 1).
+        if (time <= frames[0].time) {
+            out.lhsIndex = 0;
+            out.rhsIndex = 1;
+            return;
+        }
+        // Time at or after the last keyframe: clamp to [n-2, n-1].
+        // Without this branch, when `time === frames[last].time` the loop
+        // below (which uses `right.time > time` strict-greater) leaves
+        // `out` unmodified — falling back to the previous call's cached
+        // indices, or the initial {0, 0} (i.e. lhs === rhs → divide-by-zero
+        // when the caller does `(time - kL.time) / (kR.time - kL.time)`,
+        // producing NaN quaternions). This struck `AnimationLayer` static
+        // poses where `layer.time` is pinned to `lastKeyTime`.
+        const last = n - 1;
+        if (time >= frames[last].time) {
+            out.lhsIndex = last - 1;
+            out.rhsIndex = last;
+            return;
+        }
+        // Interior search.
+        for (let i = 1; i < n; i++) {
             let left = frames[i - 1];
             let right = frames[i];
             if (left.time <= time && right.time > time) {
                 out.lhsIndex = i - 1;
                 out.rhsIndex = i;
+                return;
             }
         }
     }
