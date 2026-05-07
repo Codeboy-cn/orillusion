@@ -2,6 +2,7 @@
 import { ILight } from '../../../components/lights/ILight';
 import { Reflection } from '../../../components/renderer/Reflection';
 import { RenderNode } from '../../../components/renderer/RenderNode';
+import type { SceneCaptureCameraComponent } from '../../../components/SceneCaptureCameraComponent';
 import { Camera3D } from '../../../core/Camera3D';
 import { Scene3D } from '../../../core/Scene3D';
 import { View3D } from '../../../core/View3D';
@@ -34,6 +35,7 @@ export class EntityCollect {
     private _tr_RenderNodes: Map<Scene3D, RenderNode[]>;
     private _octreeRenderNodes: Map<Scene3D, Octree>;
     private _reflections: Map<Scene3D, Reflection[]>;
+    private _sceneCaptureCameras: Map<Scene3D, SceneCaptureCameraComponent[]> = new Map();
 
     private _graphics: RenderNode[];
 
@@ -282,6 +284,40 @@ export class EntityCollect {
         return list ? list : [];
     }
 
+    /**
+     * Register a {@link SceneCaptureCameraComponent} into the per-scene
+     * index. Idempotent — re-registering an already-tracked component
+     * is a no-op so component lifecycle ping-pong (disable → enable on
+     * the same frame) doesn't grow the list. Called from the
+     * component's `onEnable`.
+     */
+    public addSceneCaptureCamera(scene: Scene3D, cap: SceneCaptureCameraComponent): void {
+        if (!scene || !cap) return;
+        let list = this._sceneCaptureCameras.get(scene);
+        if (!list) {
+            list = [];
+            this._sceneCaptureCameras.set(scene, list);
+        }
+        if (list.indexOf(cap) === -1) list.push(cap);
+    }
+
+    /** Remove a capture component from the per-scene index. Called
+     *  from the component's `onDisable`. */
+    public removeSceneCaptureCamera(scene: Scene3D, cap: SceneCaptureCameraComponent): void {
+        if (!scene || !cap) return;
+        const list = this._sceneCaptureCameras.get(scene);
+        if (!list) return;
+        const idx = list.indexOf(cap);
+        if (idx !== -1) list.splice(idx, 1);
+    }
+
+    /** Active capture cameras for a scene; SceneCapturePass iterates
+     *  this list each frame. Returns an empty array when none are
+     *  registered. */
+    public getSceneCaptureCameras(scene: Scene3D): SceneCaptureCameraComponent[] {
+        return this._sceneCaptureCameras.get(scene) ?? [];
+    }
+
     // sort renderers by renderOrder and camera depth
     public autoSortRenderNodes(scene: Scene3D): this {
         let renderList: RenderNode[] = this._tr_RenderNodes.get(scene);
@@ -388,6 +424,7 @@ export class EntityCollect {
         this._tr_RenderNodes?.delete(scene);
         this._octreeRenderNodes?.delete(scene);
         this._reflections?.delete(scene);
+        this._sceneCaptureCameras?.delete(scene);
         this._op_renderGroup?.delete(scene);
         this._tr_renderGroup?.delete(scene);
         this._skyMap?.delete(scene);

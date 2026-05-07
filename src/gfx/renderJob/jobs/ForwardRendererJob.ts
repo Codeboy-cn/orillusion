@@ -10,6 +10,7 @@ import { PointShadowPass } from '../graph/passes/PointShadowPass';
 import { PostPass } from '../graph/passes/PostPass';
 import { PreDepthPass } from '../graph/passes/PreDepthPass';
 import { ReflectionPass } from '../graph/passes/ReflectionPass';
+import { SceneCapturePass } from '../graph/passes/SceneCapturePass';
 import { SceneColorPyramidPass } from '../graph/passes/SceneColorPyramidPass';
 import { ShadowPass } from '../graph/passes/ShadowPass';
 import { SortedTransparentPass } from '../graph/passes/SortedTransparentPass';
@@ -79,6 +80,15 @@ export class ForwardRendererJob extends RendererJob {
         if (giEnabled) {
             this.graph.add(GIPass);
         }
+
+        // Off-screen scene capture (mirrors / monitors / portals).
+        // Runs at the same RenderStage.GI bucket but inserted after
+        // GIPass so the topo tie-break orders it later. Reads
+        // shadow handles to force ordering after ShadowPass /
+        // PointShadowPass; consumer materials sample the per-
+        // component RT directly via SceneCaptureCameraComponent.
+        // No-op when no SceneCaptureCameraComponents are registered.
+        this.graph.add(SceneCapturePass);
 
         // Main color pass. Reads cluster + shadow + reflection inputs;
         // writes _ColorBuffer + _NormalBuffer.
