@@ -15,8 +15,8 @@ import { RendererMaskUtil } from '../gfx/renderJob/passRenderer/state/RendererMa
  * geometry — plane, terrain patch, irregular puddle) and the component
  * sets up the rest:
  *
- *   1. Spawns an off-screen {@link Camera3D} at the y-mirror of the
- *      main camera (refreshed every frame from
+ *   1. Spawns an off-screen {@link Camera3D} at the plane-mirror of
+ *      the main camera (refreshed every frame from
  *      {@link MirrorComponent.onUpdate}).
  *   2. Attaches a {@link SceneCaptureCameraComponent} so that camera
  *      renders the scene into a render target every frame.
@@ -38,19 +38,22 @@ import { RendererMaskUtil } from '../gfx/renderJob/passRenderer/state/RendererMa
  * mr.material = new MirrorMaterial();
  * const mirror = floor.addComponent(MirrorComponent);
  * mirror.mainTarget = new Vector3(0, 1, 0);  // what the main camera looks at
- * mirror.mirrorY = 0;                        // mirror plane height (default 0)
  * scene.addChild(floor);
  * ```
  *
  * The component reads {@link mainCamera} from {@link View3D.camera} on
  * enable when not explicitly set, so a single-camera scene needs no
- * other configuration.
+ * other configuration. The mirror plane (point + normal) is also
+ * snapshot from the host's world transform on first start — so a
+ * tilted/rotated host produces a correctly oriented mirror without
+ * any manual plane setup.
  *
  * Limits
  * ------
  *
- * - Reflects across a horizontal plane (constant world Y); arbitrary
- *   plane normals are not supported in this version.
+ * - The mirror plane is snapshot once at start from the host transform.
+ *   If the host moves or rotates afterwards, update
+ *   {@link mirrorPlanePoint} / {@link mirrorPlaneNormal} explicitly.
  * - Multiple mirrors in the same scene all share
  *   {@link MIRROR_MASK} — that means no mirror captures any other
  *   mirror surface (good — prevents feedback) but it also means a
@@ -80,8 +83,17 @@ export class MirrorComponent extends ComponentBase {
     /** Capture render-target height in pixels. */
     public height: number = 1024;
 
-    /** Mirror plane height in world space (constant world Y). */
-    public mirrorY: number = 0;
+    /** A world-space point lying on the mirror plane. Defaults to the
+     *  host Object3D's world position on first start, so a flat floor
+     *  needs no manual setup. Override before/after start to move the
+     *  reflection plane independently of the host. */
+    public mirrorPlanePoint: Vector3 = new Vector3();
+
+    /** Unit normal of the mirror plane in world space. Defaults to the
+     *  host Object3D's world-space +Y axis (i.e. transform.up) on first
+     *  start — matching a PlaneGeometry whose face is up. Override for
+     *  tilted glass, vertical mirrors, etc. */
+    public mirrorPlaneNormal: Vector3 = new Vector3(0, 1, 0);
 
     /** The scene's main camera that this mirror reflects. When left
      *  null, resolves to {@link View3D.camera} on enable. Set
@@ -89,9 +101,9 @@ export class MirrorComponent extends ComponentBase {
     public mainCamera: Camera3D | null = null;
 
     /** World-space point the main camera looks at — the mirror camera
-     *  is aimed at the reflection of this point across `mirrorY`.
-     *  Default is the world origin; override to match your camera
-     *  controller's pivot (e.g. `HoverCameraController.setCamera`'s
+     *  is aimed at the reflection of this point across the mirror
+     *  plane. Default is the world origin; override to match your
+     *  camera controller's pivot (e.g. `HoverCameraController.setCamera`'s
      *  `target` argument). */
     public mainTarget: Vector3 = new Vector3(0, 0, 0);
 
@@ -104,9 +116,7 @@ export class MirrorComponent extends ComponentBase {
 
     private _mirrorPos = new Vector3();
     private _mirrorTarget = new Vector3();
-    /** Reflecting +Y across the mirror flips up. Stored once instead of
-     *  re-allocated each frame. */
-    private _mirrorUp = new Vector3(0, -1, 0);
+    private _mirrorUp = new Vector3();
 
     /** Live reference to the auto-created scene-capture component, in
      *  case advanced users want to tweak its properties (clearColor,
@@ -136,8 +146,6 @@ export class MirrorComponent extends ComponentBase {
             console.warn('[MirrorComponent] no view3D in start — mirror disabled.');
             return;
         }
-
-        this.mirrorY = this.object3D.y;
         
         this._setup(view);
     }
@@ -161,23 +169,18 @@ export class MirrorComponent extends ComponentBase {
     public onUpdate(_view?: View3D): void {
         if (!this._captureCam || !this._captureRoot || !this.mainCamera) return;
 
-        // Mirror the main camera position + look-at across y = mirrorY.
-        // We don't extract basis vectors from the camera's worldMatrix —
-        // different engines disagree on whether camera-forward is the
-        // +Z or -Z column, and using an explicit look-at point sidesteps
-        // the convention question entirely.
-        const wp = this.mainCamera.transform.worldPosition;
-        this._mirrorPos.set(wp.x, 2 * this.mirrorY - wp.y, wp.z);
-        this._mirrorTarget.set(
-            this.mainTarget.x,
-            2 * this.mirrorY - this.mainTarget.y,
-            this.mainTarget.z,
-        );
+        // Reflect the main camera position, look-at and world-up across
+        // the mirror plane (point + normal). We don't extract basis
+        // vectors from the camera's worldMatrix — different engines
+        // disagree on whether camera-forward is the +Z or -Z column,
+        // and using an explicit look-at point sidesteps the convention
+        // question entirely. Reflecting +Y as the up vector — instead
+        // of hard-coding (0,-1,0) — keeps tilted / non-axis-aligned
+        // mirror planes producing correctly oriented captures.
+        this._reflectPoint(this.mainCamera.transform.worldPosition, this._mirrorPos);
+        this._reflectPoint(this.mainTarget, this._mirrorTarget);
+        this._reflectDirection(Vector3.UP, this._mirrorUp);
 
-        // Y-reflection flips up; without this lookAt would still produce
-        // a valid orthonormal frame but the captured RT would be
-        // vertically flipped relative to the main-camera screen — half
-        // the planar-mirror pixels would then read wrong rows.
         this._captureRoot.transform.lookAt(this._mirrorPos, this._mirrorTarget, this._mirrorUp);
         this._captureRoot.transform.localPosition = this._mirrorPos;
         this._captureRoot.transform.updateWorldMatrix(true);
@@ -196,6 +199,18 @@ export class MirrorComponent extends ComponentBase {
     }
 
     private _setup(view: View3D): void {
+        // Snapshot the mirror plane from the host transform. A
+        // PlaneGeometry sits flat with its face along local +Y, so the
+        // host's world position gives a point on the plane and
+        // transform.up gives that +Y axis transformed into world space —
+        // works for any tilt / orientation, not only horizontal floors.
+        // Normalize defensively in case the host carries non-uniform
+        // scale (transformVector applies the upper 3×3, so scale leaks
+        // into direction vectors).
+        const tr = this.object3D.transform;
+        this.mirrorPlanePoint.copyFrom(tr.worldPosition);
+        this.mirrorPlaneNormal.copyFrom(tr.up).normalize();
+
         this._hostRenderer = this.object3D.getComponent(MeshRenderer);
         if (!this._hostRenderer) {
             console.warn('[MirrorComponent] no MeshRenderer found on host Object3D — mirror disabled.');
@@ -254,6 +269,24 @@ export class MirrorComponent extends ComponentBase {
 
         view.scene.addChild(this._captureRoot);
         this._bound = false;
+    }
+
+    /** Reflect a world-space point across (mirrorPlanePoint, mirrorPlaneNormal).
+     *  A' = A − 2 · ((A − P) · N) · N. Result is written into `out`. */
+    private _reflectPoint(p: Vector3, out: Vector3): void {
+        const N = this.mirrorPlaneNormal;
+        const P = this.mirrorPlanePoint;
+        const dx = p.x - P.x, dy = p.y - P.y, dz = p.z - P.z;
+        const d = dx * N.x + dy * N.y + dz * N.z;
+        out.set(p.x - 2 * d * N.x, p.y - 2 * d * N.y, p.z - 2 * d * N.z);
+    }
+
+    /** Reflect a world-space direction across the mirror plane normal.
+     *  D' = D − 2 · (D · N) · N. Result is written into `out`. */
+    private _reflectDirection(dir: Vector3, out: Vector3): void {
+        const N = this.mirrorPlaneNormal;
+        const k = dir.x * N.x + dir.y * N.y + dir.z * N.z;
+        out.set(dir.x - 2 * k * N.x, dir.y - 2 * k * N.y, dir.z - 2 * k * N.z);
     }
 
     public destroy(force?: boolean): void {
