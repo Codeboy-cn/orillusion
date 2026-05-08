@@ -56,6 +56,7 @@ export class SceneColorPyramidPass extends RenderGraphPass {
 
     private _getOrAllocate(): RenderTexture {
         const colorBuffer = GBufferFrame.getGBufferFrame(GBufferFrame.colorPass_GBuffer, this._ctx).getColorTexture();
+        const expectedMips = this._mipCountFor(colorBuffer.width, colorBuffer.height);
         if (!this._pyramid || this._pyramid.width !== colorBuffer.width || this._pyramid.height !== colorBuffer.height) {
             // Allocate via RTResourceMap (not `new RenderTexture(...)`)
             // so LitMaterial.transmissionFactor's setter can find the
@@ -79,8 +80,22 @@ export class SceneColorPyramidPass extends RenderGraphPass {
             // on r32float / depth / etc. RTs whose sampler bindings
             // depend on the single-mip layout.
             this._installMipChain(this._pyramid);
+        } else if ((this._pyramid.textureDescriptor as any)?.mipLevelCount !== expectedMips) {
+            // The RT was created via RTResourceMap → autoResize=true, so
+            // a canvas resize fires RenderTexture.resize() on the wrapper,
+            // delay-destroys our custom-mip GPUTexture, and rebuilds the
+            // descriptor with mipLevelCount=1. width/height match the new
+            // canvas size in lock-step with `colorBuffer`, so the outer
+            // branch above doesn't fire — without this re-install, the
+            // next pyramid.getGPUTexture() materializes a 1-mip texture
+            // and webGPUGenerateMipmap fails on every higher level.
+            this._installMipChain(this._pyramid);
         }
         return this._pyramid;
+    }
+
+    private _mipCountFor(w: number, h: number): number {
+        return Math.floor(Math.log2(Math.max(w, h))) + 1;
     }
 
     /** Re-create the pyramid's underlying GPUTexture with a full mip

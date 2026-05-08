@@ -1,6 +1,7 @@
 import { HiZ_Init_cs, HiZ_Reduce_cs } from '../../../../assets/shader/compute/HiZGenerate_cs';
 import { RenderTexture } from '../../../../textures/RenderTexture';
 import { Context3D } from '../../../graphics/webGpu/Context3D';
+import { Texture } from '../../../graphics/webGpu/core/texture/Texture';
 import { GPUTextureFormat } from '../../../graphics/webGpu/WebGPUConst';
 import { GBufferFrame } from '../../frame/GBufferFrame';
 import { RenderGraphBuilder, RenderGraphPass, RenderGraphPassContext } from '../RenderGraphPass';
@@ -37,6 +38,13 @@ export class HiZPass extends RenderGraphPass {
     private _bindGroupLayout: GPUBindGroupLayout | null = null;
     private _initBindGroup: GPUBindGroup | null = null;
     private _reduceBindGroups: GPUBindGroup[] = [];
+    // Identities of the GPUTextures the cached bind groups reference.
+    // The compressGBuffer source has autoResize=true and is recreated by
+    // the canvas-resize listener, so bind groups built against the prior
+    // GPUTexture would otherwise survive the resize and submit views of a
+    // destroyed texture. Compare-and-rebuild on identity change.
+    private _lastCompressGpuTex: GPUTexture | null = null;
+    private _lastPyramidGpuTex: GPUTexture | null = null;
 
     public setup(b: RenderGraphBuilder): void {
         this._ctx = b.context3D;
@@ -59,16 +67,31 @@ export class HiZPass extends RenderGraphPass {
         if (this._pyramid && this._pyramid.width === w && this._pyramid.height === h && this._numMips === wantMips) {
             return this._pyramid;
         }
+        // The pyramid carries a non-default mip chain (mipLevelCount=N)
+        // that RenderTexture.resize() would clobber back to 1 — it forces
+        // useMipmap=false and rebuilds the descriptor with mipLevelCount=1.
+        // With autoResize=true the canvas-resize listener would invalidate
+        // gpuTexture + descriptor in place, but _getOrAllocate's match
+        // check on (w, h, _numMips) would still pass (the canvas usually
+        // resizes within the same mip bucket), so this method returns the
+        // same _pyramid object, _ensureBindGroups skips, and the next
+        // frame submits cached views of a destroyed texture — surfacing
+        // as "Destroyed texture [...r32float] used in a submit". Owning
+        // the lifecycle here (autoResize=false) makes this method the only
+        // mutator; we delay-destroy the prior GPU texture explicitly so it
+        // doesn't leak.
+        if (this._pyramid) {
+            const oldGpu = (this._pyramid as any)._gpuTexture as GPUTexture | null;
+            if (oldGpu) Texture.delayDestroyTexture(this._ctx, oldGpu);
+        }
         // r32float is in WebGPU's default storage-texture format set
         // (r16float is NOT — needs the `r16float-renderable` proposal).
         // Single channel; precision more than sufficient for [0,1] NDC z.
-        // RenderTexture's useMipmap path is unreliable for storage RTs,
-        // so build the descriptor directly with the explicit mip count.
         this._pyramid = new RenderTexture(
             w, h, GPUTextureFormat.r32float,
             true, // useMipMap (constructor flag — actual mipLevelCount is forced below)
             GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_SRC | GPUTextureUsage.COPY_DST,
-            1, 0, false, true, this._ctx,
+            1, 0, false, false, this._ctx,
         );
         // Force the texture descriptor to actually carry the mip chain
         // (RenderTexture.resize internally toggles useMipmap=false).
@@ -124,10 +147,21 @@ export class HiZPass extends RenderGraphPass {
     }
 
     private _ensureBindGroups(): void {
-        if (this._initBindGroup && this._reduceBindGroups.length === this._numMips - 1) return;
         const device = this._ctx.device;
         const pyramid = this._pyramid!;
         const compressGBuffer = GBufferFrame.getGBufferFrame(GBufferFrame.colorPass_GBuffer, this._ctx).getCompressGBufferTexture();
+        // Materialize once — both the source and destination textures may
+        // have been destroyed-and-recreated by their own resize handlers
+        // since we last ran. Compare GPUTexture identity (not just size)
+        // so a recreated-but-same-size texture still triggers a rebuild.
+        const compressGpuTex = compressGBuffer.getGPUTexture();
+        const pyramidGpuTex = pyramid.getGPUTexture();
+        const fresh =
+            this._initBindGroup &&
+            this._reduceBindGroups.length === this._numMips - 1 &&
+            this._lastCompressGpuTex === compressGpuTex &&
+            this._lastPyramidGpuTex === pyramidGpuTex;
+        if (fresh) return;
 
         // Init bind group: input = compressGBuffer (full mip view via
         // its default view); output = pyramid mip 0.
@@ -135,19 +169,19 @@ export class HiZPass extends RenderGraphPass {
             label: 'HiZ_InitBG',
             layout: this._bindGroupLayout!,
             entries: [
-                { binding: 0, resource: compressGBuffer.getGPUTexture().createView({ format: compressGBuffer.format, dimension: '2d', baseMipLevel: 0, mipLevelCount: 1 }) },
-                { binding: 1, resource: pyramid.getGPUTexture().createView({ format: pyramid.format, dimension: '2d', baseMipLevel: 0, mipLevelCount: 1 }) },
+                { binding: 0, resource: compressGpuTex.createView({ format: compressGBuffer.format, dimension: '2d', baseMipLevel: 0, mipLevelCount: 1 }) },
+                { binding: 1, resource: pyramidGpuTex.createView({ format: pyramid.format, dimension: '2d', baseMipLevel: 0, mipLevelCount: 1 }) },
             ],
         });
 
         // Reduce bind groups, one per (mip N → mip N+1).
         this._reduceBindGroups = [];
         for (let i = 0; i < this._numMips - 1; i++) {
-            const srcView = pyramid.getGPUTexture().createView({
+            const srcView = pyramidGpuTex.createView({
                 format: pyramid.format, dimension: '2d',
                 baseMipLevel: i, mipLevelCount: 1,
             });
-            const dstView = pyramid.getGPUTexture().createView({
+            const dstView = pyramidGpuTex.createView({
                 format: pyramid.format, dimension: '2d',
                 baseMipLevel: i + 1, mipLevelCount: 1,
             });
@@ -160,6 +194,8 @@ export class HiZPass extends RenderGraphPass {
                 ],
             }));
         }
+        this._lastCompressGpuTex = compressGpuTex;
+        this._lastPyramidGpuTex = pyramidGpuTex;
     }
 
     public execute(_ctx: RenderGraphPassContext): void {
