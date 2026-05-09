@@ -1,17 +1,11 @@
 import { Scene3D, Engine3D, AtmosphericComponent, CameraUtil, HoverCameraController, View3D, SphereGeometry, Object3D, MeshRenderer, LitMaterial, SpotLight, BoxGeometry, Vector3 } from "@orillusion/core";
 import { GUIHelp } from "@orillusion/debug/GUIHelp";
 import { GUIUtil } from "@samples/utils/GUIUtil";
-import { ShadowLeakLogger } from "./debug/ShadowLeakLogger";
-
-const ENABLE_SHADOW_LOGGER = true;
 
 // sample of SpotLight
 class Sample_SpotLight {
     engine: Engine3D;
     scene: Scene3D;
-    private spotLight: SpotLight;
-    private walls: Object3D[] = [];
-    private logger: ShadowLeakLogger | null = null;
 
     async run() {
         const engine = this.engine = await Engine3D.init({
@@ -23,7 +17,6 @@ class Sample_SpotLight {
                     enable: true,
                 },
             },
-            lateRender: () => this.logger?.tick(),
         });
 
         GUIHelp.init();
@@ -44,10 +37,6 @@ class Sample_SpotLight {
         view.camera = mainCamera;
 
         engine.startRenderView(view);
-
-        if (ENABLE_SHADOW_LOGGER && !(typeof sessionStorage !== 'undefined' && sessionStorage.getItem('spotlightSweep'))) {
-            this.logger = ShadowLeakLogger.install(engine, view, this.spotLight, this.walls, { dumpAtFrame: 30 });
-        }
     }
 
     initScene() {
@@ -69,8 +58,7 @@ class Sample_SpotLight {
 
         let spotLight = lightObj3D.addComponent(SpotLight);
         lightObj3D.x = -86;
-        const yOverride = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('spotlightY') : null;
-        lightObj3D.y = yOverride != null ? parseFloat(yOverride) : 200;
+        lightObj3D.y = 200;
         lightObj3D.z = -300;
         lightObj3D.transform.rotationX = 342;
         lightObj3D.transform.rotationY = 360;
@@ -87,7 +75,6 @@ class Sample_SpotLight {
         spotLight.castShadow = true;
 
         GUIUtil.showSpotLightGUI(spotLight);
-        this.spotLight = spotLight;
     }
 
     // Build a slightly complex scene
@@ -133,8 +120,6 @@ class Sample_SpotLight {
         mrd.geometry = box;
         mrd.material = mat;
         this.scene.addChild(wall_d);
-
-        this.walls = [wall_w, wall_a, wall_d];
     }
 }
 
