@@ -73,7 +73,7 @@ export class PointLightsScript extends ComponentBase {
         let poi = obj.addComponent(PointLight);
         poi.name = UUID();
         poi.transform.x = this._boundBox.center.x + this._boundBox.extents.x * Math.random();
-        poi.transform.y = 10;//this._boundBox.center.y + this._boundBox.extents.y * Math.random();
+        poi.transform.y = this._boundBox.center.y;// + this._boundBox.extents.y * Math.random();
         poi.transform.z = this._boundBox.center.z + this._boundBox.extents.z * Math.random();
         poi.range = 30
         poi.r = Math.random() + 0.1;
@@ -99,8 +99,6 @@ export class PointLightsScript extends ComponentBase {
 
     onUpdate(): void {
         if (!this._startAnim)
-            return;
-        if (Time.delta > 30)
             return;
         for (let i = 0; i < this._points.length; i++) {
             const po = this._points[i];

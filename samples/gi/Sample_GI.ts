@@ -82,9 +82,9 @@ class Sample_GI {
         /******** light *******/
         {
             this.lightObj3D = new Object3D();
-            this.lightObj3D.y = 200;
+            this.lightObj3D.y = 60;
             this.lightObj3D.rotationX = 35;
-            this.lightObj3D.rotationY = 110;
+            this.lightObj3D.rotationY = 90;
             this.lightObj3D.rotationZ = 0;
             let directLight = this.lightObj3D.addComponent(DirectLight);
             directLight.lightColor = KelvinUtil.color_temperature_to_rgb(5355);
