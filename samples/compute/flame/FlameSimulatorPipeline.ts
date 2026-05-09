@@ -26,6 +26,10 @@ export class FlameSimulatorPipeline extends FlameSimulatorBuffer {
         return this.mPositionBuffer;
     }
 
+    public get modelInverseMatrixBuffer(): ComputeGPUBuffer {
+        return this.mModelInverseMatrixBuffer;
+    }
+
     public initParticle(attributeArrays: Map<string, VertexAttributeData>) {
         const { NUM } = this.mConfig;
 
@@ -143,6 +147,7 @@ export class FlameSimulatorPipeline extends FlameSimulatorBuffer {
         this.mCopyBoneMatrixComputeShader.setStorageBuffer(`matrixs`, GlobalBindGroup.getModelMatrixBindGroup(this.mCtx).matrixBufferDst);
         this.mCopyBoneMatrixComputeShader.setStorageBuffer(`jointsMatrixIndexTable`, this.mAnimatorComponent.jointMatrixIndexTableBuffer);
         this.mCopyBoneMatrixComputeShader.setStorageBuffer(`bonesTransformMatrix`, this.mBoneMatrixBuffer);
+        this.mCopyBoneMatrixComputeShader.setStorageBuffer(`modelInverseMatrix`, this.mModelInverseMatrixBuffer);
         this.mCopyBoneMatrixComputeShader.workerSizeX = Math.ceil(this.mAnimatorComponent.numJoint / 16);
 
         const { NUM, GROUP_SIZE } = this.mConfig;
