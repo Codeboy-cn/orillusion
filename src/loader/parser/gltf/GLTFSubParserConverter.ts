@@ -613,8 +613,31 @@ export class GLTFSubParserConverter {
         const wAttr0 = attribArrays[VertexAttributeName.weights0];
         const wAttr1 = attribArrays[VertexAttributeName.weights1];
         if (wAttr0?.data) {
-            const w0 = wAttr0.data;
-            const w1: Float32Array | null = wAttr1?.data ?? null;
+            // glTF allows WEIGHTS_n as float OR normalized u8/u16. Promote
+            // any non-Float32 source to Float32 here so we can (a) safely
+            // do the in-place normalization below, and (b) hand the GPU
+            // plain floats (no `normalized` attribute flag needed). Doing
+            // the divide-by-sum on a Uint8Array silently truncates the
+            // result to 0 because Uint8 stores ints — every weight goes
+            // to zero and the mesh collapses to origin in the bind pose.
+            const toFloat32 = (acc: any) => {
+                if (!acc || acc.data instanceof Float32Array) return;
+                const src = acc.data;
+                const dst = new Float32Array(src.length);
+                const scale = acc.normalize
+                    ? (src instanceof Uint8Array ? 1 / 255
+                       : src instanceof Uint16Array ? 1 / 65535
+                       : src instanceof Int8Array ? 1 / 127
+                       : src instanceof Int16Array ? 1 / 32767 : 1)
+                    : 1;
+                for (let i = 0; i < src.length; i++) dst[i] = src[i] * scale;
+                acc.data = dst;
+                acc.normalize = false;
+            };
+            toFloat32(wAttr0);
+            toFloat32(wAttr1);
+            const w0 = wAttr0.data as Float32Array;
+            const w1: Float32Array | null = (wAttr1?.data as Float32Array) ?? null;
             const vCount = w0.length / 4;
             for (let v = 0; v < vCount; v++) {
                 let s = w0[v*4] + w0[v*4+1] + w0[v*4+2] + w0[v*4+3];
