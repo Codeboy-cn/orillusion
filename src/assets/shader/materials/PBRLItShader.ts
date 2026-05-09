@@ -181,7 +181,10 @@ export let PBRLItShader: string = /*wgsl*/ `
         let normalMapOffsetSize = materialUniform.normalMapOffsetSize;
         var nomralUV = transformUV(ORI_VertexVarying.fragUV0,normalMapOffsetSize) ;
         var Normal = textureSample(normalMap,normalMapSampler,nomralUV).rgb ;
-        let normal = unPackRGNormal(Normal,1.0,1.0) ;  
+        // Flip on back-facing fragments so cullMode='none' surfaces don't
+        // receive direct light / shadows on the side facing away from sun.
+        let face = select(-1.0, 1.0, ORI_VertexVarying.face);
+        let normal = unPackRGNormal(Normal,1.0,face) ;
         ORI_ShadingInput.Normal = normal ;
      
         BxDFShading();
