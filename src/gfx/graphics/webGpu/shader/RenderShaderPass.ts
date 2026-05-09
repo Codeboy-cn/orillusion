@@ -954,22 +954,27 @@ export class RenderShaderPass extends ShaderPassBase {
                 //     (lit pipeline). The hardware can rearrange the
                 //     `projMat * viewMat * worldPos` math differently in
                 //     each pipeline so bit-exact equality isn't reliable.
-                //   - `depthWriteEnabled: true` lets the color pass refine
-                //     the depth attachment in place. Combined with
-                //     `less_equal`, this makes the post-color depth
-                //     identical to the no-prepass path, so downstream
-                //     consumers (post-effects, transparent compositing)
-                //     see consistent depth regardless of `zPrePass`.
-                //   - **Early-Z is still active.** The depth test runs
-                //     before the fragment shader; overdrawn fragments are
-                //     rejected before the lit shader runs — that's the
-                //     core benefit of the prepass and it's preserved.
-                //     The depth write happens AFTER the fragment shader,
-                //     only for fragments that already passed the test,
-                //     and writes essentially the same value the prepass
-                //     wrote — a no-op for the depth field.
+                //   - `depthWriteEnabled` MUST mirror the material's own
+                //     setting. Opaque materials (depthWrite=true) get to
+                //     refine the prepass depth in place — combined with
+                //     `less_equal`, post-color depth matches the no-prepass
+                //     path. **Transparent materials (BLEND, depthWrite=
+                //     false)** must NOT write depth here; they only
+                //     depth-test against the opaque depth produced by the
+                //     prepass + opaque color. Forcing depthWriteEnabled=
+                //     true at this branch was a real bug: BLEND spheres
+                //     ended up writing depth, the first-drawn sphere's
+                //     depth blocked all subsequent layers under less_equal,
+                //     and only insertion order that happened to coincide
+                //     with back-to-front sort survived the issue. The
+                //     symptom showed up at 180° camera (where insertion
+                //     order is front-to-back) as single-layer rendering
+                //     in sorted/weighted/hash modes.
+                //   - **Early-Z is still active for opaques.** The depth
+                //     test runs before the fragment shader; overdrawn
+                //     opaques are rejected before the lit shader runs.
                 renderPipelineDescriptor[`depthStencil`] = {
-                    depthWriteEnabled: true,
+                    depthWriteEnabled: shaderState.depthWriteEnabled,
                     depthCompare: GPUCompareFunction.less_equal,
                     format: renderPassState.zPreTexture.format,
                 };

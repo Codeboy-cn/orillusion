@@ -82,9 +82,9 @@ class Sample_WBOIT {
     private palette: Color[] = [];
 
     private params = {
-        mode: 'weighted' as Mode,
+        mode: 'sorted' as Mode,
         material: 'pbr' as MaterialType,
-        alpha: 1.0,
+        alpha: 0.8,
         radius: 1.0,
         xySpacing: 2.0,
         zSpacing: 2.0,
@@ -97,7 +97,7 @@ class Sample_WBOIT {
 
     private _initMode: Mode = (() => {
         const m = (globalThis as any).__VERIFY_MODE;
-        return (m === 'sorted' || m === 'hash') ? m : 'weighted';
+        return (m === 'sorted' || m === 'weighted' || m === 'depth-peel' || m === 'hash') ? m : 'sorted';
     })();
 
     async run() {
@@ -370,6 +370,7 @@ class Sample_WBOIT {
             .onChange(() => this.updateMaterials())
             .onFinishChange((v: number) => logCommit('alpha', v));
 
+        GUIHelp.open();
         GUIHelp.endFolder();
 
         // ---- Mouse-event recorder ----------------------------------
