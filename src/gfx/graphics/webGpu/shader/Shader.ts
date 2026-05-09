@@ -261,10 +261,19 @@ export class Shader {
     }
 
     public clone() {
+        // Deep-copy every pass (COLOR, SHADOW, REFLECTION, DEPTH,
+        // OIT_ACCUM, GI, …). The previous implementation pushed the
+        // SAME RenderShaderPass refs into the new Shader and only
+        // copied the COLOR bucket, which (a) leaked SHADOW/REFLECTION
+        // passes from the source, and (b) made `material.destroy()` on
+        // any clone tear down the shared pass — breaking the source
+        // material and any subsequently-created clones (the
+        // Sample_AddRemove add → remove → add crash).
         let newShader = new Shader();
-        let sourceShaderPassList = this.getDefaultShaders();
-        for (const shadePass of sourceShaderPassList) {
-            newShader.addRenderPass(shadePass);
+        for (const passes of this.passShader.values()) {
+            for (const pass of passes) {
+                newShader.addRenderPass(pass.clone());
+            }
         }
         return newShader;
     }

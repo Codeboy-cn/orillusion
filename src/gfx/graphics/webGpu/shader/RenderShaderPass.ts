@@ -26,6 +26,8 @@ import { GPUCompareFunction, GPUCullMode } from "../WebGPUConst";
 import { UniformValue } from "./value/UniformValue";
 import { PassType } from "../../../renderJob/passRenderer/state/PassType";
 import { Vector4 } from "../../../../math/Vector4";
+import { Vector2 } from "../../../../math/Vector2";
+import { Vector3 } from "../../../../math/Vector3";
 import { PipelinePool } from "../PipelinePool";
 
 export class RenderShaderPass extends ShaderPassBase {
@@ -281,17 +283,31 @@ export class RenderShaderPass extends ShaderPassBase {
      */
     public setTexture(name: string, texture: Texture) {
         if (texture && this.textures[name] != texture) {
-            if (this.textures[name]) {
-                this.textures[name].unBindStateChange(this);
+            const prev = this.textures[name];
+            if (prev) {
+                prev.unBindStateChange(this);
+                Reference.getInstance().detached(prev, this);
             }
             this._textureChange = true;
             this.textures[name] = texture;
+            // Track every texture in the Reference graph so destroy()'s
+            // detach is balanced by an attach. Previously only envMap
+            // was attached here; baseMap/normalMap/maskMap/emissiveMap
+            // (and the special prefilterMap/reflectionMap routing) only
+            // accumulated a Reference inside getGroupLayout — and that
+            // runs at pipeline-build time. A template Object3D loaded
+            // from glTF whose pipeline never built (e.g. the `player`
+            // in Sample_AddRemove, used solely as a clone source) never
+            // attached its baseMap. Then destroying the FIRST clone
+            // (whose pipeline did build, attaching baseMap once) sent
+            // refcount to zero and force-destroyed the SHARED gltf
+            // texture — the second clone got a baseMap whose
+            // _gpuTexture was null and createBindGroup rejected the
+            // (now-undefined) GPUTextureView at the entries' resource
+            // slot.
+            Reference.getInstance().attached(texture, this);
             if (name == "envMap") {
-                if (this.envMap) {
-                    Reference.getInstance().detached(this.envMap, this);
-                }
                 this.envMap = texture;
-                Reference.getInstance().attached(this.envMap, this);
             } else if (name == "prefilterMap") {
                 this.prefilterMap = texture;
             } else if (name == "reflectionMap") {
@@ -1181,6 +1197,81 @@ export class RenderShaderPass extends ShaderPassBase {
         }
 
         this.shaderState.splitTexture = this.shaderReflection.useSplit;
+    }
+
+    /**
+     * Deep-copy this pass into a fresh instance with its own GPU lifecycle.
+     *
+     * Why this exists: `Material.clone()` → `Shader.clone()` used to share
+     * the same RenderShaderPass instance between source and clones. When
+     * the clone's material was destroyed (Sample_AddRemove's add → remove
+     * → add path), it tore down `materialDataUniformBuffer` /
+     * `bindGroupLayouts` / `pipeline` on the SHARED pass — the source
+     * material and any future clones then tried to render through dead
+     * GPU resources and `createBindGroup` failed validation.
+     *
+     * The clone re-runs the (sub)class constructor via `this.constructor`
+     * so subclass-specific setup (CastShadowMaterialPass uniforms,
+     * OITAccumPass entry points, …) is preserved, then overlays the
+     * source's user-modified state. Texture / external-buffer references
+     * are shared (their lifetime is owner-managed); UniformNode values
+     * are copied so vector mutations on one material don't leak into
+     * the other; `materialDataUniformBuffer` and the pipeline objects
+     * stay fresh from the constructor so the next apply() rebuilds
+     * cleanly under the cloned material's own ownership.
+     */
+    public clone(): RenderShaderPass {
+        const Ctor = this.constructor as new (vs?: string, fs?: string) => RenderShaderPass;
+        const dst = new Ctor(this.vsName, this.fsName);
+
+        dst.passType = this.passType;
+        dst.useRz = this.useRz;
+        dst.vsEntryPoint = this.vsEntryPoint;
+        dst.fsEntryPoint = this.fsEntryPoint;
+
+        Object.assign(dst.shaderState, this.shaderState);
+        dst.defineValue = { ...this.defineValue };
+        dst.constValues = { ...this.constValues };
+
+        for (const k in this.textures) {
+            if (this.textures[k]) dst.setTexture(k, this.textures[k]);
+        }
+
+        // Re-set uniforms by value so the clone owns its own UniformNodes
+        // (and on first reBuild, allocates fresh memoryInfos against the
+        // clone's own materialDataUniformBuffer). Vector/Color values are
+        // copied — UniformNode setters mutate in-place, so sharing the
+        // same instance would let writes on one material bleed to the
+        // other.
+        for (const k in this.uniforms) {
+            const node = this.uniforms[k];
+            if (!node) continue;
+            const v = node.data;
+            if (v instanceof Vector2) dst.setUniformVector2(k, new Vector2(v.x, v.y));
+            else if (v instanceof Vector3) dst.setUniformVector3(k, new Vector3(v.x, v.y, v.z));
+            else if (v instanceof Vector4) dst.setUniformVector4(k, new Vector4(v.x, v.y, v.z, v.w));
+            else if (v instanceof Color) dst.setUniformColor(k, new Color(v.r, v.g, v.b, v.a));
+            else if (v instanceof Float32Array) dst.setUniformArray(k, new Float32Array(v));
+            else if (typeof v === 'number') dst.setUniformFloat(k, v);
+            else dst.setUniform(k, v);
+        }
+
+        // Copy external buffer bindings (storage/uniform that the renderer
+        // wires from elsewhere — e.g. SkinnedMeshRenderer's joint buffers).
+        // Skip the two owned slots; the constructor already pointed them at
+        // the clone's fresh materialDataUniformBuffer.
+        for (const [name, buf] of (this as any)._bufferDic as Map<string, GPUBufferBase>) {
+            if (name === 'global' || name === 'materialUniform') continue;
+            (dst as any)._bufferDic.set(name, buf);
+        }
+
+        // pipeline / bindGroupLayouts / bindGroups / shaderReflection /
+        // shader modules / _destVS / _destFS all stay at their fresh-
+        // constructor defaults (null/empty); the next apply() will
+        // preCompile + reBuild against the clone's own state.
+        (dst as any)._shaderChange = true;
+        (dst as any)._valueChange = true;
+        return dst;
     }
 
     /**
