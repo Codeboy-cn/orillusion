@@ -345,6 +345,7 @@ class Sample_Transparency {
         });
 
         applyAll();
+        GUIHelp.open();
         GUIHelp.endFolder();
     }
 }

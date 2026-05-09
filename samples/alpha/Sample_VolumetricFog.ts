@@ -99,6 +99,7 @@ class Sample_VolumetricFog {
         directLight.lightColor = KelvinUtil.color_temperature_to_rgb(4500);
         directLight.intensity = 6;
         directLight.castShadow = true;
+        directLight.enableCSM = true;
         this.scene.addChild(this.lightObj3D);
 
         // Ground.
@@ -184,6 +185,7 @@ class Sample_VolumetricFog {
         GUIHelp.add(proxy, 'fogAnisotropy', -0.95, 0.95, 0.01).onChange((v: number) => {
             (this.engine.setting.render.postProcessing as any).volumetricFog.anisotropy = v;
         });
+        GUIHelp.open();
         GUIHelp.endFolder();
     }
 }

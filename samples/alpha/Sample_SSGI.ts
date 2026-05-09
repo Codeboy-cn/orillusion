@@ -144,6 +144,7 @@ class Sample_SSGI {
         GUIHelp.add(proxy, 'radius', 10, 200, 5).onChange((v: number) => { cfg.radius = v; });
         GUIHelp.add(proxy, 'sliceCount', 2, 8, 1).onChange((v: number) => { cfg.sliceCount = v; });
         GUIHelp.add(proxy, 'stepCount', 4, 16, 1).onChange((v: number) => { cfg.stepCount = v; });
+        GUIHelp.open();
         GUIHelp.endFolder();
     }
 }
