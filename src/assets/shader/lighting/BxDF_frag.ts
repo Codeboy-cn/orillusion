@@ -208,19 +208,12 @@ export let BxDF_frag: string = /*wgsl*/ `
         var retColor = color.rgb;
         retColor += fragData.Emissive.xyz ;
 
-        // viewColorPremul: rgb·alpha. Used by the gBuffer pack (deferred
-        // path expects pre-mul albedo encoding) AND by the OIT_ACCUM
-        // pass (WBOIT compositing wants pre-mul source so accum.rgb /
-        // accum.a recovers the original colour).
-        //
-        // The COLOR pass writes NON pre-mul. BlendMode.NORMAL's blend
-        // factors (SRC_ALPHA, ONE_MINUS_SRC_ALPHA) already multiply src
-        // by alpha at blend time — feeding pre-mul rgb on top of that
-        // double-multiplies, producing rgb·alpha² and visibly darkening
-        // every transparent fragment. With 27 stacked layers at
-        // alpha=0.85 the cumulative under-contribution is ~70% per
-        // layer instead of 85%, washing saturated palettes into pastel
-        // grey. Mirror the UnLit_frag fix: pre-mul only on USE_OIT_ACCUM.
+        // Engine-wide premultiplied-alpha convention: COLOR pass output is
+        // (rgb*alpha, alpha). BlendMode.NORMAL/ALPHA pair with srcFactor=one
+        // so the final blend is rgb*alpha + dst*(1-alpha). ADD pairs with
+        // (one, one) and transparent pixels zero out at source. OIT_DEPTH_PEEL
+        // sub-passes premultiply downstream in Common_frag, so emit
+        // straight-alpha there to avoid alpha^2.
         var viewColorPremul = vec4<f32>( retColor.rgb * fragData.Albedo.w, fragData.Albedo.a) ;
 
         var vNormal = ORI_VertexVarying.vWorldNormal.rgb ;
@@ -235,36 +228,15 @@ export let BxDF_frag: string = /*wgsl*/ `
         ) ;
 
         #if USE_OIT_DEPTH_PEEL
-          // DDP sub-passes use a single-attachment FragmentOutput
-          // (color only, no gBuffer). Common_frag's USE_OIT_DEPTH_PEEL_*
-          // blocks rewrite .color downstream of this — write the lit
-          // colour straight here so the depth-peel block has the same
-          // shading inputs it would have on the COLOR pass.
-          ORI_FragmentOutput.color = vec4<f32>(retColor.rgb, fragData.Albedo.a) ;
+          ORI_FragmentOutput.color = viewColorPremul;
         #else
           #if USE_CASTREFLECTION
-            ORI_FragmentOutput.gBuffer = gBuffer ;
+            ORI_FragmentOutput.gBuffer = gBuffer;
           #else
-            ORI_FragmentOutput.gBuffer = gBuffer ;
-            #if USE_OIT_ACCUM
-              ORI_FragmentOutput.color = viewColorPremul ;
-            #else
-              ORI_FragmentOutput.color = vec4<f32>(retColor.rgb, fragData.Albedo.a) ;
-            #endif
+            ORI_FragmentOutput.gBuffer = gBuffer;
+            ORI_FragmentOutput.color = viewColorPremul;
           #endif
         #endif
-
-          // var uvx = ORI_VertexVarying.fragCoord.x / globalUniform.windowWidth;
-          // var uvy = ORI_VertexVarying.fragCoord.y / globalUniform.windowHeight;
-          // // var shadowDepth =  textureSampleLevel(shadowMap, shadowMapSampler, vec2<f32>(uvx, uvy), 0, 0);
-
-          // let pointLight = lightBuffer[1];
-          // let dir = normalize(ORI_VertexVarying.vWorldPos.xyz - pointLight.position.xyz);
-          // var shadowDepth =  textureSampleLevel(pointShadowMap, pointShadowMapSampler, dir.xyz, 0, 0);
-          // // shadowDepth = log2(shadowDepth);
-          // ORI_FragmentOutput.color.x = shadowDepth;
-          // ORI_FragmentOutput.color.y = shadowDepth;
-          // ORI_FragmentOutput.color.z = shadowDepth;
   }
 
   `
