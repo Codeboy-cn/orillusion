@@ -66,7 +66,7 @@ export class Sample_PointLight {
                 mr2.material = mat;
                 scene.addChild(box);
 
-                box.transform.x = i * 40 - 300;
+                box.transform.x = i * 40 - 200;
                 box.transform.y = 5;
                 box.transform.z = j * 40 - 200;
             }

@@ -244,6 +244,7 @@ class Sample_Glass {
         });
 
         apply();
+        GUIHelp.open();
         GUIHelp.endFolder();
     }
 }

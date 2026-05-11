@@ -91,44 +91,55 @@ export let ContactShadow_cs: string = /*wgsl*/`
             return;
         }
 
-        // March in screen space. Build a screen-space step direction by
-        // projecting the world-space ray toLight into clip then ndc then uv.
         let originVS = (globalUniform.viewMat * vec4<f32>(worldPos + normal * csSettings.bias, 1.0)).xyz;
-        let endVS = originVS + (globalUniform.viewMat * vec4<f32>(toLight, 0.0)).xyz * csSettings.maxDistance;
 
-        let originClip = globalUniform.projMat * vec4<f32>(originVS, 1.0);
-        let endClip = globalUniform.projMat * vec4<f32>(endVS, 1.0);
-        let originNDC = originClip.xyz / originClip.w;
-        let endNDC = endClip.xyz / endClip.w;
-        let originUV = originNDC.xy * vec2<f32>(0.5, -0.5) + 0.5;
-        let endUV = endNDC.xy * vec2<f32>(0.5, -0.5) + 0.5;
+        // GBuffer NDC z is fp16: precision near z=1 is ~0.001, which back-
+        // projects to ~vz² millimeters of view-depth noise. Beyond ~20m the
+        // noise exceeds csSettings.thickness, producing horizon-band false
+        // hits. Fade out, then skip entirely past the upper bound.
+        let distFade = 1.0 - smoothstep(20.0, 60.0, originVS.z);
+        if (distFade <= 0.0) { textureStore(outTex, fragCoord, oc); return; }
+
+        let toLightVS = normalize((globalUniform.viewMat * vec4<f32>(toLight, 0.0)).xyz);
 
         let stepCount = i32(clamp(csSettings.maxStepCount, 4.0, 64.0));
-        let stepUV = (endUV - originUV) / f32(stepCount);
-        let stepZ = (endNDC.z - originNDC.z) / f32(stepCount);
+        let stepLen = csSettings.maxDistance / f32(stepCount);
 
         var occluded: f32 = 0.0;
         for (var s: i32 = 1; s <= stepCount; s = s + 1) {
-            let sampleUV = originUV + stepUV * f32(s);
+            let samplePosVS = originVS + toLightVS * (stepLen * f32(s));
+            let sampleClip = globalUniform.projMat * vec4<f32>(samplePosVS, 1.0);
+            if (sampleClip.w <= 0.0) { break; }
+            let sampleNDC = sampleClip.xyz / sampleClip.w;
+            let sampleUV = sampleNDC.xy * vec2<f32>(0.5, -0.5) + 0.5;
             if (sampleUV.x < 0.0 || sampleUV.x > 1.0 || sampleUV.y < 0.0 || sampleUV.y > 1.0) { break; }
-            let sampleNDCZ = originNDC.z + stepZ * f32(s);
 
             let sampleCoord = vec2<i32>(sampleUV * vec2<f32>(texSize));
             let sampleGB = getGBuffer(sampleCoord);
-            let sampleSceneZ = sampleGB.x; // gBuffer.x is depth
+            if (getRoughnessFromGBuffer(sampleGB) <= 0.0) { continue; } // sky
 
-            let zDiff = sampleNDCZ - sampleSceneZ;
-            // Ray is "behind" the scene surface within thickness window:
-            // counts as occluded.
+            let sceneWorldPos = getWorldPositionFromGBuffer(sampleGB, sampleUV);
+
+            // Reject same-surface false positives: sceneWorldPos must lie
+            // above the origin's tangent plane to be a real occluder.
+            // Without this, a ray walking along the ground at grazing yaw
+            // angles paints distant pixels black (the projected sample
+            // tracks the same continuous surface).
+            let planeDist = dot(sceneWorldPos - worldPos, normal);
+            if (planeDist < csSettings.bias) { continue; }
+
+            // LH view space (clip.w = +viewZ): points in front of camera
+            // have z > 0; "ray behind surface" ⇔ ray.z > scene.z.
+            let sceneViewZ = (globalUniform.viewMat * vec4<f32>(sceneWorldPos, 1.0)).z;
+            let zDiff = samplePosVS.z - sceneViewZ;
             if (zDiff > 0.0 && zDiff < csSettings.thickness) {
-                // Soft falloff with step index — earlier hits produce
-                // darker contact, distant hits fade out.
                 let falloff = 1.0 - f32(s) / f32(stepCount);
                 occluded = max(occluded, falloff);
+                break;
             }
         }
 
-        let shadowFactor = 1.0 - occluded * csSettings.intensity;
+        let shadowFactor = 1.0 - occluded * csSettings.intensity * distFade;
         textureStore(outTex, fragCoord, vec4<f32>(oc.rgb * shadowFactor, oc.a));
     }
 `;

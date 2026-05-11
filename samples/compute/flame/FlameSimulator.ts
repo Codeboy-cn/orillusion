@@ -1,4 +1,4 @@
-import { AnimatorComponent, ClusterLightingBuffer, ComputeGPUBuffer, MeshRenderer, PassType, RendererMask, RendererPassState, SkinnedMeshRenderer2, Time, View3D } from '@orillusion/core';
+import { AnimatorComponent, ClusterLightingBuffer, ComputeGPUBuffer, Matrix4, MeshRenderer, PassType, RendererMask, RendererPassState, SkinnedMeshRenderer2, Time, View3D } from '@orillusion/core';
 import { FlameSimulatorConfig } from './FlameSimulatorConfig';
 import { FlameSimulatorPipeline } from './FlameSimulatorPipeline';
 
@@ -6,6 +6,7 @@ export class FlameSimulator extends MeshRenderer {
     protected mConfig: FlameSimulatorConfig;
     protected mFlameComputePipeline: FlameSimulatorPipeline;
     protected mGlobalArgs: ComputeGPUBuffer;
+    protected mInvModelMatrix: Matrix4 = new Matrix4();
     constructor() {
         super();
         this.addRendererMask(RendererMask.Particle)
@@ -44,6 +45,12 @@ export class FlameSimulator extends MeshRenderer {
 
     public onCompute(view: View3D, command?: GPUCommandEncoder) {
         if (this.mFlameComputePipeline) {
+            this.mInvModelMatrix.copyFrom(this.transform.worldMatrix);
+            this.mInvModelMatrix.invert();
+            const invBuf = this.mFlameComputePipeline.modelInverseMatrixBuffer;
+            invBuf.setMatrix("", this.mInvModelMatrix);
+            invBuf.apply();
+
             this.mFlameComputePipeline.updateInput(Time.time / 1000.0, Time.delta / 1000.0);
             this.mFlameComputePipeline.updateInputData();
             this.mFlameComputePipeline.compute(view, command);

@@ -14,6 +14,7 @@ import { RenderGraphBuilder, RenderGraphPass, RenderGraphPassContext } from '../
 import { RenderStage } from '../RenderStage';
 import { ClusterLightingPass } from './ClusterLightingPass';
 import { COLOR_BUFFER } from './ColorPass';
+import { MAIN_DEPTH_TEXTURE } from './PreDepthPass';
 import { SCENE_COLOR_PYRAMID } from './SceneColorPyramidPass';
 
 export const OIT_ACCUM_TEX = '_OITAccum';
@@ -41,11 +42,22 @@ export class TransparentOITPass extends RenderGraphPass {
     private _ctx!: Context3D;
     private readonly _passType: PassType = PassType.OIT_ACCUM;
     private _rendererPassState: RendererPassState | null = null;
+    private _zPreTexture: RenderTexture | null = null;
 
     public setup(b: RenderGraphBuilder): void {
         this._ctx = b.context3D;
         b.read(COLOR_BUFFER);
         b.read(SCENE_COLOR_PYRAMID);
+        // When zPrePass is on, the COLOR pass uses MAIN_DEPTH_TEXTURE
+        // (PreDepthPass output) as its depth attachment, NOT the GBuffer's
+        // own depth texture. Match that here — otherwise OIT loads an
+        // unwritten depth (cleared to 0), depth-test 'less-equal' rejects
+        // every transparent fragment (depth > 0), accum/reveal stay at
+        // their clear values, and the resolve composites nothing.
+        if (b.view.engine3D.setting.render.zPrePass) {
+            b.read(MAIN_DEPTH_TEXTURE);
+            this._zPreTexture = b.graph.pool.get(MAIN_DEPTH_TEXTURE) as RenderTexture;
+        }
         // Lazy alloc: rtFrame depends on the colorPass GBuffer's
         // current depth texture, so build it on first read.
         b.write<RenderTexture>(OIT_ACCUM_TEX, () => {
@@ -120,11 +132,6 @@ export class TransparentOITPass extends RenderGraphPass {
     private _ensureRtFrame(): void {
         if (this._rendererPassState) return;
         const ctx = this._ctx;
-        // Allocate persistent OIT attachments. Depth is borrowed from
-        // the main color pass's GBufferFrame so depth testing matches
-        // the opaque scene; loadOp='load' preserves the depth from the
-        // opaque pass and depthWriteEnabled is set per-pipeline (in
-        // OITAccumPass.shaderState.depthWriteEnabled = false).
         const colorGBuffer = GBufferFrame.getGBufferFrame(GBufferFrame.colorPass_GBuffer, ctx);
         const w = ctx.presentationSize[0];
         const h = ctx.presentationSize[1];
@@ -141,11 +148,17 @@ export class TransparentOITPass extends RenderGraphPass {
         revealDesc.loadOp = 'clear';
         revealDesc.clearValue = [1, 1, 1, 1];
 
+        // Share the upstream depth attachment so OIT depth-tests against
+        // opaque depth: zPreTexture path picks MAIN_DEPTH_TEXTURE when
+        // zPrePass=true (the texture ColorPass actually writes), and falls
+        // back to GBuffer's depthTexture otherwise. depthLoadOp='load'
+        // preserves the prepass + opaque writes; OITAccumPass's own
+        // shaderState.depthWriteEnabled=false keeps OIT from refining it.
         const rtFrame = new RTFrame(
             [accum, reveal],
             [accumDesc, revealDesc],
             colorGBuffer.depthTexture,
-            undefined,
+            this._zPreTexture ?? undefined,
             true,
         );
         rtFrame.depthLoadOp = 'load';

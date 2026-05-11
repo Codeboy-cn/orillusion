@@ -5,7 +5,7 @@ import { Graphic3D } from "@orillusion/graphic";
 
 export class GUIUtil {
 
-    static renderProfiler(arg0: ProfilerDraw) {
+    static renderProfiler(arg0: ProfilerDraw, open: boolean = false) {
         let gui = GUIHelp._creatPanel();
         let cache = {};
         for (const key in PassType) {
@@ -13,7 +13,7 @@ export class GUIUtil {
             if (i >= 0) {
             } else {
                 let fg = GUIHelp._addFolder(gui, key);
-                fg.open();
+                open && fg.open();
                 cache[key] = [
                     GUIHelp._addLabelValue(fg, `indicesCount`, arg0[key].indicesCount),
                     GUIHelp._addLabelValue(fg, `vertexCount`, arg0[key].vertexCount),
@@ -24,7 +24,7 @@ export class GUIUtil {
                 ]
             }
         }
-        gui.open();
+        open && gui.open();
 
         setInterval(() => {
             for (const key in PassType) {
@@ -43,7 +43,7 @@ export class GUIUtil {
     }
 
 
-    static renderOutlinePost(post: OutlinePost) {
+    static renderOutlinePost(post: OutlinePost, open: boolean = false) {
         GUIHelp.addFolder('OutlinePost');
         GUIHelp.add(post, 'outlinePixel', 0, 2048, 1);
         GUIHelp.add(post, 'fadeOutlinePixel', 0.0001, 0.2, 0.00001);
@@ -53,7 +53,7 @@ export class GUIUtil {
         GUIHelp.endFolder();
     }
 
-    public static renderShadowSetting(engine: Engine3D, open: boolean = true) {
+    public static renderShadowSetting(engine: Engine3D, open: boolean = false) {
         GUIHelp.addFolder('ShadowSetting');
         let setting = engine.setting.shadow;
 
@@ -86,7 +86,7 @@ export class GUIUtil {
     }
 
 
-    static renderGBufferPost(post: GBufferPost, open: boolean = true) {
+    static renderGBufferPost(post: GBufferPost, open: boolean = false) {
         GUIHelp.addFolder('GBufferPost&Reflection');
         let bufferState = {
             current: 0,
@@ -107,7 +107,7 @@ export class GUIUtil {
 
 
     //render AtmosphericComponent
-    public static renderAtmosphericSky(component: AtmosphericComponent, open: boolean = true, name?: string) {
+    public static renderAtmosphericSky(component: AtmosphericComponent, open: boolean = false, name?: string) {
         name ||= 'AtmosphericSky';
         GUIHelp.addFolder(name);
         GUIHelp.add(component, 'sunX', 0, 1, 0.01);
@@ -124,7 +124,7 @@ export class GUIUtil {
         GUIHelp.endFolder();
     }
 
-    public static renderGlobalFog(fog: GlobalFog, open: boolean = true, name?: string) {
+    public static renderGlobalFog(fog: GlobalFog, open: boolean = false, name?: string) {
         name ||= 'GlobalFog';
         GUIHelp.addFolder(name);
         GUIHelp.add(fog, 'fogType', {
@@ -150,7 +150,7 @@ export class GUIUtil {
     }
 
     //render transform
-    public static renderTransform(transform: Transform, open: boolean = true, name?: string, scale?: number) {
+    public static renderTransform(transform: Transform, open: boolean = false, name?: string, scale?: number) {
         name ||= 'Transform';
         GUIHelp.addFolder(name);
         GUIHelp.add(transform, 'x', -scale, scale, 0.01);
@@ -167,7 +167,7 @@ export class GUIUtil {
         GUIHelp.endFolder();
     }
 
-    public static renderBloom(bloom: BloomPost, open: boolean = true, name?: string) {
+    public static renderBloom(bloom: BloomPost, open: boolean = false, name?: string) {
         name ||= 'Bloom';
         GUIHelp.addFolder(name);
         GUIHelp.add(bloom, 'downSampleBlurSize', 3, 15, 1);
@@ -181,7 +181,7 @@ export class GUIUtil {
         GUIHelp.endFolder();
     }
 
-    static renderGodRay(godRay: GodRayPost, open: boolean = true, name?: string) {
+    static renderGodRay(godRay: GodRayPost, open: boolean = false, name?: string) {
         name ||= 'GodRay';
         GUIHelp.addFolder(name);
         GUIHelp.add(godRay, 'blendColor');
@@ -192,7 +192,7 @@ export class GUIUtil {
         GUIHelp.endFolder();
     }
 
-    public static renderVector3(obj: Object3D, open: boolean = true, name?: string) {
+    public static renderVector3(obj: Object3D, open: boolean = false, name?: string) {
         name ||= 'Vector3';
         GUIHelp.addFolder(name);
         GUIHelp.add(obj, 'x', -10.0, 10.0, 0.01);
@@ -207,7 +207,7 @@ export class GUIUtil {
     }
 
     //render direct light gui panel
-    public static renderDirLight(light: DirectLight, open: boolean = true, name?: string) {
+    public static renderDirLight(light: DirectLight, open: boolean = false, name?: string) {
         name ||= `DirectLight-${light.name || light.object3D.name}`;
         GUIHelp.addFolder(name);
         GUIHelp.add(light, 'enable');
@@ -461,7 +461,7 @@ export class GUIUtil {
      * (debugCSM, debugShadowBound). Either flag installs a single bindOnChange
      * closure that redraws on light transform / shadow bound changes.
      */
-    public static refreshDirectLightDebug(light: DirectLight) {
+    public static refreshDirectLightDebug(light: DirectLight, open: boolean = true) {
         const debugId = `DirectLight_${light.object3D.instanceID}`;
         this._clearDebugDirectLight(light);
         if (!light.debugCSM && !light.debugShadowBound) {
@@ -504,7 +504,7 @@ export class GUIUtil {
     }
 
     //show point light gui controller
-    public static showPointLightGUI(light: PointLight) {
+    public static showPointLightGUI(light: PointLight, open: boolean = true) {
         GUIHelp.addFolder('PointLight');
         GUIHelp.add(light, 'enable');
         GUIHelp.addColor(light, 'lightColor');
@@ -540,11 +540,11 @@ export class GUIUtil {
         GUIUtil._addShadowCalcReadout(light);
         GUIUtil._addBiasReadout(light);
 
-        GUIHelp.open();
+        open && GUIHelp.open();
         GUIHelp.endFolder();
     }
 
-    public static showSpotLightGUI(light: SpotLight) {
+    public static showSpotLightGUI(light: SpotLight, open: boolean = true) {
         GUIHelp.addFolder('SpotLight');
         GUIHelp.add(light, 'enable');
         GUIHelp.add(light.transform, 'x', -1000, 1000.0, 0.01);
@@ -578,7 +578,7 @@ export class GUIUtil {
         GUIUtil._addShadowCalcReadout(light);
         GUIUtil._addBiasReadout(light);
 
-        GUIHelp.open();
+        open && GUIHelp.open();
         GUIHelp.endFolder();
     }
 
@@ -653,7 +653,7 @@ export class GUIUtil {
      * volume. Installed via light.bindOnChange so it tracks position changes.
      * Cleared when `debugShadowRange` is toggled off.
      */
-    public static refreshPointLightDebug(light: PointLight | SpotLight) {
+    public static refreshPointLightDebug(light: PointLight | SpotLight, open: boolean = true) {
         const debugId = `PointLight_${light.object3D.instanceID}`;
         this._clearDebugPointLight(light, debugId);
         if (!light.debugShadowRange) {
@@ -750,7 +750,7 @@ export class GUIUtil {
         g.Clear(`${debugId}_far_z`);
     }
 
-    public static renderGIComponent(component: GlobalIlluminationComponent, view: View3D): void {
+    public static renderGIComponent(component: GlobalIlluminationComponent, view: View3D, open: boolean = false): void {
         let volume = component['_volume'];
         let giSetting = volume.setting;
         let renderJob = view.engine3D.getRenderJob(view);
@@ -797,6 +797,7 @@ export class GUIUtil {
         });
 
         GUIHelp.add(giSetting, 'autoRenderProbe');
+        open && GUIHelp.open();
         GUIHelp.endFolder();
 
         GUIHelp.addFolder('probe volume');
@@ -842,11 +843,12 @@ export class GUIUtil {
                 }
             }
         });
+        open && GUIHelp.open();
         GUIHelp.endFolder();
     }
 
     //render uv move component
-    public static renderUVMove(component: UVMoveComponent, open: boolean = true, name?: string) {
+    public static renderUVMove(component: UVMoveComponent, open: boolean = false, name?: string) {
         name ||= 'UV Move';
         GUIHelp.addFolder(name);
         GUIHelp.add(component.speed, 'x', -1, 1, 0.01);
@@ -860,11 +862,10 @@ export class GUIUtil {
     }
 
 
-    static renderDebug(view: View3D) {
+    static renderDebug(view: View3D, open: boolean = false) {
         GUIHelp.removeFolder(`RenderPerformance`);
         //debug
         let f = GUIHelp.addFolder('RenderPerformance');
-        f.open();
         let renderJob = view.engine3D.getRenderJob(view);
         let engine = view.engine3D;
         const postPass = view.renderGraph?.getPass<any>('PostPass');
@@ -901,10 +902,11 @@ export class GUIUtil {
         GUIHelp.add(engine.setting.render, 'renderState_split', 0.0, 2048, 0.001);
         GUIHelp.add(engine.setting.render, 'drawOpMin', 0.0, 10000, 1);
         GUIHelp.add(engine.setting.render, 'drawOpMax', 0.0, 10000, 1);
+        open && GUIHelp.open();
         GUIHelp.endFolder();
     }
 
-    static renderLitMaterial(mat: LitMaterial, open?: boolean) {
+    static renderLitMaterial(mat: LitMaterial, open: boolean = false) {
         GUIHelp.addFolder(mat.name);
         GUIHelp.addColor(mat, 'baseColor').onChange((c) => {
             mat.baseColor = c;
@@ -989,7 +991,7 @@ export class GUIUtil {
         GUIHelp.endFolder();
     }
 
-    public static renderBlendShape(obj: Object3D) {
+    public static renderBlendShape(obj: Object3D, open: boolean = false) {
         GUIHelp.addFolder('morph controller');
         // register MorphTargetBlender component
         let blendShapeComponents = obj.getComponents(SkinnedMeshRenderer2);
@@ -1017,11 +1019,11 @@ export class GUIUtil {
             }
         }
 
-        GUIHelp.open();
+        open && GUIHelp.open();
         GUIHelp.endFolder();
     }
 
-    static renderAnimator(com: AnimatorComponent) {
+    static renderAnimator(com: AnimatorComponent, open: boolean = false) {
         let anim = {}
         for (let i = 0; i < com.clips.length; i++) {
             const clip = com.clips[i];
@@ -1034,12 +1036,13 @@ export class GUIUtil {
             com.playAnim(v);
             com.playBlendShape(v);
         });
+        open && GUIHelp.open();
         GUIHelp.endFolder();
 
     }
 
 
-    public static renderGTAO(post: GTAOPost) {
+    public static renderGTAO(post: GTAOPost, open: boolean = false) {
         GUIHelp.addFolder("GTAO");
         GUIHelp.add(post, "maxDistance", 0.0, 149, 1);
         GUIHelp.add(post, "maxPixel", 0.0, 150, 1);
@@ -1047,10 +1050,11 @@ export class GUIUtil {
         GUIHelp.add(post, "darkFactor", 0.0, 5, 0.001);
         GUIHelp.add(post, "blendColor");
         GUIHelp.add(post, "multiBounce");
+        open && GUIHelp.open();
         GUIHelp.endFolder();
     }
 
-    public static renderTAA(post: TAAPost, open: boolean = true) {
+    public static renderTAA(post: TAAPost, open: boolean = false) {
         GUIHelp.addFolder("TAA");
         GUIHelp.add(post, "jitterSeedCount", 2, 8, 1);
         GUIHelp.add(post, "blendFactor", 0.0, 1.0, 0.01);
@@ -1061,11 +1065,12 @@ export class GUIUtil {
         GUIHelp.endFolder();
     }
 
-    static renderDepthOfField(post: DepthOfFieldPost) {
+    static renderDepthOfField(post: DepthOfFieldPost, open: boolean = false) {
         GUIHelp.addFolder("DOFPost");
         GUIHelp.add(post, 'near', 0, 100, 1)
         GUIHelp.add(post, 'far', 150, 300, 1)
         GUIHelp.add(post, 'pixelOffset', 0.0, 15, 1)
+        open && GUIHelp.open();
         GUIHelp.endFolder();
     }
 
