@@ -26,6 +26,16 @@ export class BloomPost extends PostBase {
     RT_BloomUp: VirtualTexture[];
     RT_BloomDown: VirtualTexture[];
     RT_threshold: VirtualTexture;
+    // Separate RT for the final composite. RT_threshold used to double as
+    // both the threshold-pass output and the post-pass scene+bloom output
+    // in the same compute pass — same GPUTexture written by dispatch[0],
+    // sampled by dispatch[1], rewritten by dispatch[last]. Spec-legal,
+    // but some backends mishandle the implicit barrier on the workgroup
+    // tile boundary and leave stale data persisted in the storage texture
+    // — visible as hard-edged 8×8-aligned black squares that stick around
+    // until the texture is destroyed. Giving the post pass its own RT
+    // makes each storage texture single-role within the pass.
+    RT_final: VirtualTexture;
     /**
      * @internal
      */
@@ -195,11 +205,11 @@ export class BloomPost extends PostBase {
 
         this.postCompute.setSamplerTexture('_MainTex', this.getLastRenderTexture());
         this.postCompute.setSamplerTexture(`_BloomTex`, this.RT_BloomUp[N - 2]);
-        this.postCompute.setStorageTexture(`outTex`, this.RT_threshold);
+        this.postCompute.setStorageTexture(`outTex`, this.RT_final);
         this.postCompute.setUniformBuffer('bloomCfg', this.bloomSetting);
 
-        this.postCompute.workerSizeX = Math.ceil(this.RT_threshold.width / 8);
-        this.postCompute.workerSizeY = Math.ceil(this.RT_threshold.height / 8);
+        this.postCompute.workerSizeX = Math.ceil(this.RT_final.width / 8);
+        this.postCompute.workerSizeY = Math.ceil(this.RT_final.height / 8);
         this.postCompute.workerSizeZ = 1;
     }
 
@@ -211,6 +221,7 @@ export class BloomPost extends PostBase {
         let usage = GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.COPY_SRC | GPUTextureUsage.TEXTURE_BINDING;
 
         this.RT_threshold = new VirtualTexture(screenWidth, screenHeight, GPUTextureFormat.rgba16float, false, usage, 1, 0, 1, this._boundCtx!);
+        this.RT_final = new VirtualTexture(screenWidth, screenHeight, GPUTextureFormat.rgba16float, false, usage, 1, 0, 1, this._boundCtx!);
 
         const N = setting.downSampleStep;
         {
@@ -236,7 +247,7 @@ export class BloomPost extends PostBase {
         let bloomDesc = new RTDescriptor();
         bloomDesc.loadOp = `load`;
 
-        this.rtFrame = new RTFrame([this.RT_threshold], [bloomDesc]);
+        this.rtFrame = new RTFrame([this.RT_final], [bloomDesc]);
     }
 
     /**
@@ -276,6 +287,7 @@ export class BloomPost extends PostBase {
 
         let [screenWidth, screenHeight] = this._boundCtx!.presentationSize;
         this.RT_threshold.resize(screenWidth, screenHeight);
+        this.RT_final.resize(screenWidth, screenHeight);
 
         const N = cfg.downSampleStep;
         let w = Math.ceil(screenWidth / 4);
@@ -322,8 +334,8 @@ export class BloomPost extends PostBase {
             }
         }
 
-        this.postCompute.workerSizeX = Math.ceil(this.RT_threshold.width / 8);
-        this.postCompute.workerSizeY = Math.ceil(this.RT_threshold.height / 8);
+        this.postCompute.workerSizeX = Math.ceil(this.RT_final.width / 8);
+        this.postCompute.workerSizeY = Math.ceil(this.RT_final.height / 8);
         this.postCompute.workerSizeZ = 1;
     }
 }
