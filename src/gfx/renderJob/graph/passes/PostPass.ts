@@ -122,6 +122,16 @@ export class PostPass extends RenderGraphPass {
         const view = ctx.view;
         const gpu = view.engine3D.context3D.gpuContext;
 
+        // Reset to the ColorPass GBuffer state at the start of every frame.
+        // Without this, if a post was enabled last frame and is disabled
+        // this frame, gpu.lastRenderPassState would still point at that
+        // post's rtFrame from the previous frame — and downstream posts
+        // sampling via getLastRenderTexture() would bind a stale, no-longer
+        // updated texture. The ColorPass output is the canonical "no post
+        // ran yet" upstream and is what the first enabled non-final post
+        // should see.
+        gpu.lastRenderPassState = this._rendererPassState;
+
         this.postList.forEach((v) => {
             if (v.enable) v.compute(view);
         });

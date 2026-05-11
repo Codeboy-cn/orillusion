@@ -63,9 +63,11 @@ export class ComputeShader extends ShaderPassBase {
      * @param texture
      */
     public setStorageTexture(name: string, texture: Texture) {
-        if (!this._storageTextureDic.has(name)) {
-            this._storageTextureDic.set(name, texture);
-        }
+        // Overwriting is correct here — same semantics as setSamplerTexture.
+        // Previously this was set-once (silently ignored repeat binds), which
+        // broke any caller that wanted to re-point an output binding (e.g.
+        // when the upstream chain changes and a post needs to rebind).
+        this._storageTextureDic.set(name, texture);
     }
 
     /**
@@ -105,6 +107,17 @@ export class ComputeShader extends ShaderPassBase {
         if (this._boundCtx) this._propagateCtx(this._boundCtx);
         if (!this._computePipeline) {
             this.genComputePipeline();
+        }
+
+        // Rebuild any bind groups that were invalidated since the last dispatch.
+        // Callers (e.g. PostBase.bindUpstream) signal "re-bind needed" by
+        // setting `this.bindGroups[i] = null` after updating the sampler /
+        // storage texture dict. Without this rebuild loop, setBindGroup(null)
+        // would crash the dispatch.
+        for (let i = 0; i < this._groupsShaderReflectionVarInfos.length; ++i) {
+            if (!this.bindGroups[i] && this._groupsShaderReflectionVarInfos[i]) {
+                this.genGroups(i, this._groupsShaderReflectionVarInfos, true);
+            }
         }
 
         computePass.setPipeline(this._computePipeline);
