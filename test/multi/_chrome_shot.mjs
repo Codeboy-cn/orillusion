@@ -26,6 +26,18 @@ const CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 const userDataDir = mkdtempSync(join(tmpdir(), 'cdp-shot-'));
 const port = 9222 + Math.floor(Math.random() * 1000);
 
+// SHOT_WINDOW_SIZE=WxH overrides the Chrome window OUTER size — used to
+// reproduce RT-size-sensitive bugs (the bloom black-square repro is
+// window-outer 1141x767 on macOS). Default kept off-screen + tiny so
+// CI runs don't grab focus; setting SHOT_WINDOW_SIZE moves the window
+// on-screen so Chrome reports its true frame dimensions to the page.
+const WIN = process.env.SHOT_WINDOW_SIZE || '1024,768';
+const ONSCREEN = !!process.env.SHOT_WINDOW_SIZE;
+// SHOT_KEEP_ALIVE leaves the Chrome window running after the screenshot
+// so the caller can inspect/drive it manually. Detached + stdio:ignore
+// so this Node process exits cleanly without killing Chrome.
+const KEEP_ALIVE = !!process.env.SHOT_KEEP_ALIVE;
+
 const chrome = spawn(CHROME, [
     `--remote-debugging-port=${port}`,
     `--user-data-dir=${userDataDir}`,
@@ -34,13 +46,15 @@ const chrome = spawn(CHROME, [
     '--no-first-run',
     '--no-default-browser-check',
     '--disable-gpu-sandbox',
-    '--window-size=1024,768',
-    '--window-position=2400,2400', // off-screen so it doesn't grab focus
+    `--window-size=${WIN.replace('x', ',')}`,
+    ONSCREEN ? '--window-position=0,0' : '--window-position=2400,2400',
     'about:blank',
-], { stdio: ['ignore', 'pipe', 'pipe'] });
+], KEEP_ALIVE
+    ? { detached: true, stdio: 'ignore' }
+    : { stdio: ['ignore', 'pipe', 'pipe'] });
 
-chrome.stderr.on('data', () => {});
-chrome.stdout.on('data', () => {});
+if (chrome.stderr) chrome.stderr.on('data', () => {});
+if (chrome.stdout) chrome.stdout.on('data', () => {});
 
 async function fetchJson(url) {
     const r = await fetch(url);
@@ -96,6 +110,40 @@ async function main() {
 
     await cdp.send('Page.enable');
     await cdp.send('Runtime.enable');
+
+    // SHOT_CANVAS_SIZE=WxH forces the iframe canvas to a specific pixel
+    // size via Emulation.setDeviceMetricsOverride. Used when reproducing
+    // RT-size-sensitive bugs where the exact canvas dimensions matter
+    // (e.g. the bloom black-square repro at canvas 950x680).
+    const canvasMatch = (process.env.SHOT_CANVAS_SIZE || '').match(/^(\d+)[x,](\d+)$/);
+    if (canvasMatch) {
+        const [, w, h] = canvasMatch;
+        // index.html iframe sample selector occupies ~191px on the left;
+        // viewport = canvas + 191 wide, same height.
+        await cdp.send('Emulation.setDeviceMetricsOverride', {
+            width: Number(w) + 191,
+            height: Number(h),
+            deviceScaleFactor: 1,
+            mobile: false,
+        });
+        process.stderr.write(`[shot] forced canvas ${w}x${h} (viewport ${Number(w) + 191}x${h})\n`);
+    } else {
+        // Else fall back to forcing Chrome window outer dimensions.
+        const sizeMatch = WIN.match(/^(\d+)[x,](\d+)$/);
+        if (process.env.SHOT_WINDOW_SIZE && sizeMatch) {
+            const [, w, h] = sizeMatch;
+            try {
+                const { windowId } = await cdp.send('Browser.getWindowForTarget');
+                await cdp.send('Browser.setWindowBounds', {
+                    windowId,
+                    bounds: { left: 0, top: 0, width: Number(w), height: Number(h), windowState: 'normal' },
+                });
+                process.stderr.write(`[shot] forced window outer ${w}x${h}\n`);
+            } catch (e) {
+                process.stderr.write(`[shot] setWindowBounds failed: ${e.message}\n`);
+            }
+        }
+    }
 
     // Inject __VERIFY_MODE BEFORE the first navigation so it lands on the
     // top page AND propagates into the srcdoc iframe (the iframe inherits
@@ -162,6 +210,17 @@ async function main() {
     const out = join(OUT, `chrome_${flat}${tag}.png`);
     await fs.writeFile(out, Buffer.from(data, 'base64'));
     process.stdout.write(out + '\n');
+
+    // SHOT_KEEP_ALIVE leaves Chrome running for manual inspection
+    // (e.g. dragging the window to repro size-sensitive bugs). Caller
+    // closes it themselves; this script exits Node but Chrome stays.
+    if (process.env.SHOT_KEEP_ALIVE) {
+        process.stderr.write(`[shot] keep-alive: chrome PID ${chrome.pid} stays running, CDP ws on port ${port}\n`);
+        chrome.unref();
+        ws.close();
+        // Detach so Chrome isn't killed when this Node process exits.
+        process.exit(0);
+    }
 
     ws.close();
     chrome.kill('SIGTERM');
