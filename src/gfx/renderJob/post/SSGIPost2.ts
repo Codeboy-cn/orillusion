@@ -62,6 +62,7 @@ export class SSGIPost2 extends PostBase {
             this.rendererPassState = WebGPUDescriptorCreator.createRendererPassState(view.engine3D.context3D, this._rtFrame, null);
             this.rendererPassState.label = 'SSGI';
         }
+        this.bindUpstream(this._compute, 'inTex');
         const cfg = (this.setting.render.postProcessing as any).ssgi || {};
         this._settingsBuffer.setFloat('intensity', cfg.intensity ?? 0.5);
         this._settingsBuffer.setFloat('radius', cfg.radius ?? 50);

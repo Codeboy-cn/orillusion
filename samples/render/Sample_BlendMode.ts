@@ -61,7 +61,7 @@ class Sample_BlendMode2 {
             let renderer = plane.addComponent(MeshRenderer);
             let material = new UnLitMaterial();
             material.baseMap = await this.engine.res.loadTexture("particle/T_Fx_Object_229.png");
-            material.blendMode = BlendMode.NORMAL;
+            material.blendMode = BlendMode.NONE;
             renderer.material = material;
             renderer.geometry = new PlaneGeometry(100, 100, 1, 1);
             this.scene.addChild(plane);

@@ -85,6 +85,51 @@ export class PostBase {
         return colorTexture;
     }
 
+    /**
+     * Per-compute upstream texture tracker. Keyed by ComputeShader + binding
+     * name; remembers the last upstream texture each binding was wired to so
+     * we can detect when the chain changed and rebind cheaply.
+     *
+     * Lives on PostBase rather than the ComputeShader because the notion of
+     * "upstream" is a post-chain concept (resolved via getLastRenderTexture),
+     * not a property of the compute shader itself.
+     */
+    private _upstreamBindings: WeakMap<ComputeShader, Map<string, Texture>> = new WeakMap();
+
+    /**
+     * Bind `binding` on `compute` to whatever `getLastRenderTexture()`
+     * resolves this frame, and invalidate the compute's group-0 bind group
+     * if the upstream texture identity changed since last frame.
+     *
+     * The framework's enable-toggle contract (PostPass.execute skips
+     * disabled posts so the next enabled post sees their predecessor's
+     * `lastRenderPassState`) only works if downstream posts re-read the
+     * upstream every frame. Lazy-init latching (the historical pattern,
+     * `setSamplerTexture('inTex', this.getLastRenderTexture())` once during
+     * resource creation) bakes the *initial* upstream into the bind group
+     * and never updates it — toggling an upstream post off then leaves the
+     * downstream sampler pointing at a no-longer-updated texture and the
+     * screen freezes.
+     *
+     * Call this once per binding per render(). Cost is two map lookups + a
+     * reference compare when nothing changed; bind group rebuild only fires
+     * when the upstream texture object actually flipped.
+     */
+    protected bindUpstream(compute: ComputeShader, binding: string): Texture {
+        const upstream = this.getLastRenderTexture();
+        let map = this._upstreamBindings.get(compute);
+        if (!map) { map = new Map(); this._upstreamBindings.set(compute, map); }
+        if (map.get(binding) !== upstream) {
+            compute.setSamplerTexture(binding, upstream);
+            // Invalidate group 0 so genGroups rebuilds on the next dispatch.
+            // The new binding refs are already in `_sampleTextureDic`, so
+            // the rebuild picks them up automatically.
+            compute.bindGroups[0] = null as any;
+            map.set(binding, upstream);
+        }
+        return upstream;
+    }
+
     public compute(view: View3D) { }
 
     public onAttach(view: View3D) { }

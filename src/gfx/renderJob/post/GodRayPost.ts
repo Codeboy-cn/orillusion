@@ -156,6 +156,8 @@ export class GodRayPost extends PostBase {
             this.godRayCompute.setUniformBuffer('globalUniform', globalUniform.uniformGPUBuffer);
         }
 
+        this.bindUpstream(this.godRayCompute, 'inTex');
+
         let setting = this.setting.render.postProcessing.godRay;
 
         this.godRaySetting.setFloat('intensity', setting.intensity);

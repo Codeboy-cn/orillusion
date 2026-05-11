@@ -103,6 +103,7 @@ export class ContactShadowPost extends PostBase {
             this.rendererPassState = WebGPUDescriptorCreator.createRendererPassState(view.engine3D.context3D, this._rtFrame, null);
             this.rendererPassState.label = 'ContactShadow';
         }
+        this.bindUpstream(this._compute, 'inTex');
         this._uploadSettings();
         this._boundCtx!.gpuContext.computeCommand(command, [this._compute]);
         this._boundCtx!.gpuContext.lastRenderPassState = this.rendererPassState;

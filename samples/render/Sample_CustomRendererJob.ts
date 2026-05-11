@@ -115,6 +115,7 @@ class Sample_CustomRendererJob {
         dl.lightColor = KelvinUtil.color_temperature_to_rgb(5500);
         dl.intensity = 3;
         dl.castShadow = true;
+        dl.enableCSM = true;
         this.scene.addChild(light);
 
         // Floor.

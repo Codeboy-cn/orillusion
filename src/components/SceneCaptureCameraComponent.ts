@@ -191,6 +191,52 @@ export class SceneCaptureCameraComponent extends ComponentBase {
             };
         }
 
+        // Size-only change on an already-allocated chain: resize the
+        // attached textures in place. We can't simply drop the
+        // GBufferFrame cache entry and re-allocate — RTResourceMap
+        // caches the color attachment by name, so a re-allocation would
+        // hand back the OLD-sized color texture alongside fresh-size
+        // compress/depth textures and WebGPU would reject the pass
+        // ("All attachments must have the same size"). Resizing in
+        // place also keeps the texture identity stable, so any material
+        // that bound `getCaptureTexture()` as its `baseMap` keeps a
+        // valid reference — `RenderTexture.resize` destroys+recreates
+        // the underlying GPU texture, and bound shaders refresh their
+        // bind groups via `_stateChangeRef` once we fire noticeChange.
+        if (
+            this._gBuffer &&
+            this._rendererPassState &&
+            this._renderContext
+        ) {
+            const w = this.width;
+            const h = this.height;
+            for (const rt of this._gBuffer.renderTargets) {
+                rt.resize(w, h, ctx);
+                // RenderTexture.resize destroys the GPUTexture but does
+                // not fan out a change notification, so any material
+                // sampling this RT keeps using its bind group built
+                // against the now-dead view. noticeChange() is the
+                // engine's existing reactive signal — protected on
+                // Texture so we cross-call via a cast.
+                (rt as any).noticeChange?.();
+            }
+            if (this._gBuffer.depthTexture) {
+                this._gBuffer.depthTexture.resize(w, h, ctx);
+                (this._gBuffer.depthTexture as any).noticeChange?.();
+            }
+            const colorDesc = this._gBuffer.rtDescriptors[0];
+            if (colorDesc) {
+                colorDesc.clearValue = [this.clearColor.r, this.clearColor.g, this.clearColor.b, this.clearColor.a];
+            }
+            this._allocatedW = w;
+            this._allocatedH = h;
+            return {
+                gBuffer: this._gBuffer,
+                rendererPassState: this._rendererPassState,
+                renderContext: this._renderContext,
+            };
+        }
+
         if (!this._gBufferKey) {
             // instanceID stamp gives each component a unique GBuffer slot
             // in the per-context cache map. Multiple capture cameras can
@@ -198,20 +244,6 @@ export class SceneCaptureCameraComponent extends ComponentBase {
             this._gBufferKey = `sceneCapture_${(this.object3D as any).instanceID}`;
         }
 
-        // GBufferFrame caches by key per-context; if the previous
-        // allocation existed at a different size, drop it from the cache
-        // so the next call re-allocates with the new dimensions. The
-        // cache returns the SAME GBufferFrame instance for the same key,
-        // so reusing the key after a size change is safe — the textures
-        // inside are recreated by createGBuffer().
-        const map = (GBufferFrame as any)._mapFor(ctx) as Map<string, GBufferFrame>;
-        if (map.has(this._gBufferKey)) {
-            map.delete(this._gBufferKey);
-        }
-
-        // GBufferFrame.getGBufferFrame allocates lazily through
-        // RTResourceMap, so dropping the cache entry above forces a new
-        // allocation that respects the current width/height.
         this._gBuffer = GBufferFrame.getGBufferFrame(this._gBufferKey, ctx, this.width, this.height, true, undefined, 0);
         this._rendererPassState = WebGPUDescriptorCreator.createRendererPassState(ctx, this._gBuffer);
         // Apply user clear color to the color attachment descriptor.

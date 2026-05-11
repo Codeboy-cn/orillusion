@@ -110,6 +110,23 @@ export let SSR_RayTrace_cs: string = /*wgsl*/ `
     worldNormal = getWorldNormalFromGBuffer(gBuffer) ;
 
     let roughness = getRoughnessFromGBuffer(gBuffer);
+    // Sky pixels are encoded with roughness == 0 in this engine's GBuffer
+    // (see ContactShadow_cs's visible<=0 sky-skip path). Without this
+    // early-out the else branch below samples getSkyColor() at a garbage
+    // reflectionDir from an invalid worldPosition, and SSR_IS_cs's
+    // mix(oc, skyColor, 1 - alpha) with alpha = -1 extrapolates to 2x sky,
+    // which BlendColor then mixes back into real sky and brightens the
+    // sun-side corner.
+    if (roughness <= 0.0) {
+      rayTraceRet.skyColor = vec3<f32>(0.0);
+      rayTraceRet.roughness = roughness;
+      rayTraceRet.hitCoord = vec2<f32>(0.0);
+      rayTraceRet.alpha = 0.0;
+      rayTraceRet.fresnel = 0.0;
+      let index:i32 = ssrBufferCoord.x + ssrBufferCoord.y * ssrBufferSize.x;
+      rayTraceBuffer[index] = rayTraceRet;
+      return;
+    }
     fresnel = (1.0 - roughness) * ssrUniform.reflectionRatio;
     fresnel *= fresnel;
     cameraPosition = vec3<f32>(globalUniform.cameraWorldMatrix[3].xyz);

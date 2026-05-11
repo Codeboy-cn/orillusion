@@ -229,6 +229,8 @@ export class TAAPost extends PostBase {
             this.rendererPassState = WebGPUDescriptorCreator.createRendererPassState(view.engine3D.context3D, this.rtFrame, null);
         }
 
+        this.bindUpstream(this.taaCompute, 'inTex');
+
         let cfg = this.setting.render.postProcessing.taa;
         this.taaSetting.setMatrix('preProjMatrix', this.preProjMatrix);
         this.taaSetting.setMatrix('preViewMatrix', this.preViewMatrix);

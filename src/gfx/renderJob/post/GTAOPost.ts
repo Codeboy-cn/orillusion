@@ -206,6 +206,7 @@ export class GTAOPost extends PostBase {
             let globalUniform = GlobalBindGroup.getCameraGroup(view.camera);
             this.gtaoCompute.setUniformBuffer('globalUniform', globalUniform.uniformGPUBuffer);
         }
+        this.bindUpstream(this.gtaoCompute, 'inTex');
         let cfg = this.setting.render.postProcessing.gtao;
 
         this.directionsBuffer.setFloat32Array('array', this.randomDirection());

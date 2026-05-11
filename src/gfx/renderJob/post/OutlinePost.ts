@@ -275,6 +275,7 @@ export class OutlinePost extends PostBase {
             this.createGUI();
             this.rendererPassState = WebGPUDescriptorCreator.createRendererPassState(view.engine3D.context3D, this.rtFrame, null);
         }
+        this.bindUpstream(this.blendCompute, 'inTex');
         this.computeList ||= [this.calcWeightCompute, this.outlineCompute, this.blendCompute];
         let cfg = this.setting.render.postProcessing.outline;
         this.outlineSetting.setFloat('strength', cfg.strength);

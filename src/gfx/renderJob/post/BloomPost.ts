@@ -265,6 +265,15 @@ export class BloomPost extends PostBase {
             this.rendererPassState = WebGPUDescriptorCreator.createRendererPassState(view.engine3D.context3D, this.rtFrame, null);
             this.rendererPassState.label = "Bloom";
         }
+
+        // Re-bind upstream samplers every frame so toggling a preceding
+        // post (e.g. SSRPost.enable = false) is picked up without a page
+        // reload. Cost is two map lookups + ref compare when nothing
+        // changed; bind groups only rebuild when the upstream texture
+        // identity actually flipped.
+        this.bindUpstream(this.thresholdCompute, 'inTex');
+        this.bindUpstream(this.postCompute, '_MainTex');
+
         let cfg = this.setting.render.postProcessing.bloom;
 
         this.bloomSetting.setFloat('downSampleStep', cfg.downSampleStep);
