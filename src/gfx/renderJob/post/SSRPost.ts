@@ -260,6 +260,9 @@ export class SSRPost extends PostBase {
             this.SSR_RayTraceCompute.setUniformBuffer('standUniform', standUniform.uniformGPUBuffer);
         }
 
+        this.bindUpstream(this.SSR_IS_Compute, 'colorMap');
+        this.bindUpstream(this.SSR_Blend_Compute, 'colorMap');
+
         let setting: SSRSetting = this.setting.render.postProcessing.ssr;
         this.ssrUniformBuffer.setFloat('fadeEdgeRatio', setting.fadeEdgeRatio);
         this.ssrUniformBuffer.setFloat('rayMarchRatio', setting.rayMarchRatio);

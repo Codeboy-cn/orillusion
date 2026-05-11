@@ -236,6 +236,8 @@ export class SSGIPost extends PostBase {
             this.rendererPassState.label = "SSGI";
         }
 
+        this.bindUpstream(this.ssgiCompute, 'inTex');
+
         this.frameCount = this.frame;
         this.frame++;
 

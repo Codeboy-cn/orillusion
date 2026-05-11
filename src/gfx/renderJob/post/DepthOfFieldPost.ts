@@ -176,7 +176,8 @@ export class DepthOfFieldPost extends PostBase {
             }
             this.rendererPassState = WebGPUDescriptorCreator.createRendererPassState(view.engine3D.context3D, this.rtFrame, null);
         }
-        
+
+        this.bindUpstream(this.blurComputes[0], 'inTex');
 
         let cfg = this.setting.render.postProcessing.depthOfView;
         cfg.far = Math.max(cfg.near, cfg.far) + 0.0001;
