@@ -96,12 +96,17 @@ fn CsMain( @builtin(workgroup_id) workgroup_id : vec3<u32> , @builtin(global_inv
       return;
   }
   var color = textureLoad(inTex, fragCoord, 0);
-  // Linear HDR threshold + multiplicative weighting. ACES tonemap
-  // runs at the end of the post chain so bloom is allowed to
-  // contribute high HDR values — the curve handles compression.
+  // Soft-knee threshold: weight in [0,1]. Scaling by raw (lum - threshold)
+  // unbounded-amplifies HDR specular highlights into the bloom buffer
+  // (a 5-nit pixel becomes a 4x bloom seed; the upsample chain then sums
+  // ~3 mips of that, blowing past what ACES can recover and causing the
+  // big over-exposed halos seen on shiny PBR samples). Normalizing by lum
+  // keeps the bloom buffer a soft-masked copy of the scene rather than
+  // an amplified one — relative HDR is preserved, ACES handles the
+  // compression at the end of the chain.
   var lum = dot(vec3<f32>(0.2126, 0.7152, 0.0722), color.rgb);
-  var contribution = max(0.0, lum - bloomCfg.luminanceThreshole);
-  var ret = color.rgb * contribution;
+  var weight = max(0.0, lum - bloomCfg.luminanceThreshole) / max(lum, 1e-4);
+  var ret = color.rgb * weight;
   textureStore(outTex, fragCoord, vec4<f32>(ret, color.w));
 }
 `
