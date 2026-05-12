@@ -69,8 +69,12 @@ export class Rigidbody extends ComponentBase {
             throw new Error('Rigidbody.start: `shape` is required. Build one via `CollisionShapeUtil`.');
         }
 
-        // Treat mass = 0 as Static, matching ammo plugin convention.
-        const isStatic = this._bodyType === BodyType.Static || this._mass === 0;
+        // Treat mass = 0 as Static when bodyType is Dynamic, matching ammo
+        // plugin convention. Don't apply this to KinematicPosition /
+        // KinematicVelocity — those are explicit choices the user wants
+        // honoured even with mass 0 (kinematic bodies have no meaningful mass).
+        const isStatic = this._bodyType === BodyType.Static ||
+            (this._bodyType === BodyType.Dynamic && this._mass === 0);
 
         let bodyDesc: RAPIER.RigidBodyDesc;
         if (isStatic) {
