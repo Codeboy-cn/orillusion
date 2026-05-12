@@ -140,8 +140,11 @@ class _Physics {
     public get debugDrawer(): PhysicsDebugDrawer { return this._debugDrawer; }
 
     /**
-     * Enable mouse drag of dynamic rigid bodies. Call after `Physics.init`,
-     * before `engine.startRenderView`.
+     * Enable mouse drag of dynamic rigid bodies. Safe to call at any point
+     * after `Physics.init`; if `view.engine3D` is not yet bound (i.e. called
+     * before `engine.startRenderView`), the dragger defers event registration
+     * to the next animation frame and picks up the input system once
+     * `startRenderView` runs.
      */
     public enableDragger(view: View3D): PhysicsDragger {
         this._dragger = new PhysicsDragger(view);

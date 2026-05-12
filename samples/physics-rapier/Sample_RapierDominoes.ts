@@ -51,28 +51,28 @@ class Sample_RapierDominoes {
             ex.scene.addChild(o);
         }
 
-        // Roller — heavy ball nudges the first domino
-        const ball = new Object3D();
+        // Roller — heavy ball nudges the first domino. Each domino's local +X
+        // is the chain tangent (= toppling direction); placing the ball a few
+        // units along -tangent and impulsing it along +tangent lines the ball
+        // up with the first domino's back face for a square strike.
         const ang0 = -Math.PI * 0.8;
-        ball.x = Math.cos(ang0) * (radius + 3);
-        ball.z = Math.sin(ang0) * (radius + 3);
-        ball.y = 1;
+        const tanX = -Math.sin(ang0), tanZ = Math.cos(ang0);
+        const ballRadius = 0.6;
+        const ball = new Object3D();
+        ball.x = Math.cos(ang0) * radius - tanX * 3;
+        ball.z = Math.sin(ang0) * radius - tanZ * 3;
+        ball.y = ballRadius;
         const bmr = ball.addComponent(MeshRenderer);
-        bmr.geometry = new SphereGeometry(0.6, 24, 24);
+        bmr.geometry = new SphereGeometry(ballRadius, 24, 24);
         const bm = new LitMaterial(); bm.baseColor = new Color(0.9, 0.7, 0.2); bmr.material = bm;
         const brb = ball.addComponent(Rigidbody);
         brb.bodyType = BodyType.Dynamic; brb.mass = 5;
-        brb.shape = CollisionShapeUtil.createSphereShape(ball, 0.6);
+        brb.shape = CollisionShapeUtil.createSphereShape(ball, ballRadius);
         ex.scene.addChild(ball);
 
-        // Wait one tick then push it
-        setTimeout(() => {
-            const tx = Math.cos(-Math.PI * 0.78) * radius;
-            const tz = Math.sin(-Math.PI * 0.78) * radius;
-            const dx = tx - ball.x, dz = tz - ball.z;
-            const len = Math.hypot(dx, dz);
-            brb.applyImpulse(new Vector3(dx / len * 30, 0, dz / len * 30));
-        }, 500);
+        brb.wait().then(() => {
+            brb.applyImpulse(new Vector3(tanX * 30, 0, tanZ * 30));
+        });
 
         engine.startRenderView(ex.view);
     }

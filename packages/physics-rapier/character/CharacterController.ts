@@ -73,6 +73,13 @@ export class CharacterController extends ComponentBase {
     public move(desiredTranslation: Vector3): void {
         if (!this._bodyInited) return;
 
+        // Refresh the broad-phase / query pipeline. world.step() already
+        // does this, but Engine3D runs the renderLoop (Physics.update) AFTER
+        // component onUpdate, so on the first frame computeColliderMovement
+        // would otherwise see an empty BVH and return the full desired
+        // translation — character tunnels through static colliders.
+        Physics.world.updateSceneQueries();
+
         this._controller.computeColliderMovement(this._collider, TempPhyMath.toRVec(desiredTranslation));
         const m = this._controller.computedMovement();
         this._grounded = this._controller.computedGrounded();

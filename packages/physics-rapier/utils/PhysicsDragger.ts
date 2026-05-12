@@ -21,6 +21,7 @@ export class PhysicsDragger {
 
     private _draggedBody: RAPIER.RigidBody | null = null;
     private _originalBodyType: RAPIER.RigidBodyType;
+    private _registered: boolean = false;
 
     public filterStatic: boolean = true;
 
@@ -39,19 +40,33 @@ export class PhysicsDragger {
     private get _input() { return this._view?.engine3D?.inputSystem; }
 
     private _registerEvents() {
+        if (this._registered) return;
         const input = this._input;
-        input?.addEventListener(PointerEvent3D.POINTER_DOWN, this._onMouseDown, this);
-        input?.addEventListener(PointerEvent3D.POINTER_MOVE, this._onMouseMove, this, null, 20);
-        input?.addEventListener(PointerEvent3D.POINTER_UP, this._onMouseUp, this, null, 20);
-        input?.addEventListener(PointerEvent3D.POINTER_WHEEL, this._onMouseWheel, this, null, 20);
+        // `view.engine3D` is only populated by `engine.startRenderView(view)`,
+        // so callers that invoke `Physics.enableDragger(view)` before
+        // `startRenderView` hit a window where input is unavailable. Retry
+        // on the next animation frame until the engine binds the view.
+        if (!input) {
+            if (typeof requestAnimationFrame !== 'undefined') {
+                requestAnimationFrame(() => { if (this._enable) this._registerEvents(); });
+            }
+            return;
+        }
+        input.addEventListener(PointerEvent3D.POINTER_DOWN, this._onMouseDown, this);
+        input.addEventListener(PointerEvent3D.POINTER_MOVE, this._onMouseMove, this, null, 20);
+        input.addEventListener(PointerEvent3D.POINTER_UP, this._onMouseUp, this, null, 20);
+        input.addEventListener(PointerEvent3D.POINTER_WHEEL, this._onMouseWheel, this, null, 20);
+        this._registered = true;
     }
 
     private _unregisterEvents() {
+        if (!this._registered) { this._resetState(); return; }
         const input = this._input;
         input?.removeEventListener(PointerEvent3D.POINTER_DOWN, this._onMouseDown, this);
         input?.removeEventListener(PointerEvent3D.POINTER_MOVE, this._onMouseMove, this);
         input?.removeEventListener(PointerEvent3D.POINTER_UP, this._onMouseUp, this);
         input?.removeEventListener(PointerEvent3D.POINTER_WHEEL, this._onMouseWheel, this);
+        this._registered = false;
         this._resetState();
     }
 
