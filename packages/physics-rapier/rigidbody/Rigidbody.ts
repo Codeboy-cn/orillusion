@@ -151,6 +151,26 @@ export class Rigidbody extends ComponentBase {
         super.destroy(force);
     }
 
+    /**
+     * @internal Swap in fresh body/collider wrappers after `Physics.restore()`
+     * rebuilds the world. Handles are preserved across snapshots, so the new
+     * wrappers describe the same logical entities — only their JS proxies
+     * needed refreshing.
+     */
+    public _rebind(body: RAPIER.RigidBody, colliders: RAPIER.Collider[]): void {
+        this._body = body;
+        this._colliders = colliders;
+        this._activeContacts.clear();
+    }
+
+    /** @internal Detach this component from the physics world (used when restore drops the body). */
+    public _detach(): void {
+        this._body = null;
+        this._colliders = [];
+        this._activeContacts.clear();
+        this._bodyInited = false;
+    }
+
     public async wait(): Promise<RAPIER.RigidBody> {
         await this._initializationPromise;
         return this._body;

@@ -16,7 +16,6 @@ import {
 class Sample_RapierSnapshot {
     private savedSnapshot: Uint8Array | null = null;
     private rigidBodies: Rigidbody[] = [];
-    private freshAttempts: number = 0;
 
     async run() {
         // Deterministic flag pins solver iterations across runs.
@@ -73,17 +72,10 @@ class Sample_RapierSnapshot {
         });
         GUIHelp.addButton('Rewind', () => {
             if (!this.savedSnapshot) { console.warn('No snapshot to rewind to.'); return; }
-            // NOTE: snapshot/restore wipes the world topology; samples that
-            // rely on engine-side bindings need to reseed from JS state too.
-            // For this demo we just show the bytes flow.
             const before = Physics.world.bodies.len();
             Physics.restore(this.savedSnapshot);
             const after = Physics.world.bodies.len();
-            console.log(`[rewind] body count ${before} -> ${after}`);
-            this.freshAttempts++;
-            if (this.freshAttempts > 0) {
-                console.log('[rewind] Note: after restore, JS Rigidbody components are detached. A real game would re-build the scene from saved state here.');
-            }
+            console.log(`[rewind] body count ${before} -> ${after}; Rigidbodies re-bound by handle.`);
         });
 
         engine.startRenderView(ex.view);

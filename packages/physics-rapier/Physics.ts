@@ -164,12 +164,15 @@ class _Physics {
     /**
      * Serialize the entire physics world to a transferable byte array.
      *
-     * Use this for replay / network rollback / save-game state.
-     * NOTE: snapshot only captures Rapier-level state. Engine-side bindings
-     * (Rigidbody → Object3D map, event listeners) are NOT restored — re-attach
-     * them yourself via `restore` then re-running your scene authoring code,
-     * or by calling `Physics.snapshotRestoreInPlace` which preserves bindings
-     * IF the world topology hasn't structurally changed.
+     * Use this for replay / network rollback / save-game state. Rapier
+     * snapshots preserve body/collider handle indices, which lets `restore`
+     * re-attach existing `Rigidbody` components to the rebuilt world without
+     * tearing down Object3Ds.
+     *
+     * Caveats: snapshots do NOT round-trip Rapier-side controllers (vehicle,
+     * character) or engine-only metadata (`onContactBegin` callbacks, sensor
+     * flags rebuilt at collider-create time). If you use those, recreate them
+     * after `restore`.
      */
     public snapshot(): Uint8Array {
         if (!this._isInited) throw new Error('Physics.snapshot: not initialized.');
@@ -177,14 +180,54 @@ class _Physics {
     }
 
     /**
-     * Replace the active world with a previously taken snapshot. All component
-     * bindings are wiped — re-add Rigidbodies after.
+     * Replace the active world with a previously taken snapshot.
+     *
+     * Re-binds existing `Rigidbody` components to wrappers in the new world
+     * using preserved handle indices, so components stay live after restore.
+     * Any Rigidbody whose body handle is not present in the snapshot (e.g.
+     * spawned after the snapshot was taken) is detached and emits a warning.
      */
     public restore(data: Uint8Array): void {
+        // Capture handles BEFORE freeing — once `_world.free()` runs, the JS
+        // wrappers turn into dangling pointers and any `.handle` read crashes.
+        const rebindEntries: Array<{
+            rb: Rigidbody;
+            bodyHandle: number;
+            colliderHandles: number[];
+        }> = [];
+        const seen = new Set<Rigidbody>();
+        for (const rb of this._handleToRigidbody.values()) {
+            if (seen.has(rb)) continue;
+            seen.add(rb);
+            rebindEntries.push({
+                rb,
+                bodyHandle: rb.native.handle,
+                colliderHandles: rb.colliders.map(c => c.handle),
+            });
+        }
+
         if (this._world) this._world.free();
         this._handleToRigidbody.clear();
         this._world = RAPIER.World.restoreSnapshot(data);
         this._eventQueue = new RAPIER.EventQueue(true);
+
+        for (const entry of rebindEntries) {
+            const newBody = this._world.getRigidBody(entry.bodyHandle);
+            if (!newBody) {
+                console.warn(
+                    `[physics-rapier] restore: body handle ${entry.bodyHandle} not in snapshot — Rigidbody detached.`,
+                );
+                entry.rb._detach();
+                continue;
+            }
+            const newColliders: RAPIER.Collider[] = [];
+            for (const h of entry.colliderHandles) {
+                const c = this._world.getCollider(h);
+                if (c) newColliders.push(c);
+            }
+            entry.rb._rebind(newBody, newColliders);
+            for (const c of newColliders) this._handleToRigidbody.set(c.handle, entry.rb);
+        }
     }
 
     public get world(): RAPIER.World { return this._world; }
