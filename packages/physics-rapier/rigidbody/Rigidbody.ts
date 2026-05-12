@@ -133,8 +133,15 @@ export class Rigidbody extends ComponentBase {
         if (!this._bodyInited) return;
         // Sleeping bodies don't move under integration, so skipping saves work
         // — but external pose changes (Physics.restore, manual setTranslation)
-        // need `force=true` to push the new pose through.
-        if (!force && this._body.isSleeping()) return;
+        // need `force=true` to push the new pose through. Also: a body that
+        // was promoted to kinematic at runtime (e.g. by PhysicsDragger) can
+        // remain flagged as sleeping while Rapier still interpolates it to
+        // setNextKinematicTranslation targets — don't skip those either.
+        if (!force && this._body.isSleeping()) {
+            const nt = this._body.bodyType();
+            if (nt !== RAPIER.RigidBodyType.KinematicPositionBased &&
+                nt !== RAPIER.RigidBodyType.KinematicVelocityBased) return;
+        }
         if (this._bodyType === BodyType.Static || this._mass === 0) return;
 
         const t = this._body.translation();
