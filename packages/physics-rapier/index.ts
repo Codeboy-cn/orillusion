@@ -16,3 +16,4 @@ export * from './character/CharacterController';
 export * from './vehicle/VehicleController';
 export * from './query/PhysicsQuery';
 export * from './debug/PhysicsDebugDrawer';
+export * from '@dimforge/rapier3d-compat';

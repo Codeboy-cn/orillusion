@@ -1,7 +1,6 @@
 import {
-    Physics, Rigidbody, BodyType, CollisionShapeUtil, CharacterController,
+    Physics, Rigidbody, BodyType, CollisionShapeUtil, CharacterController, RAPIER
 } from "@orillusion/physics-rapier";
-import RAPIER from "@dimforge/rapier3d-compat";
 import { createExampleScene, createSceneParam } from "@samples/utils/ExampleScene";
 import {
     Object3D, LitMaterial, Engine3D, BoxGeometry, MeshRenderer, Vector3,

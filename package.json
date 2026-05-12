@@ -55,11 +55,9 @@
         "changelog": "conventional-changelog -p angular -i CHANGELOG.md -s"
     },
     "devDependencies": {
-        "@dimforge/rapier3d-compat": "^0.14.0",
         "@webgpu/types": "^0.1.45",
         "conventional-changelog-cli": "^2.2.2",
-        "electron": "^31.1.0",
-        "playwright-core": "^1.59.1",
+        "electron": "^38.8.6",
         "pngjs": "^7.0.0",
         "typedoc": "^0.25.7",
         "typedoc-plugin-markdown": "^3.17.1",
