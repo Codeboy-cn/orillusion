@@ -117,7 +117,15 @@ export class Rigidbody extends ComponentBase {
         this._initResolve();
     }
 
-    public onUpdate(): void {
+    /**
+     * Pull body pose into the owner Object3D. Called by `Physics.update` AFTER
+     * `world.step` so the transform reflects the post-step pose in the SAME
+     * frame's render. Doing this in `onUpdate` (which runs BEFORE the render-
+     * loop callback) would render the pre-step pose and lag visuals one frame
+     * behind physics — visible during kinematic drag where the body chases
+     * mouse-set `setNextKinematicTranslation` targets every frame.
+     */
+    public _syncTransformFromBody(): void {
         if (!this._bodyInited) return;
         if (this._body.isSleeping()) return;
         if (this._bodyType === BodyType.Static || this._mass === 0) return;
@@ -126,6 +134,11 @@ export class Rigidbody extends ComponentBase {
         const r = this._body.rotation();
         this.transform.localPosition = Vector3.HELP_0.set(t.x, t.y, t.z);
         this.transform.localRotQuat = Quaternion.HELP_0.set(r.x, r.y, r.z, r.w);
+    }
+
+    public onUpdate(): void {
+        // Sync moved to `_syncTransformFromBody`, invoked by `Physics.update`
+        // post-step so renders show the current physics pose.
     }
 
     public destroy(force?: boolean): void {

@@ -126,6 +126,14 @@ class _Physics {
             for (const other of rb._activeContacts) rb.onContactStay(other);
         }
 
+        // Push post-step poses into Object3D transforms BEFORE the engine
+        // finalises matrices for this frame. Doing it here (rather than in
+        // `Rigidbody.onUpdate`, which runs before the renderLoop) ensures
+        // the render shows the up-to-date body pose without a one-frame lag.
+        for (const rb of this._handleToRigidbody.values()) {
+            rb._syncTransformFromBody();
+        }
+
         this._debugDrawer?.update();
     }
 
