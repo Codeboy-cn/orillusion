@@ -77,7 +77,7 @@ class Sample_RapierSnapshot {
             const after = Physics.world.bodies.len();
             console.log(`[rewind] body count ${before} -> ${after}; Rigidbodies re-bound by handle.`);
         });
-
+        GUIHelp.open();
         engine.startRenderView(ex.view);
     }
 }
