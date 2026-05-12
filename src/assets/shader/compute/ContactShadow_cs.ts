@@ -91,14 +91,11 @@ export let ContactShadow_cs: string = /*wgsl*/`
             return;
         }
 
-        let originVS = (globalUniform.viewMat * vec4<f32>(worldPos + normal * csSettings.bias, 1.0)).xyz;
-
-        // GBuffer NDC z is fp16: precision near z=1 is ~0.001, which back-
-        // projects to ~vz² millimeters of view-depth noise. Beyond ~20m the
-        // noise exceeds csSettings.thickness, producing horizon-band false
-        // hits. Fade out, then skip entirely past the upper bound.
-        let distFade = 1.0 - smoothstep(20.0, 60.0, originVS.z);
-        if (distFade <= 0.0) { textureStore(outTex, fragCoord, oc); return; }
+        // Slope-scaled bias: at grazing NoL the ray walks far along the
+        // plane per step, so the origin offset must grow to clear the
+        // thickness band before noise can fake a hit.
+        let scaledBias = csSettings.bias / max(NoL, 0.2);
+        let originVS = (globalUniform.viewMat * vec4<f32>(worldPos + normal * scaledBias, 1.0)).xyz;
 
         let toLightVS = normalize((globalUniform.viewMat * vec4<f32>(toLight, 0.0)).xyz);
 
@@ -120,13 +117,27 @@ export let ContactShadow_cs: string = /*wgsl*/`
 
             let sceneWorldPos = getWorldPositionFromGBuffer(sampleGB, sampleUV);
 
-            // Reject same-surface false positives: sceneWorldPos must lie
-            // above the origin's tangent plane to be a real occluder.
-            // Without this, a ray walking along the ground at grazing yaw
-            // angles paints distant pixels black (the projected sample
-            // tracks the same continuous surface).
-            let planeDist = dot(sceneWorldPos - worldPos, normal);
-            if (planeDist < csSettings.bias) { continue; }
+            // Self-surface reject. Two-stage filter:
+            //   (a) absolute floor: anything within 10cm above the
+            //       tangent plane is treated as same-surface. Empirically
+            //       the back-projection at far-ground origins (view-Z
+            //       >100m) yields scene worldPos.y deviating by ~3-7cm
+            //       from the true ground plane, which is enough to slip
+            //       past any 1-2cm bias and fire a thickness-band hit.
+            //       The original fp32-precision argument predicts mm
+            //       noise; the empirical mismatch is an order larger,
+            //       hence the conservative floor.
+            //   (b) angular: shallower than ~4 deg above the plane is
+            //       same-surface; auto-scales with sample distance so
+            //       the test still bites at intermediate ranges.
+            // Trade-off: contact shadow within 10cm of the receiver is
+            // lost. Sub-10cm details (finger-on-table) would need a
+            // different reconstruction strategy (read depth32 directly
+            // rather than the fp32-encoded-NDC-z GBuffer slot).
+            let toSample = sceneWorldPos - worldPos;
+            let sampleDist2 = dot(toSample, toSample);
+            let sinElev = dot(toSample, normal);
+            if (sinElev <= 0.0 || sinElev < 0.1 || sinElev * sinElev < sampleDist2 * 0.005) { continue; }
 
             // LH view space (clip.w = +viewZ): points in front of camera
             // have z > 0; "ray behind surface" ⇔ ray.z > scene.z.
@@ -139,7 +150,7 @@ export let ContactShadow_cs: string = /*wgsl*/`
             }
         }
 
-        let shadowFactor = 1.0 - occluded * csSettings.intensity * distFade;
+        let shadowFactor = 1.0 - occluded * csSettings.intensity;
         textureStore(outTex, fragCoord, vec4<f32>(oc.rgb * shadowFactor, oc.a));
     }
 `;
