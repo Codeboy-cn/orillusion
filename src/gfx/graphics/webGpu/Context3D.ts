@@ -2,6 +2,7 @@ import { CEvent } from '../../../event/CEvent';
 import { CEventDispatcher } from '../../../event/CEventDispatcher';
 import { CResizeEvent } from '../../../event/CResizeEvent';
 import { CanvasConfig } from './CanvasConfig';
+import { Texture } from './core/texture/Texture';
 
 /**
  * Per-instance WebGPU device/context. Each Engine3D instance owns its
@@ -205,18 +206,16 @@ export class Context3D extends CEventDispatcher {
         });
 
         this._resizeEvent = new CResizeEvent(CResizeEvent.RESIZE, { width: this.windowWidth, height: this.windowHeight });
-        // Lazy require to avoid circular import at module load.
         this._resizeObserver = new ResizeObserver(async () => {
             this.updateSize();
-            const { Texture } = await import('./core/texture/Texture');
             // Don't destroy the old GPU textures inline — `updateSize`
             // synchronously fires the RESIZE event, which makes every
             // RenderTexture allocate a new GPU texture and queue the old
             // one in the delay-destroy list. But the current frame's
             // command buffer was already submitted referencing the OLD
-            // texture; if we destroy now (a single microtask away after
-            // `await import`), the GPU dequeues the submit AFTER the
-            // destroy and reports
+            // texture; if we destroy now (synchronously, before the GPU
+            // has finished the in-flight submit), the GPU dequeues the
+            // submit AFTER the destroy and reports
             //   "Destroyed texture [...rgba32float] used in a submit".
             // `queue.onSubmittedWorkDone()` resolves only after every
             // command buffer submitted up to this point has fully
