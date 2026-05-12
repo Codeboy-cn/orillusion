@@ -37,8 +37,8 @@ class Sample_RapierSnapshot {
         // Spawn a tower of boxes
         for (let i = 0; i < 10; i++) {
             const o = new Object3D();
-            o.x = (i % 2 - 0.5) * 0.6;
-            o.y = 1 + i * 1.05;
+            o.x = (i % 2 - 0.4) * 0.4;
+            o.y = 1 + i * 1.00;
             const mr = o.addComponent(MeshRenderer);
             mr.geometry = new BoxGeometry(1, 1, 1);
             const m = new LitMaterial();
