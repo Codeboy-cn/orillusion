@@ -3,9 +3,11 @@ import {
 } from "@orillusion/physics-rapier";
 import { createExampleScene, createSceneParam } from "@samples/utils/ExampleScene";
 import {
-    Object3D, LitMaterial, Engine3D, BoxGeometry, MeshRenderer, Vector3,
+    Object3D, LitMaterial, Engine3D, BoxGeometry, CylinderGeometry, MeshRenderer, Vector3,
     Color, KeyEvent, KeyCode, ComponentBase,
 } from "@orillusion/core";
+
+const RAD2DEG = 180 / Math.PI;
 
 class VehicleDriver extends ComponentBase {
     public vehicle: VehicleController;
@@ -33,6 +35,30 @@ class VehicleDriver extends ComponentBase {
         // Front wheels steer
         this.vehicle.setSteering(steer, 0);
         this.vehicle.setSteering(steer, 1);
+    }
+}
+
+class WheelVisualSync extends ComponentBase {
+    public vehicle: VehicleController;
+    public steerPivots: Object3D[] = [];
+    public spinPivots: Object3D[] = [];
+
+    public onUpdate() {
+        const ctrl = this.vehicle?.native;
+        if (!ctrl) return;
+        const n = Math.min(this.steerPivots.length, ctrl.numWheels());
+        for (let i = 0; i < n; i++) {
+            const conn = ctrl.wheelChassisConnectionPointCs(i);
+            const dir = ctrl.wheelDirectionCs(i);
+            const len = ctrl.wheelSuspensionLength(i) ?? 0;
+            if (!conn || !dir) continue;
+            const sp = this.steerPivots[i];
+            sp.x = conn.x + dir.x * len;
+            sp.y = conn.y + dir.y * len;
+            sp.z = conn.z + dir.z * len;
+            sp.rotationY = (ctrl.wheelSteering(i) ?? 0) * RAD2DEG;
+            this.spinPivots[i].rotationX = (ctrl.wheelRotation(i) ?? 0) * RAD2DEG;
+        }
     }
 }
 
@@ -84,6 +110,28 @@ class Sample_RapierVehicle {
 
         const drv = chassis.addComponent(VehicleDriver);
         drv.vehicle = vc;
+
+        // Wheel visuals: steerPivot -> spinPivot -> cylinder (rotated to lie along axle)
+        const wheelMat = new LitMaterial();
+        wheelMat.baseColor = new Color(0.08, 0.08, 0.08);
+        const wheelGeo = new CylinderGeometry(wheelOpts.radius, wheelOpts.radius, 0.3, 24);
+        const sync = chassis.addComponent(WheelVisualSync);
+        sync.vehicle = vc;
+        for (let i = 0; i < 4; i++) {
+            const steer = new Object3D();
+            const spin = new Object3D();
+            const mesh = new Object3D();
+            const mr = mesh.addComponent(MeshRenderer);
+            mr.geometry = wheelGeo;
+            mr.material = wheelMat;
+            // Cylinder is along Y; rotate Z=90 so it lies along the X axle.
+            mesh.rotationZ = 90;
+            spin.addChild(mesh);
+            steer.addChild(spin);
+            chassis.addChild(steer);
+            sync.steerPivots.push(steer);
+            sync.spinPivots.push(spin);
+        }
 
         engine.startRenderView(ex.view);
     }
