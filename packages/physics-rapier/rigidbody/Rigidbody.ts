@@ -129,9 +129,12 @@ export class Rigidbody extends ComponentBase {
      * behind physics — visible during kinematic drag where the body chases
      * mouse-set `setNextKinematicTranslation` targets every frame.
      */
-    public _syncTransformFromBody(): void {
+    public _syncTransformFromBody(force: boolean = false): void {
         if (!this._bodyInited) return;
-        if (this._body.isSleeping()) return;
+        // Sleeping bodies don't move under integration, so skipping saves work
+        // — but external pose changes (Physics.restore, manual setTranslation)
+        // need `force=true` to push the new pose through.
+        if (!force && this._body.isSleeping()) return;
         if (this._bodyType === BodyType.Static || this._mass === 0) return;
 
         const t = this._body.translation();
@@ -165,6 +168,11 @@ export class Rigidbody extends ComponentBase {
         this._body = body;
         this._colliders = colliders;
         this._activeContacts.clear();
+        // Push the restored pose into the Object3D immediately. The new body
+        // may be sleeping at a position different from whatever the visual
+        // currently shows; without this, the next post-step sync would skip
+        // the body (sleeping fast-path) and the visual would stay stale.
+        this._syncTransformFromBody(true);
     }
 
     /** @internal Detach this component from the physics world (used when restore drops the body). */
