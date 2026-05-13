@@ -116,6 +116,10 @@ export class CubeSky_Shader {
         fragmentOutput.color = o_Target ;
         fragmentOutput.gBuffer = gBuffer ;
       #endif
+
+      #if USE_OUTDEPTH
+        fragmentOutput.out_depth = fragCoord.z ;
+      #endif
       return fragmentOutput;
     }
 

@@ -14,6 +14,8 @@ export class Sample_LogDepth {
         GUIHelp.init();
 
         let scene = new Scene3D();
+        let sky = scene.getOrAddComponent(SkyRenderer);
+        sky.map = await this.engine.res.loadLDRTextureCube('https://cdn.orillusion.com/images/space.webp')
         let camera = CameraUtil.createCamera3DObject(scene);
         camera.perspective(60, engine.aspect, 1.0, 6000 * 10000.0);
 
