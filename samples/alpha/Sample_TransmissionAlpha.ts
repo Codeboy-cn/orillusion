@@ -275,16 +275,16 @@ class Sample_TransmissionAlpha {
                 const c = (params.color as any).rgba;
                 this.dragonMat.baseColor = new Color(c[0] / 255, c[1] / 255, c[2] / 255, this.dragonMat.baseColor.a);
             }),
-            '基础颜色',
-            'baseColor — 材质本体颜色染色，会乘到漫反射 / 透射结果上。白色 = 不染色',
+            'Base Color',
+            'baseColor — tints the material body; multiplied into the diffuse / transmission result. White = no tint',
         );
 
         decorate(
             GUIHelp.add(params, 'transmission', 0, 1, 0.01).onChange(() => {
                 this.dragonMat.transmissionFactor = params.transmission;
             }),
-            '透光率',
-            'transmissionFactor (KHR_materials_transmission) — 0 = 实体不透光，1 = 完全玻璃。控制 diffuse 被透射 RGB 替换的比例',
+            'Transmission',
+            'transmissionFactor (KHR_materials_transmission) — 0 = opaque solid, 1 = fully glass. Controls the proportion by which diffuse is replaced with transmitted RGB',
         );
 
         decorate(
@@ -297,40 +297,40 @@ class Sample_TransmissionAlpha {
                 const c = this.dragonMat.baseColor;
                 this.dragonMat.baseColor = new Color(c.r, c.g, c.b, a);
             }),
-            '不透明度',
-            'baseColor.a — 1 = 完全可见, 0 = 完全消失。在玻璃身后是不透明物体（布料）时，等比降低龙身可见度；身后是空（HTML 区域）时不影响（Three 行为）',
+            'Opacity',
+            'baseColor.a — 1 = fully visible, 0 = fully gone. When an opaque object (cloth) sits behind the glass, lowers the dragon visibility proportionally; when nothing is behind (the HTML area) it has no effect (matches Three.js behaviour)',
         );
 
         decorate(
             GUIHelp.add(params, 'metalness', 0, 1, 0.01).onChange(() => {
                 this.dragonMat.metallic = params.metalness;
             }),
-            '金属度',
-            'metallic — 0 = 玻璃 / 塑料 / 陶瓷（介电），1 = 金属。金属用 baseColor 当反射颜色，介电用 specularColor (F0)',
+            'Metalness',
+            'metallic — 0 = glass / plastic / ceramic (dielectric), 1 = metal. Metals use baseColor as the reflection colour; dielectrics use specularColor (F0)',
         );
 
         decorate(
             GUIHelp.add(params, 'roughness', 0, 1, 0.01).onChange(() => {
                 this.dragonMat.roughness = params.roughness;
             }),
-            '粗糙度',
-            'roughness — 0 = 镜面光滑（锐利高光），1 = 完全粗糙（漫反射环境）。同时影响 GGX 高光锐度和 IBL mip 层级',
+            'Roughness',
+            'roughness — 0 = mirror-smooth (sharp specular), 1 = fully rough (diffuse environment). Affects both GGX specular sharpness and IBL mip level',
         );
 
         decorate(
             GUIHelp.add(params, 'ior', 1, 2, 0.01).onChange(() => {
                 this.dragonMat.ior = params.ior;
             }),
-            '折射率',
-            'ior (KHR_materials_ior) — 真空 = 1.0，水 = 1.33，普通玻璃 = 1.5，水晶 = 1.8，钻石 = 2.4。控制折射偏移和菲涅尔反射强度',
+            'IOR',
+            'ior (KHR_materials_ior) — vacuum = 1.0, water = 1.33, common glass = 1.5, crystal = 1.8, diamond = 2.4. Drives the refraction offset and Fresnel reflection strength',
         );
 
         decorate(
             GUIHelp.add(params, 'thickness', 0, 5, 0.01).onChange(() => {
                 this.dragonMat.thicknessFactor = params.thickness;
             }),
-            '厚度',
-            'thicknessFactor (KHR_materials_volume) — 玻璃内部光路长度。配合 attenuationDistance 决定 Beer-Lambert 衰减总量 (pow(attenuationColor, thickness/distance))',
+            'Thickness',
+            'thicknessFactor (KHR_materials_volume) — internal light-path length through the glass. Combined with attenuationDistance it determines the total Beer-Lambert attenuation (pow(attenuationColor, thickness/distance))',
         );
 
         decorate(
@@ -338,16 +338,16 @@ class Sample_TransmissionAlpha {
                 const c = (params.attenuationColor as any).rgba;
                 this.dragonMat.attenuationColor = new Color(c[0] / 255, c[1] / 255, c[2] / 255, 1);
             }),
-            '染色色相',
-            'attenuationColor — 透射光走过玻璃后保留的颜色：琥珀玻璃用金黄，绿酒瓶用绿色，等等',
+            'Tint Hue',
+            'attenuationColor — the colour transmitted light retains after travelling through the glass: golden-amber for amber glass, green for a wine bottle, etc.',
         );
 
         decorate(
             GUIHelp.add(params, 'attenuationDistance', 0, 3, 0.01).onChange(() => {
                 this.dragonMat.attenuationDistance = params.attenuationDistance;
             }),
-            '染色距离',
-            'attenuationDistance — 透射光衰减到 1/e 时走过的距离。越小衰减越剧烈（颜色越深、越偏 attenuationColor），越大越接近无染色',
+            'Tint Distance',
+            'attenuationDistance — the path length over which transmitted light decays to 1/e. Smaller values give heavier attenuation (deeper colour, biased toward attenuationColor); larger values approach no tinting',
         );
 
         // specularColor.rgb = F0 for dielectrics (Fresnel at 0°, ~0.04
@@ -365,21 +365,21 @@ class Sample_TransmissionAlpha {
         };
         decorate(
             GUIHelp.add(params, 'specularIntensity', 0, 1, 0.01).onChange(applySpecular),
-            '高光强度',
-            'specularIntensity (KHR_materials_specular) — 只缩放 IBL 镜面反射的强度（环境贴图在表面上的高光锐点），不影响漫反射。0 = 哑光无反射，1 = 完整环境反射',
+            'Specular Intensity',
+            'specularIntensity (KHR_materials_specular) — scales only the IBL specular reflection strength (the sharp environment highlight on the surface); does not affect diffuse. 0 = matte, no reflection; 1 = full environment reflection',
         );
         decorate(
             GUIHelp.addColor(params, 'specularColor').onChange(applySpecular),
-            '高光颜色',
-            'specularColor — 介电材质的 F0（菲涅尔正面反射颜色），默认白即标准玻璃。染成淡红可做塑料 / 哑光陶瓷调子；金属度 = 1 时此项失效',
+            'Specular Color',
+            'specularColor — the F0 of a dielectric material (Fresnel reflection colour at normal incidence); the default white gives standard glass. Tinting it pale red yields a plastic / matte-ceramic look; this control is ignored when metallic = 1',
         );
 
         decorate(
             GUIHelp.add(params, 'envMapIntensity', 0, 1, 0.01).onChange(() => {
                 (this.dragonMat as any).shader.envIntensity = params.envMapIntensity * this.envMapBaseIntensity;
             }),
-            '环境光强度',
-            'envIntensity — 只缩放 IBL 漫反射（环境光填充在哑光 / 阴影区的氛围色），不影响高光。0 = 失去环境氛围（只剩主光），1 = 完整环境漫反射。跟「高光强度」分工：env 管哑光区，spec 管反射高光',
+            'Environment Intensity',
+            'envIntensity — scales only the IBL diffuse (the ambient fill that paints matte / shadow regions); does not affect specular. 0 = lose the environment ambience (only the key light remains); 1 = full environment diffuse. Complements "Specular Intensity": env handles matte regions, spec handles the reflective highlight',
         );
 
         // We have no global tonemap-exposure knob (ACES is inline in
@@ -392,8 +392,8 @@ class Sample_TransmissionAlpha {
                 this.directLight.intensity = this.lightBaseIntensity * k;
                 (this.dragonMat as any).shader.envIntensity = params.envMapIntensity * this.envMapBaseIntensity * k;
             }),
-            '曝光',
-            '近似曝光 — 同时缩放主光和环境光强度。我们的 ACES 是 inline 在 LightingFunction_frag 里的固定曝光，没有专门的最终 tonemap 旋钮，这里用线性缩放近似',
+            'Exposure',
+            'Approximate exposure — scales both the key light and the environment intensity together. Our ACES is inline in LightingFunction_frag with a fixed exposure and there is no dedicated final-tonemap knob, so this is a linear-scale approximation',
         );
 
         GUIHelp.open();

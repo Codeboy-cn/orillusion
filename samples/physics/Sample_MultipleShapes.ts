@@ -33,7 +33,7 @@ class Sample_MultipleShapes {
         this.scene = new Scene3D();
         this.scene.addComponent(Stats);
 
-        // 在引擎启动后初始化物理调试功能，需要为绘制器传入 graphic3D 对象
+        // Initialize the physics debug drawer after the engine starts; a graphic3D object must be passed to the drawer
         const graphic3D = new Graphic3D();
         this.scene.addChild(graphic3D);
         Physics.initDebugDrawer(graphic3D, {

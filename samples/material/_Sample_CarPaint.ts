@@ -135,8 +135,8 @@ export class Sample_CarPaint {
 
 		// let giScene = await this.engine.res.loadGltf("gltfs/pbrCar/car.gltf");
 		let giScene = await this.engine.res.loadGltf("gltfs/scene/ue5_006.glb");
-		// let giScene = await this.engine.res.loadGltf("gltfs/scene/测试汽车1.gltf");
-		// let giScene = await this.engine.res.loadGltf("gltfs/scene/测试汽车.glb");
+		// let giScene = await this.engine.res.loadGltf("gltfs/scene/test_car_1.gltf");
+		// let giScene = await this.engine.res.loadGltf("gltfs/scene/test_car.glb");
 
 		let i = 0;
 		let cacheMat = new Map<string, Material>();
@@ -148,7 +148,7 @@ export class Sample_CarPaint {
 
 				if (mat instanceof LitMaterial) {
 					let has = mat.shader.hasDefine('USE_CLEARCOAT');
-					// if (has && !cacheMat.has(mat.name) && mat.name.includes("白色")) {
+					// if (has && !cacheMat.has(mat.name) && mat.name.includes("White")) {
 					// 	GUIUtil.renderLitMaterial(mat);
 					// 	cacheMat.set(mat.name, mat);
 					// }

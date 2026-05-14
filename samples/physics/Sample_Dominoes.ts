@@ -21,7 +21,7 @@ class Sample_Dominoes {
         let scene = new Scene3D();
         scene.addComponent(Stats);
 
-        // 启用物理调试功能时，需要为绘制器传入graphic3D对象
+        // When enabling the physics debug drawer, a graphic3D object must be passed to it
         const graphic3D = new Graphic3D();
         scene.addChild(graphic3D);
         Physics.initDebugDrawer(graphic3D, { enable: false });

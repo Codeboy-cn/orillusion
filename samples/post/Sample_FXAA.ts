@@ -37,10 +37,10 @@ class Sample_Bloom {
 		view.scene = this.scene;
 		view.camera = mainCamera;
 		engine.startRenderView(view);
-		// 1. 必须在 startRenderView 后添加 post 才可以，否则错误
+		// 1. Post effects must be added AFTER startRenderView, otherwise it errors out
 		let postProcessing = this.scene.addComponent(PostProcessingComponent);
 		let post = postProcessing.addPost(FXAAPost);
-		// 2. 有post 的情况下，render 后立即触发 canvas resize，但无法触发画面reisze，必须得等e.g 200ms+
+		// 2. When a post is active, triggering canvas resize immediately after render does not actually resize the picture; you must wait, e.g. 200ms+
 		// document.body.querySelector('canvas').setAttribute('style', 'width:100px')
 	}
 

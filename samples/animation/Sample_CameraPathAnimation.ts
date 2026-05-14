@@ -4,17 +4,17 @@ import { Graphic3D } from '@orillusion/graphic';
 import * as dat from 'dat.gui';
 
 interface PathInfo {
-    name: string, // 曲线名称
-    color: Color | Color[], // 线段颜色
-    basePoints: Vector3[]; // 曲线基点
-    curvePoints: Vector3[]; // 曲线包含的所有点
+    name: string, // curve name
+    color: Color | Color[], // line segment color
+    basePoints: Vector3[]; // curve base points
+    curvePoints: Vector3[]; // all points contained in the curve
 }
 
 enum CameraModes {
-    DualOrbit = 'DualOrbit', // 相机和目标按照各自的轨道进行运动
-    FixedCamera = 'FixedCamera', // 相机固定位置，目标按轨道运动
-    FixedTarget = 'FixedTarget', // 目标固定位置，相机按轨道运动
-    FreeCamera = 'FreeCamera'// 自由相机，相机模拟物体面向目标物体进行运动
+    DualOrbit = 'DualOrbit', // camera and target each move along their own path
+    FixedCamera = 'FixedCamera', // camera position is fixed, target moves along its path
+    FixedTarget = 'FixedTarget', // target position is fixed, camera moves along its path
+    FreeCamera = 'FreeCamera'// free camera: a proxy object moves along the path while facing the target
 }
 
 class Sample_CameraPathAnimation {
@@ -26,7 +26,7 @@ class Sample_CameraPathAnimation {
     cameraMode = CameraModes.DualOrbit;
     guiControl: dat.GUIController<object>;
 
-    // 相机与目标的路径信息
+    // path info for the camera and the target
     cameraPathInfo: PathInfo = {
         name: 'cameraCurve',
         color: Color.hexRGBColor(Color.YELLOW),
@@ -40,11 +40,11 @@ class Sample_CameraPathAnimation {
         curvePoints: []
     };
 
-    // 移动对象
-    targetSphere: Object3D; // 目标路径上的球体
-    cameraBox: Object3D; // 相机路径上的长方体
+    // moving objects
+    targetSphere: Object3D; // sphere that follows the target path
+    cameraBox: Object3D; // box that follows the camera path
 
-    // 过渡开始时间、过渡持续时间
+    // transition start time and duration
     startTime: number = 0;
     duration: number = 60; // SECS
 
@@ -107,35 +107,35 @@ class Sample_CameraPathAnimation {
     }
 
     private async initScene(scene: Scene3D, hoverCtrl: HoverCameraController) {
-        // 添加目标对象
+        // add target objects
         this.targetSphere = Object3DUtil.GetSingleSphere(4.5, 1, 1, 1);
         this.cameraBox = Object3DUtil.GetSingleCube(2, 2, 8, 0.5, 0.5, 0.5);
         scene.addChild(this.targetSphere);
         scene.addChild(this.cameraBox);
 
-        // 两条曲线的基准点，用于曲线构建
+        // base (control) points for both curves, used to build the splines
         const { cameraBasePoints, targetBasePoints } = this.getBasePoints()
         this.cameraPathInfo.basePoints = cameraBasePoints;
         this.targetPathInfo.basePoints = targetBasePoints;
 
-        // 基于每个基准点创建3D对象并添加到控制组对象中
+        // create a 3D object for each base point and add it to the control group
         let controlPointsGroup = new Object3D();
         this.createAndAddControlBoxes(this.cameraPathInfo, controlPointsGroup);
         this.createAndAddControlBoxes(this.targetPathInfo, controlPointsGroup);
         scene.addChild(controlPointsGroup);
 
-        // 创建线条
+        // build the lines
         this.refreshLine(this.cameraPathInfo);
         this.refreshLine(this.targetPathInfo);
 
-        // 添加坐标轴组件
+        // add the axis-gizmo component
         let axisControl = scene.addComponent(AxisController);
         axisControl.view = this.view;
         axisControl.cameraCtrl = hoverCtrl;
         axisControl.setControlGroup(controlPointsGroup);
         axisControl.onMoveEvent((target) => this.modifyBasePoints(target));
 
-        // 加载场景模型（渲染视图前加载会影响坐标轴组件的拾取精准度）
+        // load the scene model (loading it before starting the render view degrades axis-gizmo pick accuracy)
         // https://cdn.orillusion.com/gltfs/glb/BuildingWithCharacters/scene.glb
         let model = await this.engine.res.loadGltf('gltfs/glb/BuildingWithCharacters.glb');
         model.scaleX = model.scaleY = model.scaleZ = 0.3;
@@ -192,7 +192,7 @@ class Sample_CameraPathAnimation {
         pathInfo.basePoints.forEach((position, index) => {
             let box = Object3DUtil.GetSingleCube(2, 2, 2, Math.random(), Math.random(), Math.random());
 
-            // 为每个控制体关联其所在曲线的路径信息以及对应的索引，以便在其位置被修改后更新曲线
+            // associate each control box with its curve's path info and its index, so the curve can be updated when its position changes
             box.data = { pathInfo, index };
             box.localPosition = position;
             controlPointsGroup.addChild(box);
@@ -201,24 +201,24 @@ class Sample_CameraPathAnimation {
 
     private refreshLine(pathInfo: PathInfo, index?: number) {
         const basePoints = pathInfo.basePoints;
-        const samples = 20; // 每个基点的样本量
+        const samples = 20; // sample count per base point
 
         if (index === undefined) {
             pathInfo.curvePoints = this.generateOrUpdateCurve(basePoints, samples, 0.5);
         } else {
 
-            // 根据选中的基点及其相邻点重新计算曲线片段并定义需要重新计算的点的索引范围
+            // recompute curve segments around the selected base point and its neighbors, defining the index range of points to recompute
             const start = Math.max(0, index - 2);
             const end = Math.min(basePoints.length - 1, index + 1);
             const indicesToCalculate = Array.from({ length: end - start + 1 }, (_, i) => start + i);
 
-            // 计算受影响的曲线段
+            // compute the affected curve segments
             const curveSegmentPoints = this.generateOrUpdateCurve(basePoints, samples, 0.5, indicesToCalculate);
 
-            // 根据更新的范围计算替换起始索引
-            const dataStartIndex = (start * (samples + 1)); // 包含样本点及其起始点
+            // derive the replacement start index from the updated range
+            const dataStartIndex = (start * (samples + 1)); // includes the sample points plus their start point
 
-            // 替换原曲线点，更新曲线值
+            // splice the new segment into the existing curve points
             pathInfo.curvePoints.splice(dataStartIndex, curveSegmentPoints.length, ...curveSegmentPoints);
         }
 
@@ -351,32 +351,32 @@ class Sample_CameraPathAnimation {
         const cameraCurvePoints = this.cameraPathInfo.curvePoints;
         const targetCurvePoints = this.targetPathInfo.curvePoints;
 
-        // 计算曲线段的进度
+        // compute progress within the curve segments
         let lastIndex = cameraCurvePoints.length - 1;
         let currentIndex = Math.floor(progress * lastIndex);
         let nextIndex = Math.min(currentIndex + 1, lastIndex);
         let segmentProgress = (progress * lastIndex) - currentIndex;
 
-        // 计算当前进度对应的曲线上的两个点的位置，使用lerp替代lerpVector3 可节省实例化Vector3的开销
+        // compute the position between the two curve points at the current progress; using lerp instead of lerpVector3 avoids allocating a Vector3
         let cameraNextPos = lerpVector3(cameraCurvePoints[currentIndex], cameraCurvePoints[nextIndex], segmentProgress);
         let targetNextPos = lerpVector3(targetCurvePoints[currentIndex], targetCurvePoints[nextIndex], segmentProgress);
 
         switch (this.cameraMode) {
-            case CameraModes.DualOrbit: // 相机和目标按照各自的轨道进行运动
+            case CameraModes.DualOrbit: // camera and target each move along their own path
                 this.targetSphere.localPosition = targetNextPos;
                 this._tmpVecA = lerpVector3(this._tmpVecA, this.targetSphere.localPosition, 0.008);
                 // this.camera.transform.lookAt(cameraNextPos, this._tmpVecA, this.lookAtUp);
                 let cameraPos = lerpVector3(this.camera.transform.localPosition, cameraNextPos, 0.08)
                 this.camera.transform.lookAt(cameraPos, this._tmpVecA, this.lookAtUp)
                 break;
-            case CameraModes.FixedCamera: // 相机固定位置，目标按轨道运动
+            case CameraModes.FixedCamera: // camera position is fixed, target moves along its path
                 this.targetSphere.localPosition = targetNextPos;
                 this.camera.transform.lookAt(this.cameraBox.localPosition, targetNextPos);
                 break;
-            case CameraModes.FixedTarget: // 目标固定位置，相机按轨道运动
+            case CameraModes.FixedTarget: // target position is fixed, camera moves along its path
                 this.camera.transform.lookAt(cameraNextPos, this.targetSphere.localPosition, this.lookAtUp);
                 break;
-            case CameraModes.FreeCamera: // 自由相机，相机模拟物体面向目标物体进行运动
+            case CameraModes.FreeCamera: // free camera: a proxy object moves along the path while facing the target
                 this.targetSphere.localPosition = targetNextPos;
                 // this.cameraBox.transform.lookAt(cameraNextPos, this.targetSphere.localPosition);
                 let cameraBoxNextPos = lerpVector3(this.cameraBox.localPosition, cameraNextPos, 0.08)
@@ -387,31 +387,31 @@ class Sample_CameraPathAnimation {
 
 }
 
-/* 坐标轴控制器 */
+/* Axis gizmo controller */
 class AxisController extends ComponentBase {
     public view: View3D;
     public cameraCtrl: { enable: boolean } | undefined;
 
-    // 坐标轴对象
+    // axis gizmo object
     private axisObject: Object3D;
 
-    // 选中的目标对象与轴向
+    // currently selected target object and axis
     private selectedTarget: Object3D;
     private selectedAxis: 'x' | 'y' | 'z';
 
-    // 射线交点与轴对象位置之间的偏移量
+    // offset between the ray-plane intersection and the axis object's position
     private offsetDistance: number = 0;
 
     private _tmpVecA: Vector3 = new Vector3()
     private _tmpVecB: Vector3 = new Vector3()
 
-    // 注册事件处理函数
+    // register the event handler
     private moveEvent?: ((target: Object3D) => void) | undefined;
     public onMoveEvent(callback: (target: Object3D) => void): void {
         this.moveEvent = callback;
     }
 
-    // 可控制的对象组，为方便管理 所有可控制对象均包含在一个3D对象中
+    // controllable object group; for convenience all controllable objects are contained within a single 3D object
     public setControlGroup(target: Object3D) {
         target.forChild((node: Object3D) => {
             node.addComponent(ColliderComponent);
@@ -420,10 +420,10 @@ class AxisController extends ComponentBase {
     }
 
     public start() {
-        // 注册坐标轴XYZ对象的点击事件
+        // register click events on the X/Y/Z axis objects
         this.axisObject = new AxisObject(10, 0.5)
         this.axisObject.forChild((node: Object3D) => {
-            node.data = { axis: node.x !== 0 ? 'x' : node.y !== 0 ? 'y' : 'z' }; // 为每条轴添加轴向标识
+            node.data = { axis: node.x !== 0 ? 'x' : node.y !== 0 ? 'y' : 'z' }; // tag each axis with its identifier
             node.addComponent(ColliderComponent);
             node.addEventListener(PointerEvent3D.PICK_DOWN, this.onPickDown, this);
         })
@@ -457,14 +457,14 @@ class AxisController extends ComponentBase {
 
         let targetPos = this.selectedTarget.localPosition;
 
-        // 使用两个辅助向量定义参考线的起点和终点
+        // use two helper vectors to define the reference line's start and end points
         Vector3.HELP_0.copy(targetPos)[axis] -= 10000;
         Vector3.HELP_1.copy(targetPos)[axis] += 10000;
 
         // const color = { 'x': Color.COLOR_RED, 'y': Color.COLOR_GREEN, 'z': Color.COLOR_BLUE }[axis]
-        (this.view as any).graphic3D?.drawLines('referenceLine', [Vector3.HELP_0, Vector3.HELP_1]); //  创建一条参考线
+        (this.view as any).graphic3D?.drawLines('referenceLine', [Vector3.HELP_0, Vector3.HELP_1]); //  draw a reference line
 
-        // 计算坐标轴对象当前的坐标与交点的偏移量，以便后续拖动时修正位置
+        // compute the offset between the axis object's current position and the intersection, so the position can be corrected during subsequent dragging
         let intersection = this.calculateIntersectionPoint(this.view.camera, targetPos);
         if (intersection) {
             this.offsetDistance = targetPos[axis] - intersection[axis];
@@ -486,22 +486,22 @@ class AxisController extends ComponentBase {
         let intersection = this.calculateIntersectionPoint(this.view.camera, targetTransform.localPosition);
 
         if (intersection) {
-            // 更新位置
+            // update the position
             targetTransform[axis] = intersection[axis] + this.offsetDistance;
             this.axisObject.transform[axis] = targetTransform[axis];
         }
 
-        this.moveEvent(this.selectedTarget); // 执行注册的事件
+        this.moveEvent(this.selectedTarget); // fire the registered event
     }
 
     private calculateIntersectionPoint(camera: Camera3D, targetPos: Vector3): Vector3 | null {
-        // 视线方向向量
+        // view direction vector
         let cameraDirection = camera.getWorldDirection(this._tmpVecA);
 
-        // 构造与相机视角垂直的平面对象
+        // construct a plane perpendicular to the camera's view direction
         let p1 = new Plane(targetPos, cameraDirection);
 
-        // 判断平面是否和射线相交，并计算交点
+        // test whether the plane intersects the ray and compute the intersection point
         let ray = camera.screenPointToRay(this.view.engine3D.inputSystem.mouseX, this.view.engine3D.inputSystem.mouseY);
         let intersection = this._tmpVecB;
         let hasIntersection = p1.intersectsRay(ray, intersection);
