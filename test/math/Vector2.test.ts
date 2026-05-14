@@ -98,4 +98,33 @@ await test('Vector2 normalize', async () => {
     expect(a.y).toSubequal(0.44721359549);
 })
 
+// --- Phase D three.js-canonical additions ---
+
+await test('Vector2 addVectors / subVectors / multiplyVectors', async () => {
+    let out = new Vector2();
+    out.addVectors(new Vector2(1, 2), new Vector2(10, 20));
+    expect(out.x).toEqual(11);
+    out.subVectors(new Vector2(100, 50), new Vector2(1, 2));
+    expect(out.x).toEqual(99);
+    out.multiplyVectors(new Vector2(2, 3), new Vector2(4, 5));
+    expect(out.x).toEqual(8);
+    expect(out.y).toEqual(15);
+})
+
+await test('Vector2 lerp / lerpVectors', async () => {
+    let v = new Vector2(0, 0);
+    v.lerp(new Vector2(10, 10), 0.5);
+    expect(v.x).toEqual(5);
+    let v2 = new Vector2();
+    v2.lerpVectors(new Vector2(0, 0), new Vector2(20, 20), 0.25);
+    expect(v2.x).toEqual(5);
+})
+
+await test('Vector2 rotateAround', async () => {
+    let v = new Vector2(1, 0);
+    v.rotateAround(new Vector2(0, 0), Math.PI / 2);
+    expect(v.x).toSubequal(0);
+    expect(v.y).toSubequal(1);
+})
+
 setTimeout(end, 500)
