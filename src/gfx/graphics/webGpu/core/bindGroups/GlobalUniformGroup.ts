@@ -129,7 +129,7 @@ export class GlobalUniformGroup {
 
             this.uniformGPUBuffer.setMatrix(`_viewMatrix`, this.temp_viewMatrix);
             this.uniformGPUBuffer.setMatrix(`_cameraWorldMatrix`, this.temp_worldMatrix);
-            this.uniformGPUBuffer.setMatrix(`pvMatrixInv`, camera.projectionMatrixInv);
+            this.uniformGPUBuffer.setMatrix(`projMatInv`, camera.projectionMatrixInv);
 
             let cameraToWorld = Matrix4.helpMatrix.copy(camera.projectionMatrixInv);
             this.temp_viewMatrix.invert();
@@ -138,7 +138,7 @@ export class GlobalUniformGroup {
         } else {
             this.uniformGPUBuffer.setMatrix(`_viewMatrix`, camera.viewMatrix);
             this.uniformGPUBuffer.setMatrix(`_cameraWorldMatrix`, camera.transform.worldMatrix);
-            this.uniformGPUBuffer.setMatrix(`pvMatrixInv`, camera.projectionMatrixInv);
+            this.uniformGPUBuffer.setMatrix(`projMatInv`, camera.projectionMatrixInv);
             this.uniformGPUBuffer.setMatrix(`viewToWorld`, camera.cameraToWorld);
         }
 
