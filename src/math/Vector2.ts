@@ -180,67 +180,52 @@ export class Vector2 {
     }
 
     /**
-     * Add the vectors. Returns a new Vector2.
-     * @param a
-     * @returns
+     * Adds vector `a` to this vector. Mutates and returns this.
      */
-    public add(a: Vector2): Vector2 {
-        return new Vector2(this.x + a.x, this.y + a.y);
+    public add(a: Vector2): this {
+        return Vector2.add(this, a, this) as this;
     }
 
     /**
-     * Vector subtraction. Returns a new Vector2.
-     * @param a
+     * Subtracts vector `a` from this vector. Mutates and returns this.
      */
-    public sub(a: Vector2): Vector2 {
-        return new Vector2(this.x - a.x, this.y - a.y);
+    public sub(a: Vector2): this {
+        return Vector2.sub(this, a, this) as this;
     }
 
     /**
-     * Let's multiply the x and y values of this vector times v.
-     * @param v 
+     * Multiplies x/y of this vector by scalar v. Mutates and returns this.
      */
     public scale(v: number): this {
-        this.x = this.x * v;
-        this.y = this.y * v;
-        return this;
+        return Vector2.multiplyScalar(this, v, this) as this;
     }
 
     /**
-     * Let's multiply the x and y values of this vector by a. Returns a new Vector2.
-     * @param a
-     * @returns
+     * Multiplies x/y of this vector by scalar a. Mutates and returns this.
      */
-    public multiply(a: number): Vector2 {
-        return new Vector2(this.x * a, this.y * a);
+    public multiply(a: number): this {
+        return Vector2.multiplyScalar(this, a, this) as this;
     }
 
     /**
-     * Let's multiply the x and y values of this vector by a.
-     * @param a 
-     * @param target 
-     * @returns 
+     * Multiplies x/y of this vector by scalar a. Mutates and returns this.
      */
     public multiplyScaler(a: number): this {
-        this.x *= a;
-        this.y *= a;
-        return this;
-    }
-    /**
-     * We're going to divide the x and y values of this vector by v. Returns a new Vector2.
-     * @param v
-     * @returns
-     */
-    public divide(v: number): Vector2 {
-        return new Vector2(this.x / v, this.y / v);
+        return Vector2.multiplyScalar(this, a, this) as this;
     }
 
     /**
-     * Vector inversion. Returns a new Vector2.
-     * @returns
+     * Divides x/y of this vector by scalar v. Mutates and returns this.
      */
-    public neg(): Vector2 {
-        return new Vector2(-this.x, -this.y);
+    public divide(v: number): this {
+        return Vector2.multiplyScalar(this, 1 / v, this) as this;
+    }
+
+    /**
+     * Negates this vector. Mutates and returns this.
+     */
+    public neg(): this {
+        return Vector2.negate(this, this) as this;
     }
 
     public abs() {
@@ -265,11 +250,13 @@ export class Vector2 {
     }
 
     /**
-     * Unit (normalized) vector. Returns a new Vector2.
+     * Normalizes this vector to unit length. Mutates and returns this.
      */
-    public unt(): Vector2 {
+    public unt(): this {
         let d = this.abs();
-        return new Vector2(this.x / d, this.y / d);
+        this.x = this.x / d;
+        this.y = this.y / d;
+        return this;
     }
 
     public angleTo(v: Vector2): number {
@@ -289,8 +276,8 @@ export class Vector2 {
     }
 
     public pal(a: Vector2): number {
-        let u1 = this.unt();
-        let u2 = a.unt();
+        let u1 = this.clone().unt();
+        let u2 = a.clone().unt();
         if (u1.equals(u2)) return 1;
         if (u1.equals(u2.neg())) return -1;
         return 0;

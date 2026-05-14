@@ -135,7 +135,7 @@ export class Line {
      * @return
      */
     public getDirection(): Vector3 {
-        var pt: Vector3 = this.end.subtract(this.start);
+        var pt: Vector3 = this.end.clone().subtract(this.start);
         var direction: Vector3 = new Vector3(pt.x, pt.y);
         return direction.normalize();
     }

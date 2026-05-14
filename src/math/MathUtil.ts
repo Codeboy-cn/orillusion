@@ -440,8 +440,8 @@ export function magnitude(inV: Vector2 | Vector3 | Quaternion) {
 export function normalizeSafe(inV: Vector2 | Vector3 | Quaternion, defaultV?: Vector2 | Vector3 | Quaternion) {
     let mag = magnitude(inV);
     if (mag > Vector3.EPSILON) {
-        if (inV instanceof Vector2) return inV.divide(mag);
-        if (inV instanceof Vector3) return inV.divideScalar(mag);
+        if (inV instanceof Vector2) return inV.clone().divide(mag);
+        if (inV instanceof Vector3) return inV.clone().divideScalar(mag);
     }
     else {
         if (inV instanceof Vector2) {
@@ -777,7 +777,7 @@ export function normalizeFast(inV: Vector3) {
  * @internal
  */
 export function crossProduct(lhs: Vector3, rhs: Vector3) {
-    return lhs.crossProduct(rhs);
+    return lhs.clone().crossProduct(rhs);
 }
 
 /**

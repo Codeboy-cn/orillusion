@@ -90,7 +90,7 @@ class Sample_SphereDraw {
             group.addChild(obj);
             this._list.push(obj);
 
-            let d = obj.transform.worldPosition.subtract(group.transform.worldPosition);
+            let d = obj.transform.worldPosition.clone().subtract(group.transform.worldPosition);
             d.normalize();
 
             let sc = Math.random() * 0.5 + 0.1;

@@ -465,15 +465,10 @@ export class Quaternion {
     }
 
     /**
-     * Returns a new quaternion that inverts the current quaternion.
+     * Inverts this quaternion in place. Mutates and returns this.
      */
-    public inverse(): Quaternion {
-        const norm: number = this.w * this.w + this.x * this.x + this.y * this.y + this.z * this.z;
-        if (norm > 0.0) {
-            const invNorm = 1.0 / norm;
-            return new Quaternion(-this.x * invNorm, -this.y * invNorm, -this.z * invNorm, this.w * invNorm);
-        }
-        return new Quaternion();
+    public inverse(): this {
+        return Quaternion.inverse(this, this) as this;
     }
 
     /**
@@ -485,12 +480,10 @@ export class Quaternion {
     }
 
     /**
-     * Rotate a vector by this quaternion. Returns a new Vector3.
-     * @param vector The Vector3D object to be rotated.
-     * @returns A new Vector3D containing the rotated point.
+     * Rotates `vector` by this quaternion. Mutates and returns `vector`.
      */
     public transformVector(vector: Vector3): Vector3 {
-        return Quaternion.transformVector(this, vector);
+        return Quaternion.transformVector(this, vector, vector);
     }
 
     /**

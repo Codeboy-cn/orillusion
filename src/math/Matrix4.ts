@@ -531,11 +531,11 @@ export class Matrix4 {
     }
 
     /**
-     * Convert a point (w=1) to this matrix space. Returns a new Vector3.
-     * @param v target point
+     * Convert a point (w=1) to this matrix space. Mutates and returns `v`.
+     * @param v target point — mutated in place
      */
     public multiplyPoint3(v: Vector3): Vector3 {
-        return Matrix4.multiplyPoint3(this, v);
+        return Matrix4.multiplyPoint3(this, v, v);
     }
 
     public static multiplyPoint3(m: Matrix4, v: Vector3, result?: Vector3): Vector3 {
@@ -550,10 +550,10 @@ export class Matrix4 {
 
     /**
      * Transform a homogeneous vector (w computed from matrix) and divide by w.
-     * Returns a new Vector3.
+     * Mutates and returns `a`.
      */
     public multiplyVector4(a: Vector3): Vector3 {
-        return Matrix4.multiplyVector4(this, a);
+        return Matrix4.multiplyVector4(this, a, a);
     }
 
     public static multiplyVector4(m: Matrix4, a: Vector3, result?: Vector3): Vector3 {
@@ -570,10 +570,10 @@ export class Matrix4 {
     }
 
     /**
-     * Transform a 4D vector (v.w used directly) by this matrix. Returns a new Vector3.
+     * Transform a 4D vector (v.w used directly) by this matrix. Mutates and returns `v`.
      */
     public transformVector4(v: Vector3): Vector3 {
-        return Matrix4.transformVector4(this, v);
+        return Matrix4.transformVector4(this, v, v);
     }
 
     public static transformVector4(m: Matrix4, v: Vector3, result?: Vector3): Vector3 {
@@ -1831,10 +1831,10 @@ export class Matrix4 {
 
     /**
      * Convert the given point from the current matrix coordinate system to world
-     * coordinates. Returns a new Vector3.
+     * coordinates. Mutates and returns `v`.
      */
     public transformPoint(v: Vector3): Vector3 {
-        return Matrix4.transformPoint(this, v);
+        return Matrix4.transformPoint(this, v, v);
     }
 
     public static transformPoint(m: Matrix4, v: Vector3, result?: Vector3): Vector3 {
@@ -1849,10 +1849,10 @@ export class Matrix4 {
 
     /**
      * Transform a 3D direction vector (no translation) by this matrix.
-     * Returns a new Vector3.
+     * Mutates and returns `v`.
      */
     public transformVector(v: Vector3): Vector3 {
-        return Matrix4.transformVector(this, v);
+        return Matrix4.transformVector(this, v, v);
     }
 
     public static transformVector(m: Matrix4, v: Vector3, result?: Vector3): Vector3 {
@@ -2074,7 +2074,7 @@ export class Matrix4 {
      * from unity AMath.PI
      */
     public setTRInverse(pos: Vector3, q: Quaternion) {
-        q = q.inverse();
+        q = q.clone().inverse();
         Quaternion.quaternionToMatrix(q, this);
         this.translate(new Vector3(-pos.x, -pos.y, -pos.z));
     }

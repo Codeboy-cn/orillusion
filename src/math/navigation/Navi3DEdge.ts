@@ -51,7 +51,7 @@ export class Navi3DEdge {
     }
 
     public initFatPoints(radius: number): void {
-        this._edgeDirA2B = this._pointB.subtract(this._pointA);
+        this._edgeDirA2B = this._pointB.clone().subtract(this._pointA);
         this._edgeDirA2B.normalize();
 
         this.fatPointA = this.fatPointA || new Navi3DPointFat(this._pointA, this);

@@ -62,7 +62,7 @@ export class CubicBezierPath {
         for (let n = 1; n < numInterpolatedPoints; n++) {
             let a = controlVertices[(n - 1) * 3];
             let b = controlVertices[n * 3];
-            totalDist += a.subtract(b).lengthSquared;
+            totalDist += a.clone().subtract(b).lengthSquared;
         }
 
         if (totalDist == 0.0) return 0.0;
@@ -97,19 +97,19 @@ export class CubicBezierPath {
                 for (let n = 0; n < numKnots; n++) controlVertices[n * 3] = knots[n];
 
                 // Place the first and last non-interpolated CVs.
-                let initialPoint = knots[1].subtract(knots[0]).mul(0.25);
+                let initialPoint = knots[1].clone().subtract(knots[0]).mul(0.25);
 
                 // Interpolate 1/4 away along first segment.
-                controlVertices[1] = knots[0].add(initialPoint);
-                let finalPoint = knots[numKnots - 2].subtract(knots[numKnots - 1]).mul(0.25);
+                controlVertices[1] = knots[0].clone().add(initialPoint);
+                let finalPoint = knots[numKnots - 2].clone().subtract(knots[numKnots - 1]).mul(0.25);
 
                 // Interpolate 1/4 backward along last segment.
-                controlVertices[this.numControlVertices - 2] = knots[numKnots - 1].add(finalPoint);
+                controlVertices[this.numControlVertices - 2] = knots[numKnots - 1].clone().add(finalPoint);
 
                 // Now we'll do all the interior non-interpolated CVs.
                 for (let k = 1; k < this.numCurveSegments; k++) {
-                    let a = knots[k - 1].subtract(knots[k]);
-                    let b = knots[k + 1].subtract(knots[k]);
+                    let a = knots[k - 1].clone().subtract(knots[k]);
+                    let b = knots[k + 1].clone().subtract(knots[k]);
                     let aLen = a.lengthSquared;
                     let bLen = b.lengthSquared;
 
@@ -119,8 +119,8 @@ export class CubicBezierPath {
                         ab.normalize();
                         ab = ab.mul(abLen);
 
-                        controlVertices[k * 3 - 1] = knots[k].subtract(ab);
-                        controlVertices[k * 3 + 1] = knots[k].add(ab);
+                        controlVertices[k * 3 - 1] = knots[k].clone().subtract(ab);
+                        controlVertices[k * 3 + 1] = knots[k].clone().add(ab);
                     } else {
                         controlVertices[k * 3 - 1] = knots[k];
                         controlVertices[k * 3 + 1] = knots[k];
@@ -149,8 +149,8 @@ export class CubicBezierPath {
                     let modkp1 = (k + 1) % this.numCurveSegments;
                     let modk = k % this.numCurveSegments;
 
-                    let a = knots[modkm1].subtract(knots[modk]);
-                    let b = knots[modkp1].subtract(knots[modk]);
+                    let a = knots[modkm1].clone().subtract(knots[modk]);
+                    let b = knots[modkp1].clone().subtract(knots[modk]);
                     let aLen = a.lengthSquared;
                     let bLen = b.lengthSquared;
                     let mod3km1 = 3 * k - 1;
@@ -163,8 +163,8 @@ export class CubicBezierPath {
                         ab.normalize();
                         ab = ab.mul(abLen);
 
-                        controlVertices[mod3km1] = knots[modk].subtract(ab);
-                        controlVertices[mod3kp1] = knots[modk].add(ab);
+                        controlVertices[mod3km1] = knots[modk].clone().subtract(ab);
+                        controlVertices[mod3kp1] = knots[modk].clone().add(ab);
                     } else {
                         controlVertices[mod3km1] = knots[modk];
                         controlVertices[mod3kp1] = knots[modk];

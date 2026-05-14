@@ -71,18 +71,18 @@ export class ClothSoftbody extends SoftbodyBase {
 
         if (!this.clothCorners) {
             const up = this._geometry.up;
-            let right = up.equals(Vector3.X_AXIS) ? Vector3.BACK : Vector3.X_AXIS;
+            const rightSeed = up.equals(Vector3.X_AXIS) ? Vector3.BACK : Vector3.X_AXIS;
 
-            right = up.crossProduct(right).normalize();
-            const forward = right.crossProduct(up).normalize();
+            const right = up.clone().crossProduct(rightSeed).normalize();
+            const forward = right.clone().crossProduct(up).normalize();
 
             const halfWidth = this._geometry.width / 2;
             const halfHeight = this._geometry.height / 2;
 
-            const corner00 = right.mul(halfWidth).add(forward.mul(-halfHeight)); // leftTop
-            const corner01 = right.mul(halfWidth).add(forward.mul(halfHeight)); // rightTop
-            const corner10 = right.mul(-halfWidth).add(forward.mul(-halfHeight)); // leftBottom
-            const corner11 = right.mul(-halfWidth).add(forward.mul(halfHeight)); // rightBottom
+            const corner00 = right.clone().mul(halfWidth).add(forward.clone().mul(-halfHeight)); // leftTop
+            const corner01 = right.clone().mul(halfWidth).add(forward.clone().mul(halfHeight)); // rightTop
+            const corner10 = right.clone().mul(-halfWidth).add(forward.clone().mul(-halfHeight)); // leftBottom
+            const corner11 = right.clone().mul(-halfWidth).add(forward.clone().mul(halfHeight)); // rightBottom
 
             clothCorner00 = TempPhyMath.toBtVec(corner00, TempPhyMath.tmpVecA);
             clothCorner01 = TempPhyMath.toBtVec(corner01, TempPhyMath.tmpVecB);

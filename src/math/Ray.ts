@@ -178,14 +178,14 @@ export class Ray {
      */
     public sqrDistToPoint(P: Vector3): number {
         let v = this._dir;
-        let w = P.subtract(this.origin);
+        let w = P.clone().subtract(this.origin);
 
         let c1 = dot(w, v);
         let c2 = dot(v, v);
         let b = c1 / c2;
 
         let Pb = this.getPoint(b);
-        return sqrMagnitude(P.subtract(Pb));
+        return sqrMagnitude(P.clone().subtract(Pb));
     }
 
     /**
@@ -318,7 +318,7 @@ export class Ray {
      * @returns point of intersection
      */
     public intersectSphere(o: Vector3, dir: Vector3, center: Vector3, radius: number): Vector3 {
-        let oc = o.subtract(center);
+        let oc = o.clone().subtract(center);
         let a = Vector3.dot(dir, dir);
         let b = 2 * Vector3.dot(oc, dir);
         let c = Vector3.dot(oc, oc) - radius * radius;
@@ -441,7 +441,7 @@ export class Ray {
 
         if (isIntersected) {
             let dd0 = new Vector3();
-            dd0.copyFrom(segb.subtract(sega));
+            Vector3.sub(segb, sega, dd0);
             dd0.scaleBy(sc);
             Vector3.add(dd0, sega, dd0);
             // let out = new Vector3(dx,dy,dz);

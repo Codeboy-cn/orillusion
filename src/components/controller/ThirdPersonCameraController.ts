@@ -66,7 +66,7 @@ export class ThirdPersonCameraController extends ComponentBase {
         let vec = new Vector3();
         this._camera.transform.forward.scaleToRef(this.distance, vec);
         var focusPoint = this.focus.transform.worldPosition;
-        this._camera.transform.localPosition = focusPoint.subtract(vec);
+        this._camera.transform.localPosition = focusPoint.clone().subtract(vec);
     }
 
     public destroy(force?: boolean): void {

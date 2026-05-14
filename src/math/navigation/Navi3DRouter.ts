@@ -185,12 +185,12 @@ export class Navi3DRouter {
     }
 
     private isPointAtCenter(point: Vector3, vectorA: Vector3, vectorB: Vector3): boolean {
-        var cp1: Vector3 = vectorA.crossProduct(point);
+        var cp1: Vector3 = vectorA.clone().crossProduct(point);
         if (cp1.length == 0 && point.length < vectorA.length) {
             return true;
         }
 
-        var cp2: Vector3 = vectorB.crossProduct(point);
+        var cp2: Vector3 = vectorB.clone().crossProduct(point);
         if (cp2.length == 0 && point.length < vectorB.length) {
             return true;
         }

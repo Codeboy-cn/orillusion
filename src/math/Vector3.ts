@@ -595,12 +595,10 @@ export class Vector3 {
     }
 
     /**
-     * Add another vector to this vector. Returns a new Vector3.
-     * @param a Additive vector
-     * @returns result
-    */
-    public add(a: Vector3): Vector3 {
-        return new Vector3(this.x + a.x, this.y + a.y, this.z + a.z, this.w + a.w);
+     * Adds vector `a` to this vector (component-wise on xyz). Mutates and returns this.
+     */
+    public add(a: Vector3): this {
+        return Vector3.add(this, a, this) as this;
     }
 
     public subVectors(a: Vector3, b: Vector3): this {
@@ -625,17 +623,17 @@ export class Vector3 {
     }
 
     /**
-     * Component-wise minimum. Returns a new Vector3.
+     * Component-wise minimum with `v`. Mutates and returns this.
      */
-    public min(v: Vector3): Vector3 {
-        return new Vector3(Math.min(this.x, v.x), Math.min(this.y, v.y), Math.min(this.z, v.z));
+    public min(v: Vector3): this {
+        return Vector3.min(this, v, this) as this;
     }
 
     /**
-     * Component-wise maximum. Returns a new Vector3.
+     * Component-wise maximum with `v`. Mutates and returns this.
      */
-    public max(v: Vector3): Vector3 {
-        return new Vector3(Math.max(this.x, v.x), Math.max(this.y, v.y), Math.max(this.z, v.z));
+    public max(v: Vector3): this {
+        return Vector3.max(this, v, this) as this;
     }
 
     public distanceToSquared(v: Vector3): number {
@@ -646,10 +644,14 @@ export class Vector3 {
     }
 
     /**
-     * Add (x, y, z, w) to each component. Returns a new Vector3.
+     * Adds (x, y, z, w) to each component. Mutates and returns this.
      */
-    public addXYZW(x: number, y: number, z: number, w: number): Vector3 {
-        return new Vector3(this.x + x, this.y + y, this.z + z, this.w + w);
+    public addXYZW(x: number, y: number, z: number, w: number): this {
+        this.x += x;
+        this.y += y;
+        this.z += z;
+        this.w += w;
+        return this;
     }
 
     /**
@@ -741,12 +743,10 @@ export class Vector3 {
 
 
     /**
-     * Component-wise divide the current vector by the given vector. Returns a new Vector3.
-     * @param v The vector that you want to divide by
-     * @returns Vector3 Returns the result of the calculation
+     * Component-wise divides this vector by `v`. Mutates and returns this.
      */
-    public divide(v: Vector3): Vector3 {
-        return new Vector3(this.x / v.x, this.y / v.y, this.z / v.z);
+    public divide(v: Vector3): this {
+        return Vector3.divide(this, v, this) as this;
     }
 
 
@@ -813,8 +813,8 @@ export class Vector3 {
         return this;
     }
 
-    public applyMatrix4(m): Vector3 {
-        return m.transformPoint(this, this);
+    public applyMatrix4(m): this {
+        return m.transformPoint(this) as this;
     }
 
     /**
@@ -835,16 +835,10 @@ export class Vector3 {
     }
 
     /**
-     * The current vector times the scalar s
-     * @param s scalar s
-     * @returns 
+     * Multiplies this vector by scalar s. Mutates and returns this.
      */
-    public mul(s: number): Vector3 {
-        let v = new Vector3();
-        v.x = this.x * s;
-        v.y = this.y * s;
-        v.z = this.z * s;
-        return v;
+    public mul(s: number): this {
+        return Vector3.multiplyScalar(this, s, this) as this;
     }
 
     public scale(s: Vector3): Vector3 {
@@ -904,17 +898,15 @@ export class Vector3 {
      * @returns A new Vector3 object that is the difference between the
      *          current Vector3 and the specified Vector3 object.
      */
-    public subtract(a: Vector3): Vector3 {
-        return new Vector3(this.x - a.x, this.y - a.y, this.z - a.z);
+    public subtract(a: Vector3): this {
+        return Vector3.sub(this, a, this) as this;
     }
 
     /**
-     * Component-wise multiply this vector by another vector. Returns a new Vector3.
-     * @param other Multiplied vector
-     * @returns result
+     * Component-wise multiplies this vector by `other`. Mutates and returns this.
      */
-    public multiply(other: Vector3): Vector3 {
-        return new Vector3(this.x * other.x, this.y * other.y, this.z * other.z);
+    public multiply(other: Vector3): this {
+        return Vector3.multiply(this, other, this) as this;
     }
 
     /**
@@ -1064,13 +1056,8 @@ export class Vector3 {
     /**
      * Cross product with another vector. Returns a new Vector3.
      */
-    public crossProduct(a: Vector3): Vector3 {
-        return new Vector3(
-            this.y * a.z - this.z * a.y,
-            this.z * a.x - this.x * a.z,
-            this.x * a.y - this.y * a.x,
-            1
-        );
+    public crossProduct(a: Vector3): this {
+        return Vector3.cross(this, a, this) as this;
     }
 
     public crossVectors(a: Vector3, b: Vector3): this {
@@ -1093,15 +1080,18 @@ export class Vector3 {
     }
 
     /**
-     * Divide by a scalar. Returns a new Vector3.
+     * Divides this vector by scalar. Mutates and returns this.
      */
-    public divideScalar(scalar: number): Vector3 {
-        return new Vector3(this.x / scalar, this.y / scalar, this.z / scalar, this.w / scalar);
+    public divideScalar(scalar: number): this {
+        return Vector3.multiplyScalar(this, 1 / scalar, this) as this;
     }
 
-    public clampLength(min: number, max: number): Vector3 {
+    /**
+     * Clamps the length of this vector into [min, max]. Mutates and returns this.
+     */
+    public clampLength(min: number, max: number): this {
         let length = this.length;
-        return this.divideScalar(length || 1).multiplyScalar(Math.max(min, Math.min(max, length)));
+        return this.divideScalar(length || 1).multiplyScalar(Math.max(min, Math.min(max, length))) as this;
     }
 
     public setScalar(value: number) {

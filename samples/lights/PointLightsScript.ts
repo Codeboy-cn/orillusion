@@ -90,7 +90,7 @@ export class PointLightsScript extends ComponentBase {
 
         let item = new PointLightItem();
         Quaternion.HELP_0.fromEulerAngles(Math.random() * 360, Math.random() * 360, Math.random() * 360);
-        item.dir = Quaternion.HELP_0.transformVector(Vector3.FORWARD);
+        item.dir = Quaternion.HELP_0.transformVector(Vector3.FORWARD.clone());
         item.speed = 50 + Math.random() * 150;
         item.mass = 5 + Math.random() * 5;
         this._pointLightItems.push(item);
@@ -108,7 +108,7 @@ export class PointLightsScript extends ComponentBase {
                 pd.mass -= Time.delta * 0.001;
                 if (pd.mass < 0) {
                     Quaternion.HELP_0.fromEulerAngles(Math.random() * 360, Math.random() * 360, Math.random() * 360);
-                    pd.dir = Quaternion.HELP_0.transformVector(Vector3.FORWARD);
+                    pd.dir = Quaternion.HELP_0.transformVector(Vector3.FORWARD.clone());
                     pd.speed = 50 + Math.random() * 150;
                     pd.mass = 5 + Math.random() * 5;
                 }

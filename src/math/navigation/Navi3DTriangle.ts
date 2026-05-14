@@ -201,14 +201,14 @@ export class Navi3DTriangle extends Vector3 implements IQuadNode {
     }
 
     public randomPoint(): Vector3 {
-        var pt0: Vector3 = this._points[2].subtract(this._points[0]);
+        var pt0: Vector3 = this._points[2].clone().subtract(this._points[0]);
         // if(Math.random() > 0.5)
         {
             pt0.scaleBy(Math.random());
         }
         pt0.incrementBy(this._points[0]);
 
-        var pt1: Vector3 = this._points[1].subtract(pt0);
+        var pt1: Vector3 = this._points[1].clone().subtract(pt0);
 
         // if(Math.random() > 0.5)
         {
