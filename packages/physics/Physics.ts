@@ -143,7 +143,7 @@ class _Physics {
     }
 
     public set gravity(value: Vector3) {
-        this._gravity.copyFrom(value);
+        this._gravity.copy(value);
         this._world?.setGravity(TempPhyMath.toBtVec(value)); // 设置刚体物理重力
         this._worldInfo?.set_m_gravity(TempPhyMath.toBtVec(value)); // 设置软体物理重力
     }

@@ -119,7 +119,7 @@ export class Navi3DFunnel {
         //copy result
         let list: Vector3[] = [];
         for (let point of this._result) {
-            list.push(new Vector3().copyFrom(point));
+            list.push(new Vector3().copy(point));
         }
         this._result = list;
     }
@@ -272,7 +272,7 @@ export class Navi3DFunnel {
             }
 
             if (checkEnable) {
-                Navi3DFunnel.CROSS_TEST_DIRECTION.copyFrom(pt0);
+                Navi3DFunnel.CROSS_TEST_DIRECTION.copy(pt0);
                 Navi3DFunnel.CROSS_TEST_DIRECTION.decrementBy(pt2);
                 centerEdge = fatPt1.ownerEdge;
 

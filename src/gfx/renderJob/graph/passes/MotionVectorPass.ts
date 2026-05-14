@@ -106,7 +106,7 @@ export class MotionVectorPass extends RenderGraphPass {
         gpu.endCommandEncoder(command);
 
         // Roll: this frame's viewProj becomes next frame's prev.
-        this._prevViewProj.copyFrom(this._scratch);
-        this._currViewProj.copyFrom(this._scratch);
+        this._prevViewProj.copy(this._scratch);
+        this._currViewProj.copy(this._scratch);
     }
 }

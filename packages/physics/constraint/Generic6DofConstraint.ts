@@ -19,7 +19,7 @@ export class Generic6DofConstraint extends ConstraintBase<Ammo.btGeneric6DofCons
         return this._linearLowerLimit;
     }
     public set linearLowerLimit(value: Vector3) {
-        this._linearLowerLimit.copyFrom(value);
+        this._linearLowerLimit.copy(value);
         this._constraint?.setLinearLowerLimit(TempPhyMath.toBtVec(value));
     }
 
@@ -30,7 +30,7 @@ export class Generic6DofConstraint extends ConstraintBase<Ammo.btGeneric6DofCons
         return this._linearUpperLimit;
     }
     public set linearUpperLimit(value: Vector3) {
-        this._linearUpperLimit.copyFrom(value);
+        this._linearUpperLimit.copy(value);
         this._constraint?.setLinearUpperLimit(TempPhyMath.toBtVec(value));
     }
 
@@ -41,7 +41,7 @@ export class Generic6DofConstraint extends ConstraintBase<Ammo.btGeneric6DofCons
         return this._angularLowerLimit;
     }
     public set angularLowerLimit(value: Vector3) {
-        this._angularLowerLimit.copyFrom(value);
+        this._angularLowerLimit.copy(value);
         this._constraint?.setAngularLowerLimit(TempPhyMath.toBtVec(value));
     }
 
@@ -52,7 +52,7 @@ export class Generic6DofConstraint extends ConstraintBase<Ammo.btGeneric6DofCons
         return this._angularUpperLimit;
     }
     public set angularUpperLimit(value: Vector3) {
-        this._angularUpperLimit.copyFrom(value);
+        this._angularUpperLimit.copy(value);
         this._constraint?.setAngularUpperLimit(TempPhyMath.toBtVec(value));
     }
 

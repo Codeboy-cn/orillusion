@@ -249,7 +249,7 @@ export class Transform extends ComponentBase {
     }
 
     public set up(value: Vector3) {
-        this._up.copyFrom(value);
+        this._up.copy(value);
 
         MathUtil.fromToRotation(Vector3.UP, this._up, Quaternion.HELP_0);
         this.transform.localRotQuat = Quaternion.HELP_0;
@@ -261,7 +261,7 @@ export class Transform extends ComponentBase {
     }
 
     public set down(value: Vector3) {
-        this._down.copyFrom(value);
+        this._down.copy(value);
 
         MathUtil.fromToRotation(Vector3.DOWN, this._down, Quaternion.HELP_0);
         this.transform.localRotQuat = Quaternion.HELP_0;
@@ -280,7 +280,7 @@ export class Transform extends ComponentBase {
     }
 
     public set forward(value: Vector3) {
-        this._forward.copyFrom(value);
+        this._forward.copy(value);
 
         MathUtil.fromToRotation(Vector3.FORWARD, this._forward, Quaternion.HELP_0);
         this.transform.localRotQuat = Quaternion.HELP_0;
@@ -299,7 +299,7 @@ export class Transform extends ComponentBase {
     }
 
     public set back(value: Vector3) {
-        this._back.copyFrom(value);
+        this._back.copy(value);
 
         MathUtil.fromToRotation(Vector3.BACK, this._back, Quaternion.HELP_0);
         this.transform.localRotQuat = Quaternion.HELP_0;
@@ -311,7 +311,7 @@ export class Transform extends ComponentBase {
     }
 
     public set left(value: Vector3) {
-        this._left.copyFrom(value);
+        this._left.copy(value);
 
         MathUtil.fromToRotation(Vector3.LEFT, this._left, Quaternion.HELP_0);
         this.transform.localRotQuat = Quaternion.HELP_0;
@@ -323,7 +323,7 @@ export class Transform extends ComponentBase {
     }
 
     public set right(value: Vector3) {
-        this._right.copyFrom(value);
+        this._right.copy(value);
 
         MathUtil.fromToRotation(Vector3.RIGHT, this._right, Quaternion.HELP_0);
         this.transform.localRotQuat = Quaternion.HELP_0;
@@ -352,7 +352,7 @@ export class Transform extends ComponentBase {
             || value.y != this._localRotQuat.y
             || value.z != this._localRotQuat.z
             || value.w != this._localRotQuat.w) {
-            this._localRotQuat.copyFrom(value);
+            this._localRotQuat.copy(value);
             this._localRotQuat.getEulerAngles(this._localRot);
 
             WasmMatrix.setRotation(this.index, this._localRot.x, this._localRot.y, this._localRot.z);
@@ -438,7 +438,7 @@ export class Transform extends ComponentBase {
     public lookAt(pos: Vector3, target: Vector3, up: Vector3 = Vector3.UP) {
         this._targetPos ||= new Vector3();
 
-        this._targetPos.copyFrom(target);
+        this._targetPos.copy(target);
 
         this.localPosition = pos;
 
@@ -448,17 +448,17 @@ export class Transform extends ComponentBase {
 
         var prs: Vector3[] = Matrix4.helpMatrix.decompose(Orientation3D.QUATERNION);
 
-        this.localRotQuat = Quaternion.CALCULATION_QUATERNION.copyFrom(prs[1]);
+        this.localRotQuat = Quaternion.CALCULATION_QUATERNION.copy(prs[1]);
     }
 
     public decomposeFromMatrix(matrix: Matrix4, orientationStyle: string = 'eulerAngles'): this {
         let prs = matrix.decompose(orientationStyle);
         let transform = this.transform;
-        transform.localRotQuat.copyFrom(prs[1]);
+        transform.localRotQuat.copy(prs[1]);
         transform.localRotQuat = transform.localRotQuat;
-        transform.localPosition.copyFrom(prs[0]);
+        transform.localPosition.copy(prs[0]);
         transform.localPosition = transform.localPosition;
-        transform.localScale.copyFrom(prs[2]);
+        transform.localScale.copy(prs[2]);
         transform.localScale = transform.localScale;
         return this;
     }
@@ -599,7 +599,7 @@ export class Transform extends ComponentBase {
         if (this._localRot.x != value) {
             this._localRot.x = value;
             WasmMatrix.setRotation(this.index, this._localRot.x, this._localRot.y, this._localRot.z);
-            this._localRotQuat.fromEulerAngles(this._localRot.x, this._localRot.y, this._localRot.z);
+            this._localRotQuat.setFromEuler(this._localRot.x, this._localRot.y, this._localRot.z);
             this.notifyLocalChange();
             this.onRotationChange?.();
 
@@ -620,7 +620,7 @@ export class Transform extends ComponentBase {
         if (this._localRot.y != value) {
             this._localRot.y = value;
             WasmMatrix.setRotation(this.index, this._localRot.x, this._localRot.y, this._localRot.z);
-            this._localRotQuat.fromEulerAngles(this._localRot.x, this._localRot.y, this._localRot.z);
+            this._localRotQuat.setFromEuler(this._localRot.x, this._localRot.y, this._localRot.z);
             this.notifyLocalChange();
             this.onRotationChange?.();
 
@@ -641,7 +641,7 @@ export class Transform extends ComponentBase {
         if (this._localRot.z != value) {
             this._localRot.z = value;
             WasmMatrix.setRotation(this.index, this._localRot.x, this._localRot.y, this._localRot.z);
-            this._localRotQuat.fromEulerAngles(this._localRot.x, this._localRot.y, this._localRot.z);
+            this._localRotQuat.setFromEuler(this._localRot.x, this._localRot.y, this._localRot.z);
             this.notifyLocalChange();
             this.onRotationChange?.();
 
@@ -674,7 +674,7 @@ export class Transform extends ComponentBase {
                 this.onPositionChange(this._localPos, v);
             }
         }
-        this._localPos.copyFrom(v);
+        this._localPos.copy(v);
         WasmMatrix.setTranslate(this.index, v.x, v.y, v.z);
         this.notifyLocalChange();
 
@@ -701,14 +701,14 @@ export class Transform extends ComponentBase {
         }
 
         WasmMatrix.setRotation(this.index, v.x, v.y, v.z);
-        this._localRot.copyFrom(v);
+        this._localRot.copy(v);
         // Keep _localRotQuat in sync — multiple downstream consumers
         // (CCDIK.composeWorldQuat, retargeter, look-at) read
         // localQuaternion to compose world rotations. Without this sync,
         // the quat field stays at its default (0,0,0,1) after Euler-only
         // setup like buildSkeletonPose, and quat-based world rotation
         // composition silently produces wrong results.
-        this._localRotQuat.fromEulerAngles(v.x, v.y, v.z);
+        this._localRotQuat.setFromEuler(v.x, v.y, v.z);
         this.notifyLocalChange();
 
         if (this.eventRotationChange) {
@@ -728,7 +728,7 @@ export class Transform extends ComponentBase {
     public set localScale(v: Vector3) {
         // if (this._localScale.x != v.x || this._localScale.y != v.y || this._localScale.z != v.z) {
         WasmMatrix.setScale(this.index, v.x, v.y, v.z);
-        this._localScale.copyFrom(v);
+        this._localScale.copy(v);
         this.notifyLocalChange();
         this.onScaleChange?.();
 

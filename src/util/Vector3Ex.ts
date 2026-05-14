@@ -108,7 +108,7 @@ export class Vector3Ex {
      */
     public static dot(v1: Vector3, v2: Vector3): number {
         let v = Vector3.HELP_0;
-        v.copyFrom(v1);
+        v.copy(v1);
         return v.dotProduct(v2);
     }
 

@@ -111,7 +111,7 @@ export class TransformControllerBaseComponent extends ComponentBase {
         switch (this.transformSpaceMode) {
             case TransformSpaceMode.Local:
                 {
-                    let targetInvWorldMatrix = Matrix4.help_matrix_0.copyFrom(this.mX.transform.worldMatrix);
+                    let targetInvWorldMatrix = Matrix4.help_matrix_0.copy(this.mX.transform.worldMatrix);
                     // targetInvWorldMatrix.invert();
 
                     let resultTRS = targetInvWorldMatrix.decompose();
@@ -209,7 +209,7 @@ export class TransformControllerBaseComponent extends ComponentBase {
         let screenPoint = camera.worldToScreenPoint(this.mX.transform.worldPosition);
         const input = this._input();
         let pos = camera.screenPointToWorld(input.mouseX, input.mouseY, screenPoint.z);
-        this.beginPoint.copyFrom(pos);
+        this.beginPoint.copy(pos);
         this.beginMousePos.x = input.mouseX;
         this.beginMousePos.y = input.mouseY;
     }
@@ -249,12 +249,12 @@ export class TransformControllerBaseComponent extends ComponentBase {
             const input = this._input();
             let pos = camera.screenPointToWorld(input.mouseX, input.mouseY, screenPoint.z);
 
-            this.currentPoint.copyFrom(pos);
-            let offset = pos.subtract(this.beginPoint);
+            this.currentPoint.copy(pos);
+            let offset = pos.sub(this.beginPoint);
 
             Vector3.HELP_0.set(input.mouseX, input.mouseY, 0);
             let distance = Vector3.distance(Vector3.HELP_0, this.beginMousePos);
-            this.beginMousePos.copyFrom(Vector3.HELP_0);
+            this.beginMousePos.copy(Vector3.HELP_0);
 
             switch (this.transformSpaceMode) {
                 case TransformSpaceMode.Local:
@@ -265,7 +265,7 @@ export class TransformControllerBaseComponent extends ComponentBase {
                     break;
             }
 
-            this.beginPoint.copyFrom(pos);
+            this.beginPoint.copy(pos);
 
             this.reset();
         }

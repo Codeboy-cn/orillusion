@@ -42,7 +42,7 @@ export class QuadAABB {
         this.minPosY += vec.z - this.offsetPosition.z;
         this.maxPosY += vec.z - this.offsetPosition.z;
 
-        this.offsetPosition.copyFrom(vec);
+        this.offsetPosition.copy(vec);
     }
 
     public setContainRect(minX: number, minY: number, maxX: number, maxY: number): void {

@@ -72,8 +72,8 @@ export class FlyCameraController extends ComponentBase {
      * @param lookAt target position
      */
     public setCamera(cameraPos: Vector3, lookAt: Vector3) {
-        this.targetPos.copyFrom(cameraPos);
-        this.lookAtPos.copyFrom(lookAt);
+        this.targetPos.copy(cameraPos);
+        this.lookAtPos.copy(lookAt);
         this.Reset();
     }
 

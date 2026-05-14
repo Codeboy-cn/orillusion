@@ -195,10 +195,10 @@ export class CCDIK {
         joints.push(effectorBone);
 
         for (let i = 0; i < joints.length; i++) {
-            this._origLocalQs[i].copyFrom(joints[i].localQuaternion);
+            this._origLocalQs[i].copy(joints[i].localQuaternion);
             // Initialize best-pose snapshot to start pose. As iterations
             // proceed we replace this whenever a smaller dist is found.
-            this._bestPoseQs[i].copyFrom(joints[i].localQuaternion);
+            this._bestPoseQs[i].copy(joints[i].localQuaternion);
         }
 
         const tip = effectorBone;
@@ -273,7 +273,7 @@ export class CCDIK {
             if (iterEndDistSq < bestDistSq) {
                 bestDistSq = iterEndDistSq;
                 for (let i = 0; i < joints.length; i++) {
-                    this._bestPoseQs[i].copyFrom(joints[i].localQuaternion);
+                    this._bestPoseQs[i].copy(joints[i].localQuaternion);
                 }
             }
         }
@@ -361,7 +361,7 @@ export class CCDIK {
                 if (this._tmpEuler.z > hz) this._tmpEuler.z = hz;
             }
             _eulerToQuat(this._tmpEuler.x, this._tmpEuler.y, this._tmpEuler.z, order, this._constrainedQ);
-            q.copyFrom(this._constrainedQ);
+            q.copy(this._constrainedQ);
         }
     }
 }
@@ -405,10 +405,10 @@ function composeWorldQuat(obj: Object3D | null, out: Quaternion): Quaternion {
         stack.push(cur);
         cur = cur.parent ? (cur.parent.object3D as Object3D) : null;
     }
-    out.copyFrom(stack[stack.length - 1].localQuaternion);
+    out.copy(stack[stack.length - 1].localQuaternion);
     for (let i = stack.length - 2; i >= 0; i--) {
         _qComposeTmp.multiply(out, stack[i].localQuaternion);
-        out.copyFrom(_qComposeTmp);
+        out.copy(_qComposeTmp);
     }
     return out;
 }

@@ -33,7 +33,7 @@ export class BillboardComponent extends ComponentBase {
         if (this.type == BillboardType.None) return;
 
         let camera = this.transform.view3D.camera;
-        this._cameraPosition.copyFrom(camera.transform.back);
+        this._cameraPosition.copy(camera.transform.back);
         if (this.type == BillboardType.BillboardXYZ) {
         } else if (this.type == BillboardType.BillboardY) {
             this._cameraPosition.y = 0;

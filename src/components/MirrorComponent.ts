@@ -208,8 +208,8 @@ export class MirrorComponent extends ComponentBase {
         // scale (transformVector applies the upper 3×3, so scale leaks
         // into direction vectors).
         const tr = this.object3D.transform;
-        this.mirrorPlanePoint.copyFrom(tr.worldPosition);
-        this.mirrorPlaneNormal.copyFrom(tr.up).normalize();
+        this.mirrorPlanePoint.copy(tr.worldPosition);
+        this.mirrorPlaneNormal.copy(tr.up).normalize();
 
         this._hostRenderer = this.object3D.getComponent(MeshRenderer);
         if (!this._hostRenderer) {

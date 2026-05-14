@@ -196,7 +196,7 @@ export class Shape3DRenderer extends DynamicFaceRenderer {
             Matrix4.transformVector(transform.worldMatrix, up, up);
             this._rendererData.setVector4('cameraUp', this._cameraUp);
 
-            this._cameraPos.copyFrom(transform.worldPosition as any);
+            this._cameraPos.copy(transform.worldPosition as any);
             this._rendererData.setVector4('cameraPos', this._cameraPos);
 
             this._rendererData.setFloat('maxNodeCount', this.maxNodeCount);

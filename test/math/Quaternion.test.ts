@@ -3,7 +3,7 @@ import { Engine3D, Quaternion, Vector3 } from '@orillusion/core';
 
 await test('Quaternion fromEulerAngles', async () => {
     let quat = new Quaternion();
-    quat.fromEulerAngles(0, -90, 0);
+    quat.setFromEuler(0, -90, 0);
 
     let result = new Vector3();
     Quaternion.transformVector(quat, new Vector3(10, 0, 0), result);
@@ -15,10 +15,10 @@ await test('Quaternion fromEulerAngles', async () => {
 
 await test('Quaternion multiply', async () => {
     let quatA = new Quaternion();
-    quatA.fromEulerAngles(0, -45, 0);
+    quatA.setFromEuler(0, -45, 0);
 
     let quatB = new Quaternion();
-    quatB.fromEulerAngles(0, -45, 0);
+    quatB.setFromEuler(0, -45, 0);
 
     let finalQuat = new Quaternion();
     finalQuat.multiply(quatA, quatB);

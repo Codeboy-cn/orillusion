@@ -140,10 +140,10 @@ export class SpriteBatch extends RenderNode {
         uvRect?: Vector4;
     } = {}): SpriteBatchEntry {
         const e = new SpriteBatchEntry(this._nextId++);
-        if (spec.position) e.position.copyFrom(spec.position);
-        if (spec.size) e.size.copyFrom(spec.size);
-        if (spec.pivot) e.pivot.copyFrom(spec.pivot);
-        if (spec.uvRect) e.uvRect.copyFrom(spec.uvRect);
+        if (spec.position) e.position.copy(spec.position);
+        if (spec.size) e.size.copy(spec.size);
+        if (spec.pivot) e.pivot.copy(spec.pivot);
+        if (spec.uvRect) e.uvRect.copy(spec.uvRect);
         this._entries.push(e);
         this._dirty = true;
         return e;
@@ -163,10 +163,10 @@ export class SpriteBatch extends RenderNode {
         pivot?: Vector2;
         uvRect?: Vector4;
     }): void {
-        if (patch.position) entry.position.copyFrom(patch.position);
-        if (patch.size) entry.size.copyFrom(patch.size);
-        if (patch.pivot) entry.pivot.copyFrom(patch.pivot);
-        if (patch.uvRect) entry.uvRect.copyFrom(patch.uvRect);
+        if (patch.position) entry.position.copy(patch.position);
+        if (patch.size) entry.size.copy(patch.size);
+        if (patch.pivot) entry.pivot.copy(patch.pivot);
+        if (patch.uvRect) entry.uvRect.copy(patch.uvRect);
         this._dirty = true;
     }
 

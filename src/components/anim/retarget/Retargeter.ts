@@ -256,9 +256,9 @@ export class Retargeter {
         // localQuaternion gives us the rig's root rotation.
         const srcCharObj = srcRootBone?.parent ? (srcRootBone.parent as any).object3D : null;
         const tgtCharObj = tgtRootBone?.parent ? (tgtRootBone.parent as any).object3D : null;
-        if (srcCharObj?.localQuaternion) this._rootRotS.copyFrom(srcCharObj.localQuaternion);
+        if (srcCharObj?.localQuaternion) this._rootRotS.copy(srcCharObj.localQuaternion);
         else this._rootRotS.set(0, 0, 0, 1);
-        if (tgtCharObj?.localQuaternion) this._rootRotT.copyFrom(tgtCharObj.localQuaternion);
+        if (tgtCharObj?.localQuaternion) this._rootRotT.copy(tgtCharObj.localQuaternion);
         else this._rootRotT.set(0, 0, 0, 1);
 
         // Identify the hip pair (root joint = the source bone with no
@@ -274,8 +274,8 @@ export class Retargeter {
                 if (tgtBone) {
                     this._hipSrcName = pair.srcName;
                     this._hipTgtName = pair.tgtName;
-                    this._bindHipLocalPosS.copyFrom(srcBone.t);
-                    this._bindHipLocalPosT.copyFrom(tgtBone.t);
+                    this._bindHipLocalPosS.copy(srcBone.t);
+                    this._bindHipLocalPosT.copy(tgtBone.t);
                 }
                 break;
             }
@@ -310,11 +310,11 @@ export class Retargeter {
                 const qAlign = new Quaternion();
                 qAlign.multiply(bindWS, invBindWT);
                 const oldChar = new Quaternion();
-                oldChar.copyFrom(tgtCharObj.localQuaternion);
+                oldChar.copy(tgtCharObj.localQuaternion);
                 const newChar = new Quaternion();
                 newChar.multiply(qAlign, oldChar);
                 tgtCharObj.localQuaternion = newChar;
-                this._rootRotT.copyFrom(newChar);
+                this._rootRotT.copy(newChar);
                 computeBindWorldRotations(tgtAvatar, this._rootRotT, this._bindWorldT);
             }
         }

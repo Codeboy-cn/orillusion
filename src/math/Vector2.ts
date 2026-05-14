@@ -92,8 +92,8 @@ export class Vector2 {
      * @returns 
      */
     public static lerp(from: Vector2, to: Vector2, t: number) {
-        Vector2.HELP_0.copyFrom(from);
-        Vector2.HELP_1.copyFrom(to);
+        Vector2.HELP_0.copy(from);
+        Vector2.HELP_1.copy(to);
         Vector2.HELP_0.multiplyScalar(t);
         Vector2.HELP_1.multiplyScalar(1.0 - t);
         return new Vector2(Vector2.HELP_0.x + Vector2.HELP_1.x, Vector2.HELP_0.y + Vector2.HELP_1.y);
@@ -290,7 +290,7 @@ export class Vector2 {
      * @param v Source vector
      * @returns 
      */
-    public copyFrom(v: Vector2): Vector2 {
+    public copy(v: Vector2): this {
         this.x = v.x;
         this.y = v.y;
         return this;

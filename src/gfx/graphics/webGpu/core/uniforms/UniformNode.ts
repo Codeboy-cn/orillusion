@@ -74,7 +74,7 @@ export class UniformNode {
 
     public getColor(ret: Color) {
         if (ret) {
-            ret.copyFrom(this._data);
+            ret.copy(this._data);
         } else {
             ret = this._data;
         }

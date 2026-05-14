@@ -34,7 +34,7 @@ export class OutlinePostData {
     public clearAt(slotIndex: number): this {
         this.dataDirty = true;
         let slot: OutlinePostSlot = this.slots[slotIndex];
-        slot.color.copyFrom(this.defaultColor);
+        slot.color.copy(this.defaultColor);
         slot.indexList.fill(-1);
         slot.count = 0;
         return this;
@@ -49,7 +49,7 @@ export class OutlinePostData {
                 data.indexList[i] = indexList[i];
             }
             data.count = indexList.length;
-            data.color.copyFrom(color);
+            data.color.copy(color);
         }
         return this;
     }

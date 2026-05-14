@@ -134,21 +134,21 @@ export class RayCastMeshDetail {
         //(1 - u - v)V0 + uV1 + vV2
         let d = 1 - u - v;
 
-        this._u0.copyFrom(face.u1);
+        this._u0.copy(face.u1);
         this._u0.multiplyScalar(d);
 
-        this._u1.copyFrom(face.u2);
+        this._u1.copy(face.u2);
         this._u1.multiplyScalar(u);
 
-        this._u2.copyFrom(face.u3);
+        this._u2.copy(face.u3);
         this._u2.multiplyScalar(v);
 
-        this._info.uv.copyFrom(this._u0);
+        this._info.uv.copy(this._u0);
         Vector2.add(this._info.uv, this._u1, this._info.uv);
         Vector2.add(this._info.uv, this._u2, this._info.uv);
 
-        // this.info.uv.copyFrom(face.u1);
-        this._info.localPosition.copyFrom(ray.direction).multiplyScalar(t);
+        // this.info.uv.copy(face.u1);
+        this._info.localPosition.copy(ray.direction).multiplyScalar(t);
         Vector3.add(this._info.localPosition, ray.origin, this._info.localPosition);
         return this._info;
     }

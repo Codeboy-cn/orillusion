@@ -134,10 +134,10 @@ export class Graphics3DShape {
             default:
                 // transform x/y based on UP/normal
                 let u = up.clone().normalize()
-                let v = u.clone().crossProduct(Vector3.X_AXIS).normalize()
+                let v = u.clone().cross(Vector3.X_AXIS).normalize()
                 if(v.length === 0)
-                    v = u.clone().crossProduct(Vector3.Y_AXIS).normalize()
-                let w = u.clone().crossProduct(v)
+                    v = u.clone().cross(Vector3.Y_AXIS).normalize()
+                let w = u.clone().cross(v)
                 points.push(center.clone().add(v.multiplyScalar(x).add(w.multiplyScalar(y))));
                 break;
         }

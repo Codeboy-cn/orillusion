@@ -478,7 +478,7 @@ export class Matrix4 {
         if (Math.abs(src.determinant) <= 0.00000000001) return null;
         result ||= new Matrix4();
         if (result !== src) {
-            result.copyFrom(src);
+            result.copy(src);
         }
         result.invert();
         return result;
@@ -1106,7 +1106,7 @@ export class Matrix4 {
     //  * @param z Angle of rotation around the z axis.
     //      //  */
     // public rotation(x: number, y: number, z: number) {
-    //   Quaternion.CALCULATION_QUATERNION.fromEulerAngles(x, y, z);
+    //   Quaternion.CALCULATION_QUATERNION.setFromEuler(x, y, z);
     //   this.makeTransform(
     //     Matrix4.position_000,
     //     Matrix4.scale_111,
@@ -1256,7 +1256,7 @@ export class Matrix4 {
      */
     public clone(): Matrix4 {
         let ret: Matrix4 = new Matrix4();
-        ret.copyFrom(this);
+        ret.copy(this);
         return ret;
     }
 
@@ -1339,7 +1339,7 @@ export class Matrix4 {
      * @param sourceMatrix3D source Matrix
      * @returns Returns the current matrix
      */
-    public copyFrom(sourceMatrix3D: Matrix4): Matrix4 {
+    public copy(sourceMatrix3D: Matrix4): Matrix4 {
         let data: FloatArray = this.rawData;
         data[0] = sourceMatrix3D.rawData[0];
         data[1] = sourceMatrix3D.rawData[1];
@@ -2015,7 +2015,7 @@ export class Matrix4 {
      */
     public lerp(m0: Matrix4, m1: Matrix4, t: number): void {
         ///t(m1 - m0) + m0
-        this.copyFrom(m1).sub(m0).mult(t).add(m0);
+        this.copy(m1).sub(m0).mult(t).add(m0);
     }
 
     /**
@@ -2074,7 +2074,7 @@ export class Matrix4 {
      * from unity AMath.PI
      */
     public setTRInverse(pos: Vector3, q: Quaternion) {
-        q = q.clone().inverse();
+        q = q.clone().invert();
         Quaternion.quaternionToMatrix(q, this);
         this.translate(new Vector3(-pos.x, -pos.y, -pos.z));
     }
@@ -2348,7 +2348,7 @@ export function multiplyMatrices4x4REF(lhs: Matrix4, rhs: Matrix4, res: Matrix4)
  * @internal
  */
 export function makeMatrix44(r: Vector3, p: Vector3, s: Vector3, outMat: Matrix4) {
-    // Quaternion.CALCULATION_QUATERNION.fromEulerAngles(r.x, r.y, r.z);
+    // Quaternion.CALCULATION_QUATERNION.setFromEuler(r.x, r.y, r.z);
 
     let rawData = outMat.rawData;
 

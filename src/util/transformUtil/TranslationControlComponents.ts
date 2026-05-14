@@ -53,7 +53,7 @@ export class TranslationControlComponents extends TransformControllerBaseCompone
     }
 
     protected applyLocalTransform(currentAxis: TransformAxisEnum, offset: Vector3, distance: number) {
-        Matrix4.help_matrix_0.copyFrom(this.mX.transform.worldMatrix).invert();
+        Matrix4.help_matrix_0.copy(this.mX.transform.worldMatrix).invert();
         Matrix4.transformVector(Matrix4.help_matrix_0, offset, Vector3.HELP_0);
 
         if (!(this.currentAxis == TransformAxisEnum.X || this.currentAxis == TransformAxisEnum.XY || this.currentAxis == TransformAxisEnum.XZ)) {
@@ -88,11 +88,11 @@ export class TranslationControlComponents extends TransformControllerBaseCompone
             Matrix4.help_matrix_0.appendTranslation(0, 0, offset.z);
         }
 
-        Matrix4.help_matrix_1.copyFrom(this.mX.transform.worldMatrix);
+        Matrix4.help_matrix_1.copy(this.mX.transform.worldMatrix);
         Matrix4.help_matrix_1.append(Matrix4.help_matrix_0);
 
         if (this.mX.parent) {
-            Matrix4.help_matrix_2.copyFrom(this.mX.parent.worldMatrix);
+            Matrix4.help_matrix_2.copy(this.mX.parent.worldMatrix);
             Matrix4.help_matrix_2.invert();
             Matrix4.help_matrix_1.multiply(Matrix4.help_matrix_2);
         }

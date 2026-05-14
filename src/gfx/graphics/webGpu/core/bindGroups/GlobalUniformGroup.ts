@@ -118,20 +118,20 @@ export class GlobalUniformGroup {
         if (this._ctx.engine!.setting.useRTE) {
             const mainCamera = Camera3D.mainCamera || camera;
 
-            this.temp_worldMatrix.copyFrom(camera.transform.worldMatrix);
+            this.temp_worldMatrix.copy(camera.transform.worldMatrix);
             const rtePos = Vector3.sub(camera.transform.worldPosition, mainCamera.transform.worldPosition);
             this.temp_worldMatrix.rawData[12] = rtePos.x;
             this.temp_worldMatrix.rawData[13] = rtePos.y;
             this.temp_worldMatrix.rawData[14] = rtePos.z;
 
-            this.temp_viewMatrix.copyFrom(this.temp_worldMatrix);
+            this.temp_viewMatrix.copy(this.temp_worldMatrix);
             this.temp_viewMatrix.invert();
 
             this.uniformGPUBuffer.setMatrix(`_viewMatrix`, this.temp_viewMatrix);
             this.uniformGPUBuffer.setMatrix(`_cameraWorldMatrix`, this.temp_worldMatrix);
             this.uniformGPUBuffer.setMatrix(`pvMatrixInv`, camera.projectionMatrixInv);
 
-            let cameraToWorld = Matrix4.helpMatrix.copyFrom(camera.projectionMatrixInv);
+            let cameraToWorld = Matrix4.helpMatrix.copy(camera.projectionMatrixInv);
             this.temp_viewMatrix.invert();
             cameraToWorld.multiply(this.temp_viewMatrix);
             this.uniformGPUBuffer.setMatrix(`viewToWorld`, cameraToWorld);
@@ -159,7 +159,7 @@ export class GlobalUniformGroup {
                             let shadowCamera: Camera3D = shadowLight.csmShadowCamera[csm];
 
                             if (this._ctx.engine!.setting.useRTE) {
-                                let viewMatrix = this.temp_viewMatrix.copyFrom(shadowCamera.transform.worldMatrix);
+                                let viewMatrix = this.temp_viewMatrix.copy(shadowCamera.transform.worldMatrix);
 
                                 let rtePos = Vector3.sub(shadowCamera.transform.worldPosition, camera.transform.worldPosition);
                                 viewMatrix.rawData[12] = rtePos.x;
@@ -184,7 +184,7 @@ export class GlobalUniformGroup {
                         let shadowCamera = shadowLight.shadowCamera;
 
                         if (this._ctx.engine!.setting.useRTE) {
-                            let viewMatrix = this.temp_viewMatrix.copyFrom(shadowCamera.transform.worldMatrix);
+                            let viewMatrix = this.temp_viewMatrix.copy(shadowCamera.transform.worldMatrix);
 
                             let rtePos = Vector3.sub(shadowCamera.transform.worldPosition, camera.transform.worldPosition, Vector3.HELP_6);
                             viewMatrix.rawData[12] = rtePos.x;

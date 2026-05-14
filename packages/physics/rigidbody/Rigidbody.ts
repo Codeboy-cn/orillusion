@@ -399,7 +399,7 @@ export class Rigidbody extends ComponentBase {
      * Sets the gravity vector applied to the rigid body.
      */
     public set gravity(value: Vector3) {
-        this._gravity.copyFrom(value);
+        this._gravity.copy(value);
         this._btRigidbody?.setGravity(TempPhyMath.toBtVec(value));
     }
     /**
@@ -451,7 +451,7 @@ export class Rigidbody extends ComponentBase {
      * Set velocity value of current object
      */
     public set velocity(value: Vector3) {
-        this._velocity.copyFrom(value);
+        this._velocity.copy(value);
         this.wait().then(rb => rb.applyForce(TempPhyMath.toBtVec(this._velocity), TempPhyMath.zeroBtVec(TempPhyMath.tmpVecB)));
     }
 
@@ -468,7 +468,7 @@ export class Rigidbody extends ComponentBase {
      * Set the angular velocity value of current object
      */
     public set angularVelocity(value: Vector3) {
-        this._angularVelocity.copyFrom(value)
+        this._angularVelocity.copy(value)
         this.wait().then(rb => rb.setAngularVelocity(TempPhyMath.toBtVec(this._angularVelocity)));
     }
     /**
@@ -484,7 +484,7 @@ export class Rigidbody extends ComponentBase {
      * Set the linear velocity value of current object
      */
     public set linearVelocity(value: Vector3) {
-        this._linearVelocity.copyFrom(value)
+        this._linearVelocity.copy(value)
         this.wait().then(rb => rb.setLinearVelocity(TempPhyMath.toBtVec(this._linearVelocity)));
     }
     /**

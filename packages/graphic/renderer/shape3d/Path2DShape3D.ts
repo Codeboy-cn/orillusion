@@ -71,13 +71,13 @@ export class Path2DShape3D extends LineShape3D implements CanvasPath {
         radius = Math.max(0.00001, radius);
 
         let from = Vector3.HELP_0.set(ctrlX - this._currentCoord.x, 0, ctrlY - this._currentCoord.y).normalize();
-        let fRight = from.clone().crossProduct(Vector3.UP).normalize();
+        let fRight = from.clone().cross(Vector3.UP).normalize();
         let to = Vector3.HELP_1.set(toX - ctrlX, 0, toY - ctrlY).normalize();
-        let tRight = to.clone().crossProduct(Vector3.UP).normalize();
-        let isPositive = to.clone().crossProduct(from).y >= 0.0;
+        let tRight = to.clone().cross(Vector3.UP).normalize();
+        let isPositive = to.clone().cross(from).y >= 0.0;
         let halfAngle = Math.acos(from.dotProduct(to)) * 0.5;
         let bevelEdge = radius / Math.cos(halfAngle);
-        let dirCenter = to.clone().subtract(from).normalize();
+        let dirCenter = to.clone().sub(from).normalize();
         let centerPoint = new Vector3(ctrlX + dirCenter.x * bevelEdge, 0, ctrlY + dirCenter.z * bevelEdge);
 
         let rotateLocalPos: Vector3 = fRight.clone().multiplyScalar(radius);
@@ -261,7 +261,7 @@ export class Path2DShape3D extends LineShape3D implements CanvasPath {
     private appendPoint(x: number, y: number) {
         let pt = new Point3D(x, y);
         this._points3D.push(pt);
-        this._currentCoord.copyFrom(pt);
+        this._currentCoord.copy(pt);
         this._isChange = true;
         return this;
     }

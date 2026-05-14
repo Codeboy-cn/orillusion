@@ -49,8 +49,8 @@ export class BoundUtil {
             }
         }
 
-        tempMax.copyFrom(bound.max);
-        tempMin.copyFrom(bound.min);
+        tempMax.copy(bound.max);
+        tempMin.copy(bound.min);
 
         bound.setFromMinMax(tempMin, tempMax);
 
@@ -59,8 +59,8 @@ export class BoundUtil {
 
 
     public static transformBound(matrix: Matrix4, source: BoundingBox, bound?: BoundingBox) {
-        let tempMin = this.genMeshMinVector.copyFrom(source.min);
-        let tempMax = this.genMeshMaxVector.copyFrom(source.max);
+        let tempMin = this.genMeshMinVector.copy(source.min);
+        let tempMax = this.genMeshMaxVector.copy(source.max);
         let tempPoints = this.genMeshVectorList8;
 
         bound ||= new BoundingBox(Vector3.ZERO, Vector3.ZERO);
@@ -80,8 +80,8 @@ export class BoundUtil {
             bound.expandByPoint(p);
         }
 
-        tempMax.copyFrom(bound.max);
-        tempMin.copyFrom(bound.min);
+        tempMax.copy(bound.max);
+        tempMin.copy(bound.min);
 
         bound.setFromMinMax(tempMin, tempMax);
 

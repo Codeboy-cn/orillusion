@@ -495,7 +495,7 @@ export class GUIUtil {
                 // in the render pass only runs at frame time, which would lag behind
                 // a GUI slider drag.
                 const eye = light.transform.worldPosition;
-                const target = new Vector3().copyFrom(light.direction).add(eye);
+                const target = new Vector3().copy(light.direction).add(eye);
                 light.shadowCamera.transform.lookAt(eye, target);
                 g.drawCameraFrustum(light.shadowCamera, light.lightColor);
             }
@@ -670,7 +670,7 @@ export class GUIUtil {
             if (light instanceof SpotLight) {
                 // Cone: apex at light pos, axis along light.direction, opening
                 // at half of outerAngle, extending `range` as the slant length.
-                const axis = new Vector3().copyFrom(light.lightData.direction);
+                const axis = new Vector3().copy(light.lightData.direction);
                 axis.normalize();
                 const slant = light.lightData.range;
                 const halfRad = (light.outerAngle * 0.5) * Math.PI / 180;

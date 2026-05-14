@@ -148,7 +148,7 @@ class Sample_CSM {
         // // light direction
         // this._shadowPos.copy(light.direction).normalize(viewCamera.far);
         // csmBound.center.add(this._shadowPos, this._shadowCameraTarget);
-        // csmBound.center.subtract(this._shadowPos, this._shadowPos);
+        // csmBound.center.sub(this._shadowPos, this._shadowPos);
         // this.graphic3D.drawLines('shadowLine', [this._shadowPos, this._shadowCameraTarget], new Color(1, 1, 0, 1));
     }
 

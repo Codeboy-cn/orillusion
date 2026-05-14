@@ -208,7 +208,7 @@ export class Vector4 {
         return this;
     }
 
-    public copyFrom(v: Vector4): this {
+    public copy(v: Vector4): this {
         this.x = v.x;
         this.y = v.y;
         this.z = v.z;

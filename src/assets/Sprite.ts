@@ -51,8 +51,8 @@ export class Sprite {
     }) {
         if (opts) {
             if (opts.texture) this._texture = opts.texture;
-            if (opts.region) this._region.copyFrom(opts.region);
-            if (opts.pivot) this._pivot.copyFrom(opts.pivot);
+            if (opts.region) this._region.copy(opts.region);
+            if (opts.pivot) this._pivot.copy(opts.pivot);
             if (opts.name) this.name = opts.name;
         }
     }
@@ -67,13 +67,13 @@ export class Sprite {
 
     public get region(): Vector4 { return this._region; }
     public set region(v: Vector4) {
-        this._region.copyFrom(v);
+        this._region.copy(v);
         this._dispatch(SpriteModifyFlags.region);
     }
 
     public get pivot(): Vector2 { return this._pivot; }
     public set pivot(v: Vector2) {
-        this._pivot.copyFrom(v);
+        this._pivot.copy(v);
         this._dispatch(SpriteModifyFlags.pivot);
     }
 
@@ -97,8 +97,8 @@ export class Sprite {
         const out = new Sprite();
         out.name = this.name;
         out._texture = this._texture;
-        out._region.copyFrom(this._region);
-        out._pivot.copyFrom(this._pivot);
+        out._region.copy(this._region);
+        out._pivot.copy(this._pivot);
         return out;
     }
 

@@ -279,14 +279,14 @@ export class Color {
      * @returns 
      */
     public clone(): Color {
-        return new Color().copyFrom(this);
+        return new Color().copy(this);
     }
 
     /**
      * copy color from source color
      * @returns
      */
-    public copyFrom(src: Color): this {
+    public copy(src: Color): this {
         this.r = src.r;
         this.g = src.g;
         this.b = src.b;

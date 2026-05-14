@@ -73,8 +73,8 @@ export class ClothSoftbody extends SoftbodyBase {
             const up = this._geometry.up;
             const rightSeed = up.equals(Vector3.X_AXIS) ? Vector3.BACK : Vector3.X_AXIS;
 
-            const right = up.clone().crossProduct(rightSeed).normalize();
-            const forward = right.clone().crossProduct(up).normalize();
+            const right = up.clone().cross(rightSeed).normalize();
+            const forward = right.clone().cross(up).normalize();
 
             const halfWidth = this._geometry.width / 2;
             const halfHeight = this._geometry.height / 2;
@@ -141,7 +141,7 @@ export class ClothSoftbody extends SoftbodyBase {
         Vector3.add(Vector3.HELP_0, this.anchorPosition, Vector3.HELP_1);
 
         TempPhyMath.fromBtQua(tm.getRotation(), Quaternion.HELP_0);
-        Quaternion.HELP_1.fromEulerAngles(this.anchorRotation.x, this.anchorRotation.y, this.anchorRotation.z);
+        Quaternion.HELP_1.setFromEuler(this.anchorRotation.x, this.anchorRotation.y, this.anchorRotation.z);
         Quaternion.HELP_1.multiply(Quaternion.HELP_0, Quaternion.HELP_1);
 
         clothSoftbody.rotate(TempPhyMath.toBtQua(Quaternion.HELP_1));

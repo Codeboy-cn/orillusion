@@ -178,7 +178,7 @@ export class GlobalFog extends PostBase {
      * @internal
      */
     public set fogColor(value: Color) {
-        this.fogSetting.fogColor.copyFrom(value);
+        this.fogSetting.fogColor.copy(value);
     }
 
     public set falloff(v: number) {

@@ -374,15 +374,15 @@ export class Graphic3D extends Object3D {
             let near = camera.near;
             let pos = camera.transform.worldPosition;
 
-            let farLB = new Vector3().copyFrom(f0).multiplyScalar(far).add(pos);
-            let farLT = new Vector3().copyFrom(f1).multiplyScalar(far).add(pos);
-            let farRB = new Vector3().copyFrom(f2).multiplyScalar(far).add(pos);
-            let farRT = new Vector3().copyFrom(f3).multiplyScalar(far).add(pos);
+            let farLB = new Vector3().copy(f0).multiplyScalar(far).add(pos);
+            let farLT = new Vector3().copy(f1).multiplyScalar(far).add(pos);
+            let farRB = new Vector3().copy(f2).multiplyScalar(far).add(pos);
+            let farRT = new Vector3().copy(f3).multiplyScalar(far).add(pos);
 
-            let nearLB = new Vector3().copyFrom(f0).multiplyScalar(near).add(pos);
-            let nearLT = new Vector3().copyFrom(f1).multiplyScalar(near).add(pos);
-            let nearRB = new Vector3().copyFrom(f2).multiplyScalar(near).add(pos);
-            let nearRT = new Vector3().copyFrom(f3).multiplyScalar(near).add(pos);
+            let nearLB = new Vector3().copy(f0).multiplyScalar(near).add(pos);
+            let nearLT = new Vector3().copy(f1).multiplyScalar(near).add(pos);
+            let nearRB = new Vector3().copy(f2).multiplyScalar(near).add(pos);
+            let nearRT = new Vector3().copy(f3).multiplyScalar(near).add(pos);
 
             let custom = this.createCustomShape(`CameraFrustum_${camera.object3D.instanceID}`);
             custom.buildLines([nearLT, farLT], color);

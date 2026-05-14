@@ -146,7 +146,7 @@ class GlobeTileGeometry extends GeometryBase {
         for (let i = 0; i < vertexCount; i++) {
             const vertex = this.getPointFromIndex(i);
 
-            const relativePosition = vertex.subtract(this.centerPoint);
+            const relativePosition = vertex.sub(this.centerPoint);
             vertexs[i * 3 + 0] = relativePosition.x;
             vertexs[i * 3 + 1] = relativePosition.y;
             vertexs[i * 3 + 2] = relativePosition.z;

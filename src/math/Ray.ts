@@ -32,8 +32,8 @@ export class Ray {
      * @param dir Ray direction
      */
     constructor(origin?: Vector3, dir?: Vector3) {
-        this.origin.copyFrom(origin || new Vector3());
-        this._dir.copyFrom(dir || new Vector3());
+        this.origin.copy(origin || new Vector3());
+        this._dir.copy(dir || new Vector3());
         this._dir.normalize();
     }
 
@@ -45,7 +45,7 @@ export class Ray {
     }
 
     public set direction(dir: Vector3) {
-        this._dir.copyFrom(dir);
+        this._dir.copy(dir);
         this._dir.normalize();
     }
 
@@ -151,7 +151,7 @@ export class Ray {
      * @param origin ray origin
      */
     public setOrigin(origin: Vector3) {
-        this.origin.copyFrom(origin);
+        this.origin.copy(origin);
     }
 
     /**
@@ -178,14 +178,14 @@ export class Ray {
      */
     public sqrDistToPoint(P: Vector3): number {
         let v = this._dir;
-        let w = P.clone().subtract(this.origin);
+        let w = P.clone().sub(this.origin);
 
         let c1 = dot(w, v);
         let c2 = dot(v, v);
         let b = c1 / c2;
 
         let Pb = this.getPoint(b);
-        return sqrMagnitude(P.clone().subtract(Pb));
+        return sqrMagnitude(P.clone().sub(Pb));
     }
 
     /**
@@ -318,7 +318,7 @@ export class Ray {
      * @returns point of intersection
      */
     public intersectSphere(o: Vector3, dir: Vector3, center: Vector3, radius: number): Vector3 {
-        let oc = o.clone().subtract(center);
+        let oc = o.clone().sub(center);
         let a = Vector3.dot(dir, dir);
         let b = 2 * Vector3.dot(oc, dir);
         let c = Vector3.dot(oc, oc) - radius * radius;

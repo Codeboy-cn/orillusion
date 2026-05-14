@@ -104,7 +104,7 @@ export class ClothSimulator extends MeshRenderer {
                 } else if (this.mKeyState[3]) {
                     transform.x += speed
                 }
-                pos.copyFrom(this.mInteractionSphere.transform.worldPosition);
+                pos.copy(this.mInteractionSphere.transform.worldPosition);
             }
 
             this.mClothComputePipeline.compute(command, pos);

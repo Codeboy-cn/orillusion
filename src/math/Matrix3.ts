@@ -103,7 +103,7 @@ export class Matrix3 {
      * @param other  target matrix value
      * @returns current matrix
      */
-    public copyFrom(other: Matrix3): Matrix3 {
+    public copy(other: Matrix3): Matrix3 {
         this.a = other.a;
         this.b = other.b;
         this.c = other.c;
@@ -500,7 +500,7 @@ export class Matrix3 {
     public static multiply(a: Matrix3, b: Matrix3, result?: Matrix3): Matrix3 {
         result ||= new Matrix3();
         if (result !== a) {
-            result.copyFrom(a);
+            result.copy(a);
         }
         result.mul(b);
         return result;

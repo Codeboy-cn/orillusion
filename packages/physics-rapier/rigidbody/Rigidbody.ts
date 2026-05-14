@@ -361,7 +361,7 @@ export class Rigidbody extends ComponentBase {
                 q = rotation;
             } else {
                 q = Quaternion.HELP_0;
-                q.fromEulerAngles(rotation.x, rotation.y, rotation.z);
+                q.setFromEuler(rotation.x, rotation.y, rotation.z);
             }
             this._body.setRotation({ x: q.x, y: q.y, z: q.z, w: q.w }, true);
         }

@@ -50,11 +50,11 @@ export class GlassMaterial extends Material {
     //     ret.aoMap = this.aoMap;
     //     if (this.maskMap) ret.maskMap = this.maskMap;
     //     ret.emissiveMap = this.emissiveMap;
-    //     this.transformUV1 && (ret.transformUV1 = new Vector4().copyFrom(this.transformUV1));
-    //     this.uvTransform_2 && (ret.uvTransform_2 = new Vector4().copyFrom(this.uvTransform_2));
+    //     this.transformUV1 && (ret.transformUV1 = new Vector4().copy(this.transformUV1));
+    //     this.uvTransform_2 && (ret.uvTransform_2 = new Vector4().copy(this.uvTransform_2));
     //     ret.baseColor = this.baseColor.clone();
     //     ret.emissiveColor = this.emissiveColor.clone();
-    //     this.materialF0 && (ret.materialF0 = new Vector4().copyFrom(this.materialF0));
+    //     this.materialF0 && (ret.materialF0 = new Vector4().copy(this.materialF0));
     //     ret.envIntensity = this.envIntensity;
     //     ret.normalScale = this.normalScale;
     //     ret.roughness = this.roughness;

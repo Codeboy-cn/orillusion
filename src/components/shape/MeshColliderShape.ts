@@ -33,7 +33,7 @@ export class MeshColliderShape extends ColliderShape {
             let indexAttribute = this.mesh.getAttribute(VertexAttributeName.indices);
 
             let helpMatrix = ColliderShape.helpMatrix;
-            helpMatrix.copyFrom(fromMatrix).invert();
+            helpMatrix.copy(fromMatrix).invert();
 
             let helpRay = ColliderShape.helpRay.copy(ray);
             helpRay.applyMatrix(helpMatrix);

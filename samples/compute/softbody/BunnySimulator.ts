@@ -112,7 +112,7 @@ export class BunnySimulator extends MeshRenderer {
             } else if (this.mKeyState[3]) {
                 transform.x += speed
             }
-            pos.copyFrom(this.mInteractionBox.transform.worldPosition);
+            pos.copy(this.mInteractionBox.transform.worldPosition);
         }
 
         this._tickTime += Time.delta / 1000.0;

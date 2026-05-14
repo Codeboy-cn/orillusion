@@ -60,7 +60,7 @@ export class Navi3DRouter {
 
         if (this.isPointAtCenter(Navi3DRouter.TEST_RAY, this.rayA, this.rayB)) {
             if (!this.hasCrossPoint(nextCommonEdge.pointA, nextCommonEdge.pointB, this.rayAPoint, this.rayA)) {
-                this.rayA.copyFrom(Navi3DRouter.TEST_RAY);
+                this.rayA.copy(Navi3DRouter.TEST_RAY);
                 if (targetPoint instanceof Navi3DPoint) {
                     this.rayAPoint = <Navi3DPoint>targetPoint;
                 }
@@ -70,7 +70,7 @@ export class Navi3DRouter {
 
             }
             else {
-                this.rayB.copyFrom(Navi3DRouter.TEST_RAY);
+                this.rayB.copy(Navi3DRouter.TEST_RAY);
                 if (targetPoint instanceof Navi3DPoint) {
                     this.rayBPoint = <Navi3DPoint>targetPoint;
                 }
@@ -87,9 +87,9 @@ export class Navi3DRouter {
         }
         else {
             var needReturn: boolean;
-            Navi3DRouter.TEST_RAY_1.copyFrom(nextCommonEdge.pointA);
+            Navi3DRouter.TEST_RAY_1.copy(nextCommonEdge.pointA);
             Navi3DRouter.TEST_RAY_1.decrementBy(this.curPoint);
-            Navi3DRouter.TEST_RAY_2.copyFrom(nextCommonEdge.pointB);
+            Navi3DRouter.TEST_RAY_2.copy(nextCommonEdge.pointB);
             Navi3DRouter.TEST_RAY_2.decrementBy(this.curPoint);
             Navi3DRouter.TEST_RAY_1.y = 0;
             Navi3DRouter.TEST_RAY_2.y = 0;
@@ -140,7 +140,7 @@ export class Navi3DRouter {
     }
 
     public calcCrossPoint(segmentPt1: Vector3, segmentPt2: Vector3, linePoint: Vector3, lineDirection: Vector3): Vector3 {
-        Navi3DRouter.CALC_CROSS_POINT.copyFrom(segmentPt2);
+        Navi3DRouter.CALC_CROSS_POINT.copy(segmentPt2);
         Navi3DRouter.CALC_CROSS_POINT.decrementBy(segmentPt1);
 
         let distance = Navi3DRouter.CALC_CROSS_POINT.x * lineDirection.z - lineDirection.x * Navi3DRouter.CALC_CROSS_POINT.z;
@@ -161,7 +161,7 @@ export class Navi3DRouter {
     }
 
     public calcCrossPointOut(segmentPt1: Vector3, segmentPt2: Vector3, linePoint: Vector3, lineDirection: Vector3): Vector3 {
-        Navi3DRouter.CALC_CROSS_POINT.copyFrom(segmentPt2);
+        Navi3DRouter.CALC_CROSS_POINT.copy(segmentPt2);
         Navi3DRouter.CALC_CROSS_POINT.decrementBy(segmentPt1);
 
         var scale: number = ((segmentPt1.z - linePoint.z) * lineDirection.x - (segmentPt1.x - linePoint.x) * lineDirection.z) /
@@ -176,7 +176,7 @@ export class Navi3DRouter {
     }
 
     public hasCrossPoint(segmentPt1: Vector3, segmentPt2: Vector3, linePoint: Vector3, lineDirection: Vector3): boolean {
-        Navi3DRouter.CALC_CROSS_TEST.copyFrom(segmentPt2);
+        Navi3DRouter.CALC_CROSS_TEST.copy(segmentPt2);
         Navi3DRouter.CALC_CROSS_TEST.decrementBy(segmentPt1);
 
         var scale: number = ((segmentPt1.z - linePoint.z) * lineDirection.x - (segmentPt1.x - linePoint.x) * lineDirection.z) /
@@ -185,12 +185,12 @@ export class Navi3DRouter {
     }
 
     private isPointAtCenter(point: Vector3, vectorA: Vector3, vectorB: Vector3): boolean {
-        var cp1: Vector3 = vectorA.clone().crossProduct(point);
+        var cp1: Vector3 = vectorA.clone().cross(point);
         if (cp1.length == 0 && point.length < vectorA.length) {
             return true;
         }
 
-        var cp2: Vector3 = vectorB.clone().crossProduct(point);
+        var cp2: Vector3 = vectorB.clone().cross(point);
         if (cp2.length == 0 && point.length < vectorB.length) {
             return true;
         }

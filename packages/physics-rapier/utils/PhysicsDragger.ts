@@ -90,7 +90,7 @@ export class PhysicsDragger {
         this._originalBodyType = body.bodyType();
         body.setBodyType(RAPIER.RigidBodyType.KinematicPositionBased, true);
 
-        this._hitPoint.copyFrom(hit.point);
+        this._hitPoint.copy(hit.point);
         const origin = body.translation();
         this._offset.set(origin.x - this._hitPoint.x, origin.y - this._hitPoint.y, origin.z - this._hitPoint.z);
 

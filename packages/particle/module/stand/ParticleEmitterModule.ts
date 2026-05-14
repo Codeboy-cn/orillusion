@@ -140,7 +140,7 @@ export class ParticleEmitterModule extends ParticleModuleBase {
    * Set box size, only when the shape is box
    */
   public set boxSize(v: Vector3) {
-    this._boxSize.copyFrom(v);
+    this._boxSize.copy(v);
     this.needReset = true;
   }
 

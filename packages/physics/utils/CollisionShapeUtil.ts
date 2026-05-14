@@ -191,7 +191,7 @@ export class CollisionShapeUtil {
         if (!geometry) return null;
 
         let shape: Ammo.btCollisionShape;
-        let scale = Vector3.HELP_0.copyFrom(object3D.localScale);
+        let scale = Vector3.HELP_0.copy(object3D.localScale);
 
         // 根据几何类型创建相应的碰撞形状
         switch (true) {

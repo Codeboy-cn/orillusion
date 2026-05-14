@@ -79,8 +79,8 @@ export class TwoBoneIK {
         const end = animator.getJointObject(this.chain[2]);
         if (!root || !mid || !end) return;
 
-        this._origRootQ.copyFrom(root.localQuaternion);
-        this._origMidQ.copyFrom(mid.localQuaternion);
+        this._origRootQ.copy(root.localQuaternion);
+        this._origMidQ.copy(mid.localQuaternion);
 
         const aWp = root.transform.worldPosition;
         const bWp = mid.transform.worldPosition;
@@ -215,10 +215,10 @@ function composeWorldQuat(obj: Object3D | null, out: Quaternion): Quaternion {
         stack.push(cur);
         cur = cur.parent ? (cur.parent.object3D as Object3D) : null;
     }
-    out.copyFrom(stack[stack.length - 1].localQuaternion);
+    out.copy(stack[stack.length - 1].localQuaternion);
     for (let i = stack.length - 2; i >= 0; i--) {
         _qComposeTmp.multiply(out, stack[i].localQuaternion);
-        out.copyFrom(_qComposeTmp);
+        out.copy(_qComposeTmp);
     }
     return out;
 }

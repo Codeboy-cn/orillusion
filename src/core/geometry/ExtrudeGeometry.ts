@@ -63,7 +63,7 @@ export class ExtrudeGeometry extends GeometryBase {
                 section.normal = normal.clone();
                 section.distance = 0;
             } else {
-                normal = nextPoint.clone().subtract(curPoint);
+                normal = nextPoint.clone().sub(curPoint);
                 section.distance = normal.length;
                 section.normal = normal.normalize();
             }
@@ -122,7 +122,7 @@ export class ExtrudeGeometry extends GeometryBase {
         let uDistance = 0;
         let uList: number[] = [0];
         for (let i = 1; i < shapeVertexCount; i++) {
-            uDistance += shape[i - 1].clone().subtract(shape[i]).length;
+            uDistance += shape[i - 1].clone().sub(shape[i]).length;
             uList.push(uDistance);
         }
 

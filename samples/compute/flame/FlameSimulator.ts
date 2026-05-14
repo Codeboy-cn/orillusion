@@ -45,7 +45,7 @@ export class FlameSimulator extends MeshRenderer {
 
     public onCompute(view: View3D, command?: GPUCommandEncoder) {
         if (this.mFlameComputePipeline) {
-            this.mInvModelMatrix.copyFrom(this.transform.worldMatrix);
+            this.mInvModelMatrix.copy(this.transform.worldMatrix);
             this.mInvModelMatrix.invert();
             const invBuf = this.mFlameComputePipeline.modelInverseMatrixBuffer;
             invBuf.setMatrix("", this.mInvModelMatrix);

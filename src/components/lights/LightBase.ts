@@ -131,17 +131,17 @@ export class LightBase extends ComponentBase implements ILight {
     }
 
     protected onPositionChange() {
-        this.lightData.lightPosition.copyFrom(this.transform.worldPosition);
+        this.lightData.lightPosition.copy(this.transform.worldPosition);
         this.onChange();
     }
 
     protected onRotChange() {
         if (this.dirFix == 1) {
-            this.lightData.direction.copyFrom(this.transform.forward);
+            this.lightData.direction.copy(this.transform.forward);
         } else {
-            this.lightData.direction.copyFrom(this.transform.back);
+            this.lightData.direction.copy(this.transform.back);
         }
-        this.lightData.lightTangent.copyFrom(this.transform.up);
+        this.lightData.lightTangent.copy(this.transform.up);
         this.onChange();
     }
 

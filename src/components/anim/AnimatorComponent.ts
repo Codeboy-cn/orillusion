@@ -291,7 +291,7 @@ export class AnimatorComponent extends ComponentBase {
 
             list.push(obj.transform.worldMatrix.index);
             let local = new Matrix4();
-            local.copyFrom(obj.transform.worldMatrix);
+            local.copy(obj.transform.worldMatrix);
             local.invert();
             this.inverseBindMatrices.push(local.rawData);
         }
@@ -527,32 +527,32 @@ export class AnimatorComponent extends ComponentBase {
                 let obj = this.skeltonPoseObject3D[joint.boneName];
 
                 if (anyClipHasPos) {
-                    this._bonePos.copyFrom(this.getPosition(joint.bonePath, this._skeletonTime, mixClip[0].clip));
+                    this._bonePos.copy(this.getPosition(joint.bonePath, this._skeletonTime, mixClip[0].clip));
                     for (let i = 1; i < mixClip.length; i++) {
                         const clipState = mixClip[i];
                         let pos = this.getPosition(joint.bonePath, this._skeletonTime, clipState.clip);
                         Vector3.HELP_0.lerp(this._bonePos, pos, clipState.weight / totalWeight);
-                        this._bonePos.copyFrom(Vector3.HELP_0);
+                        this._bonePos.copy(Vector3.HELP_0);
                     }
                     obj.transform.localPosition = this._bonePos;
                 }
 
-                this._boneRot.copyFrom(this.getRotation(joint.bonePath, this._skeletonTime, mixClip[0].clip));
+                this._boneRot.copy(this.getRotation(joint.bonePath, this._skeletonTime, mixClip[0].clip));
                 for (let i = 1; i < mixClip.length; i++) {
                     const clipState = mixClip[i];
                     let rot = this.getRotation(joint.bonePath, this._skeletonTime, clipState.clip);
                     Quaternion.HELP_2.slerp(this._boneRot, rot, clipState.weight / totalWeight);
-                    this._boneRot.copyFrom(Quaternion.HELP_2);
+                    this._boneRot.copy(Quaternion.HELP_2);
                 }
                 obj.transform.localRotQuat = this._boneRot;
 
                 if (anyClipHasScale) {
-                    this._boneScale.copyFrom(this.getScale(joint.bonePath, this._skeletonTime, mixClip[0].clip));
+                    this._boneScale.copy(this.getScale(joint.bonePath, this._skeletonTime, mixClip[0].clip));
                     for (let i = 1; i < mixClip.length; i++) {
                         const clipState = mixClip[i];
                         let scale = this.getScale(joint.bonePath, this._skeletonTime, clipState.clip);
                         Vector3.HELP_0.lerp(this._boneScale, scale, clipState.weight / totalWeight);
-                        this._boneScale.copyFrom(Vector3.HELP_0);
+                        this._boneScale.copy(Vector3.HELP_0);
                     }
                     obj.transform.localScale = this._boneScale;
                 }

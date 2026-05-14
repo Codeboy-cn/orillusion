@@ -387,7 +387,7 @@ class fixedCameraController extends ComponentBase {
         if (!this._target) return;
         this._tempDir.set(0, 0, -1);
         const q = Quaternion.HELP_0;
-        q.fromEulerAngles(this.pitch, 0, 0.0);
+        q.setFromEuler(this.pitch, 0, 0.0);
         this._tempDir.applyQuaternion(q);
         this._tempDir = Matrix4.transformVector(this._target.transform.worldMatrix, this._tempDir, this._tempDir);
         this._tempDir.normalize();

@@ -73,7 +73,7 @@ export class MorphTargetBlender extends ComponentBase {
         this._matrix4.copyColFrom(0, this._vec3);
 
         this._matrix4.transpose();
-        this._quaternion.fromMatrix(this._matrix4);
+        this._quaternion.setFromRotationMatrix(this._matrix4);
         this.object3D.localQuaternion = this._quaternion;
         //morph
         for (let keyInModel in keyMapper) {

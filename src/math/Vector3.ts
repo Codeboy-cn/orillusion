@@ -666,14 +666,6 @@ export class Vector3 {
      * @param src Original vector
      * @returns 
      */
-    public copyFrom(src: Vector3): Vector3 {
-        var v = this;
-        v.x = src.x;
-        v.y = src.y;
-        v.z = src.z;
-        v.w = src.w;
-        return v;
-    }
 
     /**
      * Subtract two vectors and assign the result to yourself
@@ -856,7 +848,7 @@ export class Vector3 {
      * @returns A new Vector3 object that is the difference between the
      *          current Vector3 and the specified Vector3 object.
      */
-    public subtract(a: Vector3): this {
+    public sub(a: Vector3): this {
         return Vector3.sub(this, a, this) as this;
     }
 
@@ -930,11 +922,11 @@ export class Vector3 {
     //         }
     //         // directions are almost opposite
     //         else if (dot < -1.0 + 0.00001) {
-    //             Vector3.HELP_0.copyFrom(lhs);
+    //             Vector3.HELP_0.copy(lhs);
     //             var lhsNorm: Vector3 = Vector3.HELP_0.divide(lhsMag);
     //             this.OrthoNormalVectorFast(lhsNorm, Vector3.HELP_1);
     //             var axis: Vector3 = Vector3.HELP_1;
-    //             Quaternion.HELP_0.fromAxisAngle(Vector3.HELP_1, 3.1415926 * t * MathConfig.RADIANS_TO_DEGREES);
+    //             Quaternion.HELP_0.setFromAxisAngle(Vector3.HELP_1, 3.1415926 * t * MathConfig.RADIANS_TO_DEGREES);
     //             var m: Matrix4 = Quaternion.HELP_0.toMatrix3D(Matrix4.helpMatrix);
     //             m.transformVector4(lhsNorm, this);
     //             this.multiplyScalar(lerpedMagnitude);
@@ -945,11 +937,11 @@ export class Vector3 {
     //             lhs.dotProduct;
     //             this.Cross(lhs, rhs, Vector3.HELP_0);
     //             var axis: Vector3 = Vector3.HELP_0;
-    //             Vector3.HELP_1.copyFrom(lhs);
+    //             Vector3.HELP_1.copy(lhs);
     //             var lhsNorm: Vector3 = Vector3.HELP_1.divide(lhsMag);
     //             axis.normalize();
     //             var angle: number = Math.acos(dot) * t;
-    //             Quaternion.HELP_0.fromAxisAngle(axis, angle * MathConfig.RADIANS_TO_DEGREES);
+    //             Quaternion.HELP_0.setFromAxisAngle(axis, angle * MathConfig.RADIANS_TO_DEGREES);
     //             var m: Matrix4 = Quaternion.HELP_0.toMatrix3D(Matrix4.helpMatrix);
     //             m.transformVector4(lhsNorm, this);
     //             this.multiplyScalar(lerpedMagnitude);
@@ -982,15 +974,15 @@ export class Vector3 {
         let ty = Math.abs(this.y);
         if (tx > ty) {
             if (this.x > 0) {
-                this.copyFrom(Vector3.RIGHT);
+                this.copy(Vector3.RIGHT);
             } else {
-                this.copyFrom(Vector3.LEFT);
+                this.copy(Vector3.LEFT);
             }
         } else {
             if (this.y > 0) {
-                this.copyFrom(Vector3.DOWN);
+                this.copy(Vector3.DOWN);
             } else {
-                this.copyFrom(Vector3.UP);
+                this.copy(Vector3.UP);
             }
         }
     }
@@ -1014,7 +1006,7 @@ export class Vector3 {
     /**
      * Cross product with another vector. Returns a new Vector3.
      */
-    public crossProduct(a: Vector3): this {
+    public cross(a: Vector3): this {
         return Vector3.cross(this, a, this) as this;
     }
 

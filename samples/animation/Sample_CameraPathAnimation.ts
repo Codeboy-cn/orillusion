@@ -272,7 +272,7 @@ class Sample_CameraPathAnimation {
     private modifyBasePoints(target: Object3D) {
         let { pathInfo, index }: { pathInfo: PathInfo, index: number } = target.data;
         if (!pathInfo.basePoints[index].equals(target.localPosition)) {
-            pathInfo.basePoints[index].copyFrom(target.localPosition);
+            pathInfo.basePoints[index].copy(target.localPosition);
             this.refreshLine(pathInfo, index);
         }
     }
@@ -458,8 +458,8 @@ class AxisController extends ComponentBase {
         let targetPos = this.selectedTarget.localPosition;
 
         // 使用两个辅助向量定义参考线的起点和终点
-        Vector3.HELP_0.copyFrom(targetPos)[axis] -= 10000;
-        Vector3.HELP_1.copyFrom(targetPos)[axis] += 10000;
+        Vector3.HELP_0.copy(targetPos)[axis] -= 10000;
+        Vector3.HELP_1.copy(targetPos)[axis] += 10000;
 
         // const color = { 'x': Color.COLOR_RED, 'y': Color.COLOR_GREEN, 'z': Color.COLOR_BLUE }[axis]
         (this.view as any).graphic3D?.drawLines('referenceLine', [Vector3.HELP_0, Vector3.HELP_1]); //  创建一条参考线

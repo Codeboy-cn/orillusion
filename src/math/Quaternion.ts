@@ -184,7 +184,7 @@ export class Quaternion {
      * @param axis  axis
      * @param angle angle
      */
-    public fromAxisAngle(axis: Vector3, angle: number): this {
+    public setFromAxisAngle(axis: Vector3, angle: number): this {
         angle *= Math.PI / 180.0;
         var halfAngle: number = angle * 0.5;
         var sinA: number = Math.sin(halfAngle);
@@ -315,7 +315,7 @@ export class Quaternion {
      * @param    ay        The angle in radians of the rotation around the ay axis.
      * @param    az        The angle in radians of the rotation around the az axis.
      */
-    public fromEulerAngles(ax: number, ay: number, az: number): Quaternion {
+    public setFromEuler(ax: number, ay: number, az: number): Quaternion {
         ax *= DEGREES_TO_RADIANS;
         ay *= DEGREES_TO_RADIANS;
         az *= DEGREES_TO_RADIANS;
@@ -452,23 +452,10 @@ export class Quaternion {
     }
 
     /**
-     * Extracts a quaternion rotation matrix out of a given Matrix3D object.
-     * @param matrix The Matrix3D out of which the rotation will be extracted.
-     */
-    public fromMatrix(matrix: any): this {
-        var v: Vector3 = matrix.decompose(Orientation3D.QUATERNION)[1];
-        this.x = v.x;
-        this.y = v.y;
-        this.z = v.z;
-        this.w = v.w;
-        return this;
-    }
-
-    /**
      * Inverts this quaternion in place. Mutates and returns this.
      */
-    public inverse(): this {
-        return Quaternion.inverse(this, this) as this;
+    public invert(): this {
+        return Quaternion.invert(this, this) as this;
     }
 
     /**
@@ -490,7 +477,7 @@ export class Quaternion {
      * Copies the data from a quaternion into this instance.
      * @param q The quaternion to copy from.
      */
-    public copyFrom(q: Quaternion | Vector3): this {
+    public copy(q: Quaternion | Vector3): this {
         var v = this;
         v.x = q.x;
         v.y = q.y;
@@ -526,7 +513,7 @@ export class Quaternion {
     /**
      * Invert a quaternion.
      */
-    public static inverse(src: Quaternion, result?: Quaternion): Quaternion {
+    public static invert(src: Quaternion, result?: Quaternion): Quaternion {
         result ||= new Quaternion();
         const norm = src.w * src.w + src.x * src.x + src.y * src.y + src.z * src.z;
         if (norm > 0.0) {

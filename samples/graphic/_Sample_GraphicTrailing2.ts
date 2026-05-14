@@ -147,7 +147,7 @@ export class Sample_GraphicMesh_Trailing2 {
                 //     let p = j / (trail3d.length - 1);
 
                 //     let q = Quaternion.HELP_0;
-                //     q.fromEulerAngles(0, p * 360 * 4, 0);
+                //     q.setFromEuler(0, p * 360 * 4, 0);
                 //     q.transformVector(Vector3.RIGHT, dir);
 
                 //     trail3d[j].x = dir.x * lx * p;

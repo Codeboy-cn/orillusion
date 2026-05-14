@@ -107,13 +107,13 @@ export class TilesRenderer {
     private applyTransform(transform: Transform, matrix: Matrix4) {
         let prs: Vector3[] = matrix.decompose(Orientation3D.QUATERNION);
 
-        transform.localRotQuat.copyFrom(prs[1]);
+        transform.localRotQuat.copy(prs[1]);
         transform.localRotQuat = transform.localRotQuat;
 
-        transform.localPosition.copyFrom(prs[0]);
+        transform.localPosition.copy(prs[0]);
         transform.localPosition = transform.localPosition;
 
-        transform.localScale.copyFrom(prs[2]);
+        transform.localScale.copy(prs[2]);
         transform.localScale = transform.localScale;
     }
 

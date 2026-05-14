@@ -297,7 +297,7 @@ export class ShadowPass extends RenderGraphPass {
     }
 
     private _poseShadowCamera(dirLight: DirectLight, viewCamera: Camera3D, direction: Vector3, shadowCamera: Camera3D, _extents: number, _lookAt: Vector3): void {
-        this._shadowPos.copyFrom(dirLight.transform.worldPosition);
+        this._shadowPos.copy(dirLight.transform.worldPosition);
         this._shadowCameraTarget.copy(direction).normalize(viewCamera.far);
         Vector3.add(this._shadowCameraTarget, this._shadowPos, this._shadowCameraTarget);
         shadowCamera.transform.lookAt(this._shadowPos, this._shadowCameraTarget);

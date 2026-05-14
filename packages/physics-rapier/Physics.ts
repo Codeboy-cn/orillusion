@@ -49,7 +49,7 @@ class _Physics {
 
         await RAPIER.init();
 
-        if (options.gravity) this._gravity.copyFrom(options.gravity);
+        if (options.gravity) this._gravity.copy(options.gravity);
 
         this._world = new RAPIER.World({
             x: this._gravity.x,
@@ -238,7 +238,7 @@ class _Physics {
     public get isStop(): boolean { return this._isStop; }
 
     public set gravity(value: Vector3) {
-        this._gravity.copyFrom(value);
+        this._gravity.copy(value);
         if (this._world) this._world.gravity = TempPhyMath.toRVec(value);
     }
     public get gravity(): Vector3 { return this._gravity; }

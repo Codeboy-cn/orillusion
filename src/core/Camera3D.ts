@@ -287,7 +287,7 @@ export class Camera3D extends ComponentBase {
      * view invert matrix
      */
     public get viewMatrix(): Matrix4 {
-        this._viewMatrix.copyFrom(this.transform.worldMatrix);
+        this._viewMatrix.copy(this.transform.worldMatrix);
         this._viewMatrix.invert();
         return this._viewMatrix;
     }
@@ -297,7 +297,7 @@ export class Camera3D extends ComponentBase {
      * shadow camera view invert matrix
      */
     public get shadowViewMatrix(): Matrix4 {
-        this._viewMatrix.copyFrom(this.transform.worldMatrix);
+        this._viewMatrix.copy(this.transform.worldMatrix);
         this._viewMatrix.appendScale(1, 1.0, 1.0);
         this._viewMatrix.invert();
         return this._viewMatrix;
@@ -354,7 +354,7 @@ export class Camera3D extends ComponentBase {
 
     public get pvMatrix2(): Matrix4 {
         matrixMultiply(this._projectionMatrix, this.transform.worldMatrix, this._pvMatrix);
-        let matrix = this._pvMatrixInv.copyFrom(this.pvMatrix);
+        let matrix = this._pvMatrixInv.copy(this.pvMatrix);
         matrix.invert();
         return matrix;
     }
@@ -363,13 +363,13 @@ export class Camera3D extends ComponentBase {
      * get (project * view) invert matrix
      */
     public get pvMatrixInv(): Matrix4 {
-        let matrix = this._pvMatrixInv.copyFrom(this.pvMatrix);
+        let matrix = this._pvMatrixInv.copy(this.pvMatrix);
         matrix.invert();
         return matrix;
     }
 
     public get vMatrixInv(): Matrix4 {
-        let matrix = this._viewMatrixInv.copyFrom(this.viewMatrix);
+        let matrix = this._viewMatrixInv.copy(this.viewMatrix);
         matrix.invert();
         return matrix;
     }
@@ -377,7 +377,7 @@ export class Camera3D extends ComponentBase {
     public get cameraToWorld(): Matrix4 {
         let cameraToWorld = Matrix4.helpMatrix;
         cameraToWorld.identity();
-        cameraToWorld.copyFrom(this.projectionMatrixInv);
+        cameraToWorld.copy(this.projectionMatrixInv);
         cameraToWorld.multiply(this.vMatrixInv);
         return cameraToWorld;
     }
@@ -385,7 +385,7 @@ export class Camera3D extends ComponentBase {
     public get ndcToView(): Matrix4 {
         let cameraToWorld = Matrix4.helpMatrix;
         cameraToWorld.identity();
-        cameraToWorld.copyFrom(this.projectionMatrixInv);
+        cameraToWorld.copy(this.projectionMatrixInv);
         return cameraToWorld;
     }
 
@@ -393,7 +393,7 @@ export class Camera3D extends ComponentBase {
      * get project invert matrix
      */
     public get projectionMatrixInv(): Matrix4 {
-        this._projectionMatrixInv.copyFrom(this._projectionMatrix);
+        this._projectionMatrixInv.copy(this._projectionMatrix);
         this._projectionMatrixInv.invert();
         return this._projectionMatrixInv;
     }
@@ -416,7 +416,7 @@ export class Camera3D extends ComponentBase {
         target.x *= sZ;
         target.y *= sZ;
 
-        this._unprojection.copyFrom(this._projectionMatrix);
+        this._unprojection.copy(this._projectionMatrix);
         this._unprojection.invert();
 
         MathUtil.transformVector(this._unprojection, target, target);
@@ -450,10 +450,10 @@ export class Camera3D extends ComponentBase {
 
         let start = CameraUtil.UnProjection(viewPortPosX, viewPortPosY, 0.01, this);
         let end = CameraUtil.UnProjection(viewPortPosX, viewPortPosY, 1.0, this);
-        end = end.subtract(start).normalize();
+        end = end.sub(start).normalize();
 
-        ray.origin.copyFrom(start);
-        // ray.dir.copyFrom(end);
+        ray.origin.copy(start);
+        // ray.dir.copy(end);
         ray.direction = end;
 
         return ray;
@@ -491,7 +491,7 @@ export class Camera3D extends ComponentBase {
      */
     public lookAt(pos: Vector3, target: Vector3, up: Vector3 = Vector3.Y_AXIS) {
         this.transform.lookAt(pos, target, up);
-        if (target) this.lookTarget.copyFrom(target);
+        if (target) this.lookTarget.copy(target);
     }
 
     /**

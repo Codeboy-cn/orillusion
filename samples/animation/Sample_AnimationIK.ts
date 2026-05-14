@@ -343,7 +343,7 @@ class Sample_AnimationIK {
             if (handBone && this.sphere) {
                 const sphereWp = this.sphere.transform.worldPosition;
                 const invHandWorld = new Matrix4();
-                invHandWorld.copyFrom(handBone.transform.worldMatrix);
+                invHandWorld.copy(handBone.transform.worldMatrix);
                 invHandWorld.invert();
                 Matrix4.multiplyPoint3(invHandWorld, sphereWp, this._tmpVec);
                 handBone.addChild(this.sphere);
@@ -560,7 +560,7 @@ class Sample_AnimationIK {
                 ? (this._ikTargetBone.parent.object3D as Object3D)
                 : null;
             if (parentObj) {
-                this._invParentMat.copyFrom(parentObj.transform.worldMatrix);
+                this._invParentMat.copy(parentObj.transform.worldMatrix);
                 this._invParentMat.invert();
                 this._tmpVec.set(wx, wy, wz);
                 Matrix4.multiplyPoint3(this._invParentMat, this._tmpVec, this._tmpVec);
@@ -752,10 +752,10 @@ class Sample_AnimationIK {
             stack.push(cur);
             cur = cur.parent ? (cur.parent.object3D as Object3D) : null;
         }
-        out.copyFrom(stack[stack.length - 1].localQuaternion);
+        out.copy(stack[stack.length - 1].localQuaternion);
         for (let i = stack.length - 2; i >= 0; i--) {
             this._lookComposeTmp.multiply(out, stack[i].localQuaternion);
-            out.copyFrom(this._lookComposeTmp);
+            out.copy(this._lookComposeTmp);
         }
         return out;
     }

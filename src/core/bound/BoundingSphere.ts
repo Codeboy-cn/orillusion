@@ -59,8 +59,8 @@ export class BoundingSphere implements IBound {
      * @returns {Boolean} True if there is an intersection.
      */
     public intersectsRay(ray: Ray, point: Vector3) {
-        var m = this.tmpVecA.copyFrom(ray.origin).subtract(this.center);
-        var b = m.dotProduct(this.tmpVecB.copyFrom(ray.direction).normalize());
+        var m = this.tmpVecA.copy(ray.origin).sub(this.center);
+        var b = m.dotProduct(this.tmpVecB.copy(ray.direction).normalize());
         var c = m.dotProduct(m) - this.radius * this.radius;
 
         // exit if ray's origin outside of sphere (c > 0) and ray pointing away from s (b > 0)
@@ -74,7 +74,7 @@ export class BoundingSphere implements IBound {
         var t = Math.abs(-b - Math.sqrt(discr));
 
         // if t is negative, ray started inside sphere so clamp t to zero
-        if (point) point.copyFrom(ray.direction).multiplyScalar(t).add(ray.origin);
+        if (point) point.copy(ray.direction).multiplyScalar(t).add(ray.origin);
 
         return true;
     }

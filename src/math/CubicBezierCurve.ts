@@ -64,9 +64,9 @@ export class CubicBezierCurve {
         let q1 = controlVerts[1].clone().add(controlVerts[2].clone().add(controlVerts[1]).multiplyScalar(t));
         let q2 = controlVerts[2].clone().add(controlVerts[3].clone().add(controlVerts[2]).multiplyScalar(t));
 
-        let r0 = q0.clone().add(q1.clone().subtract(q0).multiplyScalar(t));
-        let r1 = q1.clone().add(q2.clone().subtract(q1).multiplyScalar(t));
-        let tangent = r1.subtract(r0);
+        let r0 = q0.clone().add(q1.clone().sub(q0).multiplyScalar(t));
+        let r1 = q1.clone().add(q2.clone().sub(q1).multiplyScalar(t));
+        let tangent = r1.sub(r0);
         return tangent;
     }
 
@@ -100,8 +100,8 @@ export class CubicBezierCurve {
 
         let posA = this.getPoint(paramA);
         let posB = this.getPoint(paramB);
-        let distASq = posA.subtract(pos).lengthSquared;
-        let distBSq = posB.subtract(pos).lengthSquared;
+        let distASq = posA.sub(pos).lengthSquared;
+        let distBSq = posB.sub(pos).lengthSquared;
 
         if (distASq < distBSq) {
             endT = mid;

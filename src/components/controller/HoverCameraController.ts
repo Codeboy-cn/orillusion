@@ -158,7 +158,7 @@ export class HoverCameraController extends ComponentBase {
     public flowTarget(target: Object3D, offset: Vector3 = Vector3.ZERO) {
         this._flowTarget = target;
         this._flowOffset ||= new Vector3();
-        this._flowOffset.copyFrom(offset);
+        this._flowOffset.copy(offset);
     }
 
     public getFlowTarget(): Object3D {
@@ -259,7 +259,7 @@ export class HoverCameraController extends ComponentBase {
         if (!this.enable) return;
 
         if (this._flowTarget) {
-            Vector3.HELP_0.copyFrom(this._flowTarget.transform.worldPosition);
+            Vector3.HELP_0.copy(this._flowTarget.transform.worldPosition);
             Vector3.add(Vector3.HELP_0, this._flowOffset, Vector3.HELP_0);
             this.target = Vector3.HELP_0;
         }
@@ -288,7 +288,7 @@ export class HoverCameraController extends ComponentBase {
         this._tempDir.set(0, 0, 1);
 
         let q = Quaternion.HELP_0;
-        q.fromEulerAngles(this._pitch, this._roll, 0.0);
+        q.setFromEuler(this._pitch, this._roll, 0.0);
         this._tempDir.applyQuaternion(q);
 
         this._tempPos = Vector3Ex.mulScale(this._tempDir, this._distance, this._tempPos);

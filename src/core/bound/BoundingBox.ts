@@ -60,9 +60,9 @@ export class BoundingBox implements IBound {
         Vector3.sub(max, min, this.size);
         Vector3.add(min, max, this.center);
         this.center.multiplyScalar(0.5);
-        this.extents.copyFrom(this.size).multiplyScalar(0.5);
-        this.min.copyFrom(min);
-        this.max.copyFrom(max);
+        this.extents.copy(this.size).multiplyScalar(0.5);
+        this.min.copy(min);
+        this.max.copy(max);
         return this;
     }
 

@@ -180,12 +180,12 @@ export class OrbitController extends ComponentBase {
         let step = this._isPanning ? 1 : this.smooth
         let changed = false
         if (!this._cPosition.equals(this.object3D.transform.localPosition)) {
-            this._position.copyFrom(this.object3D.transform.localPosition)
+            this._position.copy(this.object3D.transform.localPosition)
             step = 1
             changed = true
         }
         if (!this._cTarget.equals(this._target)) {
-            this._cTarget.copyFrom(this._target)
+            this._cTarget.copy(this._target)
             step = 1
             changed = true
         }
@@ -261,7 +261,7 @@ export class OrbitController extends ComponentBase {
             Vector3Ex.mulScale(this.object3D.transform.right, -e.movementX * this.panFactor, Vector3.HELP_1);
             this._target.x -= Vector3.HELP_1.x;
             this._target.z -= Vector3.HELP_1.z;
-            this._cTarget.copyFrom(this._target)
+            this._cTarget.copy(this._target)
             this.updateCamera();
         }
         this._lastMouseX = mousex;

@@ -163,7 +163,7 @@ export class CollisionShapeUtil {
         const geometry = object3D.getComponent(MeshRenderer)?.geometry;
         if (!geometry) return null;
 
-        const scale = Vector3.HELP_0.copyFrom(object3D.localScale);
+        const scale = Vector3.HELP_0.copy(object3D.localScale);
 
         if (geometry instanceof BoxGeometry) {
             const size = new Vector3(geometry.width, geometry.height, geometry.depth).multiply(scale);

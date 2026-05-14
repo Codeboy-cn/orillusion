@@ -65,7 +65,7 @@ export class CameraUtil {
 
         let outP = new Vector3(0, 0, 0);
         let projectWorld = Matrix4.helpMatrix2;
-        projectWorld.copyFrom(camera.projectionMatrix);
+        projectWorld.copy(camera.projectionMatrix);
         projectWorld.invert();
         let cameraToWorld = Matrix4.helpMatrix;
         cameraToWorld.identity();
@@ -85,7 +85,7 @@ export class CameraUtil {
     public static Projection(point: Vector3, camera: Camera3D, target?: Vector3) {
         let outP = target ? target : new Vector3(0, 0, 0);
         let cameraToWorld = Matrix4.helpMatrix;
-        cameraToWorld.copyFrom(camera.viewMatrix);
+        cameraToWorld.copy(camera.viewMatrix);
         cameraToWorld.multiply(camera.projectionMatrix);
         cameraToWorld.perspectiveMultiplyPoint3(point, outP);
 
@@ -112,7 +112,7 @@ export class CameraUtil {
     public static UnProjection2(sceneX: number, sceneY: number, z: number, camera: Camera3D, target: Vector3) {
         let outP = target ? target : new Vector3(0, 0, 0);
         let cameraToWorld = Matrix4.helpMatrix;
-        cameraToWorld.copyFrom(camera.pvMatrixInv);
+        cameraToWorld.copy(camera.pvMatrixInv);
 
         // let w = camera.viewPort.width / 2;
         // let h = camera.viewPort.height / 2;

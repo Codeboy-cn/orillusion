@@ -92,7 +92,7 @@ export class HairSimulator extends MeshRenderer {
             var newpos = new Vector3();
             if (this.mInteractionSphere) {
                 var transform = this.mInteractionSphere.transform;
-                pos.copyFrom(this.mInteractionSphere.transform.worldPosition);
+                pos.copy(this.mInteractionSphere.transform.worldPosition);
                 let dt = Time.delta / 1000.0;
                 let speed = 0.5 * dt;
                 // console.log(speed);
@@ -108,7 +108,7 @@ export class HairSimulator extends MeshRenderer {
                 } else if (this.mKeyState[3]) {
                     transform.x += speed
                 }
-                newpos.copyFrom(this.mInteractionSphere.transform.worldPosition);
+                newpos.copy(this.mInteractionSphere.transform.worldPosition);
             }
             // console.log(pos, newpos);
             this.mComputePipeline.compute(command, pos, newpos);

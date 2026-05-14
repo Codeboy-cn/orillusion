@@ -232,7 +232,7 @@ export class MathUtil {
         target ||= new Quaternion();
         let mat: Matrix4 = Matrix4.help_matrix_2;
         Matrix4.fromToRotation(fromDirection, toDirection, mat);
-        target.fromMatrix(mat);
+        target.setFromRotationMatrix(mat);
         return target;
     }
 
@@ -243,7 +243,7 @@ export class MathUtil {
      */
     public static getEularDir_yUp(v: number): Vector3 {
         let q = Quaternion.HELP_0;
-        q.fromEulerAngles(0, v, 0);
+        q.setFromEuler(0, v, 0);
         Quaternion.transformVector(q, Vector3.Z_AXIS, Vector3.HELP_5);
         return Vector3.HELP_5;
     }
@@ -777,7 +777,7 @@ export function normalizeFast(inV: Vector3) {
  * @internal
  */
 export function crossProduct(lhs: Vector3, rhs: Vector3) {
-    return lhs.clone().crossProduct(rhs);
+    return lhs.clone().cross(rhs);
 }
 
 /**

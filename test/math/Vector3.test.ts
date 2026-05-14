@@ -33,7 +33,7 @@ await test('Vector3 sub', async () => {
     let a = new Vector3(20, 10, 0);
     let b = new Vector3(10, 10, 0);
 
-    let result = a.subtract(b);
+    let result = a.sub(b);
     expect(result.x).toEqual(10);
     expect(result.y).toEqual(0);
     expect(result.z).toEqual(0);

@@ -244,8 +244,8 @@ export class TAAPost extends PostBase {
 
         this._boundCtx!.gpuContext.computeCommand(command, [this.copyTexCompute, this.taaCompute, this.sharpCompute]);
         this._boundCtx!.gpuContext.lastRenderPassState = this.rendererPassState;
-        this.preProjMatrix.copyFrom(view.camera.projectionMatrix);
-        this.preViewMatrix.copyFrom(view.camera.viewMatrix);
+        this.preProjMatrix.copy(view.camera.projectionMatrix);
+        this.preViewMatrix.copy(view.camera.viewMatrix);
     }
 
     public onResize(): void {
