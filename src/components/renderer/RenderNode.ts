@@ -535,14 +535,20 @@ export class RenderNode extends ComponentBase {
         let node = this;
         let worldMatrix = node.object3D.transform._worldMatrix;
         const gpu = view.engine3D.context3D.gpuContext;
-        for (let i = 0; i < this.materials.length; i++) {
-            const material = this.materials[i];
+        // Iterate by the larger of materials/subGeometries so that
+        // single-material geometries with multiple subGeometries (e.g.
+        // CylinderGeometry's torso + two caps) draw every sub-mesh.
+        // Reusing materials[0] mirrors the legacy `renderPass` path.
+        const subGeometries = node._geometry.subGeometries;
+        const nCount = Math.max(this.materials.length, subGeometries.length);
+        for (let i = 0; i < nCount; i++) {
+            const material = i >= this.materials.length ? this.materials[0] : this.materials[i];
             if (!material.castShadow && passType == PassType.SHADOW)
                 continue;
             // material.applyUniform();
             let passes = material.getPass(passType);
             if (!passes || passes.length == 0)
-                return;
+                continue;
 
             if (this.drawType == 2) {
                 for (let matPass of passes) {
@@ -560,8 +566,7 @@ export class RenderNode extends ComponentBase {
                     //     continue;
                     if (matPass.pipeline) {
                         gpu.bindPipeline(encoder, matPass);
-                        let subGeometries = node._geometry.subGeometries;
-                        const subGeometry = subGeometries[i];
+                        const subGeometry = i >= subGeometries.length ? subGeometries[0] : subGeometries[i];
                         let lodInfos = subGeometry.lodLevels;
                         let lodInfo = lodInfos[node.lodLevel];
                         if (this.instanceCount > 0) {
@@ -584,18 +589,22 @@ export class RenderNode extends ComponentBase {
 
         let node = this;
         const gpu = view.engine3D.context3D.gpuContext;
-        for (let i = 0; i < this.materials.length; i++) {
-            let material = this.materials[i];
+        // See renderPass2 above — iterate by max(materials, subGeometries)
+        // so cap subGeometries on single-material meshes still get recorded
+        // into the bundle (otherwise the shadow bundle path misses them).
+        const subGeometries = node._geometry.subGeometries;
+        const nCount = Math.max(this.materials.length, subGeometries.length);
+        for (let i = 0; i < nCount; i++) {
+            const material = i >= this.materials.length ? this.materials[0] : this.materials[i];
 
             let passes = material.getPass(passType);
-            if (!passes || passes.length == 0) return;
+            if (!passes || passes.length == 0) continue;
 
             let worldMatrix = node.object3D.transform._worldMatrix;
             for (let j = 0; j < passes.length; j++) {
                 const renderShader = passes[j];
                 gpu.bindPipeline(encoder, renderShader);
-                let subGeometries = node._geometry.subGeometries;
-                const subGeometry = subGeometries[i];
+                const subGeometry = i >= subGeometries.length ? subGeometries[0] : subGeometries[i];
                 let lodInfos = subGeometry.lodLevels;
                 let lodInfo = lodInfos[node.lodLevel];
                 gpu.drawIndexed(encoder, lodInfo.indexCount, 1, lodInfo.indexStart, 0, worldMatrix.index);
