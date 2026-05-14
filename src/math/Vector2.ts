@@ -351,4 +351,128 @@ export class Vector2 {
 
         return this;
     }
+
+    // -------- three.js-style standard instance API --------
+
+    /** Set this = a + b. */
+    public addVectors(a: Vector2, b: Vector2): this {
+        return Vector2.add(a, b, this) as this;
+    }
+
+    /** Set this = a - b. */
+    public subVectors(a: Vector2, b: Vector2): this {
+        return Vector2.sub(a, b, this) as this;
+    }
+
+    /** Set this = a * b component-wise. */
+    public multiplyVectors(a: Vector2, b: Vector2): this {
+        return Vector2.multiply(a, b, this) as this;
+    }
+
+    /** Negate this vector. Three.js-canonical alias of {@link neg}. */
+    public negate(): this {
+        return Vector2.negate(this, this) as this;
+    }
+
+    /** Squared length. */
+    public lengthSq(): number {
+        return this.x * this.x + this.y * this.y;
+    }
+
+    /** Euclidean distance to v. Three.js-canonical alias of {@link distance}. */
+    public distanceTo(v: Vector2): number {
+        return this.distance(v);
+    }
+
+    /** Squared distance to v. */
+    public distanceToSquared(v: Vector2): number {
+        const dx = this.x - v.x;
+        const dy = this.y - v.y;
+        return dx * dx + dy * dy;
+    }
+
+    /** Linearly interpolate this towards v by alpha. */
+    public lerp(v: Vector2, alpha: number): this {
+        this.x += (v.x - this.x) * alpha;
+        this.y += (v.y - this.y) * alpha;
+        return this;
+    }
+
+    /** Set this = v1 + (v2 - v1) * alpha. */
+    public lerpVectors(v1: Vector2, v2: Vector2, alpha: number): this {
+        this.x = v1.x + (v2.x - v1.x) * alpha;
+        this.y = v1.y + (v2.y - v1.y) * alpha;
+        return this;
+    }
+
+    /** Component-wise min/max/clamp. */
+    public min(v: Vector2): this {
+        this.x = Math.min(this.x, v.x);
+        this.y = Math.min(this.y, v.y);
+        return this;
+    }
+
+    public max(v: Vector2): this {
+        this.x = Math.max(this.x, v.x);
+        this.y = Math.max(this.y, v.y);
+        return this;
+    }
+
+    public clamp(min: Vector2, max: Vector2): this {
+        this.x = Math.max(min.x, Math.min(max.x, this.x));
+        this.y = Math.max(min.y, Math.min(max.y, this.y));
+        return this;
+    }
+
+    public floor(): this {
+        this.x = Math.floor(this.x);
+        this.y = Math.floor(this.y);
+        return this;
+    }
+
+    public ceil(): this {
+        this.x = Math.ceil(this.x);
+        this.y = Math.ceil(this.y);
+        return this;
+    }
+
+    public round(): this {
+        this.x = Math.round(this.x);
+        this.y = Math.round(this.y);
+        return this;
+    }
+
+    public roundToZero(): this {
+        this.x = this.x < 0 ? Math.ceil(this.x) : Math.floor(this.x);
+        this.y = this.y < 0 ? Math.ceil(this.y) : Math.floor(this.y);
+        return this;
+    }
+
+    public fromArray(array: ArrayLike<number>, offset: number = 0): this {
+        this.x = array[offset];
+        this.y = array[offset + 1];
+        return this;
+    }
+
+    public toArray(array: number[] = [], offset: number = 0): number[] {
+        array[offset] = this.x;
+        array[offset + 1] = this.y;
+        return array;
+    }
+
+    /** Rotate this around `center` by angle (radians). */
+    public rotateAround(center: Vector2, angle: number): this {
+        const c = Math.cos(angle), s = Math.sin(angle);
+        const x = this.x - center.x;
+        const y = this.y - center.y;
+        this.x = x * c - y * s + center.x;
+        this.y = x * s + y * c + center.y;
+        return this;
+    }
+
+    public random(): this {
+        this.x = Math.random();
+        this.y = Math.random();
+        return this;
+    }
 }

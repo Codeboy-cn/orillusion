@@ -457,12 +457,12 @@ export class Matrix4 {
         return this;
     }
 
-    /**
-     * Multiply two matrices: result = a * b. Allocates a new Matrix4 if result is omitted.
-     * @param a left-hand matrix
-     * @param b right-hand matrix
-     * @param result optional output matrix
-     */
+    /** Set this = m * this. */
+    public premultiply(m: Matrix4): this {
+        return this.multiplyMatrices(m, this) as this;
+    }
+
+    /** Multiply two matrices: result = a * b. Allocates a new Matrix4 if result is omitted. */
     public static multiply(a: Matrix4, b: Matrix4, result?: Matrix4): Matrix4 {
         result ||= new Matrix4();
         result.multiplyMatrices(a, b);

@@ -601,11 +601,18 @@ export class Vector3 {
         return Vector3.add(this, a, this) as this;
     }
 
+    /** Set this = a + b. Three.js-style ternary mutator. */
+    public addVectors(a: Vector3, b: Vector3): this {
+        return Vector3.add(a, b, this) as this;
+    }
+
     public subVectors(a: Vector3, b: Vector3): this {
-        this.x = a.x - b.x;
-        this.y = a.y - b.y;
-        this.z = a.z - b.z;
-        return this;
+        return Vector3.sub(a, b, this) as this;
+    }
+
+    /** Set this = a * b component-wise. */
+    public multiplyVectors(a: Vector3, b: Vector3): this {
+        return Vector3.multiply(a, b, this) as this;
     }
 
     public addScalar(scalar: number): Vector3{
@@ -1057,6 +1064,171 @@ export class Vector3 {
         this.z += v.z * scale;
         return this;
     }
+
+    // -------- three.js-style standard instance API --------
+
+    /** Dot product. Three.js-canonical alias of {@link dotProduct}. */
+    public dot(v: Vector3): number {
+        return this.x * v.x + this.y * v.y + this.z * v.z;
+    }
+
+    /** Squared length of this vector. */
+    public lengthSq(): number {
+        return this.x * this.x + this.y * this.y + this.z * this.z;
+    }
+
+    /** Euclidean distance to v. */
+    public distanceTo(v: Vector3): number {
+        return Math.sqrt(this.distanceToSquared(v));
+    }
+
+    /** Angle between this and v, in radians (range [0, π]). */
+    public angleTo(v: Vector3): number {
+        const denom = Math.sqrt(this.lengthSq() * v.lengthSq());
+        if (denom === 0) return Math.PI / 2;
+        const theta = this.dot(v) / denom;
+        return Math.acos(Math.max(-1, Math.min(1, theta)));
+    }
+
+    /** Set this to v1 + (v2 - v1) * alpha. Three.js-canonical alias of {@link lerp}. */
+    public lerpVectors(v1: Vector3, v2: Vector3, alpha: number): this {
+        this.lerp(v1, v2, alpha);
+        return this;
+    }
+
+    /** Set this = position column of Matrix4 m. */
+    public setFromMatrixPosition(m: { rawData: ArrayLike<number> }): this {
+        const e = m.rawData;
+        this.x = e[12];
+        this.y = e[13];
+        this.z = e[14];
+        return this;
+    }
+
+    /** Set this = scale extracted from Matrix4 m (length of each column basis). */
+    public setFromMatrixScale(m: { rawData: ArrayLike<number> }): this {
+        const e = m.rawData;
+        const sx = Math.hypot(e[0], e[1], e[2]);
+        const sy = Math.hypot(e[4], e[5], e[6]);
+        const sz = Math.hypot(e[8], e[9], e[10]);
+        this.x = sx;
+        this.y = sy;
+        this.z = sz;
+        return this;
+    }
+
+    /** Set this = column index of Matrix4 m (0, 1, 2, or 3). */
+    public setFromMatrixColumn(m: { rawData: ArrayLike<number> }, index: number): this {
+        const offset = index * 4;
+        const e = m.rawData;
+        this.x = e[offset];
+        this.y = e[offset + 1];
+        this.z = e[offset + 2];
+        return this;
+    }
+
+    /** Project this onto v. Mutates and returns this. */
+    public projectOnVector(v: Vector3): this {
+        const denom = v.lengthSq();
+        if (denom === 0) return this.set(0, 0, 0) as this;
+        const scalar = v.dot(this) / denom;
+        return this.copy(v).multiplyScalar(scalar) as this;
+    }
+
+    /** Project this onto a plane defined by its normal (unit vector). */
+    public projectOnPlane(planeNormal: Vector3): this {
+        Vector3._tmp.copy(this).projectOnVector(planeNormal);
+        return this.sub(Vector3._tmp);
+    }
+
+    /** Reflect this off a surface with the given unit normal. */
+    public reflect(normal: Vector3): this {
+        return this.sub(Vector3._tmp.copy(normal).multiplyScalar(2 * this.dot(normal)));
+    }
+
+    /** Apply a 3x3 matrix to this vector. */
+    public applyMatrix3(m: { rawData: ArrayLike<number> } | { a: number, b: number, c: number, d: number, tx: number, ty: number }): this {
+        const r = (m as any).rawData;
+        if (r) {
+            const x = this.x, y = this.y, z = this.z;
+            this.x = r[0] * x + r[3] * y + r[6] * z;
+            this.y = r[1] * x + r[4] * y + r[7] * z;
+            this.z = r[2] * x + r[5] * y + r[8] * z;
+        } else {
+            // Matrix3 (orillusion 2D-ish: a/b/c/d/tx/ty), treat as homogeneous 2D
+            const a = m as any;
+            const x = this.x, y = this.y;
+            this.x = a.a * x + a.c * y + a.tx;
+            this.y = a.b * x + a.d * y + a.ty;
+        }
+        return this;
+    }
+
+    /** Apply axis-angle rotation (axis must be unit, angle in radians). */
+    public applyAxisAngle(axis: Vector3, angle: number): this {
+        // Rodrigues' rotation formula
+        const halfA = angle * 0.5;
+        const s = Math.sin(halfA);
+        // build quaternion (qx, qy, qz, qw) on the fly
+        const qx = axis.x * s, qy = axis.y * s, qz = axis.z * s, qw = Math.cos(halfA);
+        return this.applyQuaternion({ x: qx, y: qy, z: qz, w: qw });
+    }
+
+    /** Transform this as a direction (no translation) by Matrix4 m, then normalize. */
+    public transformDirection(m: { rawData: ArrayLike<number> }): this {
+        const e = m.rawData;
+        const x = this.x, y = this.y, z = this.z;
+        this.x = e[0] * x + e[4] * y + e[8] * z;
+        this.y = e[1] * x + e[5] * y + e[9] * z;
+        this.z = e[2] * x + e[6] * y + e[10] * z;
+        return this.normalize() as this;
+    }
+
+    /** Three.js-canonical alias of {@link setFromArray}. */
+    public fromArray(array: ArrayLike<number>, offset: number = 0): this {
+        this.x = array[offset];
+        this.y = array[offset + 1];
+        this.z = array[offset + 2];
+        return this;
+    }
+
+    public floor(): this {
+        this.x = Math.floor(this.x);
+        this.y = Math.floor(this.y);
+        this.z = Math.floor(this.z);
+        return this;
+    }
+
+    public ceil(): this {
+        this.x = Math.ceil(this.x);
+        this.y = Math.ceil(this.y);
+        this.z = Math.ceil(this.z);
+        return this;
+    }
+
+    public round(): this {
+        this.x = Math.round(this.x);
+        this.y = Math.round(this.y);
+        this.z = Math.round(this.z);
+        return this;
+    }
+
+    public roundToZero(): this {
+        this.x = this.x < 0 ? Math.ceil(this.x) : Math.floor(this.x);
+        this.y = this.y < 0 ? Math.ceil(this.y) : Math.floor(this.y);
+        this.z = this.z < 0 ? Math.ceil(this.z) : Math.floor(this.z);
+        return this;
+    }
+
+    /** Fill this with components in [0, 1). */
+    public random(): this {
+        this.x = Math.random();
+        this.y = Math.random();
+        this.z = Math.random();
+        return this;
+    }
+
+    private static _tmp: Vector3 = new Vector3();
 
     private static calAngle(cx, cy, x, y) {
         const radian = getCosBy2pt(x, y, cx, cy);

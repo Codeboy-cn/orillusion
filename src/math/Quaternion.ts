@@ -562,6 +562,89 @@ export class Quaternion {
         let v = new Quaternion(value.x, value.y, value.z, value.w);
         return v;
     }
+
+    // -------- three.js-style standard instance API --------
+
+    /** Set this = a * b. Three.js-canonical alias of {@link multiply}. */
+    public multiplyQuaternions(a: Quaternion, b: Quaternion): this {
+        return this.multiply(a, b);
+    }
+
+    /** Set this = q * this. */
+    public premultiply(q: Quaternion): this {
+        return Quaternion.mul(q, this, this) as this;
+    }
+
+    /** Conjugate: negate (x, y, z). For a unit quaternion this equals the inverse. */
+    public conjugate(): this {
+        this.x = -this.x;
+        this.y = -this.y;
+        this.z = -this.z;
+        return this;
+    }
+
+    public dot(q: Quaternion): number {
+        return this.x * q.x + this.y * q.y + this.z * q.z + this.w * q.w;
+    }
+
+    public lengthSq(): number {
+        return this.dot(this);
+    }
+
+    public length(): number {
+        return Math.sqrt(this.lengthSq());
+    }
+
+    public equals(q: Quaternion): boolean {
+        return q.x === this.x && q.y === this.y && q.z === this.z && q.w === this.w;
+    }
+
+    public fromArray(array: ArrayLike<number>, offset: number = 0): this {
+        this.x = array[offset];
+        this.y = array[offset + 1];
+        this.z = array[offset + 2];
+        this.w = array[offset + 3];
+        return this;
+    }
+
+    public toArray(array: number[] = [], offset: number = 0): number[] {
+        array[offset] = this.x;
+        array[offset + 1] = this.y;
+        array[offset + 2] = this.z;
+        array[offset + 3] = this.w;
+        return array;
+    }
+
+    /** Set this = the rotation that takes unit vector vFrom to unit vector vTo. */
+    public setFromUnitVectors(vFrom: Vector3, vTo: Vector3): this {
+        let r = vFrom.x * vTo.x + vFrom.y * vTo.y + vFrom.z * vTo.z + 1;
+        if (r < Number.EPSILON) {
+            // vFrom and vTo are antiparallel — pick any axis ⟂ vFrom
+            r = 0;
+            if (Math.abs(vFrom.x) > Math.abs(vFrom.z)) {
+                this.x = -vFrom.y;
+                this.y = vFrom.x;
+                this.z = 0;
+            } else {
+                this.x = 0;
+                this.y = -vFrom.z;
+                this.z = vFrom.y;
+            }
+            this.w = r;
+        } else {
+            this.x = vFrom.y * vTo.z - vFrom.z * vTo.y;
+            this.y = vFrom.z * vTo.x - vFrom.x * vTo.z;
+            this.z = vFrom.x * vTo.y - vFrom.y * vTo.x;
+            this.w = r;
+        }
+        return this.normalize();
+    }
+
+    /** Three.js-canonical alias of {@link slerp} (qa, qb, t form). */
+    public slerpQuaternions(qa: Quaternion, qb: Quaternion, t: number): this {
+        this.slerp(qa, qb, t);
+        return this;
+    }
 }
 
 /**
