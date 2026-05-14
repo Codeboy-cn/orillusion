@@ -60,7 +60,7 @@ class Sample_ExtrudeGeometry {
             points.push( new Vector2( 600, 370 ) );
             points.push( new Vector2( 610, 320 ) );
 
-            let shape = new Shape2D(points.map(p=>p.multiplyScaler(0.25)))
+            let shape = new Shape2D(points.map(p=>p.multiplyScalar(0.25)))
             this.addShape(shape, -300, -60, 0)
         }
 

@@ -52,7 +52,7 @@ await test('Vector2 addScalar', async () => {
 
 await test('Vector2 scale', async () => {
     let a = new Vector2(20, 10);
-    a.scale(10);
+    a.multiplyScalar(10);
 
     expect(a.x).toEqual(200);
     expect(a.y).toEqual(100);

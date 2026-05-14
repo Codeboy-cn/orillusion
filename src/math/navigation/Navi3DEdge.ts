@@ -59,7 +59,7 @@ export class Navi3DEdge {
 
         if (this.fatPointA.radius != radius) {
             Navi3DEdge.CALC_FAT_VECTOR.copyFrom(this._edgeDirA2B);
-            Navi3DEdge.CALC_FAT_VECTOR.scaleBy(radius);
+            Navi3DEdge.CALC_FAT_VECTOR.multiplyScalar(radius);
             Navi3DEdge.CALC_FAT_VECTOR.incrementBy(this._pointA);
             this.fatPointA.copyFrom(Navi3DEdge.CALC_FAT_VECTOR);
             this.fatPointA.radius = radius;
@@ -67,7 +67,7 @@ export class Navi3DEdge {
 
         if (this.fatPointB.radius != radius) {
             Navi3DEdge.CALC_FAT_VECTOR.copyFrom(this._edgeDirA2B);
-            Navi3DEdge.CALC_FAT_VECTOR.scaleBy(-radius);
+            Navi3DEdge.CALC_FAT_VECTOR.multiplyScalar(-radius);
             Navi3DEdge.CALC_FAT_VECTOR.incrementBy(this._pointB);
             this.fatPointB.copyFrom(Navi3DEdge.CALC_FAT_VECTOR);
             this.fatPointB.radius = radius;

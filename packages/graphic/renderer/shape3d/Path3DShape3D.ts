@@ -243,7 +243,7 @@ export class Path3DShape3D extends LineShape3D {
             offset.y += y;
             for (let j = 0; j <= segment; j++) {
                 tempAngle = angle + Math.PI * 0.5 * j / segment;
-                point = new Vector2(Math.cos(tempAngle), Math.sin(tempAngle)).multiplyScaler(radii);
+                point = new Vector2(Math.cos(tempAngle), Math.sin(tempAngle)).multiplyScalar(radii);
                 Vector2.add(point, offset, point);
                 firstPosition ||= point;
                 roundRectList.push(point);

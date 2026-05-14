@@ -166,14 +166,14 @@ export class CollisionShapeUtil {
         const scale = Vector3.HELP_0.copyFrom(object3D.localScale);
 
         if (geometry instanceof BoxGeometry) {
-            const size = new Vector3(geometry.width, geometry.height, geometry.depth).scale(scale);
+            const size = new Vector3(geometry.width, geometry.height, geometry.depth).multiply(scale);
             return this.createBoxShape(object3D, size);
         }
         if (geometry instanceof SphereGeometry) {
             return this.createSphereShape(object3D, geometry.radius * scale.x);
         }
         if (geometry instanceof PlaneGeometry) {
-            const size = new Vector3(geometry.width, 0.001, geometry.height).scale(scale);
+            const size = new Vector3(geometry.width, 0.001, geometry.height).multiply(scale);
             return this.createBoxShape(object3D, size);
         }
         if (geometry instanceof CylinderGeometry) {

@@ -26,7 +26,7 @@ export class Navi3DPointFat extends Navi3DPoint {
         var point: Navi3DPointFat = new Navi3DPointFat(this._ownerPoint, this._ownerEdge);
         point.copyFrom(this);
         point.decrementBy(this._ownerPoint);
-        point.scaleBy(value);
+        point.multiplyScalar(value);
         point.radius = point.length;
         point.incrementBy(this._ownerPoint);
         return point;

@@ -74,7 +74,7 @@ export class BoundingSphere implements IBound {
         var t = Math.abs(-b - Math.sqrt(discr));
 
         // if t is negative, ray started inside sphere so clamp t to zero
-        if (point) point.copyFrom(ray.direction).scaleBy(t).add(ray.origin);
+        if (point) point.copyFrom(ray.direction).multiplyScalar(t).add(ray.origin);
 
         return true;
     }

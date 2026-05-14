@@ -77,10 +77,10 @@ export class Graphic3D extends Object3D {
         for (let i = 0; i < samples; ++i) {
             let t = (i + 1) / (samples + 1.0);
             let _1t = 1 - t;
-            let v0 = p0.mul(_1t * _1t * _1t);
-            let v1 = p1.mul(3 * t * _1t * _1t);
-            let v2 = p2.mul(3 * t * t * _1t);
-            let v3 = p3.mul(t * t * t);
+            let v0 = p0.clone().multiplyScalar(_1t * _1t * _1t);
+            let v1 = p1.clone().multiplyScalar(3 * t * _1t * _1t);
+            let v2 = p2.clone().multiplyScalar(3 * t * t * _1t);
+            let v3 = p3.clone().multiplyScalar(t * t * t);
             result[i] = v0.add(v1).add(v2).add(v3);
         }
         return result;

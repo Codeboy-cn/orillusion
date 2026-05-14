@@ -197,7 +197,7 @@ export class CollisionShapeUtil {
         switch (true) {
             case geometry instanceof BoxGeometry: {
                 const { width, height, depth } = geometry;
-                const size = new Vector3(width, height, depth).scale(scale);
+                const size = new Vector3(width, height, depth).multiply(scale);
                 shape = this.createBoxShape(object3D, size);
                 break;
             }
@@ -208,7 +208,7 @@ export class CollisionShapeUtil {
             }
             case geometry instanceof PlaneGeometry: {
                 const { width, height } = geometry;
-                const size = new Vector3(width, 0, height).scale(scale);
+                const size = new Vector3(width, 0, height).multiply(scale);
                 shape = this.createBoxShape(object3D, size);
                 break;
             }

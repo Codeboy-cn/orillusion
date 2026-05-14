@@ -97,7 +97,7 @@ export class DirectLight extends LightBase {
             // Centroid of the 8 frustum corners.
             sphereCenter.set(0, 0, 0);
             for (let c = 0; c < 8; c++) Vector3.add(sphereCenter, corners[c], sphereCenter);
-            sphereCenter.scaleBy(1 / 8);
+            sphereCenter.multiplyScalar(1 / 8);
             // Sphere radius = farthest corner to centroid, padded by the
             // safety factor for caster-coverage headroom.
             let radius = 0;

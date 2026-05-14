@@ -107,7 +107,7 @@ export class GlobalIlluminationComponent extends ComponentBase {
             let id = `showRays${probeIndex}${i}`;
 
             let start = this._probes[probeIndex].transform.worldPosition.clone();
-            let end = dir.scaleBy(len);
+            let end = dir.multiplyScalar(len);
             Vector3.add(end, start, end);
 
             //view.graphic3D.Clear(id);

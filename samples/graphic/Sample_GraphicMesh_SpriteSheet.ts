@@ -122,7 +122,7 @@ export class Sample_GraphicMesh_SpriteSheet {
             for (let i = 0; i < len; i++) {
                 const element = this.parts[i];
                 let tmp = this.sphericalFibonacci(i, len);
-                tmp.scaleBy(this.cafe);
+                tmp.multiplyScalar(this.cafe);
                 element.transform.localPosition = tmp;
                 this.tmpArray.push(element);
                 // update uv

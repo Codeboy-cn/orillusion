@@ -90,7 +90,7 @@ export class Sample_GraphicMesh_0 {
             for (let i = 0; i < this.parts.length; i++) {
                 const element = this.parts[i];
                 let tmp = this.sphericalFibonacci(i, this.parts.length);
-                tmp.scaleBy(Math.sin((i + Time.frame * 0.01)) * 50);
+                tmp.multiplyScalar(Math.sin((i + Time.frame * 0.01)) * 50);
                 element.transform.localPosition = tmp;
             }
         }

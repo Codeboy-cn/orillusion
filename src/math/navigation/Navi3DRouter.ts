@@ -155,7 +155,7 @@ export class Navi3DRouter {
         else if (scale < 0) {
             scale = 0;
         }
-        Navi3DRouter.CALC_CROSS_POINT.scaleBy(scale);
+        Navi3DRouter.CALC_CROSS_POINT.multiplyScalar(scale);
         Navi3DRouter.CALC_CROSS_POINT.incrementBy(segmentPt1);
         return Navi3DRouter.CALC_CROSS_POINT.clone();
     }
@@ -170,7 +170,7 @@ export class Navi3DRouter {
         if (scale <= 1 && scale >= 0) {
             return null;
         }
-        Navi3DRouter.CALC_CROSS_POINT.scaleBy(scale);
+        Navi3DRouter.CALC_CROSS_POINT.multiplyScalar(scale);
         Navi3DRouter.CALC_CROSS_POINT.incrementBy(segmentPt1);
         return Navi3DRouter.CALC_CROSS_POINT.clone();
     }

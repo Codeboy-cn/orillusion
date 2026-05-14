@@ -93,7 +93,7 @@ export class Sample_GraphicMesh_2 {
 
                 let tmp = this.sphericalFibonacci(i, this.parts.length);
                 let r = Math.sin((i + Time.frame * 0.01 * this.frame * 0.01)) * this.cafe;
-                tmp.scaleBy(r);
+                tmp.multiplyScalar(r);
 
                 let tr = 1.0 - (r / this.cafe);
 

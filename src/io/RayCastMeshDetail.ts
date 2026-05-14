@@ -135,13 +135,13 @@ export class RayCastMeshDetail {
         let d = 1 - u - v;
 
         this._u0.copyFrom(face.u1);
-        this._u0.scale(d);
+        this._u0.multiplyScalar(d);
 
         this._u1.copyFrom(face.u2);
-        this._u1.scale(u);
+        this._u1.multiplyScalar(u);
 
         this._u2.copyFrom(face.u3);
-        this._u2.scale(v);
+        this._u2.multiplyScalar(v);
 
         this._info.uv.copyFrom(this._u0);
         Vector2.add(this._info.uv, this._u1, this._info.uv);

@@ -138,7 +138,7 @@ export class Graphics3DShape {
                 if(v.length === 0)
                     v = u.clone().crossProduct(Vector3.Y_AXIS).normalize()
                 let w = u.clone().crossProduct(v)
-                points.push(center.clone().add(v.scaleBy(x).add(w.scaleBy(y))));
+                points.push(center.clone().add(v.multiplyScalar(x).add(w.multiplyScalar(y))));
                 break;
         }
     }

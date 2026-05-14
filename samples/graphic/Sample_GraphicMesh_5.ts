@@ -109,7 +109,7 @@ export class Sample_GraphicMesh_5 {
 
                 let tmp = this.sphericalFibonacci(i, this.parts.length);
                 let sc = Math.sin((i + Time.frame * 0.01 * this.frame * 0.01)) * this.cafe
-                tmp.scaleBy(sc);
+                tmp.multiplyScalar(sc);
 
                 element.transform.localPosition = tmp;
 

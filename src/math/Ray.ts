@@ -167,7 +167,7 @@ export class Ray {
      * @returns Returns a point at the specified location
      */
     public getPoint(t: number): Vector3 {
-        this._dir.scaleBy(t);
+        this._dir.multiplyScalar(t);
         return this.origin.add(this._dir); // + t * m_Direction;
     }
 
@@ -357,7 +357,7 @@ export class Ray {
         const w = Vector3.HELP_3;
 
         Vector3.sub(segb, sega, u);
-        this._dir.scaleToRef(Ray._rayl, v);
+        Vector3.multiplyScalar(this._dir, Ray._rayl, v);
         Vector3.add(o, v, rsegb);
 
         Vector3.sub(sega, o, w);
@@ -430,9 +430,9 @@ export class Ray {
 
         // get the difference of the two closest points
         const qtc = Vector3.HELP_4;
-        v.scaleToRef(tc, qtc);
+        Vector3.multiplyScalar(v, tc, qtc);
         const qsc = Vector3.HELP_5;
-        u.scaleToRef(sc, qsc);
+        Vector3.multiplyScalar(u, sc, qsc);
         Vector3.add(qsc, w, qsc);
         const dP = Vector3.HELP_6;
         Vector3.sub(qsc, qtc, dP); // = S1(sc) - S2(tc)
@@ -442,7 +442,7 @@ export class Ray {
         if (isIntersected) {
             let dd0 = new Vector3();
             Vector3.sub(segb, sega, dd0);
-            dd0.scaleBy(sc);
+            dd0.multiplyScalar(sc);
             Vector3.add(dd0, sega, dd0);
             // let out = new Vector3(dx,dy,dz);
             return { out: dd0, length: qsc.length };

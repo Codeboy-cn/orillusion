@@ -162,7 +162,7 @@ export class Vector3Ex {
         let r = radius * Math.random();
         let randomDir = new Vector3(Math.random() * 1 - 0.5, Math.random() * 1 - 0.5, Math.random() * 1 - 0.5);
         randomDir.normalize();
-        randomDir.scaleBy(r);
+        randomDir.multiplyScalar(r);
         return randomDir;
     }
 
@@ -170,7 +170,7 @@ export class Vector3Ex {
         let r = radiusMin + (radiusMax - radiusMin) * Math.random();
         let randomDir = new Vector3(Math.random() * x - x * 0.5, Math.random() * y - y * 0.5, Math.random() * z - z * 0.5);
         randomDir.normalize();
-        randomDir.scaleBy(r);
+        randomDir.multiplyScalar(r);
         return randomDir;
     }
 }

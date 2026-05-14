@@ -606,7 +606,7 @@ export function randomPointInsideCube(r: Rand, extents: Vector3) {
  */
 export function randomPointInsideUnitSphere(r: Rand) {
     let v = randomUnitVector(r);
-    v.scaleBy(Math.pow(random01(r), 1.0 / 3.0)); // *= Math.pow (Random01 (r), 1.0 / 3.0);
+    v.multiplyScalar(Math.pow(random01(r), 1.0 / 3.0)); // *= Math.pow (Random01 (r), 1.0 / 3.0);
     return v;
 }
 
@@ -624,7 +624,7 @@ export function randomPointBetweenSphere(r: Rand, minRadius: number, maxRadius: 
     let v = randomUnitVector(r);
     // As the volume of the sphere increases (x^3) over an interval we have to increase range as well with x^(1/3)
     let range = Math.pow(rangedRandomFloat(r, 0.0, 1.0), 1.0 / 3.0);
-    v.scaleBy(minRadius + (maxRadius - minRadius) * range);
+    v.multiplyScalar(minRadius + (maxRadius - minRadius) * range);
     return v;
 }
 
@@ -645,7 +645,7 @@ export function randomPointBetweenEllipsoid(r: Rand, maxExtents: Vector3, minRan
     let v = scale(randomUnitVector(r), maxExtents);
     // As the volume of the sphere increases (x^3) over an interval we have to increase range as well with x^(1/3)
     let range = Math.pow(rangedRandomFloat(r, minRange, 1.0), 1.0 / 3.0);
-    v.scaleBy(range);
+    v.multiplyScalar(range);
     return v;
 }
 
@@ -770,7 +770,7 @@ export function fastInvSqrt(f) {
  */
 export function normalizeFast(inV: Vector3) {
     let m = sqrMagnitude(inV);
-    return inV.scaleBy(fastInvSqrt(m));
+    return inV.multiplyScalar(fastInvSqrt(m));
 }
 
 /**

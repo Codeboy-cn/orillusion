@@ -21,7 +21,7 @@ export class LineCurve2D extends Curve2D {
             result.copyFrom(this.v1);
         } else {
             Vector2.sub(this.v1, this.v0, result);
-            result.multiplyScaler(t);
+            result.multiplyScalar(t);
             Vector2.add(result, this.v0, result);
         }
         return result;

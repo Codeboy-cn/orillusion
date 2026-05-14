@@ -118,7 +118,7 @@ export class Sample_GraphicMesh_7 {
             for (let i = 0; i < this.parts.length; i++) {
                 const element = this.parts[i];
                 let tmp = this.sphericalFibonacci(i, this.parts.length);
-                tmp.scaleBy(this.cafe);
+                tmp.multiplyScalar(this.cafe);
                 element.transform.localPosition = tmp;
                 this.tmpArray.push(element);
             }

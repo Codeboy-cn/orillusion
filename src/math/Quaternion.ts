@@ -426,7 +426,7 @@ export class Quaternion {
             z = Math.atan2(2 * (qw * qz + qx * qy), 1 - 2 * (qy * qy + qz * qz));
         }
 
-        return eulers.set(x, y, z).scaleBy(RADIANS_TO_DEGREES);
+        return eulers.set(x, y, z).multiplyScalar(RADIANS_TO_DEGREES);
     }
 
     /**

@@ -101,7 +101,7 @@ export class Sample_GraphicMesh_4 {
                 element.transform.scaleX = tr;
                 element.transform.scaleY = tr;
                 element.transform.scaleZ = tr;
-                tmp.scaleBy(r + tr * 2);
+                tmp.multiplyScalar(r + tr * 2);
 
                 element.transform.localPosition = tmp;
             }

@@ -295,8 +295,8 @@ export class Vector3 {
             tp2.x = -dir.y;
             tp2.y = dir.x;
 
-            tp1.scaleBy(width * 0.5);
-            tp2.scaleBy(width * 0.5);
+            tp1.multiplyScalar(width * 0.5);
+            tp2.multiplyScalar(width * 0.5);
         } else if (aix == Vector3.Y_AXIS) {
             tp1.x = dir.z;
             tp1.z = -dir.x;
@@ -304,8 +304,8 @@ export class Vector3 {
             tp2.x = -dir.z;
             tp2.z = dir.x;
 
-            tp1.scaleBy(width * 0.5);
-            tp2.scaleBy(width * 0.5);
+            tp1.multiplyScalar(width * 0.5);
+            tp2.multiplyScalar(width * 0.5);
         }
     }
 
@@ -531,7 +531,7 @@ export class Vector3 {
         // let maxLength = maxSpeed * smoothTime;
         // vector.clampLength(-maxLength, maxLength);
         // target = Vector3.Sub(current, vector, target);
-        // let vector3 = Vector3.Add(currentVelocity, vector.scaleBy(num));
+        // let vector3 = Vector3.Add(currentVelocity, vector.multiplyScalar(num));
         // vector3.x = vector3.x + (vector.x - vector3.x) * num3;
         // vector3.y = vector3.y + (vector.y - vector3.y) * num3;
         // vector3.z = vector3.z + (vector.z - vector3.z) * num3;
@@ -818,48 +818,6 @@ export class Vector3 {
     }
 
     /**
-     * Scales the current Vector3 object by a scalar, a magnitude. The
-     * Vector3 object's x, y, and z elements are multiplied by the scalar
-     * number specified in the parameter. For example, if the vector is
-     * scaled by ten, the result is a vector that is ten times longer. The
-     * scalar can also change the direction of the vector. Multiplying the
-     * vector by a negative number reverses its direction.
-     *
-     * @param s A multiplier (scalar) used to scale a Vector3 object.
-     */
-    public scaleBy(s: number): Vector3 {
-        this.x *= s;
-        this.y *= s;
-        this.z *= s;
-        return this;
-    }
-
-    /**
-     * Multiplies this vector by scalar s. Mutates and returns this.
-     */
-    public mul(s: number): this {
-        return Vector3.multiplyScalar(this, s, this) as this;
-    }
-
-    public scale(s: Vector3): Vector3 {
-        this.x *= s.x;
-        this.y *= s.y;
-        this.z *= s.z;
-        return this;
-    }
-
-    public scaleToRef(s: number, ref: Vector3): Vector3 {
-        if (!ref) {
-            ref = new Vector3();
-        }
-
-        ref.x = this.x * s;
-        ref.y = this.y * s;
-        ref.z = this.z * s;
-        return ref;
-    }
-
-    /**
      * @language en_US
      * Sets the members of Vector3 to the specified values
      *
@@ -979,7 +937,7 @@ export class Vector3 {
     //             Quaternion.HELP_0.fromAxisAngle(Vector3.HELP_1, 3.1415926 * t * MathConfig.RADIANS_TO_DEGREES);
     //             var m: Matrix4 = Quaternion.HELP_0.toMatrix3D(Matrix4.helpMatrix);
     //             m.transformVector4(lhsNorm, this);
-    //             this.scaleBy(lerpedMagnitude);
+    //             this.multiplyScalar(lerpedMagnitude);
     //             return;
     //         }
     //         // normal case
@@ -994,7 +952,7 @@ export class Vector3 {
     //             Quaternion.HELP_0.fromAxisAngle(axis, angle * MathConfig.RADIANS_TO_DEGREES);
     //             var m: Matrix4 = Quaternion.HELP_0.toMatrix3D(Matrix4.helpMatrix);
     //             m.transformVector4(lhsNorm, this);
-    //             this.scaleBy(lerpedMagnitude);
+    //             this.multiplyScalar(lerpedMagnitude);
     //             return;
     //         }
     //     }

@@ -58,7 +58,7 @@ await test('Vector3 addScalar', async () => {
 
 await test('Vector3 scaleBy', async () => {
     let a = new Vector3(20, 10, 0);
-    a.scaleBy(10);
+    a.multiplyScalar(10);
 
     expect(a.x).toEqual(200);
     expect(a.y).toEqual(100);

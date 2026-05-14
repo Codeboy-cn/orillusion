@@ -118,7 +118,7 @@ export class PointLightsScript extends ComponentBase {
                 }
 
                 Vector3.HELP_0.copyFrom(pd.dir);
-                Vector3.HELP_0.scaleBy(Time.delta * 0.001 * pd.speed * 0.1);
+                Vector3.HELP_0.multiplyScalar(Time.delta * 0.001 * pd.speed * 0.1);
 
                 po.transform.x += Vector3.HELP_0.x;
                 // po.transform.y += Vector3.HELP_0.y;

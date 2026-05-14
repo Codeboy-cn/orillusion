@@ -67,7 +67,7 @@ export class FirstPersonCameraController extends ComponentBase {
 
     public onUpdate() {
         let vec = new Vector3();
-        this._camera.transform.forward.scaleToRef(this.distance, vec);
+        Vector3.multiplyScalar(this._camera.transform.forward, this.distance, vec);
         var focusPoint = this.focus.transform.worldPosition;
         // this._camera.transform.localPosition = focusPoint.subtract(vec);
         this._camera.transform.localPosition = focusPoint;

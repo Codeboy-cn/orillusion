@@ -94,8 +94,8 @@ export class Vector2 {
     public static lerp(from: Vector2, to: Vector2, t: number) {
         Vector2.HELP_0.copyFrom(from);
         Vector2.HELP_1.copyFrom(to);
-        Vector2.HELP_0.scale(t);
-        Vector2.HELP_1.scale(1.0 - t);
+        Vector2.HELP_0.multiplyScalar(t);
+        Vector2.HELP_1.multiplyScalar(1.0 - t);
         return new Vector2(Vector2.HELP_0.x + Vector2.HELP_1.x, Vector2.HELP_0.y + Vector2.HELP_1.y);
     }
 
@@ -194,23 +194,17 @@ export class Vector2 {
     }
 
     /**
-     * Multiplies x/y of this vector by scalar v. Mutates and returns this.
+     * Multiplies x/y of this vector by scalar s. Mutates and returns this.
      */
-    public scale(v: number): this {
-        return Vector2.multiplyScalar(this, v, this) as this;
+    public multiplyScalar(s: number): this {
+        return Vector2.multiplyScalar(this, s, this) as this;
     }
 
     /**
      * Multiplies x/y of this vector by scalar a. Mutates and returns this.
+     * Kept as an alternative name for the scalar `multiplyScalar`.
      */
     public multiply(a: number): this {
-        return Vector2.multiplyScalar(this, a, this) as this;
-    }
-
-    /**
-     * Multiplies x/y of this vector by scalar a. Mutates and returns this.
-     */
-    public multiplyScaler(a: number): this {
         return Vector2.multiplyScalar(this, a, this) as this;
     }
 
@@ -330,17 +324,6 @@ export class Vector2 {
         let d = this.abs();
         this.x = this.x / d;
         this.y = this.y / d;
-        return this;
-    }
-
-    /**
-     * Add two vectors
-     * @param otherVector Additive vector
-     * @returns 
-     */
-    public addInPlace(otherVector: Vector2): this {
-        this.x += otherVector.x;
-        this.y += otherVector.y;
         return this;
     }
 

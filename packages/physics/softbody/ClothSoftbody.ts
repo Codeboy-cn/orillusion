@@ -79,10 +79,10 @@ export class ClothSoftbody extends SoftbodyBase {
             const halfWidth = this._geometry.width / 2;
             const halfHeight = this._geometry.height / 2;
 
-            const corner00 = right.clone().mul(halfWidth).add(forward.clone().mul(-halfHeight)); // leftTop
-            const corner01 = right.clone().mul(halfWidth).add(forward.clone().mul(halfHeight)); // rightTop
-            const corner10 = right.clone().mul(-halfWidth).add(forward.clone().mul(-halfHeight)); // leftBottom
-            const corner11 = right.clone().mul(-halfWidth).add(forward.clone().mul(halfHeight)); // rightBottom
+            const corner00 = right.clone().multiplyScalar(halfWidth).add(forward.clone().multiplyScalar(-halfHeight)); // leftTop
+            const corner01 = right.clone().multiplyScalar(halfWidth).add(forward.clone().multiplyScalar(halfHeight)); // rightTop
+            const corner10 = right.clone().multiplyScalar(-halfWidth).add(forward.clone().multiplyScalar(-halfHeight)); // leftBottom
+            const corner11 = right.clone().multiplyScalar(-halfWidth).add(forward.clone().multiplyScalar(halfHeight)); // rightBottom
 
             clothCorner00 = TempPhyMath.toBtVec(corner00, TempPhyMath.tmpVecA);
             clothCorner01 = TempPhyMath.toBtVec(corner01, TempPhyMath.tmpVecB);
