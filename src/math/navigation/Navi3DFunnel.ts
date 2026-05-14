@@ -31,7 +31,7 @@ export class Navi3DFunnel {
             radius = 1;
         this._aiRadius = radius * 1.5;
         //
-        //起点终点判断
+        // validate start and end points
         if (!this.searchEnable(startPt, endPt, triangleList))
             return false;
 
@@ -179,7 +179,7 @@ export class Navi3DFunnel {
             else {
                 curEdgeJ = null;
                 toPoint = null;
-                //找到下一个点
+                // find the next point
                 for (var j: number = i + 1; j < crossedEdgeCount; j++) {
                     curEdgeJ = this._tempPublicEdgeList[j];
                     toPoint = curEdgeJ.crossPoint;

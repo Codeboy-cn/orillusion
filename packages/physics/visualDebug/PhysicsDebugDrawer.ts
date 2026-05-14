@@ -69,7 +69,7 @@ export class PhysicsDebugDrawer {
     }
 
     /**
-     * 启用/禁用物理调试绘制
+     * Enable / disable physics debug drawing
      */
     public set enable(value: boolean) {
         this._enable = value;
@@ -109,7 +109,7 @@ export class PhysicsDebugDrawer {
     private drawLine(from: Ammo.btVector3, to: Ammo.btVector3, color: Ammo.btVector3): void {
         if (!this._enable) return;
 
-        if (++this.lineCount > this.maxLineCount) return; // console.log(`超出限制,正在渲染第 ${this.lineCount} 条线`);
+        if (++this.lineCount > this.maxLineCount) return; // console.log(`exceeded limit, rendering line #${this.lineCount}`);
 
         const fromVector = Ammo.wrapPointer(from as unknown as number, Ammo.btVector3);
         const toVector = Ammo.wrapPointer(to as unknown as number, Ammo.btVector3);
@@ -128,7 +128,7 @@ export class PhysicsDebugDrawer {
     private drawContactPoint(pointOnB: Ammo.btVector3, normalOnB: Ammo.btVector3, distance: number, lifeTime: number, color: Ammo.btVector3): void {
         if (!this._enable) return;
 
-        if (++this.lineCount > this.maxLineCount) return; // console.log(`超出限制,正在渲染第 ${this.lineCount} 条线`);
+        if (++this.lineCount > this.maxLineCount) return; // console.log(`exceeded limit, rendering line #${this.lineCount}`);
 
         const colorVector = Ammo.wrapPointer(color as unknown as number, Ammo.btVector3);
         const pointOnBVector = Ammo.wrapPointer(pointOnB as unknown as number, Ammo.btVector3);

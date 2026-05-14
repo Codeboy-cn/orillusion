@@ -4,8 +4,8 @@ import { TempPhyMath } from "./TempPhyMath";
 import { CollisionFlags } from "../rigidbody/RigidbodyEnum";
 
 /**
- * PhysicsDragger 类用于通过鼠标操作拖拽3D物体。
- * 利用物理引擎中的射线检测与刚体交互，实现物体的实时拖拽效果。
+ * The PhysicsDragger class is used to drag 3D objects with the mouse.
+ * It uses ray casting in the physics engine to interact with rigid bodies, enabling real-time dragging of objects.
  */
 export class PhysicsDragger {
     private _view: View3D;
@@ -24,7 +24,7 @@ export class PhysicsDragger {
     }
 
     /**
-     * 是否启用拖拽功能
+     * Whether to enable the dragging feature
      */
     public set enable(value: boolean) {
         if (this._enable === value) return;
@@ -33,19 +33,19 @@ export class PhysicsDragger {
     }
 
     /**
-     * 是否过滤静态刚体对象，默认值为 `true`
+     * Whether to filter out static rigid body objects. Default value is `true`
      */
     public filterStatic: boolean = true;
 
     /**
-     * 设置射线过滤组
+     * Set the ray collision filter group
      */
     public set collisionFilterGroup(value: number) {
         this._raycastResult?.set_m_collisionFilterGroup(value);
     }
 
     /**
-     * 设置射线过滤掩码
+     * Set the ray collision filter mask
      */
     public set collisionFilterMask(value: number) {
         this._raycastResult?.set_m_collisionFilterMask(value);
@@ -129,8 +129,8 @@ export class PhysicsDragger {
     }
 
     private resetRayCallback(callback: Ammo.ClosestRayResultCallback) {
-        callback.set_m_closestHitFraction(1); // 重置最近击中分数为最大
-        callback.set_m_collisionObject(null); // 清除碰撞对象
+        callback.set_m_closestHitFraction(1); // Reset the closest hit fraction to its maximum
+        callback.set_m_collisionObject(null); // Clear the collision object
     }
 
     private castRay(cameraPos: Vector3, targetPos: Vector3) {
@@ -148,12 +148,12 @@ export class PhysicsDragger {
 
             this._rigidBody = Ammo.castObject(collisionObject, Ammo.btRigidBody);
 
-            // 交点
+            // Intersection point
             TempPhyMath.fromBtVec(this._raycastResult.get_m_hitPointWorld(), this._hitPoint);
 
             this._rigidBody.setCollisionFlags(this._rigidBody.getCollisionFlags() | CollisionFlags.KINEMATIC_OBJECT);
 
-            // 根据选中对象的位置与交点计算出偏移量
+            // Compute the offset from the selected object's position to the intersection point
             this._rigidBody.getMotionState().getWorldTransform(Physics.TEMP_TRANSFORM);
             let originPos = TempPhyMath.fromBtVec(Physics.TEMP_TRANSFORM.getOrigin(), Vector3.HELP_0);
             Vector3.sub(originPos, this._hitPoint, this._offset);
@@ -163,20 +163,20 @@ export class PhysicsDragger {
         }
     }
 
-    // 更新刚体位置
+    // Update the rigid body position
     private updateRigidBody() {
         const input = this._inputSystem;
         let pos = this._view.camera.screenPointToWorld(input.mouseX, input.mouseY, this._interactionDepth);
 
-        // 结合偏移量的新位置
+        // New position combined with the offset
         Vector3.add(pos, this._offset, pos);
         let newPos = pos;
 
-        // 更新位置
+        // Update the position
         this._rigidBody.getMotionState().getWorldTransform(Physics.TEMP_TRANSFORM);
         Physics.TEMP_TRANSFORM.setOrigin(TempPhyMath.toBtVec(newPos));
         this._rigidBody.getMotionState().setWorldTransform(Physics.TEMP_TRANSFORM);
-        this._rigidBody.getWorldTransform().setOrigin(Physics.TEMP_TRANSFORM.getOrigin()); // 确保静态刚体的位置信息是同步的
+        this._rigidBody.getWorldTransform().setOrigin(Physics.TEMP_TRANSFORM.getOrigin()); // Ensure the static rigid body's position info is in sync
 
         this._rigidBody.activate(true);
         document.body.style.cursor = 'grabbing';

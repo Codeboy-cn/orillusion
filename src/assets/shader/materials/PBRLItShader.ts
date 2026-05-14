@@ -329,7 +329,7 @@ export let PBRLItShader: string = /*wgsl*/ `
             // dilutes the user's chosen specular hue by the time it
             // reaches the visible output. This local multiplier sits
             // between fragData.Specular and the final composite —
-            // direct enough that 高光颜色 noticeably tints the
+            // direct enough that specular color noticeably tints the
             // dragon's highlights — and is mixed to white at
             // alphaMode=0 so opaque-queue PBR materials are
             // untouched. We mix back to white at metallic=1 so the
@@ -339,7 +339,7 @@ export let PBRLItShader: string = /*wgsl*/ `
             // which made transmission=1 read as a flat refraction with
             // no env highlights). specularColor.rgb tints the
             // dielectric F0 to compensate for the BRDF LUT's AB.g
-            // term — without it the user-set 高光颜色 gets diluted by
+            // term — without it the user-set specular color gets diluted by
             // the time it reaches the visible output. Mix back to
             // white at metallic=1 so the chrome path mirrors the env
             // honestly (KHR_materials_specular spec).

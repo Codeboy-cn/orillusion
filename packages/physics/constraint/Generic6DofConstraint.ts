@@ -4,7 +4,7 @@ import { TempPhyMath } from '../utils/TempPhyMath';
 import { ConstraintBase } from './ConstraintBase';
 
 /**
- * 通用六自由度约束
+ * Generic six-degree-of-freedom constraint
  */
 export class Generic6DofConstraint extends ConstraintBase<Ammo.btGeneric6DofConstraint> {
     private _linearLowerLimit: Vector3 = new Vector3(-1e30, -1e30, -1e30);
@@ -57,8 +57,8 @@ export class Generic6DofConstraint extends ConstraintBase<Ammo.btGeneric6DofCons
     }
 
     /**
-     * 是否使用线性参考坐标系。
-     * 默认值: `true`
+     * Whether to use the linear reference frame.
+     * Default: `true`
      */
     public useLinearFrameReferenceFrame: boolean = true;
 

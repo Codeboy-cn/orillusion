@@ -144,14 +144,14 @@ export class Navi3DMesh {
         var publicEdge: Navi3DEdge;
 
         for (var i: number = 0; i < triangleACount; i++) {
-            //边上面记录拥有这条边的三角形
+            // record on each edge which triangles own it
             triangleA = this._nav3dTriangles[i];
             for (edge of triangleA.edges) {
                 edge.addTriangleOwners(triangleA);
             }
 
             for (var j: number = 0; j < triangleBCount; j++) {
-                //三角形相邻关系
+                // triangle adjacency relationships
                 triangleB = this._nav3dTriangles[j];
                 if (triangleA == triangleB)
                     continue;

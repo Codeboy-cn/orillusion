@@ -46,7 +46,7 @@ export class Navi3DTriangle extends Vector3 implements IQuadNode {
 
     public initAABB(): void {
         this._aabbBox = new QuadAABB();
-        //添加节点
+        // add the triangle vertices
         this._aabbBox.addPoint(this._points[0]);
         this._aabbBox.addPoint(this._points[1]);
         this._aabbBox.addPoint(this._points[2]);

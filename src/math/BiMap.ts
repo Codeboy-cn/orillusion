@@ -1,4 +1,4 @@
-//双向map
+// bi-directional map
 export class BiMap<K, V> extends Map<K, V>{
     private readonly negtive: Map<V, K>;
     constructor(iterable?: Iterable<readonly [K, V]> | null,) {

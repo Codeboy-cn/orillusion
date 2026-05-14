@@ -248,7 +248,7 @@ export let BRDF_frag: string = /*wgsl*/ `
       return nom / denom;
   }
 
-  //G项 几何函数
+  // G term: geometry function
   fn G_SubFunction( NdotW : f32,  K : f32)->f32
   {
       return NdotW / mix(NdotW,1.0,K);
