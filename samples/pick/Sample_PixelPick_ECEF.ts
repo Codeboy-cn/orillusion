@@ -20,7 +20,7 @@ import {
     View3D,
 } from "@orillusion/core";
 import { GUIHelp } from "@orillusion/debug/GUIHelp";
-import { Graphic3D, Graphic3DLineRenderer } from "@orillusion/graphic";
+import { Graphic3D } from "@orillusion/graphic";
 import { MaterialStateComponent } from "@samples/pick/MaterialStateComponent";
 
 // WGS84 ECEF reference values.
@@ -89,7 +89,7 @@ class Sample_PixelPick_ECEF {
         lightObj.rotationY = 160;
         const dir = lightObj.addComponent(DirectLight);
         dir.lightColor = KelvinUtil.color_temperature_to_rgb(5355);
-        dir.intensity = 20;
+        dir.intensity = 3;
         dir.castShadow = false;
         scene.addChild(lightObj);
         sky.relativeTransform = dir.transform;
@@ -103,7 +103,7 @@ class Sample_PixelPick_ECEF {
             obj.x = (i - 5) * 10;
             const mat = new LitMaterial();
             mat.roughness = i / 10;
-            mat.metallic = 0.6;
+            mat.metallic = 0.3;
             const mr = obj.addComponent(MeshRenderer);
             mr.geometry = sphereGeo;
             mr.material = mat;
@@ -129,10 +129,23 @@ class Sample_PixelPick_ECEF {
         // Debug overlay graphics — draw with depthCompare=always so the
         // pick-normal line is visible even when occluded.
         this.g = new Graphic3D();
-        this.g.getComponents(Graphic3DLineRenderer).forEach(mr => {
-            mr.materials[0].depthCompare = 'always';
-        });
         scene.addChild(this.g);
+
+        // Three world-axis probe lines through the anchor. Under
+        // logDepth they should occlude correctly against the spheres /
+        // box; if Graphic3DShader still skipped its log-depth branch
+        // they would either always-pass or always-fail the depth test
+        // and the lines would render fully on top or be invisible.
+        const axes: [Vector3, Color][] = [
+            [new Vector3(1, 0, 0), Color.COLOR_RED],
+            [new Vector3(0, 1, 0), Color.COLOR_GREEN],
+            [new Vector3(0, 0, 1), Color.COLOR_BLUE],
+        ];
+        for (const [dir, c] of axes) {
+            const a = anchorPos.clone().addScaledVector(dir, -60);
+            const b = anchorPos.clone().addScaledVector(dir, 60);
+            this.g.drawLines(`probe_${c.r}${c.g}${c.b}`, [a, b], c);
+        }
 
         // HUD that shows the anchor position and the last pick result.
         this.installHUD(anchorPos);
@@ -191,11 +204,17 @@ class Sample_PixelPick_ECEF {
         // Draw a short normal stub at the pick point so the surface
         // location can be eyeballed against the geometry.
         const tip = pickedWorld.clone().addScaledVector(e.data.worldNormal, 5);
-        this.g.drawLines('pickNormal', [pickedWorld, tip], Color.COLOR_GREEN);
+        this.g.drawLines('pickNormal', [pickedWorld, tip], Color.COLOR_BLUE);
 
-        // Visual feedback on the target.
+        // Visual feedback: brief emissive pulse on the target. changeColor
+        // only animates one direction (toward Color.a as target intensity),
+        // so we schedule a down-pulse with the same hue and alpha=0 to
+        // fade it back out — switching hue mid-pulse would just snap the
+        // emissive to the new colour and skip the fade.
         const msc = target.getComponent(MaterialStateComponent);
-        msc?.changeColor(new Color(0.5, 1.5, 0.5, 1.2), 120);
+        const flashColor = new Color(0.5, 1.5, 0.5, 1.2);
+        msc?.changeColor(flashColor, 120);
+        setTimeout(() => msc?.changeColor(new Color(flashColor.r, flashColor.g, flashColor.b, 0), 200), 120);
     }
 
     private fmt(v: Vector3): string {
