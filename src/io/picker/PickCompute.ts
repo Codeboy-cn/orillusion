@@ -20,6 +20,12 @@ export class PickCompute {
         let rtFrame = GBufferFrame.getGBufferFrame(GBufferFrame.colorPass_GBuffer, view.engine3D.context3D);
         this._computeShader = new ComputeShader(Picker_cs);
 
+        // Mirror the render-pipeline's USE_LOGDEPTH define onto the picker
+        // compute shader so the gBuffer-decode path picks the log-aware
+        // reconstruction branch (otherwise log-encoded depth would be
+        // unprojected as if it were NDC z, breaking pick worldPos).
+        this._computeShader.setDefine(`USE_LOGDEPTH`, !!view.engine3D.setting.render.useLogDepth);
+
         this._outBuffer = new ComputeGPUBuffer(32);
         this._computeShader.setStorageBuffer('outBuffer', this._outBuffer);
         this._computeShader.setSamplerTexture('gBufferTexture', rtFrame.getCompressGBufferTexture());
