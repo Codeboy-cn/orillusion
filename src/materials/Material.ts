@@ -264,6 +264,10 @@ export class Material {
         this._shader.setUniformFloat(propertyName, value);
     }
 
+    public setUniformInt32(propertyName: string, value: number) {
+        this._shader.setUniformInt32(propertyName, value);
+    }
+
     public setUniformVector2(propertyName: string, value: Vector2) {
         this._shader.setUniformVector2(propertyName, value);
     }
@@ -281,6 +285,10 @@ export class Material {
     }
 
     public getUniformFloat(str: string) {
+        return this._shader.getUniform(str).data;
+    }
+
+    public getUniformInt32(str: string) {
         return this._shader.getUniform(str).data;
     }
 

@@ -1,6 +1,6 @@
 import { GPUFilterMode, GPUTextureFormat } from '../gfx/graphics/webGpu/WebGPUConst';
 
-import { BitmapTexture2D } from './BitmapTexture2D';
+import { BitmapTexture2D, TextureColorSpace } from './BitmapTexture2D';
 import { ITexture } from '../gfx/graphics/webGpu/core/texture/ITexture';
 import { Texture } from '../gfx/graphics/webGpu/core/texture/Texture';
 import { Context3D } from '../gfx/graphics/webGpu/Context3D';
@@ -14,14 +14,14 @@ export class BitmapTexture2DArray extends Texture implements ITexture {
 
     private _bitmapTextures: BitmapTexture2D[];
 
-    constructor(width: number, height: number, numberLayer: number, ctx?: Context3D, usage: number = 0) {
+    constructor(width: number, height: number, numberLayer: number, ctx?: Context3D, usage: number = 0, colorSpace: TextureColorSpace = 'linear') {
         super(width, height, numberLayer);
         this.usage |= usage;
 
         // this.visibility = GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT | GPUShaderStage.COMPUTE;
 
         // texture_depth_2d_array
-        this.format = GPUTextureFormat.rgba8unorm;
+        this.format = (colorSpace === 'srgb') ? GPUTextureFormat.rgba8unorm_srgb : GPUTextureFormat.rgba8unorm;
         this.mipmapCount = 1;
 
         this._bitmapTextures = [];

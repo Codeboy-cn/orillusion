@@ -10,7 +10,7 @@ import { StructStorageGPUBuffer } from "../core/buffer/StructStorageGPUBuffer";
 import { UniformGPUBuffer } from "../core/buffer/UniformGPUBuffer";
 import { UniformNode } from "../core/uniforms/UniformNode";
 import { ShaderReflection } from "./value/ShaderReflectionInfo";
-import { UniformValue } from "./value/UniformValue";
+import { UniformType, UniformValue } from "./value/UniformValue";
 import { MaterialDataUniformGPUBuffer } from "../core/buffer/MaterialDataUniformGPUBuffer";
 import { Context3D } from "../Context3D";
 
@@ -189,6 +189,20 @@ export class ShaderPassBase {
     public setUniformFloat(name: string, value: number) {
         if (!this.uniforms[name]) {
             this.uniforms[name] = new UniformNode(value);
+            this.noticeValueChange();
+        } else {
+            this.uniforms[name].value = value;
+        }
+    }
+
+    /**
+     * set uniform int32 value
+     * @param name 
+     * @param value 
+     */
+    public setUniformInt32(name: string, value: number) {
+        if (!this.uniforms[name]) {
+            this.uniforms[name] = new UniformNode(value, UniformType.Int32);
             this.noticeValueChange();
         } else {
             this.uniforms[name].value = value;

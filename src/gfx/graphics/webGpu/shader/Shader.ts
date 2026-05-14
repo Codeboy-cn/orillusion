@@ -130,6 +130,14 @@ export class Shader {
         }
     }
 
+    public setUniformInt32(arg0: string, arg1: number) {
+        for (const pass of this.passShader) {
+            for (const rd of pass[1]) {
+                rd.setUniformInt32(arg0, arg1);
+            }
+        }
+    }
+
     public setUniformVector2(arg0: string, arg1: Vector2) {
         for (const pass of this.passShader) {
             for (const rd of pass[1]) {
