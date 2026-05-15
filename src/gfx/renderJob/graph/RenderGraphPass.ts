@@ -105,10 +105,12 @@ export abstract class RenderGraphPass extends CEventDispatcher {
      *  for pure compute / copy passes. */
     public readonly materialPasses: readonly PassType[] = [];
 
-    /** Runtime kill switch. `graph.disablePass(name)` flips this;
-     *  disabled passes are skipped during execute but still
-     *  participate in the compiled topology so the validator can
-     *  diagnose missing-producer errors. */
+    /** Runtime kill switch. `graph.disablePass(name)` flips this. A
+     *  disabled pass is treated as if it weren't in the graph: it's
+     *  filtered out before validation + topo sort, and skipped during
+     *  execute. Disabling a producer whose output is read by another
+     *  enabled pass makes the next `compile()` throw
+     *  `UnresolvedResourceError`. */
     public enabled: boolean = true;
 
     /** Names this pass reads. Populated by `RenderGraph.add()` from

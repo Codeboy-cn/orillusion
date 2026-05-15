@@ -23,11 +23,31 @@ interface PassMeta {
  *     → pass.setup(builder)            // alloc + b.read/b.write
  *     → graph.compile() (lazy)         // validator + topoSort
  *     → pass.execute(ctx)              // each frame, in topo order
- *     → pass.destroy()                 // on graph.destroy()
+ *     → pass.destroy()                 // on graph.destroy() or remove()
  *
  * The graph collects `b.read` / `b.write` calls into the pass's
  * `reads` / `writes` / `creates` arrays after setup runs, then freezes
  * them. See {@link RenderGraphPass} for the contract.
+ *
+ * ## Hot-swap contract
+ *
+ * Mutations are safe at any time between frames. Each one marks the
+ * graph dirty so the next `compile()` rebuilds; wrap a sequence of
+ * mutations in {@link beginUpdate} / {@link endUpdate} to coalesce.
+ *
+ * | Op | Effect on validator | Effect on pool |
+ * |----|---------------------|----------------|
+ * | `add(Ctor)` | new pass joins validation + topo | pass's `b.write(name, getter)` registers `name` |
+ * | `remove(name)` | pass leaves validation + topo; consumers of its outputs fail compile | pass's `creates` are unregistered |
+ * | `replace(name, Ctor)` | old leaves, new joins | old `creates` unregistered, then new `setup()` registers |
+ * | `disablePass(name)` | pass is filtered out as if removed | unchanged (getter stays for cheap `enablePass`) |
+ * | `enablePass(name)` | pass re-enters validation + topo | unchanged |
+ *
+ * `disable === remove` for the validator's purposes — disabling a
+ * producer whose output is read by an enabled pass throws
+ * `UnresolvedResourceError` at the next compile, instead of silently
+ * delivering stale data at execute. Disable is the right choice when
+ * you intend to flip the pass back on; remove is right when you don't.
  *
  * @group Graph
  */
@@ -40,6 +60,7 @@ export class RenderGraph {
     private _compiled: string[] | null = null;
     private _dirty: boolean = true;
     private _insertCounter: number = 0;
+    private _batchDepth: number = 0;
     private readonly _onDeviceLost: (event: { data: unknown }) => void;
 
     constructor(view: View3D) {
@@ -95,7 +116,10 @@ export class RenderGraph {
     }
 
     /** Replace a pass by name. The replacement runs through the same
-     *  factory + setup pipeline as `add`. */
+     *  factory + setup pipeline as `add`. The old pass's `destroy()` is
+     *  called and any resource handles it created are unregistered from
+     *  the pool before the new pass's `setup()` runs, so stale getters
+     *  never co-exist with the replacement. */
     public replace<C extends new (...args: any[]) => RenderGraphPass>(
         name: string,
         Ctor: C,
@@ -105,6 +129,7 @@ export class RenderGraph {
         if (idx < 0) throw new Error(`RenderGraph.replace: pass '${name}' not found.`);
         const prev = this._passes[idx];
         prev.destroy();
+        for (const n of prev.creates) this._pool.unregister(n);
         const pass = new Ctor(...args) as InstanceType<C>;
         this._setupAndRegister(pass);
         this._passes.splice(idx, 1, pass);
@@ -114,20 +139,49 @@ export class RenderGraph {
         return pass;
     }
 
-    /** Runtime kill switch. Disabled passes are skipped during execute
-     *  but still participate in topology so the validator can still
-     *  diagnose missing-producer errors against them. */
+    /** Remove a pass by name. Idempotent — returns `false` if `name`
+     *  isn't registered (callers can use this for unconditional
+     *  cleanup). On a hit: `pass.destroy()` runs, every name in
+     *  `pass.creates` is dropped from the pool, and the pass is
+     *  unlinked from the graph. The next `compile()` rebuilds without
+     *  it, and `UnresolvedResourceError` surfaces for any consumer that
+     *  still references the removed pass's outputs. */
+    public remove(name: string): boolean {
+        const idx = this._passes.findIndex(p => p.name === name);
+        if (idx < 0) return false;
+        const pass = this._passes[idx];
+        pass.destroy();
+        for (const n of pass.creates) this._pool.unregister(n);
+        this._passes.splice(idx, 1);
+        this._byName.delete(name);
+        this._dirty = true;
+        return true;
+    }
+
+    /** Runtime kill switch. Disabled passes are treated as if they
+     *  weren't in the graph: they don't participate in validation or
+     *  topo sort, and they're skipped during execute. Disabling a
+     *  producer whose output is read by another enabled pass will make
+     *  the next `compile()` throw `UnresolvedResourceError`. Use this
+     *  for temporary off switches you intend to flip back on; use
+     *  {@link remove} for permanent removal. */
     public disablePass(name: string): this {
         const p = this._byName.get(name);
         if (!p) throw new Error(`RenderGraph.disablePass: pass '${name}' not found.`);
-        p.enabled = false;
+        if (p.enabled) {
+            p.enabled = false;
+            this._dirty = true;
+        }
         return this;
     }
 
     public enablePass(name: string): this {
         const p = this._byName.get(name);
         if (!p) throw new Error(`RenderGraph.enablePass: pass '${name}' not found.`);
-        p.enabled = true;
+        if (!p.enabled) {
+            p.enabled = true;
+            this._dirty = true;
+        }
         return this;
     }
 
@@ -136,15 +190,54 @@ export class RenderGraph {
         return (this._byName.get(name) as T | undefined) ?? null;
     }
 
+    /** Open a mutation batch. `compile()` short-circuits until the
+     *  matching `endUpdate()` runs, so a sequence of `add` / `remove` /
+     *  `replace` / `disablePass` / `enablePass` calls produces at most
+     *  one validation + topo sort. Pairs are reentrant: nesting two
+     *  `beginUpdate()` calls requires two `endUpdate()` calls to flush.
+     *  Calling `execute()` mid-batch is allowed but will run against
+     *  the last compiled order (i.e. ignores in-flight mutations);
+     *  flush the batch before the next frame if you want the new
+     *  structure to take effect. */
+    public beginUpdate(): this {
+        this._batchDepth++;
+        return this;
+    }
+
+    /** Close a mutation batch opened with {@link beginUpdate}. When the
+     *  outermost batch closes, `compile()` runs if any mutation
+     *  happened inside. */
+    public endUpdate(): this {
+        if (this._batchDepth <= 0) {
+            throw new Error('RenderGraph.endUpdate: no matching beginUpdate.');
+        }
+        this._batchDepth--;
+        if (this._batchDepth === 0 && this._dirty) this.compile();
+        return this;
+    }
+
     /** Validate + topologically sort. Idempotent — short-circuits if
      *  no mutation since the last compile. Throws GraphCompileError
-     *  subclasses on validation failure. */
+     *  subclasses on validation failure.
+     *
+     *  Disabled passes are filtered out before validation and topo sort
+     *  — `disable === remove` from the validator's point of view. This
+     *  means disabling a producer whose output is read by another
+     *  enabled pass throws `UnresolvedResourceError` here, instead of
+     *  silently leaving the consumer with stale/zero data at execute.
+     *  Use `remove(name)` for permanent removal; use `disablePass(name)`
+     *  + matching `disablePass` on every reader for a temporary off
+     *  switch. */
     public compile(): void {
+        if (this._batchDepth > 0) return;
         if (!this._dirty && this._compiled) return;
-        const validator = new GraphValidator(this._passes);
+        const activePasses = this._passes.filter(p => p.enabled);
+        const activeByName: Map<string, RenderGraphPass> = new Map();
+        for (const p of activePasses) activeByName.set(p.name, p);
+        const validator = new GraphValidator(activePasses);
         validator.validateSingleCreator();
         validator.validateResolvable();
-        this._compiled = topoSort(this._passes, this._byName, this._insertedOrder.bind(this));
+        this._compiled = topoSort(activePasses, activeByName, this._insertedOrder.bind(this));
         this._dirty = false;
         console.debug('[RenderGraph] compiled pass order:', this._compiled.join(' → '));
     }

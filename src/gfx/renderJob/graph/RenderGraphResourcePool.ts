@@ -34,6 +34,14 @@ export class RenderGraphResourcePool {
         this._registry.set(name, getter);
     }
 
+    /** Drop the getter for `name`. Idempotent — silently no-ops if the
+     *  name isn't registered. Called from `RenderGraph.remove()` and
+     *  from `RenderGraph.replace()`'s pre-install cleanup so old
+     *  getters don't outlive their owning pass. */
+    public unregister(name: string): void {
+        this._registry.delete(name);
+    }
+
     /** Resolve a named resource. Throws if no getter is registered. */
     public get<T>(name: string): T {
         const getter = this._registry.get(name);
