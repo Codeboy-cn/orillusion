@@ -21,5 +21,15 @@ export { PointShadowPass, POINT_SHADOW_CUBE_ARRAY } from './passes/PointShadowPa
 export { ReflectionPass, REFLECTION_CUBE_MAP } from './passes/ReflectionPass';
 export { GIPass, DDGI_IRRADIANCE_MAP, DDGI_DEPTH_MAP } from './passes/GIPass';
 export { ColorPass, COLOR_BUFFER, NORMAL_BUFFER } from './passes/ColorPass';
+export {
+    TRANSPARENT_DRAW_CTX,
+    type TransparentDrawContext,
+    drawNodes,
+    drawSortedTransparent,
+    drawTransmissionContinuation,
+    type DrawNodesOptions,
+    type OitFilter,
+    type TransmissionFilter,
+} from './passes/_transparentDraw';
 export { PostPass, FINAL_COLOR } from './passes/PostPass';
 export { GUIPass, CANVAS_TEXTURE } from './passes/GUIPass';

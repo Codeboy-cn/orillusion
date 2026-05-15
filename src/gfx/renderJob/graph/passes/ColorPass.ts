@@ -1,25 +1,39 @@
-import { RenderNode } from '../../../../components/renderer/RenderNode';
 import { View3D } from '../../../../core/View3D';
 import { RenderTexture } from '../../../../textures/RenderTexture';
-import { ProfilerUtil } from '../../../../util/ProfilerUtil';
 import { Context3D } from '../../../graphics/webGpu/Context3D';
 import { GlobalBindGroup } from '../../../graphics/webGpu/core/bindGroups/GlobalBindGroup';
 import { WebGPUDescriptorCreator } from '../../../graphics/webGpu/descriptor/WebGPUDescriptorCreator';
 import { EntityCollect } from '../../collect/EntityCollect';
 import { GBufferFrame } from '../../frame/GBufferFrame';
-import { OcclusionSystem } from '../../occlusion/OcclusionSystem';
 import { ClusterLightingBuffer } from '../../passRenderer/cluster/ClusterLightingBuffer';
 import { RenderContext } from '../../passRenderer/RenderContext';
 import { PassType } from '../../passRenderer/state/PassType';
 import { RendererPassState } from '../../passRenderer/state/RendererPassState';
 import { RenderGraphBuilder, RenderGraphPass, RenderGraphPassContext } from '../RenderGraphPass';
-import { buildOpBundles, buildTrBundles, dependOnIfRegistered, preInitPassPipelines } from './_helpers';
+import { buildOpBundles, dependOnIfRegistered } from './_helpers';
 import { ClusterLightingPass, CLUSTER_LIGHTING_BUFFER } from './ClusterLightingPass';
 import { MAIN_DEPTH_TEXTURE } from './PreDepthPass';
 import { MAIN_SHADOW_MAP } from './ShadowPass';
 import { POINT_SHADOW_CUBE_ARRAY } from './PointShadowPass';
 import { REFLECTION_CUBE_MAP } from './ReflectionPass';
 import { DDGI_DEPTH_MAP, DDGI_IRRADIANCE_MAP } from './GIPass';
+import { drawNodes, TRANSPARENT_DRAW_CTX, TransparentDrawContext } from './_transparentDraw';
+
+// Re-export the shared draw-context contract through ColorPass so users
+// hitting the package barrel (`@orillusion/core`) can resolve
+// TRANSPARENT_DRAW_CTX / TransparentDrawContext without reaching into
+// the `_transparentDraw` module (which sits beneath a leading-underscore
+// filename convention that the public export aggregator skips).
+export {
+    TRANSPARENT_DRAW_CTX,
+    type TransparentDrawContext,
+    drawNodes,
+    drawSortedTransparent,
+    drawTransmissionContinuation,
+    type DrawNodesOptions,
+    type OitFilter,
+    type TransmissionFilter,
+} from './_transparentDraw';
 
 /**
  * Published handle names for the main color pass outputs.
@@ -36,23 +50,25 @@ export const COLOR_BUFFER = '_ColorBuffer';
 export const NORMAL_BUFFER = '_NormalBuffer';
 
 /**
- * Main forward color pass. Splits its work over three call sites
- * within the graph:
+ * Main forward color pass. Renders the opaque half of the scene plus
+ * the sky, then ends the render pass so downstream transparent
+ * continuation passes can reopen the color attachment with
+ * loadOp='load':
  *
- * - {@link execute} renders the opaque half (with sky); transmission
- *   materials are excluded so the SceneColorPyramid copy that follows
- *   sees the world *behind* the glass, not the glass itself.
- * - {@link renderTransmissionContinuation} draws the deferred
- *   transmission opaque materials after the pyramid has snapshotted
- *   the rest of the world. Driven by TransmissionOpaquePass.
- * - {@link renderTransparent} draws the sorted transparent half
- *   (and Graphic3D overlays) — driven by SortedTransparentPass after
- *   pyramid + transmission are done.
+ * - {@link execute} draws opaque + sky (transmission materials are
+ *   excluded so the SceneColorPyramid copy that follows sees the world
+ *   *behind* the glass, not the glass itself).
+ * - {@link TransmissionOpaquePass} draws the deferred transmission
+ *   opaque materials after the pyramid has snapshotted the rest of
+ *   the world.
+ * - {@link SortedTransparentPass} draws the sorted transparent half
+ *   (and Graphic3D overlays).
  *
- * Owns the shared GPU state (rendererPassState / renderContext) so
- * the three calls thread through the same render pass — the maskTr
- * / maskOp split lets them open/close/continue the encoder without
- * leaking transient state between graph nodes.
+ * The three render-pass states + RenderContext used by the continuation
+ * passes are exposed as the {@link TRANSPARENT_DRAW_CTX} graph
+ * resource — those passes resolve it via `b.read` instead of reaching
+ * into ColorPass via `graph.getPass`, so each pass stands on its own
+ * for hot-swap purposes.
  *
  * @group Graph
  */
@@ -60,17 +76,6 @@ export class ColorPass extends RenderGraphPass {
     public readonly name = 'ColorPass';
 
     public rendererPassState!: RendererPassState;
-
-    /** When set, the transparent half filters by material's `oitMode`.
-     *  `'sorted'` skips materials marked for WBOIT; `'weighted'` would
-     *  do the inverse but isn't currently used. */
-    public oitFilter: 'sorted' | 'weighted' | null = null;
-
-    /** Splits the opaque draw list across two passes so the
-     *  SceneColorPyramid copy can sit between them. `'exclude'` skips
-     *  materials with `transmissionFactor > 0` (main opaque half);
-     *  `'only'` renders only those (transmission continuation). */
-    public transmissionFilter: 'exclude' | 'only' | null = null;
 
     private readonly _passType: PassType = PassType.COLOR;
     private readonly _giEnabled: boolean;
@@ -148,6 +153,16 @@ export class ColorPass extends RenderGraphPass {
             GBufferFrame.getGBufferFrame(GBufferFrame.colorPass_GBuffer, this._ctx).getCompressGBufferTexture()
         );
 
+        // Shared draw state for the transparent continuation passes.
+        // Resolved by TransmissionOpaquePass / SortedTransparentPass at
+        // execute time so they can stand on their own without reaching
+        // into ColorPass via graph.getPass.
+        b.write<TransparentDrawContext>(TRANSPARENT_DRAW_CTX, () => ({
+            rendererPassState: this.rendererPassState,
+            splitRendererPassState: this._splitRendererPassState,
+            renderContext: this._renderContext,
+        }));
+
         // Side-effect ordering. SceneCapturePass renders off-screen
         // RTs that this frame's lit materials sample directly via
         // SceneCaptureCameraComponent (no graph-pool handle). GPUCullPass
@@ -169,213 +184,61 @@ export class ColorPass extends RenderGraphPass {
             }
         }
 
-        const cluster = this._getCluster(ctx.view);
-        const prevFilter = this.transmissionFilter;
-        this.transmissionFilter = 'exclude';
-        try {
-            this._render(
-                ctx.view,
-                ctx.occlusion,
-                cluster,
-                true,  // maskTr — opaque half only
-                false, // maskOp
-            );
-        } finally {
-            this.transmissionFilter = prevFilter;
-        }
-    }
-
-    /** Continuation pass driven by TransmissionOpaquePass: reopens
-     *  the color attachment with `loadOp='load'` and draws *only*
-     *  opaque materials whose transmissionFactor > 0. */
-    public renderTransmissionContinuation(view: View3D, occlusion: OcclusionSystem): void {
+        const view = ctx.view;
+        const camera = view.camera;
         const cluster = this._getCluster(view);
+
         const gpu = view.engine3D.context3D.gpuContext;
         this._renderContext.gpu = gpu;
+        // Opaque-half call owns the render context — start fresh. The
+        // continuation halves (transmission, transparent) reopen with
+        // loadOp='load'.
+        this._renderContext.clean();
 
-        const camera = view.camera;
         GlobalBindGroup.updateCameraGroup(camera);
         this.rendererPassState.camera3D = camera;
 
         const collectInfo = EntityCollect.instance.getRenderNodes(view.scene, camera);
-        if (!collectInfo.opaqueList) return;
 
-        this._renderContext.beginTransparentRenderPass();
+        const opBundles = buildOpBundles(view, camera, this._passType, this.rendererPassState, cluster);
+
+        this._renderContext.beginOpaqueRenderPass();
         const encoder = this._renderContext.encoder;
-        gpu.bindCamera(encoder, camera);
 
-        const prevFilter = this.transmissionFilter;
-        this.transmissionFilter = 'only';
-        try {
-            this._drawNodes(view, this._renderContext, collectInfo.opaqueList, occlusion, cluster);
-        } finally {
-            this.transmissionFilter = prevFilter;
+        if (opBundles.length > 0) {
+            encoder.executeBundles(opBundles);
+        }
+
+        if (collectInfo.opaqueList) {
+            gpu.bindCamera(encoder, camera);
+            drawNodes(
+                view,
+                this._renderContext,
+                this.rendererPassState,
+                collectInfo.opaqueList,
+                cluster,
+                { transmissionFilter: 'exclude', passType: this._passType },
+            );
+        }
+
+        // Sky goes LAST in the opaque half — by now every opaque mesh
+        // has written depth, so sky's `depthCompare='less_equal' +
+        // writeDepth=false` only paints empty pixels (where Z is still
+        // the cleared 1.0). Same optimization Unity / UE apply by
+        // default.
+        const sky = EntityCollect.instance.getSky(view.scene);
+        if (sky) {
+            gpu.bindCamera(encoder, camera);
+            if (!sky.preInit(this._passType)) {
+                sky.nodeUpdate(view, this._passType, this.rendererPassState, cluster);
+            }
+            sky.renderPass2(view, this._passType, this.rendererPassState, cluster, encoder);
         }
 
         this._renderContext.endRenderPass();
-    }
-
-    /** Transparent half driven by SortedTransparentPass. */
-    public renderTransparent(view: View3D, occlusion: OcclusionSystem, filter: 'all' | 'sorted'): void {
-        const cluster = this._getCluster(view);
-        const prevOitFilter = this.oitFilter;
-        this.oitFilter = filter === 'all' ? null : 'sorted';
-        try {
-            this._render(
-                view,
-                occlusion,
-                cluster,
-                false, // maskTr
-                true,  // maskOp
-            );
-        } finally {
-            this.oitFilter = prevOitFilter;
-        }
     }
 
     private _getCluster(view: View3D): ClusterLightingBuffer | undefined {
         return view.renderGraph?.getPass<ClusterLightingPass>('ClusterLightingPass')?.clusterLightingBuffer;
     }
-
-    private _render(
-        view: View3D,
-        occlusion: OcclusionSystem,
-        cluster: ClusterLightingBuffer,
-        maskTr: boolean,
-        maskOp: boolean,
-    ): void {
-        const gpu = view.engine3D.context3D.gpuContext;
-        this._renderContext.gpu = gpu;
-        if (!maskOp) {
-            // Opaque-half (or maskTr) call owns the render context — start
-            // fresh. The transparent-only call (maskOp=true) is invoked
-            // after the opaque half already finished a pass so the
-            // cached state is still relevant.
-            this._renderContext.clean();
-        }
-
-        const scene = view.scene;
-        const camera = view.camera;
-        GlobalBindGroup.updateCameraGroup(camera);
-        this.rendererPassState.camera3D = camera;
-
-        const collectInfo = EntityCollect.instance.getRenderNodes(scene, camera);
-
-        const opBundles = maskOp ? [] : buildOpBundles(view, camera, this._passType, this.rendererPassState, cluster);
-        // When the transparent half is partitioned by oitMode, skip
-        // cached bundles (they bake the full transparent set) and let
-        // _drawNodes do the per-node filter inline. Bundle re-keying
-        // for OIT/sorted partitions is a future optimization.
-        const trBundles = (maskTr || this.oitFilter !== null) ? [] : buildTrBundles(view, camera, this._passType, this.rendererPassState, cluster);
-
-        if (!maskOp) {
-            this._renderContext.beginOpaqueRenderPass();
-            const encoder = this._renderContext.encoder;
-
-            if (opBundles.length > 0) {
-                encoder.executeBundles(opBundles);
-            }
-
-            if (collectInfo.opaqueList) {
-                gpu.bindCamera(encoder, camera);
-                this._drawNodes(view, this._renderContext, collectInfo.opaqueList, occlusion, cluster);
-            }
-
-            // Sky goes LAST in the opaque half — by now every opaque
-            // mesh has written depth, so sky's
-            // `depthCompare='less_equal' + writeDepth=false` only
-            // paints empty pixels (where Z is still the cleared 1.0).
-            // Same optimization Unity / UE apply by default.
-            const sky = EntityCollect.instance.getSky(scene);
-            if (sky) {
-                gpu.bindCamera(encoder, camera);
-                if (!sky.preInit(this._passType)) {
-                    sky.nodeUpdate(view, this._passType, this.rendererPassState, cluster);
-                }
-                sky.renderPass2(view, this._passType, this.rendererPassState, cluster, encoder);
-            }
-
-            // Split mode: opaque half ends here so the SceneColorPyramid
-            // copy can run between halves. The matching transparent
-            // call (maskOp=true) reopens with loadOp='load'.
-            if (maskTr) {
-                this._renderContext.endRenderPass();
-                return;
-            }
-        }
-
-        // Transparent half: reopen with loadOp='load' (or continue from
-        // the still-open opaque encoder when neither mask is set).
-        if (maskOp) {
-            this._renderContext.beginTransparentRenderPass();
-        }
-        const encoder = this._renderContext.encoder;
-
-        if (trBundles.length > 0) {
-            encoder.executeBundles(trBundles);
-        }
-
-        if (!maskTr && collectInfo.transparentList) {
-            gpu.bindCamera(encoder, camera);
-            this._drawNodes(view, this._renderContext, collectInfo.transparentList, occlusion, cluster);
-        }
-
-        // Graphic3D overlays (debug primitives, gizmos) draw last with
-        // the split pass state (loadOp='load') so they survive any
-        // earlier render-pass split.
-        const graphics = EntityCollect.instance.getGraphicList();
-        for (const g of graphics) {
-            g.nodeUpdate(view, this._passType, this._splitRendererPassState, cluster);
-            g.renderPass2(view, this._passType, this._splitRendererPassState, cluster, encoder);
-        }
-
-        this._renderContext.endRenderPass();
-        ProfilerUtil.end('ColorPass Draw Transparent');
-    }
-
-    private _drawNodes(
-        view: View3D,
-        renderContext: RenderContext,
-        nodes: RenderNode[],
-        _occlusion: OcclusionSystem,
-        cluster: ClusterLightingBuffer,
-    ): void {
-        // Pre-init walk: ensure pipelines are compiled before draw.
-        preInitPassPipelines(view, this._passType, this.rendererPassState, cluster);
-
-        const render = view.engine3D.setting.render;
-        const oitFilter = this.oitFilter;
-        const transmissionFilter = this.transmissionFilter;
-        const max = Math.min(nodes.length, render.drawOpMax);
-        for (let i = render.drawOpMin; i < max; ++i) {
-            const node = nodes[i];
-            if (!node.transform.enable) continue;
-            if (!node.enable) continue;
-            if (node.isDestroyed) continue;
-
-            // OIT / sorted partition. When TransparentOITPass is in
-            // the graph, sortedTransparent sets `oitFilter='sorted'`
-            // and we skip materials that opted into WBOIT.
-            if (oitFilter !== null) {
-                const mat = node.materials?.[0];
-                if (oitFilter === 'sorted' && mat?.oitMode === 'weighted') continue;
-                if (oitFilter === 'weighted' && mat?.oitMode !== 'weighted') continue;
-            }
-            // Transmission split: keep transmission materials out of the
-            // SceneColorPyramid copy by deferring them to the
-            // continuation pass. The typeof guard avoids reading
-            // transmissionFactor on UnlitMaterial etc.
-            if (transmissionFilter !== null) {
-                const mat = node.materials?.[0] as any;
-                const hasTransmission = typeof mat?.transmissionFactor === 'number' && mat.transmissionFactor > 0;
-                if (transmissionFilter === 'exclude' && hasTransmission) continue;
-                if (transmissionFilter === 'only' && !hasTransmission) continue;
-            }
-            if (!node.preInit(this._passType)) {
-                node.nodeUpdate(view, this._passType, this.rendererPassState, cluster);
-            }
-            node.renderPass(view, this._passType, renderContext);
-        }
-    }
-
 }

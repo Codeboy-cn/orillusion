@@ -1,12 +1,10 @@
 import { ShaderLib } from '../../../../assets/shader/ShaderLib';
 import { FullQuad_vert_wgsl } from '../../../../assets/shader/quad/Quad_shader';
 import { View3D } from '../../../../core/View3D';
-import { ViewQuad } from '../../../../core/ViewQuad';
 import { Context3D } from '../../../graphics/webGpu/Context3D';
 import { Texture } from '../../../graphics/webGpu/core/texture/Texture';
 import { WebGPUDescriptorCreator } from '../../../graphics/webGpu/descriptor/WebGPUDescriptorCreator';
 import { GBufferFrame } from '../../frame/GBufferFrame';
-import { RTFrame } from '../../frame/RTFrame';
 import { FXAAPost } from '../../post/FXAAPost';
 import { PostBase } from '../../post/PostBase';
 import { TonemapPost } from '../../post/TonemapPost';
@@ -42,7 +40,6 @@ export const FINAL_COLOR = '_FinalColor';
 export class PostPass extends RenderGraphPass {
     public readonly name = 'PostPass';
 
-    public finalQuadView!: ViewQuad;
     public readonly postList: Map<string, PostBase> = new Map();
     public debugTextures: any[] = [];
 
@@ -55,7 +52,6 @@ export class PostPass extends RenderGraphPass {
         this._ctx = ctx;
 
         ShaderLib.register('FullQuad_vert_wgsl', FullQuad_vert_wgsl);
-        this.finalQuadView = new ViewQuad(ctx, `Quad_vert_wgsl`, `Quad_frag_wgsl`, new RTFrame([], []), 0, false);
 
         // Wire a renderer-pass state against the colorPass GBuffer so
         // posts that read the GBuffer attachments via the legacy
@@ -160,21 +156,9 @@ export class PostPass extends RenderGraphPass {
         gpu.endCommandEncoder(command);
     }
 
-    /** Draws `texture` into the swap-chain via the fullscreen quad.
-     *  Called by GUIPass at the tail of the graph. */
-    public presentContent(view: View3D, texture: Texture): void {
-        const gpu = view.engine3D.context3D.gpuContext;
-        const command = gpu.beginCommandEncoder();
-        this.finalQuadView.renderToViewQuad(view, this.finalQuadView, command, texture);
-        gpu.endCommandEncoder(command);
-    }
-
-    /** Tears down the orphan finalQuadView and every attached
-     *  PostBase instance. Called from FrameGraphRendererJob.destroy
-     *  via the graph's destroy() walk. */
+    /** Tears down every attached PostBase instance. Called from
+     *  FrameGraphRendererJob.destroy via the graph's destroy() walk. */
     public destroy(): void {
-        this.finalQuadView?.destroy();
-        this.finalQuadView = null as any;
         for (const post of this.postList.values()) {
             post.destroy?.();
         }

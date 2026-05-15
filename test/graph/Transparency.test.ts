@@ -9,11 +9,14 @@ import {
     Material,
     SceneColorPyramidPass,
     SortedTransparentPass,
+    TransmissionOpaquePass,
     TransparentOITPass,
     TransparentResolvePass,
     SCENE_COLOR_PYRAMID,
     OIT_ACCUM_TEX,
     OIT_REVEAL_TEX,
+    TRANSPARENT_DRAW_CTX,
+    UnresolvedResourceError,
     PassType,
     BlendMode,
 } from '@orillusion/core'
@@ -195,4 +198,88 @@ await test('OIT_ACCUM passType bit is unique', async () => {
     }
 })
 
-setTimeout(end, 2000)
+// -----------------------------------------------------------------------------
+// Transparent passes are self-contained (do not call into ColorPass via getPass)
+// -----------------------------------------------------------------------------
+
+await test('SortedTransparentPass reads _TransparentDrawContext (not ColorPass via getPass)', async () => {
+    const engine = await Engine3D.init({
+        setting: { render: { useFrameGraph: true } as any },
+    })
+    const scene = new Scene3D()
+    const cameraObj = new Object3D()
+    const camera = cameraObj.addComponent(Camera3D)
+    camera.perspective(60, engine.aspect, 1, 5000)
+    scene.addChild(cameraObj)
+    const view = new View3D()
+    view.scene = scene
+    view.camera = camera
+    engine.startRenderView(view)
+    await delay(120)
+
+    const sorted = view.renderGraph!.getPass('SortedTransparentPass') as SortedTransparentPass | null
+    if (!sorted) throw new Error('SortedTransparentPass not registered')
+    expect(sorted.reads.indexOf(TRANSPARENT_DRAW_CTX) >= 0).toEqual(true)
+    expect(view.renderGraph!.pool.has(TRANSPARENT_DRAW_CTX)).toEqual(true)
+
+    engine.dispose()
+})
+
+await test('remove(ColorPass) surfaces the transparent-draw-context dependency on the next compile', async () => {
+    const engine = await Engine3D.init({
+        setting: { render: { useFrameGraph: true } as any },
+    })
+    const scene = new Scene3D()
+    const cameraObj = new Object3D()
+    const camera = cameraObj.addComponent(Camera3D)
+    camera.perspective(60, engine.aspect, 1, 5000)
+    scene.addChild(cameraObj)
+    const view = new View3D()
+    view.scene = scene
+    view.camera = camera
+    engine.startRenderView(view)
+    await delay(120)
+
+    const graph = view.renderGraph!
+    expect(graph.remove('ColorPass')).toEqual(true)
+
+    let threw: Error | null = null
+    try { graph.compile() } catch (e) { threw = e as Error }
+    if (!(threw instanceof UnresolvedResourceError)) throw new Error('expected UnresolvedResourceError after remove(ColorPass)')
+    // Could be reported against TransmissionOpaquePass, SortedTransparentPass,
+    // or another _ColorBuffer / _TransparentDrawContext consumer — the
+    // important thing is the error names a removed resource, not a silent
+    // skip at execute.
+    const removedRes = ['_ColorBuffer', '_NormalBuffer', TRANSPARENT_DRAW_CTX]
+    expect(removedRes.indexOf(threw.resource) >= 0).toEqual(true)
+
+    engine.dispose()
+})
+
+await test('TransmissionOpaquePass reads _TransparentDrawContext when registered', async () => {
+    const engine = await Engine3D.init({
+        setting: { render: { useFrameGraph: true } as any },
+    })
+    const scene = new Scene3D()
+    const cameraObj = new Object3D()
+    const camera = cameraObj.addComponent(Camera3D)
+    camera.perspective(60, engine.aspect, 1, 5000)
+    scene.addChild(cameraObj)
+    const view = new View3D()
+    view.scene = scene
+    view.camera = camera
+    engine.startRenderView(view)
+    await delay(120)
+
+    const trans = view.renderGraph!.getPass('TransmissionOpaquePass') as TransmissionOpaquePass | null
+    if (trans) {
+        expect(trans.reads.indexOf(TRANSPARENT_DRAW_CTX) >= 0).toEqual(true)
+    }
+    // (If TransmissionOpaquePass isn't registered in this engine config,
+    // the assertion below is vacuous — the wiring still exists in the
+    // class definition; we just don't have an instance to inspect.)
+
+    engine.dispose()
+})
+
+setTimeout(end, 2500)

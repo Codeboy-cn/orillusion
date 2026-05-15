@@ -1,13 +1,19 @@
 import { RenderGraphBuilder, RenderGraphPass, RenderGraphPassContext } from '../RenderGraphPass';
-import { COLOR_BUFFER, ColorPass } from './ColorPass';
+import { COLOR_BUFFER } from './ColorPass';
+import { ClusterLightingPass } from './ClusterLightingPass';
 import { SCENE_COLOR_PYRAMID } from './SceneColorPyramidPass';
 import { dependOnIfRegistered } from './_helpers';
+import {
+    drawTransmissionContinuation,
+    TRANSPARENT_DRAW_CTX,
+    TransparentDrawContext,
+} from './_transparentDraw';
 
 /**
  * Mutator pass that draws opaque materials with transmission
  * (`transmissionFactor > 0`) AFTER the SceneColorPyramid has captured
- * the rest of the opaque world. Mutates `_ColorBuffer` in place via
- * the ColorPass continuation render.
+ * the rest of the opaque world. Mutates `_ColorBuffer` in place via a
+ * continuation render pass against the same color attachment.
  *
  * Why split: transmission materials sample the pyramid for refraction
  * (and, in alpha-cutout mode, alpha). If drawn alongside other opaque
@@ -16,10 +22,13 @@ import { dependOnIfRegistered } from './_helpers';
  * screen position the pyramid would store the dragon, not whatever
  * cloth / wall sits behind it.
  *
- * The read on `_SceneColorPyramid` chains topo-order strictly after
- * {@link SceneColorPyramidPass}. `b.write(COLOR_BUFFER)` (mutator)
- * declares the in-place write so the topo sort routes downstream
- * `_ColorBuffer` consumers through this pass.
+ * Resource flow:
+ * - read `_SceneColorPyramid` — chains topo-order strictly after
+ *   {@link SceneColorPyramidPass}.
+ * - read `_TransparentDrawContext` — chains strictly after ColorPass
+ *   (it's the resource ColorPass creates to share render state).
+ * - mutator write on `_ColorBuffer` — declares the in-place write so
+ *   downstream `_ColorBuffer` consumers route through this pass.
  *
  * @group Graph
  */
@@ -28,14 +37,15 @@ export class TransmissionOpaquePass extends RenderGraphPass {
 
     public setup(b: RenderGraphBuilder): void {
         b.read(SCENE_COLOR_PYRAMID);
+        b.read(TRANSPARENT_DRAW_CTX);
         b.write(COLOR_BUFFER);  // mutator
 
         dependOnIfRegistered(b, 'GPUCullPass');
     }
 
     public execute(ctx: RenderGraphPassContext): void {
-        const colorPass = ctx.graph.getPass<ColorPass>('ColorPass');
-        if (!colorPass) return;
-        colorPass.renderTransmissionContinuation(ctx.view, ctx.occlusion);
+        const state = ctx.get<TransparentDrawContext>(TRANSPARENT_DRAW_CTX);
+        const cluster = ctx.graph.getPass<ClusterLightingPass>('ClusterLightingPass')?.clusterLightingBuffer;
+        drawTransmissionContinuation(ctx.view, cluster, state);
     }
 }

@@ -1,6 +1,8 @@
+import { ViewQuad } from '../../../../core/ViewQuad';
 import { Texture } from '../../../graphics/webGpu/core/texture/Texture';
 import { RenderGraphBuilder, RenderGraphPass, RenderGraphPassContext } from '../RenderGraphPass';
-import { FINAL_COLOR, PostPass } from './PostPass';
+import { FINAL_COLOR } from './PostPass';
+import { createPresentQuad, presentTexture } from './_present';
 
 /**
  * Published handle name for the canvas (swapchain) view that the
@@ -21,24 +23,31 @@ export const CANVAS_TEXTURE = '_CanvasTexture';
  * Final present-to-canvas pass. Reads `_FinalColor` (whatever the
  * post chain ended with, or the color buffer if no post effects are
  * enabled — see {@link PostPass}) and blits it to the swapchain via
- * the PostPass-owned fullscreen quad.
+ * a self-owned fullscreen quad.
  *
  * @group Graph
  */
 export class GUIPass extends RenderGraphPass {
     public readonly name = 'GUIPass';
 
+    private _presentQuad!: ViewQuad;
+
     public setup(b: RenderGraphBuilder): void {
         b.read(FINAL_COLOR);
         // CANVAS_TEXTURE is a pass-through handle; the actual swapchain
-        // GPUTextureView is acquired per-frame inside presentContent.
+        // GPUTextureView is acquired per-frame inside presentTexture.
         b.write(CANVAS_TEXTURE, () => null);
+
+        this._presentQuad = createPresentQuad(b.context3D);
     }
 
     public execute(ctx: RenderGraphPassContext): void {
-        const postPass = ctx.graph.getPass<PostPass>('PostPass');
-        if (!postPass) return;
         const finalColor = ctx.get<Texture>(FINAL_COLOR);
-        postPass.presentContent(ctx.view, finalColor);
+        presentTexture(ctx.view, this._presentQuad, finalColor);
+    }
+
+    public destroy(): void {
+        this._presentQuad?.destroy();
+        this._presentQuad = null as any;
     }
 }
