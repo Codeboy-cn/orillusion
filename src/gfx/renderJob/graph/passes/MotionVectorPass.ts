@@ -9,7 +9,6 @@ import { ComputeShader } from '../../../graphics/webGpu/shader/ComputeShader';
 import { GPUTextureFormat } from '../../../graphics/webGpu/WebGPUConst';
 import { GBufferFrame } from '../../frame/GBufferFrame';
 import { RenderGraphBuilder, RenderGraphPass, RenderGraphPassContext } from '../RenderGraphPass';
-import { RenderStage } from '../RenderStage';
 
 export const MOTION_VECTOR = '_MotionVector';
 
@@ -27,7 +26,6 @@ export const MOTION_VECTOR = '_MotionVector';
  */
 export class MotionVectorPass extends RenderGraphPass {
     public readonly name = 'MotionVectorPass';
-    public readonly stage = RenderStage.MotionVector;
 
     private _ctx!: Context3D;
     private _mv: RenderTexture | null = null;

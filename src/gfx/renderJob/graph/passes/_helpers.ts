@@ -10,6 +10,23 @@ import { renderGroupBundleKey } from '../../collect/RenderGroup';
 import { ClusterLightingBuffer } from '../../passRenderer/cluster/ClusterLightingBuffer';
 import { PassType } from '../../passRenderer/state/PassType';
 import { RendererPassState } from '../../passRenderer/state/RendererPassState';
+import { RenderGraphBuilder } from '../RenderGraphPass';
+
+/**
+ * Conditional `b.dependsOn`: declare an ordering edge on each named
+ * upstream pass that is registered in the graph, silently skipping
+ * names that aren't present. Use this from a pass's `setup()` when
+ * the upstream is gated (e.g. `GPUCullPass` is only added when
+ * `setting.render.gpuCull` is on) and the downstream still needs to
+ * run after it whenever it exists.
+ *
+ * @group Graph
+ */
+export function dependOnIfRegistered(b: RenderGraphBuilder, ...names: string[]): void {
+    for (const n of names) {
+        if (b.graph.getPass(n)) b.dependsOn(n);
+    }
+}
 
 /**
  * Build (or fetch from cache) the GPURenderBundle list for one entity

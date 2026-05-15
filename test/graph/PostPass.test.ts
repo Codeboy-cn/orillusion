@@ -8,7 +8,6 @@ import {
     PostPass,
     FINAL_COLOR,
     COLOR_BUFFER,
-    RenderStage,
 } from '@orillusion/core'
 
 // C8 acceptance: PostPass registered at stage=Post, reads _ColorBuffer,
@@ -33,7 +32,6 @@ await test('PostPass registered eagerly at stage=Post, reads _ColorBuffer, write
 
     const feature = view.renderGraph!.getPass('PostPass') as PostPass | null
     if (!feature) throw new Error('PostPass not registered')
-    expect(feature.stage).toEqual(RenderStage.Post)
     expect(feature.reads.length).toEqual(1)
     expect(feature.reads[0]).toEqual(COLOR_BUFFER)
     expect(feature.writes.length).toEqual(1)

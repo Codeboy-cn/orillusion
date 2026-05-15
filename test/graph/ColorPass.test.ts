@@ -14,7 +14,6 @@ import {
     REFLECTION_CUBE_MAP,
     DDGI_IRRADIANCE_MAP,
     DDGI_DEPTH_MAP,
-    RenderStage,
 } from '@orillusion/core'
 
 // C7 acceptance: ColorPass registers at stage=Opaque; its reads
@@ -38,7 +37,6 @@ await test('ColorPass registers at stage=Opaque with static reads and exposes co
 
     const feature = view.renderGraph!.getPass('ColorPass') as ColorPass | null
     if (!feature) throw new Error('ColorPass not registered')
-    expect(feature.stage).toEqual(RenderStage.Opaque)
     // Base reads when GI is disabled and zPrePass=true (engine default):
     // cluster + shadow + point shadow + reflection + main depth (zPrePass).
     expect(feature.reads.length).toEqual(5)

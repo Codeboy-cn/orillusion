@@ -2,7 +2,6 @@ import { Scene3D } from '../../../../core/Scene3D';
 import { EntityCollect } from '../../collect/EntityCollect';
 import { GPUCullSystem } from '../../cull/GPUCullSystem';
 import { RenderGraphBuilder, RenderGraphPass, RenderGraphPassContext } from '../RenderGraphPass';
-import { RenderStage } from '../RenderStage';
 
 export const VISIBILITY_BUFFER = '_VisibilityBuffer';
 export const DRAW_CMDS_BUFFER = '_DrawCmds';
@@ -30,7 +29,6 @@ export const DRAW_COUNT_BUFFER = '_DrawCount';
  */
 export class GPUCullPass extends RenderGraphPass {
     public readonly name = 'GPUCullPass';
-    public readonly stage = RenderStage.BeforeShadows;
 
     private _system!: GPUCullSystem;
     /** Track which Scene3D's RenderNode set we last synced from to know

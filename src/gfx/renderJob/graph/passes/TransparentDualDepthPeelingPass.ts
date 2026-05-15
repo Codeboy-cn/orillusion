@@ -10,10 +10,10 @@ import { RTResourceMap } from '../../frame/RTResourceMap';
 import { PassType } from '../../passRenderer/state/PassType';
 import { RendererPassState } from '../../passRenderer/state/RendererPassState';
 import { RenderGraphBuilder, RenderGraphPass, RenderGraphPassContext } from '../RenderGraphPass';
-import { RenderStage } from '../RenderStage';
 import { ClusterLightingPass } from './ClusterLightingPass';
 import { COLOR_BUFFER } from './ColorPass';
 import { SCENE_COLOR_PYRAMID } from './SceneColorPyramidPass';
+import { dependOnIfRegistered } from './_helpers';
 
 export const DDP_FRONT_TEX = '_DDPFront';
 export const DDP_FRONT_DEPTH_TEX = '_DDPFrontDepth';
@@ -65,16 +65,15 @@ export const DDP_DEFAULT_PASS_COUNT = 5;
  * passes per material) and ready for future expansion; stage 3 just
  * keeps the renderer simple to validate end-to-end first.
  *
- * Coexists with {@link TransparentOITPass} (WBOIT) at the same
- * RenderStage — each pass filters to materials matching its own
- * oitMode, so a scene can mix `'sorted'`, `'weighted'`, and
- * `'depth-peel'` materials and each runs through the right pipeline.
+ * Coexists with {@link TransparentOITPass} (WBOIT) — each pass
+ * filters to materials matching its own oitMode, so a scene can
+ * mix `'sorted'`, `'weighted'`, and `'depth-peel'` materials and
+ * each runs through the right pipeline.
  *
  * @group Graph
  */
 export class TransparentDualDepthPeelingPass extends RenderGraphPass {
     public readonly name = 'TransparentDualDepthPeelingPass';
-    public readonly stage = RenderStage.Transparent;
 
     private _ctx!: Context3D;
     private readonly _passType: PassType = PassType.OIT_DEPTH_PEEL_FRONT;
@@ -90,6 +89,8 @@ export class TransparentDualDepthPeelingPass extends RenderGraphPass {
                 return RTResourceMap.getTexture(this._ctx, tex);
             });
         }
+
+        dependOnIfRegistered(b, 'GPUCullPass');
     }
 
     public execute(ctx: RenderGraphPassContext): void {

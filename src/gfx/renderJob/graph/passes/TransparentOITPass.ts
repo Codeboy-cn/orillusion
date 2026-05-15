@@ -11,11 +11,11 @@ import { RTResourceMap } from '../../frame/RTResourceMap';
 import { PassType } from '../../passRenderer/state/PassType';
 import { RendererPassState } from '../../passRenderer/state/RendererPassState';
 import { RenderGraphBuilder, RenderGraphPass, RenderGraphPassContext } from '../RenderGraphPass';
-import { RenderStage } from '../RenderStage';
 import { ClusterLightingPass } from './ClusterLightingPass';
 import { COLOR_BUFFER } from './ColorPass';
 import { MAIN_DEPTH_TEXTURE } from './PreDepthPass';
 import { SCENE_COLOR_PYRAMID } from './SceneColorPyramidPass';
+import { dependOnIfRegistered } from './_helpers';
 
 export const OIT_ACCUM_TEX = '_OITAccum';
 export const OIT_REVEAL_TEX = '_OITReveal';
@@ -37,7 +37,6 @@ export const OIT_REVEAL_TEX = '_OITReveal';
  */
 export class TransparentOITPass extends RenderGraphPass {
     public readonly name = 'TransparentOITPass';
-    public readonly stage = RenderStage.Transparent;
 
     private _ctx!: Context3D;
     private readonly _passType: PassType = PassType.OIT_ACCUM;
@@ -68,6 +67,8 @@ export class TransparentOITPass extends RenderGraphPass {
             this._ensureRtFrame();
             return RTResourceMap.getTexture(this._ctx, OIT_REVEAL_TEX);
         });
+
+        dependOnIfRegistered(b, 'GPUCullPass');
     }
 
     public execute(ctx: RenderGraphPassContext): void {

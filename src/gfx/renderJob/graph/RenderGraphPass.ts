@@ -4,7 +4,6 @@ import { CEventDispatcher } from '../../../event/CEventDispatcher';
 import { OcclusionSystem } from '../occlusion/OcclusionSystem';
 import { PassType } from '../passRenderer/state/PassType';
 import { RenderGraph } from './RenderGraph';
-import { RenderStage } from './RenderStage';
 
 /**
  * Setup-time builder handed to {@link RenderGraphPass.setup}. A pass
@@ -20,7 +19,7 @@ import { RenderStage } from './RenderStage';
  *   only one pass per name may pass a factory.
  * - **Mutator** — `write(name)`. Declares this pass mutates a resource
  *   created elsewhere. Multiple passes may declare write without a
- *   factory; their order is determined by stage + insertion. Downstream
+ *   factory; their order is determined by insertion order. Downstream
  *   reads see the latest writer's state.
  *
  * @group Graph
@@ -53,8 +52,17 @@ export interface RenderGraphBuilder {
 
     /** Mutator overload: declare this pass writes to an existing
      *  named resource (created by another pass). Multi-mutator OK;
-     *  ordering is by stage + insertion. */
+     *  ordering is by insertion. */
     write(name: string): void;
+
+    /** Declare an explicit ordering dependency on another pass by
+     *  name, independent of any read/write resource edge. Use this
+     *  when the upstream pass produces side effects the downstream
+     *  pass consumes through a non-graph channel (e.g. GPU indirect
+     *  buffers consumed via GlobalBindGroup, or off-screen RTs
+     *  consumed by sibling materials). The named pass must already
+     *  be registered in the graph before this call. */
+    dependsOn(passName: string): void;
 }
 
 /**
@@ -78,8 +86,8 @@ export interface RenderGraphPassContext {
 
 /**
  * A single rendering capability in the graph. Subclasses declare
- * their position via `name` + `stage`, allocate GPU resources and
- * declare dependencies in `setup`, and submit GPU work in `execute`.
+ * their identity via `name`, allocate GPU resources and declare
+ * dependencies in `setup`, and submit GPU work in `execute`.
  *
  * `reads`, `writes`, and `creates` are populated by {@link RenderGraph.add}
  * after `setup()` runs, by recording the `b.read` / `b.write` calls
@@ -92,9 +100,6 @@ export abstract class RenderGraphPass extends CEventDispatcher {
      *  error messages — prefer PascalCase ending in `Pass`
      *  (e.g. `ShadowPass`, `ColorPass`). */
     public abstract readonly name: string;
-
-    /** Coarse bucket; see {@link RenderStage}. */
-    public abstract readonly stage: RenderStage;
 
     /** Material-side pass types consumed. Optional; defaults to none
      *  for pure compute / copy passes. */
@@ -119,6 +124,14 @@ export abstract class RenderGraphPass extends CEventDispatcher {
      *  `b.write(name, factory)`, not `b.write(name)`). The validator's
      *  single-creator rule operates on this set. */
     public readonly creates!: readonly string[];
+
+    /** Explicit ordering dependencies on other pass names, set either
+     *  from `setup()` via `b.dependsOn(name)` or by direct assignment
+     *  before the next compile. Each entry adds a topo-sort edge
+     *  `<name> → this`, independent of any resource edge. Use for
+     *  side-effect dependencies the graph can't see (indirect buffers,
+     *  off-screen RTs consumed via materials, etc.). */
+    public dependencies?: ReadonlySet<string>;
 
     /** Allocate GPU resources, declare graph-level dependencies via
      *  `b.read` / `b.write`. Called once when `graph.add()` wires

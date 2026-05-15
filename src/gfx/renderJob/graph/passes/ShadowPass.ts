@@ -19,8 +19,7 @@ import { OcclusionSystem } from '../../occlusion/OcclusionSystem';
 import { PassType } from '../../passRenderer/state/PassType';
 import { RendererPassState } from '../../passRenderer/state/RendererPassState';
 import { RenderGraphBuilder, RenderGraphPass, RenderGraphPassContext } from '../RenderGraphPass';
-import { RenderStage } from '../RenderStage';
-import { buildOpBundles, buildTrBundles, preInitPassPipelines } from './_helpers';
+import { buildOpBundles, buildTrBundles, dependOnIfRegistered, preInitPassPipelines } from './_helpers';
 
 /**
  * Published handle name for the directional-light shadow map array.
@@ -45,7 +44,6 @@ type ShadowKind = 'all' | 'static' | 'dynamic';
  */
 export class ShadowPass extends RenderGraphPass {
     public readonly name = 'ShadowPass';
-    public readonly stage = RenderStage.Shadow;
 
     public depth2DArrayTexture!: Depth2DTextureArray;
     public shadowPassCount: number = 0;
@@ -89,6 +87,8 @@ export class ShadowPass extends RenderGraphPass {
         }
 
         b.write(MAIN_SHADOW_MAP, () => this.depth2DArrayTexture);
+
+        dependOnIfRegistered(b, 'GPUCullPass');
     }
 
     /** External API: mark a static-cache layer dirty. */

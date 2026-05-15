@@ -21,8 +21,7 @@ import { OcclusionSystem } from '../../occlusion/OcclusionSystem';
 import { RenderContext } from '../../passRenderer/RenderContext';
 import { PassType } from '../../passRenderer/state/PassType';
 import { RenderGraphBuilder, RenderGraphPass, RenderGraphPassContext } from '../RenderGraphPass';
-import { RenderStage } from '../RenderStage';
-import { preInitPassPipelines } from './_helpers';
+import { dependOnIfRegistered, preInitPassPipelines } from './_helpers';
 
 /**
  * Published handle name for the point-light shadow cube array.
@@ -51,7 +50,6 @@ type CubeShadowMapInfo = {
  */
 export class PointShadowPass extends RenderGraphPass {
     public readonly name = 'PointShadowPass';
-    public readonly stage = RenderStage.Shadow;
 
     public cubeArrayTexture!: DepthCubeArrayTexture;
     public colorTexture!: VirtualTexture;
@@ -68,6 +66,8 @@ export class PointShadowPass extends RenderGraphPass {
         this.colorTexture = new VirtualTexture(this.shadowSize, this.shadowSize, GPUTextureFormat.bgra8unorm, false, undefined, 1, 0, 1, ctx);
         Reference.getInstance().attached(this.cubeArrayTexture, this);
         b.write(POINT_SHADOW_CUBE_ARRAY, () => this.cubeArrayTexture);
+
+        dependOnIfRegistered(b, 'GPUCullPass');
     }
 
     public execute(ctx: RenderGraphPassContext): void {

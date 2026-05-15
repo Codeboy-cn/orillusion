@@ -8,7 +8,6 @@ import { EntityCollect } from '../../collect/EntityCollect';
 import { ClusterConfig } from '../../passRenderer/cluster/ClusterConfig';
 import { ClusterLightingBuffer } from '../../passRenderer/cluster/ClusterLightingBuffer';
 import { RenderGraphBuilder, RenderGraphPass, RenderGraphPassContext } from '../RenderGraphPass';
-import { RenderStage } from '../RenderStage';
 
 /**
  * Published handle name for the cluster lighting buffer. Consumers
@@ -20,11 +19,11 @@ import { RenderStage } from '../RenderStage';
 export const CLUSTER_LIGHTING_BUFFER = '_ClusterLightingBuffer';
 
 /**
- * Cluster lighting compute pass. Runs once per frame at
- * {@link RenderStage.BeforeShadows}: refreshes the cluster bounds
- * (when the active camera changes), updates per-cluster light
- * assignment via two compute dispatches, and exposes the resulting
- * `ClusterLightingBuffer` to downstream passes.
+ * Cluster lighting compute pass. Runs once per frame, before any
+ * pass that reads `_ClusterLightingBuffer`: refreshes the cluster
+ * bounds (when the active camera changes), updates per-cluster
+ * light assignment via two compute dispatches, and exposes the
+ * resulting `ClusterLightingBuffer` to downstream passes.
  *
  * The published `_ClusterLightingBuffer` resource is registered as
  * external — the buffer object owns its own resize / rebuild
@@ -35,7 +34,6 @@ export const CLUSTER_LIGHTING_BUFFER = '_ClusterLightingBuffer';
  */
 export class ClusterLightingPass extends RenderGraphPass {
     public readonly name = 'ClusterLightingPass';
-    public readonly stage = RenderStage.BeforeShadows;
 
     public clusterLightingBuffer!: ClusterLightingBuffer;
     public readonly maxNumLightsPerCluster = 64;

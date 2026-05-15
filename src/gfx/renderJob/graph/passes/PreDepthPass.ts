@@ -12,7 +12,6 @@ import { OcclusionSystem } from '../../occlusion/OcclusionSystem';
 import { PassType } from '../../passRenderer/state/PassType';
 import { RendererPassState } from '../../passRenderer/state/RendererPassState';
 import { RenderGraphBuilder, RenderGraphPass, RenderGraphPassContext } from '../RenderGraphPass';
-import { RenderStage } from '../RenderStage';
 import { buildOpBundles, preInitPassPipelines } from './_helpers';
 
 /**
@@ -35,7 +34,6 @@ export const Z_BUFFER_TEXTURE = '_ZBufferTexture';
  */
 export class PreDepthPass extends RenderGraphPass {
     public readonly name = 'PreDepthPass';
-    public readonly stage = RenderStage.PreDepth;
 
     public zBufferTexture!: VirtualTexture;
     public rendererPassState!: RendererPassState;

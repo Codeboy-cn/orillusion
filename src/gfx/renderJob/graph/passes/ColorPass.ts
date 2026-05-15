@@ -13,8 +13,7 @@ import { RenderContext } from '../../passRenderer/RenderContext';
 import { PassType } from '../../passRenderer/state/PassType';
 import { RendererPassState } from '../../passRenderer/state/RendererPassState';
 import { RenderGraphBuilder, RenderGraphPass, RenderGraphPassContext } from '../RenderGraphPass';
-import { RenderStage } from '../RenderStage';
-import { buildOpBundles, buildTrBundles, preInitPassPipelines } from './_helpers';
+import { buildOpBundles, buildTrBundles, dependOnIfRegistered, preInitPassPipelines } from './_helpers';
 import { ClusterLightingPass, CLUSTER_LIGHTING_BUFFER } from './ClusterLightingPass';
 import { MAIN_DEPTH_TEXTURE } from './PreDepthPass';
 import { MAIN_SHADOW_MAP } from './ShadowPass';
@@ -59,7 +58,6 @@ export const NORMAL_BUFFER = '_NormalBuffer';
  */
 export class ColorPass extends RenderGraphPass {
     public readonly name = 'ColorPass';
-    public readonly stage = RenderStage.Opaque;
 
     public rendererPassState!: RendererPassState;
 
@@ -149,6 +147,14 @@ export class ColorPass extends RenderGraphPass {
         b.write<RenderTexture>(NORMAL_BUFFER, () =>
             GBufferFrame.getGBufferFrame(GBufferFrame.colorPass_GBuffer, this._ctx).getCompressGBufferTexture()
         );
+
+        // Side-effect ordering. SceneCapturePass renders off-screen
+        // RTs that this frame's lit materials sample directly via
+        // SceneCaptureCameraComponent (no graph-pool handle). GPUCullPass
+        // (when present) populates the indirect draw buffers consumed
+        // through GlobalBindGroup. Neither flows as a `b.read`, so we
+        // declare the ordering explicitly.
+        dependOnIfRegistered(b, 'SceneCapturePass', 'GPUCullPass');
     }
 
     public execute(ctx: RenderGraphPassContext): void {

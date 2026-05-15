@@ -1,6 +1,5 @@
 import { Texture } from '../../../graphics/webGpu/core/texture/Texture';
 import { RenderGraphBuilder, RenderGraphPass, RenderGraphPassContext } from '../RenderGraphPass';
-import { RenderStage } from '../RenderStage';
 import { FINAL_COLOR, PostPass } from './PostPass';
 
 /**
@@ -28,7 +27,6 @@ export const CANVAS_TEXTURE = '_CanvasTexture';
  */
 export class GUIPass extends RenderGraphPass {
     public readonly name = 'GUIPass';
-    public readonly stage = RenderStage.Present;
 
     public setup(b: RenderGraphBuilder): void {
         b.read(FINAL_COLOR);

@@ -9,11 +9,10 @@ import { ClusterLightingBuffer } from '../../passRenderer/cluster/ClusterLightin
 import { RenderContext } from '../../passRenderer/RenderContext';
 import { PassType } from '../../passRenderer/state/PassType';
 import { RenderGraphBuilder, RenderGraphPass, RenderGraphPassContext } from '../RenderGraphPass';
-import { RenderStage } from '../RenderStage';
 import { ClusterLightingPass } from './ClusterLightingPass';
 import { POINT_SHADOW_CUBE_ARRAY } from './PointShadowPass';
 import { MAIN_SHADOW_MAP } from './ShadowPass';
-import { preInitPassPipelines } from './_helpers';
+import { dependOnIfRegistered, preInitPassPipelines } from './_helpers';
 
 /**
  * Renders every scene-registered {@link SceneCaptureCameraComponent}
@@ -21,15 +20,17 @@ import { preInitPassPipelines } from './_helpers';
  * captured scene. Mirrors, security-camera screens, portals, and
  * picture-in-picture mini-maps all sit on top of this pass.
  *
- * Stage / ordering
- * ----------------
+ * Ordering
+ * --------
  *
- * Runs at {@link RenderStage.GI}, after {@link ShadowPass} +
- * {@link PointShadowPass} + {@link ReflectionPass} (so captures
- * include directional + point shadows and the pre-filtered
- * reflection cube), and before {@link ColorPass} (so captured
- * textures are ready when main-pass materials sample them in the
- * same frame).
+ * Runs after {@link ShadowPass} + {@link PointShadowPass} +
+ * {@link ReflectionPass} (so captures include directional + point
+ * shadows and the pre-filtered reflection cube), and before
+ * {@link ColorPass} (so captured textures are ready when main-pass
+ * materials sample them in the same frame). Shadow ordering is
+ * pinned by the `b.read` calls below; the ColorPass ordering is
+ * pinned by an explicit `b.dependsOn('SceneCapturePass')` in
+ * ColorPass.setup since this pass writes no graph-pool handle.
  *
  * Reads
  * -----
@@ -64,7 +65,6 @@ import { preInitPassPipelines } from './_helpers';
  */
 export class SceneCapturePass extends RenderGraphPass {
     public readonly name = 'SceneCapturePass';
-    public readonly stage = RenderStage.GI;
     public readonly materialPasses: readonly PassType[] = [PassType.COLOR];
 
     private readonly _passType: PassType = PassType.COLOR;
@@ -77,6 +77,8 @@ export class SceneCapturePass extends RenderGraphPass {
         // are how we tell the topo-sort "we need shadows first".
         b.read(MAIN_SHADOW_MAP);
         b.read(POINT_SHADOW_CUBE_ARRAY);
+
+        dependOnIfRegistered(b, 'GPUCullPass');
     }
 
     public execute(ctx: RenderGraphPassContext): void {

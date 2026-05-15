@@ -1,7 +1,7 @@
 import { RenderGraphBuilder, RenderGraphPass, RenderGraphPassContext } from '../RenderGraphPass';
-import { RenderStage } from '../RenderStage';
 import { COLOR_BUFFER, ColorPass } from './ColorPass';
 import { SCENE_COLOR_PYRAMID } from './SceneColorPyramidPass';
+import { dependOnIfRegistered } from './_helpers';
 
 /** Filter mode threaded through to {@link ColorPass.oitFilter}.
  *  - `'all'`: render every transparent node (default — used when
@@ -26,7 +26,6 @@ export type SortedTransparentFilter = 'all' | 'sorted';
  */
 export class SortedTransparentPass extends RenderGraphPass {
     public readonly name = 'SortedTransparentPass';
-    public readonly stage = RenderStage.Transparent;
 
     constructor(public readonly filter: SortedTransparentFilter = 'all') {
         super();
@@ -35,6 +34,8 @@ export class SortedTransparentPass extends RenderGraphPass {
     public setup(b: RenderGraphBuilder): void {
         b.read(SCENE_COLOR_PYRAMID);
         b.write(COLOR_BUFFER);  // mutator
+
+        dependOnIfRegistered(b, 'GPUCullPass');
     }
 
     public execute(ctx: RenderGraphPassContext): void {

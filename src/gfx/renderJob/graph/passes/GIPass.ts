@@ -21,7 +21,6 @@ import { Probe } from '../../passRenderer/ddgi/Probe';
 import { PassType } from '../../passRenderer/state/PassType';
 import { RendererPassState } from '../../passRenderer/state/RendererPassState';
 import { RenderGraphBuilder, RenderGraphPass, RenderGraphPassContext } from '../RenderGraphPass';
-import { RenderStage } from '../RenderStage';
 import { POINT_SHADOW_CUBE_ARRAY } from './PointShadowPass';
 import { MAIN_SHADOW_MAP } from './ShadowPass';
 
@@ -64,7 +63,6 @@ class ProbeRenderResult {
  */
 export class GIPass extends RenderGraphPass {
     public readonly name = 'GIPass';
-    public readonly stage = RenderStage.GI;
 
     public positionMap!: RenderTexture;
     public normalMap!: RenderTexture;

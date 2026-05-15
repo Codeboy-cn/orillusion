@@ -19,7 +19,6 @@ import { PassType } from '../../passRenderer/state/PassType';
 import { RendererMask } from '../../passRenderer/state/RendererMask';
 import { RendererPassState } from '../../passRenderer/state/RendererPassState';
 import { RenderGraphBuilder, RenderGraphPass, RenderGraphPassContext } from '../RenderGraphPass';
-import { RenderStage } from '../RenderStage';
 import { ClusterLightingPass } from './ClusterLightingPass';
 import { preInitPassPipelines } from './_helpers';
 
@@ -44,7 +43,6 @@ export const REFLECTION_CUBE_MAP = '_ReflectionCubeMap';
  */
 export class ReflectionPass extends RenderGraphPass {
     public readonly name = 'ReflectionPass';
-    public readonly stage = RenderStage.GI;
 
     public outTexture!: VirtualTexture;
     public gBuffer!: GBufferFrame;

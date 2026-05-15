@@ -12,7 +12,6 @@ import { PostBase } from '../../post/PostBase';
 import { TonemapPost } from '../../post/TonemapPost';
 import { RendererPassState } from '../../passRenderer/state/RendererPassState';
 import { RenderGraphBuilder, RenderGraphPass, RenderGraphPassContext } from '../RenderGraphPass';
-import { RenderStage } from '../RenderStage';
 import { COLOR_BUFFER } from './ColorPass';
 
 /**
@@ -42,7 +41,6 @@ export const FINAL_COLOR = '_FinalColor';
  */
 export class PostPass extends RenderGraphPass {
     public readonly name = 'PostPass';
-    public readonly stage = RenderStage.Post;
 
     public finalQuadView!: ViewQuad;
     public readonly postList: Map<string, PostBase> = new Map();

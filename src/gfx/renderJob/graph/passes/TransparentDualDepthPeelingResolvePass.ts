@@ -3,7 +3,6 @@ import { RenderTexture } from '../../../../textures/RenderTexture';
 import { Context3D } from '../../../graphics/webGpu/Context3D';
 import { RTResourceMap } from '../../frame/RTResourceMap';
 import { RenderGraphBuilder, RenderGraphPass, RenderGraphPassContext } from '../RenderGraphPass';
-import { RenderStage } from '../RenderStage';
 import { COLOR_BUFFER } from './ColorPass';
 import { DDP_FRONT_TEX } from './TransparentDualDepthPeelingPass';
 
@@ -21,7 +20,6 @@ import { DDP_FRONT_TEX } from './TransparentDualDepthPeelingPass';
  */
 export class TransparentDualDepthPeelingResolvePass extends RenderGraphPass {
     public readonly name = 'TransparentDualDepthPeelingResolvePass';
-    public readonly stage = RenderStage.AfterTransparent;
 
     private _ctx!: Context3D;
     private _pipeline: GPURenderPipeline | null = null;

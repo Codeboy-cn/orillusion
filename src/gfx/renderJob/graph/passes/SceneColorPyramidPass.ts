@@ -5,7 +5,6 @@ import { TextureMipmapGenerator } from '../../../graphics/webGpu/core/texture/Te
 import { GBufferFrame } from '../../frame/GBufferFrame';
 import { RTResourceMap } from '../../frame/RTResourceMap';
 import { RenderGraphBuilder, RenderGraphPass, RenderGraphPassContext } from '../RenderGraphPass';
-import { RenderStage } from '../RenderStage';
 import { COLOR_BUFFER } from './ColorPass';
 
 /**
@@ -30,11 +29,11 @@ import { COLOR_BUFFER } from './ColorPass';
 export const SCENE_COLOR_PYRAMID = '_SceneColorPyramid';
 
 /**
- * Frame Graph feature that snapshots `_ColorBuffer` at
- * {@link RenderStage.AfterOpaque}. Runs between `ColorPass`
- * (opaque-only, via `maskTr=true`) and `SortedTransparentPass`
- * (transparent-only, via `maskOp=true`) so transmission materials
- * sample the opaque-world backdrop without seeing other transparents.
+ * Frame Graph feature that snapshots `_ColorBuffer` between
+ * `ColorPass` (opaque-only, via `maskTr=true`) and
+ * `SortedTransparentPass` (transparent-only, via `maskOp=true`) so
+ * transmission materials sample the opaque-world backdrop without
+ * seeing other transparents.
  *
  * Allocates one `RenderTexture` per Context3D, sized to match the
  * current color buffer and recreated on resize.
@@ -43,7 +42,6 @@ export const SCENE_COLOR_PYRAMID = '_SceneColorPyramid';
  */
 export class SceneColorPyramidPass extends RenderGraphPass {
     public readonly name = 'SceneColorPyramidPass';
-    public readonly stage = RenderStage.AfterOpaque;
 
     private _ctx!: Context3D;
     private _pyramid: RenderTexture | null = null;

@@ -82,11 +82,11 @@ export class ForwardRendererJob extends RendererJob {
         }
 
         // Off-screen scene capture (mirrors / monitors / portals).
-        // Runs at the same RenderStage.GI bucket but inserted after
-        // GIPass so the topo tie-break orders it later. Reads
-        // shadow handles to force ordering after ShadowPass /
-        // PointShadowPass; consumer materials sample the per-
-        // component RT directly via SceneCaptureCameraComponent.
+        // Reads shadow handles to force ordering after ShadowPass /
+        // PointShadowPass; consumer materials sample the per-component
+        // RT directly via SceneCaptureCameraComponent. ColorPass declares
+        // an explicit `b.dependsOn('SceneCapturePass')` so the captured
+        // RTs are ready before main-pass materials sample them.
         // No-op when no SceneCaptureCameraComponents are registered.
         this.graph.add(SceneCapturePass);
 

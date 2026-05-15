@@ -1,8 +1,9 @@
 import {
     AtmosphericComponent, BoxGeometry, CameraUtil, Color, ComponentBase, DirectLight, Engine3D,
-    ForwardRendererJob, HoverCameraController, KelvinUtil, LitMaterial, Matrix4,
-    MeshRenderer, Object3D, PassType, Quaternion, RenderGraphBuilder, RenderGraphPass,
-    RenderGraphPassContext, RenderStage, RenderTexture, Scene3D, SphereGeometry, Vector3, View3D,
+    ForwardRendererJob, GUIPass, HoverCameraController, KelvinUtil, LitMaterial, Matrix4,
+    MeshRenderer, Object3D, PassType, PostPass, Quaternion, RenderGraphBuilder,
+    RenderGraphPass, RenderGraphPassContext, RenderTexture, Scene3D, SortedTransparentPass,
+    SphereGeometry, Vector3, View3D,
     // Built-in graph resource keys we depend on.
     COLOR_BUFFER, MAIN_DEPTH_TEXTURE,
 } from "@orillusion/core";
@@ -146,8 +147,8 @@ class DecalComponent extends ComponentBase {
  * screen-space filtering at all:
  *   - In addRenderNode, the engine's EntityCollect buckets a node into opaqueList
  *     or transparentList based on `renderOrder >= 3000`.
- *   - opaqueList is drawn by ColorPass in RenderStage.Opaque (40);
- *     transparentList is drawn by SortedTransparentPass in RenderStage.Transparent (60).
+ *   - opaqueList is drawn by ColorPass; transparentList is drawn by
+ *     SortedTransparentPass (added later in the graph).
  *   - Our decal pass runs at AfterOpaque (50) — **exactly between the two**.
  *   - So bumping the blocker node's material.colorPass.renderOrder to ≥ 3000 makes
  *     SortedTransparentPass draw it after the decal pass →
@@ -280,7 +281,6 @@ async function loadImageTexture(device: GPUDevice, url: string): Promise<GPUText
  * ════════════════════════════════════════════════════════════════════ */
 class DecalShadowVolumePass extends RenderGraphPass {
     public readonly name = 'DecalShadowVolumePass';
-    public readonly stage = RenderStage.AfterOpaque;
 
     /* ── Device / persistent GPU resources ── */
     private _device!: GPUDevice;
@@ -830,10 +830,34 @@ fn fs(in: VOut) -> @location(0) vec4f {
 class DecalRendererJob extends ForwardRendererJob {
     constructor(view: View3D) {
         super(view);
-        /* AfterOpaque + b.write(COLOR_BUFFER) + b.read(MAIN_DEPTH_TEXTURE) lets the topology
-         * automatically schedule it after ColorPass and before PostPass.
-         * The pass itself has no external API; all decal configuration goes through DecalComponent. */
+        /* Strict draw order: terrain → decals → buildings.
+         *   - ColorPass renders terrain (sphere + bumps, opaque).
+         *   - DecalBlockerComponent bumps building material renderOrder
+         *     to 3001 → engine buckets them into transparentList →
+         *     drawn by SortedTransparentPass.
+         *   - We need DecalShadowVolumePass between ColorPass and
+         *     SortedTransparentPass so its stencil-shadow-volume only
+         *     sees terrain depth (otherwise buildings occlude the
+         *     stencil-mark step and decals leak onto building walls;
+         *     conversely if decals run after buildings, buildings draw
+         *     into ColorBuffer first and decals composite on top of
+         *     them — wrong).
+         *
+         * After super(view), insertion order is
+         *   ... ColorPass → ... → SortedTransparent → PostPass → GUIPass.
+         * Adding Decal here gives it insertion = max, so the topo
+         * writer-chain puts Decal AFTER SortedTransparent. To fix the
+         * order without forking ForwardRendererJob's whole pass list,
+         * we add Decal and then `replace()` SortedTransparent / Post /
+         * GUI — replace() re-runs setup and assigns each a fresh
+         * insertion counter, bumping them past Decal. Final compiled
+         * order:
+         *   ... ColorPass → TransmissionOpaque → Decal → SortedTransparent → PostPass → GUIPass
+         */
         this.graph.add(DecalShadowVolumePass);
+        this.graph.replace('SortedTransparentPass', SortedTransparentPass, 'all');
+        this.graph.replace('PostPass', PostPass);
+        this.graph.replace('GUIPass', GUIPass);
         this.graph.compile();
         console.log('[DecalRendererJob] pass order:\n  ' +
             this.graph.passes.map(p => p.name).join(' → '));

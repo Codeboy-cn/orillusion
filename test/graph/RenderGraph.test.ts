@@ -1,13 +1,11 @@
 import { test, end, expect } from '../util'
 import {
-    RenderStage,
     RenderGraphPass,
     RenderGraph,
     topoSort,
     GraphValidator,
     CyclicDependencyError,
     UnresolvedResourceError,
-    StageConstraintViolation,
     DuplicateCreatorError,
     type RenderGraphBuilder,
     type RenderGraphPassContext,
@@ -19,27 +17,30 @@ import {
 
 interface FakeConfig {
     name: string
-    stage: RenderStage
     reads?: string[]
     writes?: string[]      // resources this pass creates (single-creator)
     mutates?: string[]     // resources this pass writes without creating (multi-mutator)
+    deps?: string[]        // explicit dependsOn names
 }
 
 class FakePass extends RenderGraphPass {
     public readonly name: string
-    public readonly stage: RenderStage
     public executed = 0
 
     constructor(public readonly config: FakeConfig) {
         super()
         this.name = config.name
-        this.stage = config.stage
+        if (config.deps) this.dependencies = new Set(config.deps)
     }
 
     public setup(b: RenderGraphBuilder): void {
         for (const r of this.config.reads ?? []) b.read(r)
         for (const w of this.config.writes ?? []) b.write(w, () => ({ name: w }))
         for (const m of this.config.mutates ?? []) b.write(m)
+        // deps are surfaced via the constructor-set `dependencies`
+        // field; setup doesn't call `b.dependsOn` so fixtures can
+        // declare deps on passes that are added later in the test
+        // (the topo sort tolerates unknown names).
     }
 
     public execute(_ctx: RenderGraphPassContext): void {
@@ -47,17 +48,18 @@ class FakePass extends RenderGraphPass {
     }
 }
 
-/** Build a topo input in old-style (pass list, byName, insertedOrder). */
-function makeTopoInput(passes: { name: string; stage: RenderStage; reads?: string[]; writes?: string[] }[]) {
+/** Build a topo input directly (bypassing RenderGraph.add) by pre-stamping
+ *  reads/writes/creates onto fake passes. Used for low-level topoSort tests. */
+function makeTopoInput(passes: { name: string; reads?: string[]; writes?: string[]; deps?: string[] }[]) {
     const byName = new Map<string, RenderGraphPass>()
     const order = new Map<string, number>()
     const arr: RenderGraphPass[] = []
     passes.forEach((p, i) => {
-        const fp = new FakePass({ name: p.name, stage: p.stage, reads: p.reads, writes: p.writes })
-        // Test fixtures bypass graph.add() and stamp reads/writes/creates directly.
+        const fp = new FakePass({ name: p.name, reads: p.reads, writes: p.writes, deps: p.deps })
         ;(fp as any).reads = Object.freeze([...(p.reads ?? [])])
         ;(fp as any).writes = Object.freeze([...(p.writes ?? [])])
         ;(fp as any).creates = Object.freeze([...(p.writes ?? [])])
+        if (p.deps) fp.dependencies = new Set(p.deps)
         byName.set(p.name, fp)
         order.set(p.name, i)
         arr.push(fp)
@@ -72,64 +74,39 @@ function viewStub(): any {
 }
 
 // -----------------------------------------------------------------------------
-// RenderStage enum — monotone ordering
-// -----------------------------------------------------------------------------
-
-await test('RenderStage is strictly ordered from BeforeShadows to Present', async () => {
-    const ordered: RenderStage[] = [
-        RenderStage.BeforeShadows,
-        RenderStage.Shadow,
-        RenderStage.PreDepth,
-        RenderStage.GI,
-        RenderStage.Opaque,
-        RenderStage.AfterOpaque,
-        RenderStage.Transparent,
-        RenderStage.AfterTransparent,
-        RenderStage.PrePost,
-        RenderStage.Post,
-        RenderStage.AfterPost,
-        RenderStage.UI,
-        RenderStage.Present,
-    ]
-    for (let i = 1; i < ordered.length; i++) {
-        expect(ordered[i] > ordered[i - 1]).toEqual(true)
-    }
-})
-
-// -----------------------------------------------------------------------------
-// Topological sort — produces stage-first ordering
+// Topological sort — produces insertion-order ordering when no constraints
 // -----------------------------------------------------------------------------
 
 await test('topoSort: linear reads/writes chain produces producer-first order', async () => {
     const { passes, byName, insertedOrder } = makeTopoInput([
-        { name: 'C', stage: RenderStage.Post, reads: ['_Y'], writes: [] },
-        { name: 'B', stage: RenderStage.Opaque, reads: ['_X'], writes: ['_Y'] },
-        { name: 'A', stage: RenderStage.Shadow, reads: [], writes: ['_X'] },
+        { name: 'C', reads: ['_Y'], writes: [] },
+        { name: 'B', reads: ['_X'], writes: ['_Y'] },
+        { name: 'A', reads: [], writes: ['_X'] },
     ])
     const order = topoSort(passes, byName, insertedOrder)
-    // Stage order forces A → B → C even though insertion order was C,B,A.
+    // Resource flow forces A → B → C even though insertion order was C,B,A.
     expect(order).toEqual(['A', 'B', 'C'])
 })
 
-await test('topoSort: same-stage passes tie-break on insertion order', async () => {
+await test('topoSort: independent passes follow insertion order', async () => {
     const t1 = makeTopoInput([
-        { name: 'A', stage: RenderStage.Opaque },
-        { name: 'B', stage: RenderStage.Opaque },
-        { name: 'C', stage: RenderStage.Opaque },
+        { name: 'A' },
+        { name: 'B' },
+        { name: 'C' },
     ])
     expect(topoSort(t1.passes, t1.byName, t1.insertedOrder)).toEqual(['A', 'B', 'C'])
     const t2 = makeTopoInput([
-        { name: 'C', stage: RenderStage.Opaque },
-        { name: 'A', stage: RenderStage.Opaque },
-        { name: 'B', stage: RenderStage.Opaque },
+        { name: 'C' },
+        { name: 'A' },
+        { name: 'B' },
     ])
     expect(topoSort(t2.passes, t2.byName, t2.insertedOrder)).toEqual(['C', 'A', 'B'])
 })
 
-await test('topoSort: data edge beats stage ordering when stages equal', async () => {
+await test('topoSort: data edge wins over insertion when they conflict', async () => {
     const { passes, byName, insertedOrder } = makeTopoInput([
-        { name: 'B', stage: RenderStage.Opaque, reads: ['_X'], writes: [] },
-        { name: 'A', stage: RenderStage.Opaque, reads: [], writes: ['_X'] },
+        { name: 'B', reads: ['_X'], writes: [] },
+        { name: 'A', reads: [], writes: ['_X'] },
     ])
     expect(topoSort(passes, byName, insertedOrder)).toEqual(['A', 'B'])
 })
@@ -140,8 +117,8 @@ await test('topoSort: data edge beats stage ordering when stages equal', async (
 
 await test('topoSort throws CyclicDependencyError on reads/writes cycle', async () => {
     const { passes, byName, insertedOrder } = makeTopoInput([
-        { name: 'A', stage: RenderStage.Opaque, reads: ['_Y'], writes: ['_X'] },
-        { name: 'B', stage: RenderStage.Opaque, reads: ['_X'], writes: ['_Y'] },
+        { name: 'A', reads: ['_Y'], writes: ['_X'] },
+        { name: 'B', reads: ['_X'], writes: ['_Y'] },
     ])
     let threw: Error | null = null
     try { topoSort(passes, byName, insertedOrder) } catch (e) { threw = e as Error }
@@ -153,7 +130,7 @@ await test('topoSort throws CyclicDependencyError on reads/writes cycle', async 
 
 await test('GraphValidator throws UnresolvedResourceError when reads has no creator', async () => {
     const { passes } = makeTopoInput([
-        { name: 'A', stage: RenderStage.Opaque, reads: ['_MissingResource'], writes: [] },
+        { name: 'A', reads: ['_MissingResource'], writes: [] },
     ])
     const v = new GraphValidator(passes)
     let threw: Error | null = null
@@ -163,24 +140,10 @@ await test('GraphValidator throws UnresolvedResourceError when reads has no crea
     expect(threw.resource).toEqual('_MissingResource')
 })
 
-await test('GraphValidator throws StageConstraintViolation for backwards stage reads', async () => {
-    const { passes } = makeTopoInput([
-        { name: 'LatePost', stage: RenderStage.Post, reads: [], writes: ['_X'] },
-        { name: 'EarlyHook', stage: RenderStage.AfterOpaque, reads: ['_X'], writes: [] },
-    ])
-    const v = new GraphValidator(passes)
-    let threw: Error | null = null
-    try { v.validateStageOrdering() } catch (e) { threw = e as Error }
-    if (!(threw instanceof StageConstraintViolation)) throw new Error('wrong error type')
-    expect(threw.downstream).toEqual('EarlyHook')
-    expect(threw.upstream).toEqual('LatePost')
-    expect(threw.resource).toEqual('_X')
-})
-
 await test('GraphValidator throws DuplicateCreatorError when two passes create the same resource', async () => {
     const { passes } = makeTopoInput([
-        { name: 'A', stage: RenderStage.Opaque, reads: [], writes: ['_X'] },
-        { name: 'B', stage: RenderStage.Opaque, reads: [], writes: ['_X'] },
+        { name: 'A', reads: [], writes: ['_X'] },
+        { name: 'B', reads: [], writes: ['_X'] },
     ])
     const v = new GraphValidator(passes)
     let threw: Error | null = null
@@ -196,35 +159,26 @@ await test('GraphValidator throws DuplicateCreatorError when two passes create t
 
 await test('RenderGraph.add preserves insertion order', async () => {
     const g = new RenderGraph(viewStub())
-    g.add(FakePass, { name: 'A', stage: RenderStage.Shadow })
-    g.add(FakePass, { name: 'B', stage: RenderStage.Opaque })
+    g.add(FakePass, { name: 'A' })
+    g.add(FakePass, { name: 'B' })
     expect(g.passes.length).toEqual(2)
     expect(g.passes[0].name).toEqual('A')
 })
 
 await test('RenderGraph.add rejects duplicate names at compile time', async () => {
     const g = new RenderGraph(viewStub())
-    g.add(FakePass, { name: 'Shared', stage: RenderStage.Opaque })
-    g.add(FakePass, { name: 'Shared', stage: RenderStage.Post })
+    g.add(FakePass, { name: 'Shared' })
+    g.add(FakePass, { name: 'Shared' })
     let threw: Error | null = null
     try { g.compile() } catch (e) { threw = e as Error }
     if (!threw) throw new Error('did not throw')
     expect(threw.message.includes('Shared')).toEqual(true)
 })
 
-await test('RenderGraph.insertAfter / insertBefore respect anchor position', async () => {
-    const g = new RenderGraph(viewStub())
-    g.add(FakePass, { name: 'A', stage: RenderStage.Shadow })
-    g.add(FakePass, { name: 'C', stage: RenderStage.Opaque })
-    g.insertAfter('A', FakePass, { name: 'B', stage: RenderStage.Shadow })
-    g.insertBefore('A', FakePass, { name: 'Z', stage: RenderStage.BeforeShadows })
-    expect(g.passes.map(f => f.name)).toEqual(['Z', 'A', 'B', 'C'])
-})
-
 await test('RenderGraph.disablePass skips execute without removing from graph', async () => {
     const g = new RenderGraph(viewStub())
-    const a = g.add(FakePass, { name: 'A', stage: RenderStage.Shadow, writes: ['_X'] })
-    const b = g.add(FakePass, { name: 'B', stage: RenderStage.Opaque, reads: ['_X'] })
+    const a = g.add(FakePass, { name: 'A', writes: ['_X'] })
+    const b = g.add(FakePass, { name: 'B', reads: ['_X'] })
     g.compile()
     g.disablePass('A')
     g.execute({} as any, 0)
@@ -234,15 +188,15 @@ await test('RenderGraph.disablePass skips execute without removing from graph', 
 
 await test('RenderGraph.replace swaps implementation and keeps order', async () => {
     const g = new RenderGraph(viewStub())
-    g.add(FakePass, { name: 'Color', stage: RenderStage.Opaque, writes: ['_ColorBuffer'] })
-    const replaced = g.replace('Color', FakePass, { name: 'Color', stage: RenderStage.Opaque, writes: ['_ColorBuffer'] })
+    g.add(FakePass, { name: 'Color', writes: ['_ColorBuffer'] })
+    const replaced = g.replace('Color', FakePass, { name: 'Color', writes: ['_ColorBuffer'] })
     expect(g.getPass('Color')).toEqual(replaced)
 })
 
 await test('RenderGraph.compile is idempotent and caches across calls', async () => {
     const g = new RenderGraph(viewStub())
-    g.add(FakePass, { name: 'A', stage: RenderStage.Shadow, writes: ['_X'] })
-    g.add(FakePass, { name: 'B', stage: RenderStage.Opaque, reads: ['_X'] })
+    g.add(FakePass, { name: 'A', writes: ['_X'] })
+    g.add(FakePass, { name: 'B', reads: ['_X'] })
     g.compile()
     g.compile() // second call must not throw
 })
@@ -253,33 +207,93 @@ await test('RenderGraph.compile is idempotent and caches across calls', async ()
 
 await test('Multi-writer: creator + mutator + reader chain orders correctly', async () => {
     const g = new RenderGraph(viewStub())
-    g.add(FakePass, { name: 'Creator', stage: RenderStage.Opaque, writes: ['_Color'] })
-    g.add(FakePass, { name: 'Mutator', stage: RenderStage.Transparent, mutates: ['_Color'] })
-    g.add(FakePass, { name: 'Reader', stage: RenderStage.Post, reads: ['_Color'] })
+    g.add(FakePass, { name: 'Creator', writes: ['_Color'] })
+    g.add(FakePass, { name: 'Mutator', mutates: ['_Color'] })
+    g.add(FakePass, { name: 'Reader', reads: ['_Color'] })
     g.compile()
-    // Reader must run AFTER both Creator and Mutator (they all write _Color).
+    // Reader runs after both Creator and Mutator (they all write _Color).
     const order = g.passes.map(p => p.name)
     expect(order.indexOf('Creator') < order.indexOf('Mutator')).toEqual(true)
     expect(order.indexOf('Mutator') < order.indexOf('Reader')).toEqual(true)
 })
 
 // -----------------------------------------------------------------------------
+// Explicit dependencies — `b.dependsOn` and direct field assignment
+// -----------------------------------------------------------------------------
+
+await test('dependencies: b.dependsOn adds an edge with no resource flow', async () => {
+    class UpstreamPass extends RenderGraphPass {
+        public readonly name = 'Upstream'
+        public setup(_: RenderGraphBuilder) { /* no resources */ }
+        public execute(_: RenderGraphPassContext) { /* noop */ }
+    }
+    class DownstreamPass extends RenderGraphPass {
+        public readonly name = 'Downstream'
+        public setup(b: RenderGraphBuilder) { b.dependsOn('Upstream') }
+        public execute(_: RenderGraphPassContext) { /* noop */ }
+    }
+    const g = new RenderGraph(viewStub())
+    g.add(UpstreamPass)
+    const down = g.add(DownstreamPass)
+    g.compile()
+    expect(down.dependencies && down.dependencies.has('Upstream')).toEqual(true)
+    expect(g.passes.map(p => p.name)).toEqual(['Upstream', 'Downstream'])
+})
+
+await test('dependencies: b.dependsOn rejects unknown upstream pass', async () => {
+    class Naughty extends RenderGraphPass {
+        public readonly name = 'Naughty'
+        public setup(b: RenderGraphBuilder) { b.dependsOn('GhostPass') }
+        public execute(_: RenderGraphPassContext) { /* noop */ }
+    }
+    const g = new RenderGraph(viewStub())
+    let threw: Error | null = null
+    try { g.add(Naughty) } catch (e) { threw = e as Error }
+    if (!threw) throw new Error('did not throw')
+    expect(threw.message.includes('GhostPass')).toEqual(true)
+})
+
+await test('dependencies: assigning the field directly contributes a topo edge', async () => {
+    const g = new RenderGraph(viewStub())
+    const a = g.add(FakePass, { name: 'A' })
+    const b = g.add(FakePass, { name: 'B' })
+    // Force B to wait for A even though there's no shared resource.
+    b.dependencies = new Set(['A'])
+    g.compile()
+    g.execute({} as any, 0)
+    expect(a.executed).toEqual(1)
+    expect(b.executed).toEqual(1)
+})
+
+await test('dependencies: cycle through dependencies is detected', async () => {
+    const g = new RenderGraph(viewStub())
+    const a = g.add(FakePass, { name: 'A' })
+    const b = g.add(FakePass, { name: 'B' })
+    a.dependencies = new Set(['B'])
+    b.dependencies = new Set(['A'])
+    let threw: Error | null = null
+    try { g.compile() } catch (e) { threw = e as Error }
+    if (!(threw instanceof CyclicDependencyError)) throw new Error('did not throw CyclicDependencyError')
+})
+
+// -----------------------------------------------------------------------------
 // dumpDot — stable output for snapshot testing
 // -----------------------------------------------------------------------------
 
-await test('RenderGraph.dumpDot emits stage clusters and reads/writes edges', async () => {
+await test('RenderGraph.dumpDot emits reads/writes edges + dependencies edges', async () => {
     const g = new RenderGraph(viewStub())
-    g.add(FakePass, { name: 'Shadow', stage: RenderStage.Shadow, writes: ['_ShadowMap'] })
-    g.add(FakePass, { name: 'Color', stage: RenderStage.Opaque, reads: ['_ShadowMap'], writes: ['_ColorBuffer'] })
-    g.add(FakePass, { name: 'Post', stage: RenderStage.Post, reads: ['_ColorBuffer'], writes: ['_FinalColor'] })
+    g.add(FakePass, { name: 'Shadow', writes: ['_ShadowMap'] })
+    g.add(FakePass, { name: 'Color', reads: ['_ShadowMap'], writes: ['_ColorBuffer'] })
+    g.add(FakePass, { name: 'Post', reads: ['_ColorBuffer'], writes: ['_FinalColor'] })
+    const sideEffect = g.add(FakePass, { name: 'SideEffect' })
+    sideEffect.dependencies = new Set(['Shadow'])
     const dot = g.dumpDot()
     expect(dot.startsWith('digraph RenderGraph {')).toEqual(true)
-    expect(dot.includes('cluster_10')).toEqual(true) // Shadow
-    expect(dot.includes('cluster_40')).toEqual(true) // Opaque
-    expect(dot.includes('cluster_90')).toEqual(true) // Post
     expect(dot.includes('"Shadow" -> "Color"')).toEqual(true)
     expect(dot.includes('"Color" -> "Post"')).toEqual(true)
     expect(dot.includes('label="_ShadowMap"')).toEqual(true)
+    expect(dot.includes('"Shadow" -> "SideEffect"')).toEqual(true)
+    expect(dot.includes('dependsOn')).toEqual(true)
 })
 
 setTimeout(end, 500)

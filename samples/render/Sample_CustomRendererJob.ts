@@ -5,7 +5,7 @@ import {
     // Graph composition surface
     ClusterLightingPass, ColorPass, COLOR_BUFFER, GUIPass, PointShadowPass,
     PostPass, ReflectionPass, RenderGraphBuilder, RenderGraphPass,
-    RenderGraphPassContext, RendererJob, RenderStage, ShadowPass,
+    RenderGraphPassContext, RendererJob, ShadowPass,
 } from "@orillusion/core";
 
 /**
@@ -13,8 +13,9 @@ import {
  *
  * `setup(b)` declares a read on `_ColorBuffer`. The validator rejects
  * the graph if no other pass creates that name; `topoSort` schedules
- * this pass after the latest writer at-or-before its stage. We sit at
- * `AfterPost` so we observe the post-processed color the user sees.
+ * this pass after the latest writer added at-or-before this pass's
+ * insertion. We `add()` it after PostPass so we observe the post-
+ * processed color the user sees.
  *
  * `execute(ctx)` resolves the named handle through `ctx.get(name)`,
  * which calls back into the pool's getter — this is how passes pick
@@ -22,7 +23,6 @@ import {
  */
 class FrameLogPass extends RenderGraphPass {
     public readonly name = 'FrameLogPass';
-    public readonly stage = RenderStage.AfterPost;
     private _lastLogged = -Infinity;
 
     public setup(b: RenderGraphBuilder): void {

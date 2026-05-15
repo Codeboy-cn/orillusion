@@ -7,7 +7,6 @@ import {
     Object3D,
     ReflectionPass,
     REFLECTION_CUBE_MAP,
-    RenderStage,
 } from '@orillusion/core'
 
 // C5 acceptance: ReflectionPass registered at stage GI, exposes
@@ -31,7 +30,6 @@ await test('ReflectionPass is registered at stage=GI and exposes _ReflectionCube
 
     const feature = view.renderGraph!.getPass('ReflectionPass') as ReflectionPass | null
     if (!feature) throw new Error('ReflectionPass not registered')
-    expect(feature.stage).toEqual(RenderStage.GI)
     expect(feature.writes[0]).toEqual(REFLECTION_CUBE_MAP)
 
     const pool = view.renderGraph!.pool

@@ -4,7 +4,6 @@ import { OcclusionSystem } from '../occlusion/OcclusionSystem';
 import { GraphValidator, MissingCreatorError, topoSort, UnresolvedResourceError } from './GraphValidator';
 import { RenderGraphBuilder, RenderGraphPass, RenderGraphPassContext } from './RenderGraphPass';
 import { RenderGraphResourcePool } from './RenderGraphResourcePool';
-import { RenderStage } from './RenderStage';
 
 /** Internal: per-graph metadata stamped onto a pass after add(). */
 const PASS_META = Symbol('RenderGraphPass.meta');
@@ -95,45 +94,6 @@ export class RenderGraph {
         return pass;
     }
 
-    /** Insert a pass right after the named anchor. Same factory shape
-     *  as {@link add}. */
-    public insertAfter<C extends new (...args: any[]) => RenderGraphPass>(
-        anchorName: string,
-        Ctor: C,
-        ...args: ConstructorParameters<C>
-    ): InstanceType<C> {
-        const idx = this._passes.findIndex(p => p.name === anchorName);
-        if (idx < 0) throw new Error(`RenderGraph.insertAfter: anchor '${anchorName}' not found.`);
-        const pass = new Ctor(...args) as InstanceType<C>;
-        if (this._byName.has(pass.name)) {
-            throw new Error(`RenderGraph.insertAfter('${anchorName}', ${pass.name}) — pass '${pass.name}' already registered.`);
-        }
-        this._setupAndRegister(pass);
-        this._passes.splice(idx + 1, 0, pass);
-        this._byName.set(pass.name, pass);
-        this._dirty = true;
-        return pass;
-    }
-
-    /** Insert a pass right before the named anchor. */
-    public insertBefore<C extends new (...args: any[]) => RenderGraphPass>(
-        anchorName: string,
-        Ctor: C,
-        ...args: ConstructorParameters<C>
-    ): InstanceType<C> {
-        const idx = this._passes.findIndex(p => p.name === anchorName);
-        if (idx < 0) throw new Error(`RenderGraph.insertBefore: anchor '${anchorName}' not found.`);
-        const pass = new Ctor(...args) as InstanceType<C>;
-        if (this._byName.has(pass.name)) {
-            throw new Error(`RenderGraph.insertBefore('${anchorName}', ${pass.name}) — pass '${pass.name}' already registered.`);
-        }
-        this._setupAndRegister(pass);
-        this._passes.splice(idx, 0, pass);
-        this._byName.set(pass.name, pass);
-        this._dirty = true;
-        return pass;
-    }
-
     /** Replace a pass by name. The replacement runs through the same
      *  factory + setup pipeline as `add`. */
     public replace<C extends new (...args: any[]) => RenderGraphPass>(
@@ -184,7 +144,6 @@ export class RenderGraph {
         const validator = new GraphValidator(this._passes);
         validator.validateSingleCreator();
         validator.validateResolvable();
-        validator.validateStageOrdering();
         this._compiled = topoSort(this._passes, this._byName, this._insertedOrder.bind(this));
         this._dirty = false;
         console.debug('[RenderGraph] compiled pass order:', this._compiled.join(' → '));
@@ -230,27 +189,16 @@ export class RenderGraph {
     /** Graphviz DOT representation of the compiled graph. Stable
      *  iteration order so snapshot tests can diff against a fixture.
      *  Edges go from the LAST writer of each resource to each reader;
-     *  multiple mutators of the same resource appear as a chain. */
+     *  multiple mutators of the same resource appear as a chain.
+     *  Explicit `dependencies` edges are rendered as dotted lines. */
     public dumpDot(): string {
         this.compile();
         const lines: string[] = ['digraph RenderGraph {'];
         lines.push('  rankdir=LR;');
         lines.push('  node [shape=box, style=rounded];');
 
-        // Cluster passes by stage.
-        const stages = new Map<RenderStage, string[]>();
         for (const name of this._compiled!) {
-            const p = this._byName.get(name)!;
-            if (!stages.has(p.stage)) stages.set(p.stage, []);
-            stages.get(p.stage)!.push(name);
-        }
-        const sortedStages = [...stages.keys()].sort((a, b) => a - b);
-        for (const stage of sortedStages) {
-            lines.push(`  subgraph cluster_${stage} {`);
-            lines.push(`    label="${RenderStage[stage]}";`);
-            lines.push('    style=dashed;');
-            for (const n of stages.get(stage)!) lines.push(`    "${n}";`);
-            lines.push('  }');
+            lines.push(`  "${name}";`);
         }
 
         // Build sorted writer chains per resource.
@@ -272,6 +220,12 @@ export class RenderGraph {
                 if (!ws || ws.length === 0) continue;
                 const last = ws[ws.length - 1];
                 if (last !== reader) lines.push(`  "${last}" -> "${reader}" [label="${r}"];`);
+            }
+            if (p.dependencies) {
+                for (const dep of p.dependencies) {
+                    if (!this._byName.has(dep)) continue;
+                    lines.push(`  "${dep}" -> "${reader}" [style=dotted, label="dependsOn"];`);
+                }
             }
         }
         lines.push('}');
@@ -306,6 +260,7 @@ export class RenderGraph {
         const reads: string[] = [];
         const writes: string[] = [];
         const creates: string[] = [];
+        const deps: Set<string> = new Set(pass.dependencies ?? []);
         const builder: RenderGraphBuilder = {
             context3D: this._ctx,
             view: this._view,
@@ -333,11 +288,23 @@ export class RenderGraph {
                 }
                 return undefined;
             },
+            dependsOn: (passName: string) => {
+                if (!this._byName.has(passName)) {
+                    throw new Error(
+                        `RenderGraph: pass '${pass.name}' calls b.dependsOn('${passName}') but no pass named '${passName}' is registered yet. ` +
+                        `Add the upstream pass before this one.`,
+                    );
+                }
+                deps.add(passName);
+            },
         };
         pass.setup(builder);
         (pass as any).reads = Object.freeze(reads);
         (pass as any).writes = Object.freeze(writes);
         (pass as any).creates = Object.freeze(creates);
+        if (deps.size > 0) {
+            pass.dependencies = deps;
+        }
         // Stamp insertion order for stable topo tie-break.
         (pass as any)[PASS_META] = { insertedOrder: this._insertCounter++ } satisfies PassMeta;
     }
@@ -346,7 +313,8 @@ export class RenderGraph {
         return ((p as any)[PASS_META] as PassMeta | undefined)?.insertedOrder ?? -1;
     }
 
-    /** name → writers sorted by (stage ASC, insertion ASC). */
+    /** name → writers sorted by insertion order. Used by `dumpDot`
+     *  to render the writer chain for each resource. */
     private _buildSortedWriters(): Map<string, string[]> {
         const writers = new Map<string, string[]>();
         for (const p of this._passes) {
@@ -356,12 +324,7 @@ export class RenderGraph {
             }
         }
         for (const [, list] of writers) {
-            list.sort((a, b) => {
-                const pa = this._byName.get(a)!;
-                const pb = this._byName.get(b)!;
-                if (pa.stage !== pb.stage) return pa.stage - pb.stage;
-                return this._insertedOrder(pa) - this._insertedOrder(pb);
-            });
+            list.sort((a, b) => this._insertedOrder(this._byName.get(a)!) - this._insertedOrder(this._byName.get(b)!));
         }
         return writers;
     }

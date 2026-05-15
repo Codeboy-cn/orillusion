@@ -1,4 +1,3 @@
-export { RenderStage } from './RenderStage';
 export {
     RenderGraphPass,
     type RenderGraphPassContext,
@@ -11,7 +10,6 @@ export {
     UnresolvedResourceError,
     MissingCreatorError,
     DuplicateCreatorError,
-    StageConstraintViolation,
     GraphValidator,
     topoSort,
 } from './GraphValidator';

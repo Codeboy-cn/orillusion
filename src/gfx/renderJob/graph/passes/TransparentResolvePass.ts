@@ -4,7 +4,6 @@ import { Context3D } from '../../../graphics/webGpu/Context3D';
 import { GBufferFrame } from '../../frame/GBufferFrame';
 import { RTResourceMap } from '../../frame/RTResourceMap';
 import { RenderGraphBuilder, RenderGraphPass, RenderGraphPassContext } from '../RenderGraphPass';
-import { RenderStage } from '../RenderStage';
 import { COLOR_BUFFER } from './ColorPass';
 import { OIT_ACCUM_TEX, OIT_REVEAL_TEX } from './TransparentOITPass';
 
@@ -23,7 +22,6 @@ import { OIT_ACCUM_TEX, OIT_REVEAL_TEX } from './TransparentOITPass';
  */
 export class TransparentResolvePass extends RenderGraphPass {
     public readonly name = 'TransparentResolvePass';
-    public readonly stage = RenderStage.AfterTransparent;
 
     private _ctx!: Context3D;
     private _pipeline: GPURenderPipeline | null = null;

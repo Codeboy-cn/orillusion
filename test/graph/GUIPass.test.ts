@@ -8,7 +8,6 @@ import {
     GUIPass,
     CANVAS_TEXTURE,
     FINAL_COLOR,
-    RenderStage,
 } from '@orillusion/core'
 
 // C9 acceptance: GUIPass registered at stage=Present, reads
@@ -31,7 +30,6 @@ await test('GUIPass registers at stage=Present and reads _FinalColor', async () 
 
     const feature = view.renderGraph!.getPass('GUIPass') as GUIPass | null
     if (!feature) throw new Error('GUIPass not registered')
-    expect(feature.stage).toEqual(RenderStage.Present)
     expect(feature.reads[0]).toEqual(FINAL_COLOR)
     expect(feature.writes[0]).toEqual(CANVAS_TEXTURE)
 

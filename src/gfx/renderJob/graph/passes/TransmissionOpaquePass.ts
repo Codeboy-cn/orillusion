@@ -1,7 +1,7 @@
 import { RenderGraphBuilder, RenderGraphPass, RenderGraphPassContext } from '../RenderGraphPass';
-import { RenderStage } from '../RenderStage';
 import { COLOR_BUFFER, ColorPass } from './ColorPass';
 import { SCENE_COLOR_PYRAMID } from './SceneColorPyramidPass';
+import { dependOnIfRegistered } from './_helpers';
 
 /**
  * Mutator pass that draws opaque materials with transmission
@@ -16,8 +16,7 @@ import { SCENE_COLOR_PYRAMID } from './SceneColorPyramidPass';
  * screen position the pyramid would store the dragon, not whatever
  * cloth / wall sits behind it.
  *
- * Stage is {@link RenderStage.AfterOpaque}; the read on
- * `_SceneColorPyramid` chains topo-order strictly after
+ * The read on `_SceneColorPyramid` chains topo-order strictly after
  * {@link SceneColorPyramidPass}. `b.write(COLOR_BUFFER)` (mutator)
  * declares the in-place write so the topo sort routes downstream
  * `_ColorBuffer` consumers through this pass.
@@ -26,11 +25,12 @@ import { SCENE_COLOR_PYRAMID } from './SceneColorPyramidPass';
  */
 export class TransmissionOpaquePass extends RenderGraphPass {
     public readonly name = 'TransmissionOpaquePass';
-    public readonly stage = RenderStage.AfterOpaque;
 
     public setup(b: RenderGraphBuilder): void {
         b.read(SCENE_COLOR_PYRAMID);
         b.write(COLOR_BUFFER);  // mutator
+
+        dependOnIfRegistered(b, 'GPUCullPass');
     }
 
     public execute(ctx: RenderGraphPassContext): void {

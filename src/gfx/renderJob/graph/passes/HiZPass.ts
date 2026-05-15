@@ -5,7 +5,6 @@ import { Texture } from '../../../graphics/webGpu/core/texture/Texture';
 import { GPUTextureFormat } from '../../../graphics/webGpu/WebGPUConst';
 import { GBufferFrame } from '../../frame/GBufferFrame';
 import { RenderGraphBuilder, RenderGraphPass, RenderGraphPassContext } from '../RenderGraphPass';
-import { RenderStage } from '../RenderStage';
 
 export const HIZ_PYRAMID = '_HiZPyramid';
 
@@ -28,7 +27,6 @@ export const HIZ_PYRAMID = '_HiZPyramid';
  */
 export class HiZPass extends RenderGraphPass {
     public readonly name = 'HiZPass';
-    public readonly stage = RenderStage.HiZ;
 
     private _ctx!: Context3D;
     private _pyramid: RenderTexture | null = null;

@@ -15,7 +15,6 @@ import {
     OIT_ACCUM_TEX,
     OIT_REVEAL_TEX,
     PassType,
-    RenderStage,
     BlendMode,
 } from '@orillusion/core'
 
@@ -53,7 +52,6 @@ await test('SceneColorPyramidPass registers and exposes _SceneColorPyramid', asy
 
     const feature = view.renderGraph!.getPass('SceneColorPyramidPass') as SceneColorPyramidPass | null
     if (!feature) throw new Error('SceneColorPyramidPass not registered')
-    expect(feature.stage).toEqual(RenderStage.AfterOpaque)
     expect(feature.writes.length).toEqual(1)
     expect(feature.writes[0]).toEqual(SCENE_COLOR_PYRAMID)
 
@@ -82,7 +80,6 @@ await test('SortedTransparentPass is registered with filter=all when useOIT is o
 
     const sorted = view.renderGraph!.getPass('SortedTransparentPass') as SortedTransparentPass | null
     if (!sorted) throw new Error('SortedTransparentPass not registered')
-    expect(sorted.stage).toEqual(RenderStage.Transparent)
     // OIT features should NOT be in the graph when useOIT is false.
     expect(!!view.renderGraph!.getPass('TransparentOITPass')).toEqual(false)
     expect(!!view.renderGraph!.getPass('TransparentResolvePass')).toEqual(false)
@@ -113,8 +110,6 @@ await test('useOIT=true registers OIT + Resolve features alongside sorted', asyn
     if (!resolve) throw new Error('TransparentResolvePass not registered')
     if (!sorted) throw new Error('SortedTransparentPass not registered')
 
-    expect(oit.stage).toEqual(RenderStage.Transparent)
-    expect(resolve.stage).toEqual(RenderStage.AfterTransparent)
     expect(oit.writes.indexOf(OIT_ACCUM_TEX) >= 0).toEqual(true)
     expect(oit.writes.indexOf(OIT_REVEAL_TEX) >= 0).toEqual(true)
 

@@ -1,5 +1,4 @@
 import { RenderGraphPass } from './RenderGraphPass';
-import { RenderStage } from './RenderStage';
 
 /**
  * Base class for graph-compile errors. Subclass messages embed
@@ -60,31 +59,6 @@ export class MissingCreatorError extends GraphCompileError {
             `Add a pass that calls b.write('${resource}', factory) in its setup(), or change this pass to be the creator.`);
         this.pass = pass;
         this.resource = resource;
-    }
-}
-
-/**
- * Raised when stage ordering contradicts the data-flow ordering.
- * Reader's stage must be >= max writer stage; mutator stage must be
- * >= creator stage.
- *
- * @group Graph
- */
-export class StageConstraintViolation extends GraphCompileError {
-    public readonly downstream: string;
-    public readonly upstream: string;
-    public readonly resource: string;
-    public readonly downstreamStage: RenderStage;
-    public readonly upstreamStage: RenderStage;
-    constructor(downstream: string, downstreamStage: RenderStage, upstream: string, upstreamStage: RenderStage, resource: string) {
-        super(`RenderGraph: pass '${downstream}' at stage ${RenderStage[downstreamStage]} references '${resource}' ` +
-            `but its upstream '${upstream}' runs at stage ${RenderStage[upstreamStage]} — upstream stage is later than downstream stage. ` +
-            `Either move '${downstream}' to a stage >= ${RenderStage[upstreamStage]}, or move '${upstream}' to a stage <= ${RenderStage[downstreamStage]}.`);
-        this.downstream = downstream;
-        this.upstream = upstream;
-        this.resource = resource;
-        this.downstreamStage = downstreamStage;
-        this.upstreamStage = upstreamStage;
     }
 }
 
@@ -173,66 +147,30 @@ export class GraphValidator {
         }
     }
 
-    /** Stage monotonicity: reader.stage >= creator.stage; mutator
-     *  stage >= creator.stage (mutator must come after creator).
-     *
-     *  Note: readers do NOT need to come after every mutator. Reading
-     *  a resource at an intermediate state (post-creator, pre-mutator)
-     *  is a legitimate pattern — e.g. SceneColorPyramidPass reads the
-     *  opaque-only ColorBuffer before SortedTransparentPass appends
-     *  transparents. topoSort picks the writer chain version visible
-     *  to each reader by stage+insertion. */
-    public validateStageOrdering(): void {
-        for (const [resource, writers] of this._writers) {
-            const creator = this._creators.get(resource);
-            if (!creator) continue; // caught by validateResolvable
-            const creatorStage = this._byName.get(creator)!.stage;
-            const consumers = this._consumers.get(resource) ?? [];
-            for (const consumerName of consumers) {
-                const consumer = this._byName.get(consumerName)!;
-                if (consumer.stage < creatorStage) {
-                    throw new StageConstraintViolation(
-                        consumer.name,
-                        consumer.stage,
-                        creator,
-                        creatorStage,
-                        resource,
-                    );
-                }
-            }
-            // Mutators must run at stage >= creator.stage.
-            for (const w of writers) {
-                if (w === creator) continue;
-                const wStage = this._byName.get(w)!.stage;
-                if (wStage < creatorStage) {
-                    throw new StageConstraintViolation(
-                        creator,
-                        creatorStage,
-                        w,
-                        wStage,
-                        resource,
-                    );
-                }
-            }
-        }
-    }
 }
 
 /**
- * Kahn-style topological sort on the reads/writes DAG. Primary key is
- * stage, secondary key is insertion order — both yield a deterministic
- * output across runs, which keeps `dumpDot()` snapshots stable.
+ * Kahn-style topological sort on the reads/writes DAG. The single
+ * sort key is **insertion order** — the order in which `graph.add()`
+ * was called. Together with the resource and `dependencies` edges
+ * this fully determines the schedule: same input → same output.
  *
  * Multi-writer support:
- * - Writers of the same resource are ordered by (stage, insertion).
+ * - Writers of the same resource are ordered by insertion.
  * - Each subsequent writer has an incoming edge from the previous
  *   writer (mutator after creator).
- * - Each reader has an incoming edge from the LATEST writer in the
- *   chain whose (stage, insertion) is at-or-before the reader's.
- *   This lets a reader sandwich between creator and a later mutator
- *   sample the creator's output (e.g. SceneColorPyramidPass reads
- *   the opaque-only ColorBuffer before SortedTransparentPass blends
- *   transparents on top).
+ * - Each reader has an incoming edge from the LATEST writer whose
+ *   insertion is at-or-before the reader's. This lets a reader
+ *   sandwich between creator and a later mutator sample the
+ *   creator's output (e.g. SceneColorPyramidPass reads the opaque-
+ *   only ColorBuffer before SortedTransparentPass blends transparents
+ *   on top — provided the pyramid was added after ColorPass and
+ *   before SortedTransparentPass).
+ *
+ * Side-effect ordering uses {@link RenderGraphPass.dependencies}
+ * (set via `b.dependsOn(name)` or direct field assignment) for
+ * cases the graph can't infer from reads/writes — see the field's
+ * docstring for examples.
  *
  * Returns the ordered pass names; throws {@link CyclicDependencyError}
  * with the cycle path if a cycle is detected.
@@ -244,7 +182,7 @@ export function topoSort(
     byName: ReadonlyMap<string, RenderGraphPass>,
     insertedOrder: (p: RenderGraphPass) => number,
 ): string[] {
-    // Build sorted writer chain per resource.
+    // Build writer chain per resource, ordered by insertion.
     const writers = new Map<string, string[]>();
     for (const p of passes) {
         for (const w of p.writes) {
@@ -253,12 +191,7 @@ export function topoSort(
         }
     }
     for (const [, list] of writers) {
-        list.sort((a, b) => {
-            const pa = byName.get(a)!;
-            const pb = byName.get(b)!;
-            if (pa.stage !== pb.stage) return pa.stage - pb.stage;
-            return insertedOrder(pa) - insertedOrder(pb);
-        });
+        list.sort((a, b) => insertedOrder(byName.get(a)!) - insertedOrder(byName.get(b)!));
     }
 
     const inDegree = new Map<string, number>();
@@ -280,34 +213,47 @@ export function topoSort(
             addEdge(list[i - 1], list[i]);
         }
     }
-    // 2) Each reader depends on the latest writer in the chain whose
-    //    (stage, insertion) is at-or-before the reader's. This is the
-    //    writer whose output the reader actually observes.
+    // 2) Each reader depends on the latest writer whose insertion is
+    //    at-or-before the reader's — that's the writer's output the
+    //    reader actually observes.
     for (const p of passes) {
         for (const r of p.reads) {
             const ws = writers.get(r);
             if (!ws || ws.length === 0) continue;
+            const readerOrder = insertedOrder(p);
             let picked: string | null = null;
             for (let i = ws.length - 1; i >= 0; i--) {
-                const w = byName.get(ws[i])!;
-                const stageCmp = w.stage - p.stage;
-                const cmp = stageCmp !== 0 ? stageCmp : insertedOrder(w) - insertedOrder(p);
-                if (cmp <= 0) { picked = ws[i]; break; }
+                if (insertedOrder(byName.get(ws[i])!) <= readerOrder) { picked = ws[i]; break; }
             }
-            // Fall back to the first writer if all writers are after
-            // the reader (validator ensures the creator is at-or-before).
+            // Fall back to the first writer if all writers are added
+            // after the reader (a missing creator would be caught by
+            // validateResolvable; this only happens with mutator-only
+            // chains plus a back-of-graph reader, which is exotic).
             if (!picked) picked = ws[0];
             addEdge(picked, p.name);
         }
     }
+    // 3) Explicit `dependencies` edges. Each entry adds `<dep> → p`,
+    //    independent of any resource flow. Use these for side-effect
+    //    dependencies the graph can't see (indirect buffers consumed
+    //    via GlobalBindGroup, off-screen RTs sampled by materials).
+    //    Unknown names are tolerated here — `b.dependsOn` already
+    //    rejects them at setup time; if a pass's `dependencies` is
+    //    set directly to a missing name we silently skip the edge.
+    for (const p of passes) {
+        if (!p.dependencies) continue;
+        for (const dep of p.dependencies) {
+            if (!byName.has(dep)) continue;
+            addEdge(dep, p.name);
+        }
+    }
 
-    // Kahn with stage-first comparator for tie-breaking.
+    // Kahn with insertion-order tie-break for determinism.
     const ready: RenderGraphPass[] = [];
     for (const p of passes) {
         if (inDegree.get(p.name) === 0) ready.push(p);
     }
-    const cmp = (a: RenderGraphPass, b: RenderGraphPass) =>
-        a.stage !== b.stage ? a.stage - b.stage : insertedOrder(a) - insertedOrder(b);
+    const cmp = (a: RenderGraphPass, b: RenderGraphPass) => insertedOrder(a) - insertedOrder(b);
     ready.sort(cmp);
 
     const order: string[] = [];
