@@ -19,6 +19,7 @@ import { Octree } from "../../core/tree/octree/Octree";
 import { OctreeEntity } from "../../core/tree/octree/OctreeEntity";
 import { Transform } from "../Transform";
 import { Material } from "../../materials/Material";
+import { BatchMode } from "../../gfx/renderJob/config/BatchMode";
 import { RenderLayer } from "../../gfx/renderJob/config/RenderLayer";
 import { RenderShaderCompute } from "../../gfx/graphics/webGpu/compute/RenderShaderCompute";
 import { PassType } from "../../gfx/renderJob/passRenderer/state/PassType";
@@ -57,12 +58,29 @@ export class RenderNode extends ComponentBase {
     protected _octreeBinder: { octree: Octree, entity: OctreeEntity };
 
     /**
+     * Batching mode for this renderer. Drives whether the node is
+     * collected into the default per-node opaque/transparent lists or
+     * into a batched render-group (see {@link EntityBatchCollect}).
      *
-     * The layer membership of the object.
-     *  The object is only visible when it has at least one common layer with the camera in use.
-     * When using a ray projector, this attribute can also be used to filter out unwanted objects in ray intersection testing.
+     * Historically this field was named `_renderLayer`; that name has
+     * moved to {@link _renderLayer} below to host the bitmask-based
+     * layer system.
      */
-    protected _renderLayer: RenderLayer = RenderLayer.None;
+    protected _batchMode: BatchMode = BatchMode.None;
+
+    /**
+     * Layer-mask bits this renderer belongs to. Combined at pass
+     * execute time with {@link RenderGraphPass.layerMask} and
+     * {@link Camera3D.cullingMask} using a bitwise AND — the node is
+     * drawn only when all three share at least one set bit.
+     *
+     * Defaults to {@link RenderLayer.Default} (bit 0) so untouched
+     * legacy nodes remain visible to every built-in pass (whose
+     * default `layerMask` is `RenderLayer.All`). Application code can
+     * assign project-specific bits (1..31) to organise the scene into
+     * composition layers.
+     */
+    protected _renderLayer: number = RenderLayer.Default;
     protected _computes: RenderShaderCompute[];
 
 
@@ -111,16 +129,26 @@ export class RenderNode extends ComponentBase {
         return this;
     }
 
-    public get renderLayer(): RenderLayer {
+    public get batchMode(): BatchMode {
+        return this._batchMode;
+    }
+
+    public set batchMode(value: BatchMode) {
+        this._batchMode = value;
+    }
+
+    @EditorInspector
+    public get renderLayer(): number {
         return this._renderLayer;
     }
 
-    public set renderLayer(value: RenderLayer) {
-        // for (let i = 0; i < this.object3D.entityChildren.length; i++) {
-        //     const element = this.object3D.entityChildren[i];
-        //     element.renderLayer = value;
-        // }
-        this._renderLayer = value;
+    public set renderLayer(value: number) {
+        // Normalise to uint32 so bitwise ops behave predictably even
+        // when callers pass values produced by JS bit ops (which yield
+        // signed int32) or negative bit-AND tricks. EntityCollect's
+        // `getLayerLists` reads this field directly at pass-execute
+        // time, so a simple store is sufficient — no index to refresh.
+        this._renderLayer = value >>> 0;
     }
 
     public get geometry(): GeometryBase {

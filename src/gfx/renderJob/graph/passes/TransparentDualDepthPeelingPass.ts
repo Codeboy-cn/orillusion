@@ -4,7 +4,6 @@ import { GPUTextureFormat } from '../../../graphics/webGpu/WebGPUConst';
 import { GlobalBindGroup } from '../../../graphics/webGpu/core/bindGroups/GlobalBindGroup';
 import { RTDescriptor } from '../../../graphics/webGpu/descriptor/RTDescriptor';
 import { WebGPUDescriptorCreator } from '../../../graphics/webGpu/descriptor/WebGPUDescriptorCreator';
-import { EntityCollect } from '../../collect/EntityCollect';
 import { RTFrame } from '../../frame/RTFrame';
 import { RTResourceMap } from '../../frame/RTResourceMap';
 import { PassType } from '../../passRenderer/state/PassType';
@@ -104,8 +103,7 @@ export class TransparentDualDepthPeelingPass extends RenderGraphPass {
         const passState = this._rendererPassState!;
         passState.camera3D = camera;
 
-        const collectInfo = EntityCollect.instance.getRenderNodes(view.scene, camera);
-        const transparents = collectInfo.transparentList ?? [];
+        const transparents = this.collectLayered(view).transparent;
 
         // Always open/close the pass so the clear loadOp zeroes _DDPFront
         // and resets depth to 1.0 even on frames where no depth-peel

@@ -1,6 +1,9 @@
 import { Context3D } from '../../graphics/webGpu/Context3D';
 import { View3D } from '../../../core/View3D';
 import { CEventDispatcher } from '../../../event/CEventDispatcher';
+import { RenderNode } from '../../../components/renderer/RenderNode';
+import { EntityCollect } from '../collect/EntityCollect';
+import { RenderLayer } from '../config/RenderLayer';
 import { OcclusionSystem } from '../occlusion/OcclusionSystem';
 import { PassType } from '../passRenderer/state/PassType';
 import { RenderGraph } from './RenderGraph';
@@ -113,6 +116,21 @@ export abstract class RenderGraphPass extends CEventDispatcher {
      *  `UnresolvedResourceError`. */
     public enabled: boolean = true;
 
+    /** Which scene layers this pass consumes, as a bitmask. Default
+     *  {@link RenderLayer.All} reproduces the legacy "draw every
+     *  collected node" behaviour. Custom passes (or custom
+     *  {@link RendererJob}s wiring built-in passes) override this to
+     *  restrict the pass to specific composition layers — combined
+     *  with the active camera's `cullingMask` at execute time via
+     *  bitwise AND, then matched against each node's `renderLayer`:
+     *
+     *      (node.renderLayer & pass.layerMask & camera.cullingMask) !== 0
+     *
+     *  Use {@link collectLayered} from inside `execute()` to fetch the
+     *  filtered opaque/transparent lists; it threads `layerMask` and
+     *  the camera mask through {@link EntityCollect.getLayerLists}. */
+    public layerMask: number = RenderLayer.All;
+
     /** Names this pass reads. Populated by `RenderGraph.add()` from
      *  `b.read(...)` calls inside `setup()`; frozen afterwards. */
     public readonly reads!: readonly string[];
@@ -152,5 +170,28 @@ export abstract class RenderGraphPass extends CEventDispatcher {
      *  owns directly. */
     public destroy(): void {
         // No-op by default.
+    }
+
+    /**
+     * Helper for subclasses: fetch opaque + transparent lists filtered
+     * by this pass's {@link layerMask} and a camera's `cullingMask`.
+     * Replaces the legacy
+     * `EntityCollect.instance.getRenderNodes(view.scene, camera)`
+     * call inside `execute()` — passes that don't override
+     * `layerMask` get identical results because the default
+     * `RenderLayer.All` mask is a no-op intersection.
+     *
+     * Shadow / reflection / GI-probe / scene-capture passes that
+     * render through a non-main camera should pass that camera
+     * explicitly so its own `cullingMask` (rather than the view's
+     * main camera) participates in the bitwise AND.
+     */
+    protected collectLayered(
+        view: View3D,
+        camera?: import('../../../core/Camera3D').Camera3D,
+    ): { opaque: RenderNode[]; transparent: RenderNode[] } {
+        const cam = camera ?? view.camera;
+        const camMask = cam?.cullingMask ?? RenderLayer.All;
+        return EntityCollect.instance.getLayerLists(view.scene, cam, this.layerMask, camMask);
     }
 }

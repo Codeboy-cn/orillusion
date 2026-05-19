@@ -131,8 +131,11 @@ export function drawNodes(
  *
  * Called by {@link TransmissionOpaquePass}. The pass owns no state of
  * its own — everything it needs flows through `state` (resolved from
- * the {@link TRANSPARENT_DRAW_CTX} graph resource) and `cluster`
- * (resolved by the caller from ClusterLightingPass if present).
+ * the {@link TRANSPARENT_DRAW_CTX} graph resource), `cluster`
+ * (resolved by the caller from ClusterLightingPass if present), and
+ * `opaqueList` (pre-collected by the caller via
+ * {@link RenderGraphPass.collectLayered}, so layer / camera-mask
+ * filtering is applied before this function sees the list).
  *
  * @group Graph
  */
@@ -140,6 +143,7 @@ export function drawTransmissionContinuation(
     view: View3D,
     cluster: ClusterLightingBuffer | undefined,
     state: TransparentDrawContext,
+    opaqueList: RenderNode[],
 ): void {
     const gpu = view.engine3D.context3D.gpuContext;
     state.renderContext.gpu = gpu;
@@ -148,8 +152,7 @@ export function drawTransmissionContinuation(
     GlobalBindGroup.updateCameraGroup(camera);
     state.rendererPassState.camera3D = camera;
 
-    const collectInfo = EntityCollect.instance.getRenderNodes(view.scene, camera);
-    if (!collectInfo.opaqueList) return;
+    if (!opaqueList || opaqueList.length === 0) return;
 
     state.renderContext.beginTransparentRenderPass();
     const encoder = state.renderContext.encoder;
@@ -159,7 +162,7 @@ export function drawTransmissionContinuation(
         view,
         state.renderContext,
         state.rendererPassState,
-        collectInfo.opaqueList,
+        opaqueList,
         cluster,
         { transmissionFilter: 'only' },
     );
@@ -187,6 +190,7 @@ export function drawSortedTransparent(
     cluster: ClusterLightingBuffer | undefined,
     state: TransparentDrawContext,
     filter: 'all' | 'sorted',
+    transparentList: RenderNode[],
 ): void {
     const gpu = view.engine3D.context3D.gpuContext;
     state.renderContext.gpu = gpu;
@@ -194,8 +198,6 @@ export function drawSortedTransparent(
     const camera = view.camera;
     GlobalBindGroup.updateCameraGroup(camera);
     state.rendererPassState.camera3D = camera;
-
-    const collectInfo = EntityCollect.instance.getRenderNodes(view.scene, camera);
 
     state.renderContext.beginTransparentRenderPass();
     const encoder = state.renderContext.encoder;
@@ -207,13 +209,18 @@ export function drawSortedTransparent(
         encoder.executeBundles(trBundles);
     }
 
-    if (collectInfo.transparentList) {
-        gpu.bindCamera(encoder, camera);
+    // Bind camera unconditionally — the Graphic3D overlay loop below
+    // shares this encoder via the split pass state and would issue
+    // draws with no bind group at index 0 if the transparent list
+    // happened to be empty this frame (a scene that uses only
+    // Graphic3D primitives, for example).
+    gpu.bindCamera(encoder, camera);
+    if (transparentList && transparentList.length > 0) {
         drawNodes(
             view,
             state.renderContext,
             state.rendererPassState,
-            collectInfo.transparentList,
+            transparentList,
             cluster,
             { oitFilter: filter === 'all' ? null : 'sorted' },
         );

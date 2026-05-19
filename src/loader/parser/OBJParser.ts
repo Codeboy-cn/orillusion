@@ -362,7 +362,7 @@ export class OBJParser extends ParserBase {
       root.addChild(obj);
     }
 
-    // root.renderLayer = RenderLayer.StaticBatch;
+    // root.batchMode = BatchMode.StaticBatch;
     this.data = root;
   }
 

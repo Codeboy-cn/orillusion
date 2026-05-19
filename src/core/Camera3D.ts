@@ -12,6 +12,7 @@ import { CameraType } from './CameraType';
 import { Context3D } from '../gfx/graphics/webGpu/Context3D';
 import { CResizeEvent } from '../event/CResizeEvent';
 import { ILight } from '../components/lights/ILight';
+import { RenderLayer } from '../gfx/renderJob/config/RenderLayer';
 
 /**
  * Camera components
@@ -104,6 +105,24 @@ export class Camera3D extends ComponentBase {
     public isShadowCamera: boolean = false;
 
     public shadowLight?: ILight;
+
+    /**
+     * Layer-mask of layers this camera should see. Combined at pass
+     * execute time with `node.renderLayer` and the active pass's
+     * `layerMask` via bitwise AND:
+     *
+     *     (node.renderLayer & pass.layerMask & camera.cullingMask) !== 0
+     *
+     * Defaults to {@link RenderLayer.All} so untouched cameras keep
+     * the historical "see everything" behaviour. Sub-cameras
+     * (minimaps, reflection probes, picking-only views) can clear
+     * specific bits to suppress unwanted layers.
+     *
+     * Camera-side filtering is layered on top of pass-side filtering:
+     * a layer must clear both masks AND the node's own membership to
+     * be drawn.
+     */
+    public cullingMask: number = RenderLayer.All;
 
     /**
    * @internal

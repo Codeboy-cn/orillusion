@@ -12,7 +12,8 @@ import { Octree } from '../../../core/tree/octree/Octree';
 import { Vector3 } from '../../../math/Vector3';
 import { Time } from '../../../util/Time';
 import { zSorterUtil } from '../../../util/ZSorterUtil';
-import { RenderLayerUtil, RenderLayer } from '../config/RenderLayer';
+import { BatchModeUtil, BatchMode } from '../config/BatchMode';
+import { RenderLayer } from '../config/RenderLayer';
 import { Probe } from '../passRenderer/ddgi/Probe';
 // import { Graphic3DBatchRenderer } from '../passRenderer/graphic/Graphic3DBatchRenderer';
 import { RendererMask } from '../passRenderer/state/RendererMask';
@@ -138,7 +139,7 @@ export class EntityCollect {
             if (this._graphics.indexOf(renderNode) == -1) {
                 this._graphics.push(renderNode);
             }
-        } else if (!RenderLayerUtil.hasMask(renderNode.renderLayer, RenderLayer.None)) {
+        } else if (!BatchModeUtil.hasMask(renderNode.batchMode, BatchMode.None)) {
             this.removeRenderNode(root, renderNode);
             let group = isTransparent ? this._tr_renderGroup : this._op_renderGroup;
             if (!group.has(root)) {
@@ -196,7 +197,7 @@ export class EntityCollect {
                     maps.splice(index, 1);
                 }
             }
-        } else if (!RenderLayerUtil.hasMask(renderNode.renderLayer, RenderLayer.None)) {
+        } else if (!BatchModeUtil.hasMask(renderNode.batchMode, BatchMode.None)) {
 
         } else {
             // Search BOTH opaque and transparent lists, not the one
@@ -395,6 +396,61 @@ export class EntityCollect {
             }
         }
         return this._collectInfo;
+    }
+
+    /**
+     * Layer-aware variant of {@link getRenderNodes}. Returns freshly
+     * built opaque + transparent arrays whose nodes pass the bitwise
+     * AND test:
+     *
+     *     (node.renderLayer & layerMask & cullingMask) !== 0
+     *
+     * Internally delegates the heavy lifting to {@link getRenderNodes}
+     * so octree frustum culling, transparent z-sort, and the WBOIT
+     * fast-path all stay shared with the legacy code path. The
+     * filtering step is a single linear scan over the (already
+     * frustum-culled) lists.
+     *
+     * When `(layerMask & cullingMask) === RenderLayer.All`, the result
+     * arrays are populated from the same scan rather than aliased to
+     * the singleton's lists — callers can safely mutate / store the
+     * returned arrays without affecting subsequent calls.
+     *
+     * @param scene       Scene to draw from.
+     * @param camera      Active camera (required for octree frustum
+     *                    culling on octree-enabled scenes).
+     * @param layerMask   Pass-side layer mask, e.g. from
+     *                    {@link RenderGraphPass.layerMask}.
+     * @param cullingMask Camera-side culling mask, defaults to
+     *                    {@link RenderLayer.All}.
+     */
+    public getLayerLists(
+        scene: Scene3D,
+        camera: Camera3D,
+        layerMask: number,
+        cullingMask: number = RenderLayer.All,
+    ): { opaque: RenderNode[]; transparent: RenderNode[] } {
+        const mask = (layerMask & cullingMask) >>> 0;
+        if (mask === 0) {
+            // Empty intersection — pass either consumes no layers or
+            // camera sees no layers. Bail without invoking the
+            // heavyweight collect path.
+            return { opaque: [], transparent: [] };
+        }
+        const info = this.getRenderNodes(scene, camera);
+        const opIn = info.opaqueList;
+        const trIn = info.transparentList;
+        const opOut: RenderNode[] = [];
+        for (let i = 0, n = opIn.length; i < n; i++) {
+            const node = opIn[i];
+            if (((node.renderLayer | 0) & mask) !== 0) opOut.push(node);
+        }
+        const trOut: RenderNode[] = [];
+        for (let i = 0, n = trIn.length; i < n; i++) {
+            const node = trIn[i];
+            if (((node.renderLayer | 0) & mask) !== 0) trOut.push(node);
+        }
+        return { opaque: opOut, transparent: trOut };
     }
 
     public getOpRenderGroup(scene: Scene3D): EntityBatchCollect {

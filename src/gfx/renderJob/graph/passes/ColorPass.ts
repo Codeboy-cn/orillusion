@@ -198,7 +198,7 @@ export class ColorPass extends RenderGraphPass {
         GlobalBindGroup.updateCameraGroup(camera);
         this.rendererPassState.camera3D = camera;
 
-        const collectInfo = EntityCollect.instance.getRenderNodes(view.scene, camera);
+        const layered = this.collectLayered(view);
 
         const opBundles = buildOpBundles(view, camera, this._passType, this.rendererPassState, cluster);
 
@@ -209,13 +209,18 @@ export class ColorPass extends RenderGraphPass {
             encoder.executeBundles(opBundles);
         }
 
-        if (collectInfo.opaqueList) {
-            gpu.bindCamera(encoder, camera);
+        // bindCamera is unconditional: subsequent draw stages (sky, and
+        // any continuation passes that reuse this encoder via the
+        // split render-pass state) rely on the per-camera bind group
+        // being bound at group 0, independent of whether the opaque
+        // list was empty this frame.
+        gpu.bindCamera(encoder, camera);
+        if (layered.opaque.length > 0) {
             drawNodes(
                 view,
                 this._renderContext,
                 this.rendererPassState,
-                collectInfo.opaqueList,
+                layered.opaque,
                 cluster,
                 { transmissionFilter: 'exclude', passType: this._passType },
             );

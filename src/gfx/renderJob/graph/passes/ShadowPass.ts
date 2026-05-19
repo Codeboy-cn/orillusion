@@ -231,14 +231,21 @@ export class ShadowPass extends RenderGraphPass {
     private _renderShadow(view: View3D, shadowCamera: Camera3D, occlusion: OcclusionSystem, state: RendererPassState, kind: ShadowKind = 'all'): void {
         (shadowCamera as any)._boundCtx ||= view.engine3D.context3D;
         const gpu = view.engine3D.context3D.gpuContext;
-        const collectInfo = EntityCollect.instance.getRenderNodes(view.scene, shadowCamera);
+        // Pass-side layer mask + shadow-camera's own cullingMask filter
+        // which renderers cast into this shadow map. Default
+        // layerMask=All keeps the old "every node casts shadow" path.
+        const layered = this.collectLayered(view, shadowCamera);
         const command = gpu.beginCommandEncoder();
         const encoder = gpu.beginRenderPass(command, state);
 
         shadowCamera.transform.updateWorldMatrix();
         if (OcclusionSystem.enable) {
             occlusion.update(shadowCamera, view.scene);
-            occlusion.collect(collectInfo, shadowCamera);
+            // Build a transient CollectInfo for the occlusion API; the
+            // body of OcclusionSystem.collect is currently a no-op so
+            // shape only has to satisfy the type.
+            const localInfo = EntityCollect.instance.getRenderNodes(view.scene, shadowCamera);
+            occlusion.collect(localInfo, shadowCamera);
         }
         GlobalBindGroup.updateCameraGroup(shadowCamera);
         gpu.bindCamera(encoder, shadowCamera);
@@ -247,12 +254,12 @@ export class ShadowPass extends RenderGraphPass {
             const opBundles = buildOpBundles(view, shadowCamera, this._passType, state, undefined, true);
             const trBundles = buildTrBundles(view, shadowCamera, this._passType, state, undefined, true);
             if (opBundles.length > 0) encoder.executeBundles(opBundles);
-            this._drawShadowNodes(view, shadowCamera, encoder, collectInfo.opaqueList, kind);
+            this._drawShadowNodes(view, shadowCamera, encoder, layered.opaque, kind);
             if (trBundles.length > 0) encoder.executeBundles(trBundles);
-            this._drawShadowNodes(view, shadowCamera, encoder, collectInfo.transparentList, kind);
+            this._drawShadowNodes(view, shadowCamera, encoder, layered.transparent, kind);
         } else {
-            this._drawShadowNodes(view, shadowCamera, encoder, collectInfo.opaqueList, kind);
-            this._drawShadowNodes(view, shadowCamera, encoder, collectInfo.transparentList, kind);
+            this._drawShadowNodes(view, shadowCamera, encoder, layered.opaque, kind);
+            this._drawShadowNodes(view, shadowCamera, encoder, layered.transparent, kind);
         }
 
         gpu.endPass(encoder);

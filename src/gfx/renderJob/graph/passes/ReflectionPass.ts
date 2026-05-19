@@ -178,7 +178,9 @@ export class ReflectionPass extends RenderGraphPass {
         const scene = view.scene;
         camera.transform.scene3D = scene;
         this._rendererPassState.camera3D = camera;
-        const collectInfo = EntityCollect.instance.getRenderNodes(scene, camera);
+        // Reflection probes render through their own camera; use that
+        // camera's cullingMask to honour per-probe layer overrides.
+        const layered = this.collectLayered(view, camera);
 
         GlobalBindGroup.updateCameraGroup(camera);
 
@@ -191,13 +193,14 @@ export class ReflectionPass extends RenderGraphPass {
             sky.renderPass2(view, this._passType, this._rendererPassState, cluster, encoder);
         }
 
-        if (collectInfo.opaqueList) {
-            gpu.bindCamera(encoder, camera);
-            this._drawNodes(view, collectInfo.opaqueList, occlusion, cluster);
+        // Always rebind so downstream stages on the same encoder see a
+        // valid group-0 binding even when the filtered list is empty.
+        gpu.bindCamera(encoder, camera);
+        if (layered.opaque.length > 0) {
+            this._drawNodes(view, layered.opaque, occlusion, cluster);
         }
-        if (collectInfo.transparentList) {
-            gpu.bindCamera(encoder, camera);
-            this._drawNodes(view, collectInfo.transparentList, occlusion, cluster);
+        if (layered.transparent.length > 0) {
+            this._drawNodes(view, layered.transparent, occlusion, cluster);
         }
     }
 

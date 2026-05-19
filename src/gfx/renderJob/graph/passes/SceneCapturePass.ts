@@ -130,7 +130,11 @@ export class SceneCapturePass extends RenderGraphPass {
         GlobalBindGroup.updateCameraGroup(camera);
         rendererPassState.camera3D = camera;
 
-        const collectInfo = EntityCollect.instance.getRenderNodes(view.scene, camera);
+        // Scene-capture passes render through the capture component's
+        // own camera; thread its cullingMask through so per-capture
+        // layer restrictions (e.g. a minimap RT that drops Overlay)
+        // take effect.
+        const layered = this.collectLayered(view, camera);
 
         const gpu = view.engine3D.context3D.gpuContext;
         renderContext.gpu = gpu;
@@ -152,14 +156,16 @@ export class SceneCapturePass extends RenderGraphPass {
             }
         }
 
-        if (collectInfo.opaqueList) {
-            gpu.bindCamera(opaqueEncoder, camera);
-            this._drawNodes(view, renderContext, collectInfo.opaqueList, cap, occlusion, cluster);
+        // Unconditional bindCamera: keeps downstream encoder users
+        // (e.g. transparent half on the same encoder, when enabled)
+        // valid even on frames where the layered list is empty.
+        gpu.bindCamera(opaqueEncoder, camera);
+        if (layered.opaque.length > 0) {
+            this._drawNodes(view, renderContext, layered.opaque, cap, occlusion, cluster);
         }
 
-        if (cap.includeTransparent && collectInfo.transparentList) {
-            gpu.bindCamera(opaqueEncoder, camera);
-            this._drawNodes(view, renderContext, collectInfo.transparentList, cap, occlusion, cluster);
+        if (cap.includeTransparent && layered.transparent.length > 0) {
+            this._drawNodes(view, renderContext, layered.transparent, cap, occlusion, cluster);
         }
 
         renderContext.endRenderPass();

@@ -288,12 +288,15 @@ export class GIPass extends RenderGraphPass {
 
     private _renderProbeFace(view: View3D, probeCamera: Camera3D, encoder: GPURenderPassEncoder, _lights: ILight[]): void {
         this._volume.uploadBuffer();
-        const collectInfo = EntityCollect.instance.getRenderNodes(view.scene, probeCamera);
+        // GI probes bake from their own per-face camera; thread that
+        // camera's cullingMask through the layer filter so per-probe
+        // layer restrictions take effect.
+        const layered = this.collectLayered(view, probeCamera);
         view.engine3D.context3D.gpuContext.bindCamera(encoder, probeCamera);
 
         const setting = view.engine3D.setting;
         let drawMin = Math.max(0, setting.render.drawOpMin);
-        let drawMax = Math.min(setting.render.drawOpMax, collectInfo.opaqueList.length);
+        let drawMax = Math.min(setting.render.drawOpMax, layered.opaque.length);
 
         // Pre-init walk: ensure GI-pass pipelines for all renderers
         // are compiled before the first draw.
@@ -311,7 +314,7 @@ export class GIPass extends RenderGraphPass {
         }
 
         for (let i = drawMin; i < drawMax; ++i) {
-            const node = collectInfo.opaqueList[i];
+            const node = layered.opaque[i];
             if (node.enable && node.transform.enable && !node.isDestroyed) {
                 if (!node.preInit(this._passType)) {
                     node.nodeUpdate(view, this._passType, this._rendererPassState, null);
@@ -329,9 +332,9 @@ export class GIPass extends RenderGraphPass {
         }
 
         drawMin = Math.max(0, setting.render.drawTrMin);
-        drawMax = Math.min(setting.render.drawTrMax, collectInfo.transparentList.length);
+        drawMax = Math.min(setting.render.drawTrMax, layered.transparent.length);
         for (let i = drawMin; i < drawMax; ++i) {
-            const node = collectInfo.transparentList[i];
+            const node = layered.transparent[i];
             if (node.enable && node.transform.enable && !node.isDestroyed) {
                 if (!node.preInit(this._passType)) {
                     node.nodeUpdate(view, this._passType, this._rendererPassState, null);

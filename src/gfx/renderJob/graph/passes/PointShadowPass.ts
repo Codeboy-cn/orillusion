@@ -13,8 +13,6 @@ import { Reference } from '../../../../util/Reference';
 import { GPUTextureFormat } from '../../../graphics/webGpu/WebGPUConst';
 import { GlobalBindGroup } from '../../../graphics/webGpu/core/bindGroups/GlobalBindGroup';
 import { RTDescriptor } from '../../../graphics/webGpu/descriptor/RTDescriptor';
-import { CollectInfo } from '../../collect/CollectInfo';
-import { EntityCollect } from '../../collect/EntityCollect';
 import { ShadowLightsCollect } from '../../collect/ShadowLightsCollect';
 import { RTFrame } from '../../frame/RTFrame';
 import { OcclusionSystem } from '../../occlusion/OcclusionSystem';
@@ -107,8 +105,11 @@ export class PointShadowPass extends RenderGraphPass {
             for (let face = 0; face < 6; face++) {
                 const camera = faces[face];
                 occlusion.update(camera, scene);
-                const collectInfo = EntityCollect.instance.getRenderNodes(scene, camera);
-                this._renderFaceOnce(face, info, view, camera, collectInfo, occlusion);
+                // Layer-filtered lists (pass.layerMask & camera.cullingMask).
+                // Each cube face has its own camera so its cullingMask
+                // participates per-face (defaults to All).
+                const layered = this.collectLayered(view, camera);
+                this._renderFaceOnce(face, info, view, camera, layered.opaque, layered.transparent, occlusion);
             }
 
             // Publish the 6 face textures into the cube-array slot.
@@ -185,7 +186,8 @@ export class PointShadowPass extends RenderGraphPass {
         info: CubeShadowMapInfo,
         view: View3D,
         shadowCamera: Camera3D,
-        collectInfo: CollectInfo,
+        opaqueList: RenderNode[],
+        transparentList: RenderNode[],
         occlusion: OcclusionSystem,
     ): void {
         const renderContext = info.renderContext[face];
@@ -200,15 +202,15 @@ export class PointShadowPass extends RenderGraphPass {
         shadowCamera.transform.updateWorldMatrix(true);
 
         // Pre-init: ensure shaders compile before draw
-        for (const node of collectInfo.opaqueList) {
+        for (const node of opaqueList) {
             if (!node.isDestroyed && node.preInit(this._passType)) {
                 node.nodeUpdate(view, this._passType, renderContext.rendererPassState, null);
                 break;
             }
         }
 
-        this._drawNodes(view, shadowCamera, renderContext, collectInfo.opaqueList, occlusion);
-        this._drawNodes(view, shadowCamera, renderContext, collectInfo.transparentList, occlusion);
+        this._drawNodes(view, shadowCamera, renderContext, opaqueList, occlusion);
+        this._drawNodes(view, shadowCamera, renderContext, transparentList, occlusion);
 
         renderContext.endRenderPass();
     }

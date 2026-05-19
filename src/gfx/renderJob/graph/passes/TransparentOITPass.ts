@@ -4,7 +4,6 @@ import { GPUTextureFormat } from '../../../graphics/webGpu/WebGPUConst';
 import { GlobalBindGroup } from '../../../graphics/webGpu/core/bindGroups/GlobalBindGroup';
 import { RTDescriptor } from '../../../graphics/webGpu/descriptor/RTDescriptor';
 import { WebGPUDescriptorCreator } from '../../../graphics/webGpu/descriptor/WebGPUDescriptorCreator';
-import { EntityCollect } from '../../collect/EntityCollect';
 import { GBufferFrame } from '../../frame/GBufferFrame';
 import { RTFrame } from '../../frame/RTFrame';
 import { RTResourceMap } from '../../frame/RTResourceMap';
@@ -82,8 +81,7 @@ export class TransparentOITPass extends RenderGraphPass {
         const passState = this._rendererPassState!;
         passState.camera3D = camera;
 
-        const collectInfo = EntityCollect.instance.getRenderNodes(view.scene, camera);
-        const transparents = collectInfo.transparentList ?? [];
+        const transparents = this.collectLayered(view).transparent;
         // Don't early-return when there are no weighted materials. The
         // companion TransparentResolvePass runs unconditionally and
         // composites OIT_ACCUM / OIT_REVEAL onto the colour buffer

@@ -4,7 +4,6 @@ import { ProfilerUtil } from '../../../../util/ProfilerUtil';
 import { GPUTextureFormat } from '../../../graphics/webGpu/WebGPUConst';
 import { RTDescriptor } from '../../../graphics/webGpu/descriptor/RTDescriptor';
 import { WebGPUDescriptorCreator } from '../../../graphics/webGpu/descriptor/WebGPUDescriptorCreator';
-import { EntityCollect } from '../../collect/EntityCollect';
 import { RTResourceConfig } from '../../config/RTResourceConfig';
 import { RTFrame } from '../../frame/RTFrame';
 import { RTResourceMap } from '../../frame/RTResourceMap';
@@ -93,7 +92,7 @@ export class PreDepthPass extends RenderGraphPass {
         ProfilerUtil.start('DepthPass Renderer');
 
         this.rendererPassState.camera3D = camera;
-        const collectInfo = EntityCollect.instance.getRenderNodes(scene, camera);
+        const layered = this.collectLayered(view);
 
         const opBundles = buildOpBundles(view, camera, this._passType, this.rendererPassState);
 
@@ -107,7 +106,7 @@ export class PreDepthPass extends RenderGraphPass {
         // first-use compilation.
         preInitPassPipelines(view, this._passType, this.rendererPassState);
 
-        this._drawOpaque(view, encoder, collectInfo.opaqueList, occlusion);
+        this._drawOpaque(view, encoder, layered.opaque, occlusion);
 
         gpu.endPass(encoder);
         gpu.endCommandEncoder(command);

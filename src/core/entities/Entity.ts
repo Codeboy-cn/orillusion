@@ -3,7 +3,6 @@ import { IComponent } from '../../components/IComponent';
 import { RenderNode } from '../../components/renderer/RenderNode';
 import { Transform } from '../../components/Transform';
 import { CEventDispatcher } from '../../event/CEventDispatcher';
-import { RenderLayer } from '../../gfx/renderJob/config/RenderLayer';
 import { BoundUtil } from '../../util/BoundUtil';
 import { GetCountInstanceID } from '../../util/Global';
 import { BoundingBox } from '../bound/BoundingBox';
