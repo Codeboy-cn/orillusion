@@ -145,17 +145,50 @@ export class GeometryBase {
     }
 
     /**
-     * create geometry by shaderReflection
-     * @param shaderReflection ShaderReflection
+     * Build the GPU vertex buffer + buffer-layout array from this
+     * geometry's attribute data, driven by the consuming pass's
+     * `ShaderReflection`. The layout array is indexed by shader slot
+     * (`attribute.location`), so the LAYOUT contents depend on which
+     * attributes the shader actually declares.
+     *
+     * Originally this was gated purely on `_onChange` — i.e. ran once
+     * after the geometry's attribute data was set. That broke
+     * multi-pass materials: when a single geometry is consumed by a
+     * color pass that declares N attributes (say position / normal /
+     * uv) AND a depth pass that declares N+1 (adding TEXCOORD_1 at
+     * slot 3 via VertexAttributes #include), the color pass ran
+     * first, populated slots 0..N-1, and cleared `_onChange`. The
+     * depth pass's `generate` call was then a no-op, so the pipeline
+     * built with `vertexBufferLayouts` was missing slot N — WebGPU
+     * rejects it with "Vertex attribute slot X used in shader is not
+     * present in VertexState".
+     *
+     * The fix: rebuild also when the incoming reflection requires a
+     * slot the current layout array doesn't yet have. The data is
+     * already in `_attributeMap`; `createVertexBuffer` will pick up
+     * the missing slot. We keep the `_onChange` short-circuit for the
+     * normal "shader requirements unchanged" case so dynamic geometry
+     * updates don't pay a per-frame `createVertexBuffer` cost.
      */
     generate(shaderReflection: ShaderReflection) {
-        if (this._onChange) {
-            this._onChange = false;
-            this._indicesBuffer.upload(this.getAttribute(VertexAttributeName.indices).data);
-            this._vertexBuffer.createVertexBuffer(this._attributeMap, shaderReflection);
-            this._vertexBuffer.updateAttributes(this._attributeMap);
-            this.vertexCount = this._vertexBuffer.vertexCount;
+        if (!this._onChange) {
+            const layouts = this._vertexBuffer?.vertexBufferLayouts;
+            // Any non-builtin attribute the new reflection asks for
+            // that isn't already present in the layouts means we have
+            // to rebuild — the shader will reference a slot the
+            // pipeline VertexState wouldn't otherwise provide.
+            const missingSlot = shaderReflection.attributes.some(a =>
+                a.name !== 'index'
+                && (a as any).type !== 'builtin'
+                && layouts?.[a.location] === undefined
+            );
+            if (!missingSlot) return;
         }
+        this._onChange = false;
+        this._indicesBuffer.upload(this.getAttribute(VertexAttributeName.indices).data);
+        this._vertexBuffer.createVertexBuffer(this._attributeMap, shaderReflection);
+        this._vertexBuffer.updateAttributes(this._attributeMap);
+        this.vertexCount = this._vertexBuffer.vertexCount;
     }
 
     public setIndices(data: ArrayBufferData) {
