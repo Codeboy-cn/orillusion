@@ -176,6 +176,13 @@ export class Engine3D {
                     gtao: { enable: false, darkFactor: 1.0, maxDistance: 5.0, maxPixel: 50.0, rayMarchSegment: 6, multiBounce: false, usePosFloat32: true, blendColor: true, debug: true },
                     ssr: { enable: false, pixelRatio: 1, fadeEdgeRatio: 0.2, rayMarchRatio: 0.5, fadeDistanceMin: 600, fadeDistanceMax: 2000, roughnessThreshold: 0.5, powDotRN: 0.2, mixThreshold: 0.1, debug: true },
                     fxaa: { enable: false },
+                    skyline: {
+	                    enable: false,
+	                    lineColor: new Color(1, 0, 0, 1),
+	                    lineWidth: 2,
+	                    depthThreshold: 0.001,
+	                    strength: 1.0,
+                    },
                     depthOfView: { enable: false, iterationCount: 3, pixelOffset: 1.0, near: 150, far: 300 },
                     volumetricFog: {
                         enable: false,

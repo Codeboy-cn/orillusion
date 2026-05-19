@@ -2,6 +2,7 @@ import { DepthOfViewSetting } from "./post/DepthOfViewSetting";
 import { GlobalFogSetting } from "./post/GlobalFogSetting";
 import { GTAOSetting } from "./post/GTAOSetting";
 import { OutlineSetting } from "./post/OutlineSetting";
+import { SkylineSetting } from "./post/SkylineSetting";
 import { SSRSetting } from "./post/SSRSetting";
 import { TAASetting } from "./post/TAASetting";
 import { BloomSetting } from "./post/BloomSetting";
@@ -91,6 +92,7 @@ export type RenderSetting = {
         ssgi?: GTAOSetting;
         outline?: OutlineSetting;
         globalFog?: GlobalFogSetting;
+	skyline?: SkylineSetting;
         godRay?: GodRaySetting;
         fxaa?: {
             enable: boolean;
