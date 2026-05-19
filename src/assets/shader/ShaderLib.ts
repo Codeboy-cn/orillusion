@@ -61,6 +61,8 @@ import { ReflectionCG } from './env/ReflectionCG';
 import { SHCommon_frag } from './core/common/SHCommon_frag';
 import { EngineSetting } from '../../setting/EngineSetting';
 import { getLightData } from './core/struct/LightData';
+import { EarthSky_Shader } from './sky/EarthSky_Shader';
+import { EarthAtm_Shader } from './sky/EarthAtm_Shader';
 
 /**
  * @internal
@@ -139,6 +141,10 @@ export class ShaderLib {
         ShaderLib.register('Quad_depthCube_frag_wgsl', Quad_depthCube_frag_wgsl);
         ShaderLib.register('sky_vs_frag_wgsl', CubeSky_Shader.sky_vs_frag_wgsl);
         ShaderLib.register('sky_fs_frag_wgsl', CubeSky_Shader.sky_fs_frag_wgsl);
+        ShaderLib.register('earthsky_vs_wgsl', EarthSky_Shader.earthsky_vs_wgsl);
+        ShaderLib.register('earthsky_fs_wgsl', EarthSky_Shader.earthsky_fs_wgsl);
+        ShaderLib.register('earthatm_vs_wgsl', EarthAtm_Shader.earthatm_vs_wgsl);
+        ShaderLib.register('earthatm_fs_wgsl', EarthAtm_Shader.earthatm_fs_wgsl);
 
         ShaderLib.register("LambertShader", Lambert_shader);
 
