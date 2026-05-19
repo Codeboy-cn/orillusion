@@ -16,14 +16,6 @@ export class Sample_Skyline {
                 devicePixelRatio: 1
             },
             setting: {
-                doublePrecision: true,
-                useRTE: true,
-                RTEScale: 1.0,
-                pick: { enable: true, mode: 'pixel' },
-                render: {
-                    useLogDepth: true,
-                    zPrePass: false,
-                },
                 shadow: {
                     enable: true,
                     shadowSize: 2048,
@@ -34,7 +26,7 @@ export class Sample_Skyline {
         })
 
         this.scene = new Scene3D()
-        // this.scene.addComponent(AtmosphericComponent).sunY = 0.6
+        this.scene.addComponent(AtmosphericComponent).sunY = 0.6
 
         let mainCamera = CameraUtil.createCamera3DObject(this.scene, 'camera')
         mainCamera.perspective(60, engine.context3D.aspect, 1, 2000.0)
