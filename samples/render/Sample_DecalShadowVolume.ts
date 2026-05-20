@@ -43,7 +43,11 @@ export class Sample_DecalShadowVolume {
                 shadow: { autoUpdate: true, updateFrameRate: 1 },
                 // zPrePass: required (DecalShadowVolumePass reads _MainDepthTexture).
                 // decals:   turns on the built-in stencil-volume decal pass.
-                render: { zPrePass: true, decals: true } as any,
+                render: {
+                    zPrePass: true,
+                    decals: true,
+                    useLogDepth: true,
+                },
             },
         });
 

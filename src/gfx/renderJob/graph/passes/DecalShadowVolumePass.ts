@@ -1,6 +1,7 @@
 import { DecalComponent } from '../../../../components/DecalComponent';
 import { Matrix4 } from '../../../../math/Matrix4';
 import { RenderTexture } from '../../../../textures/RenderTexture';
+import { Preprocessor } from '../../../graphics/webGpu/shader/util/Preprocessor';
 import { Texture } from '../../../graphics/webGpu/core/texture/Texture';
 import { RenderGraphBuilder, RenderGraphPass, RenderGraphPassContext } from '../RenderGraphPass';
 import { COLOR_BUFFER } from './ColorPass';
@@ -21,7 +22,11 @@ const DS_FORMAT: GPUTextureFormat = 'depth24plus-stencil8';
  *   - 32..48 model     : mat4x4f
  *   - 48..64 invModel  : mat4x4f
  *   - 64..68 tint      : vec4f
- *   - 68..72 params    : vec4f (x = cos(maxAngleDeg), or -2 when disabled)
+ *   - 68..72 params    : vec4f
+ *       x = cos(maxAngleDeg), or -2 when disabled
+ *       y = camera near (for log-depth inverse)
+ *       z = camera far  (for log-depth inverse)
+ *       w = unused
  * Total = 288 bytes. */
 const UNIFORM_BYTES = 4 * 64 + 16 + 16;
 const TMP_UNIFORM_F32 = new Float32Array(UNIFORM_BYTES / 4);
@@ -71,6 +76,7 @@ export class DecalShadowVolumePass extends RenderGraphPass {
     public readonly name: string = 'DecalShadowVolumePass';
 
     private _device!: GPUDevice;
+    private _useLogDepth: boolean = false;
     private _cubeVB!: GPUBuffer;
     private _cubeIB!: GPUBuffer;
     private _cubeIdxCount!: number;
@@ -94,6 +100,7 @@ export class DecalShadowVolumePass extends RenderGraphPass {
 
     public setup(b: RenderGraphBuilder): void {
         this._device = b.context3D.device as GPUDevice;
+        this._useLogDepth = !!b.context3D.engine?.setting?.render?.useLogDepth;
 
         this._mVP = new Matrix4();
         this._mInvVP = new Matrix4();
@@ -157,6 +164,8 @@ export class DecalShadowVolumePass extends RenderGraphPass {
         const vp = this._mVP.multiplyMatrices(camera.projectionMatrix, camera.viewMatrix);
         const invVP = this._mInvVP.copy(vp);
         invVP.invert();
+        const near = camera.near;
+        const far = camera.far;
 
         const command = gpu.beginCommandEncoder();
 
@@ -188,7 +197,7 @@ export class DecalShadowVolumePass extends RenderGraphPass {
         for (const decal of DecalComponent.activeRegistry) {
             if (!decal.enable || !decal.texture) continue;
             if (!decal.transform || !decal.transform.enable) continue;
-            const gpuRes = this._updateDecalUniform(decal, vp, invVP);
+            const gpuRes = this._updateDecalUniform(decal, vp, invVP, near, far);
             if (!gpuRes) continue;
             const label = decal.object3D?.name || `#${drawIdx++}`;
 
@@ -269,7 +278,7 @@ export class DecalShadowVolumePass extends RenderGraphPass {
         return this._depthStencilTex;
     }
 
-    private _updateDecalUniform(decal: DecalComponent, vp: Matrix4, invVP: Matrix4): DecalGpu | null {
+    private _updateDecalUniform(decal: DecalComponent, vp: Matrix4, invVP: Matrix4, near: number, far: number): DecalGpu | null {
         const tex = decal.texture;
         if (!tex) return null;
 
@@ -308,7 +317,9 @@ export class DecalShadowVolumePass extends RenderGraphPass {
         cpu[68] = decal.maxAngleDeg >= 89.99
             ? -2.0
             : Math.cos(decal.maxAngleDeg * Math.PI / 180);
-        cpu[69] = 0; cpu[70] = 0; cpu[71] = 0;
+        cpu[69] = near;
+        cpu[70] = far;
+        cpu[71] = 0;
         this._device.queue.writeBuffer(gpuRes.uniformBuffer, 0, cpu.buffer, cpu.byteOffset, UNIFORM_BYTES);
 
         return gpuRes;
@@ -317,13 +328,24 @@ export class DecalShadowVolumePass extends RenderGraphPass {
     private _createPipelines(): void {
         const device = this._device;
 
+        // Reuse the engine's macro preprocessor so this pass tracks the
+        // same depth-encoding flags as RenderShaderPass-managed shaders.
+        // BLIT is depth-only and ignores logdepth, but running it through
+        // the preprocessor keeps a single code path.
+        const defines = {
+            USE_LOGDEPTH: this._useLogDepth,
+        };
+        const blitCode = Preprocessor.parse(BLIT_WGSL, defines);
+        const markCode = Preprocessor.parse(MARK_WGSL, defines);
+        const compositeCode = Preprocessor.parse(COMPOSITE_WGSL, defines);
+
         // A. Depth blit
         this._blitBGLayout = device.createBindGroupLayout({
             entries: [
                 { binding: 0, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: 'depth' } },
             ],
         });
-        const blitShader = device.createShaderModule({ code: BLIT_WGSL });
+        const blitShader = device.createShaderModule({ code: blitCode });
         this._blitPipeline = device.createRenderPipeline({
             label: 'DecalShadowVolume:BlitPipeline',
             layout: device.createPipelineLayout({ bindGroupLayouts: [this._blitBGLayout] }),
@@ -343,7 +365,7 @@ export class DecalShadowVolumePass extends RenderGraphPass {
                 { binding: 0, visibility: GPUShaderStage.VERTEX, buffer: { type: 'uniform' } },
             ],
         });
-        const markShader = device.createShaderModule({ code: MARK_WGSL });
+        const markShader = device.createShaderModule({ code: markCode });
         this._markPipeline = device.createRenderPipeline({
             label: 'DecalShadowVolume:MarkPipeline',
             layout: device.createPipelineLayout({ bindGroupLayouts: [this._markBGLayout] }),
@@ -387,7 +409,7 @@ export class DecalShadowVolumePass extends RenderGraphPass {
                 { binding: 3, visibility: GPUShaderStage.FRAGMENT, sampler: { type: 'filtering' } },
             ],
         });
-        const compositeShader = device.createShaderModule({ code: COMPOSITE_WGSL });
+        const compositeShader = device.createShaderModule({ code: compositeCode });
         this._compositePipeline = device.createRenderPipeline({
             label: 'DecalShadowVolume:CompositePipeline',
             layout: device.createPipelineLayout({ bindGroupLayouts: [this._compositeBGLayout] }),
@@ -478,13 +500,25 @@ struct Uniforms {
     model:    mat4x4f,
     invModel: mat4x4f,
     tint:     vec4f,
+    params:   vec4f,
 };
 
 @group(0) @binding(0) var<uniform> u: Uniforms;
 
 @vertex
 fn vs(@location(0) pos: vec3f) -> @builtin(position) vec4f {
-    return u.vp * (u.model * vec4f(pos, 1.0));
+    var clipPos = u.vp * (u.model * vec4f(pos, 1.0));
+    #if USE_LOGDEPTH
+        // Match Common_frag's log2DepthFixPersp, which is what writes the
+        // _MainDepthTexture when USE_LOGDEPTH is on. Encoding here keeps the
+        // depthCompare='less' stencil mark comparing apples to apples.
+        let far = u.params.z;
+        let halfFcoef = (2.0 / log2(far + 1.0)) * 0.5;
+        let r = log2(max(1e-6, 1.0 + clipPos.w)) * halfFcoef;
+        let ndcZ = (1.0 + r) * 0.5;
+        clipPos.z = ndcZ * clipPos.w;
+    #endif
+    return clipPos;
 }
 
 @fragment
@@ -515,7 +549,15 @@ struct VOut {
 @vertex
 fn vs(@location(0) pos: vec3f) -> VOut {
     var out: VOut;
-    out.pos = u.vp * (u.model * vec4f(pos, 1.0));
+    var clipPos = u.vp * (u.model * vec4f(pos, 1.0));
+    #if USE_LOGDEPTH
+        let far = u.params.z;
+        let halfFcoef = (2.0 / log2(far + 1.0)) * 0.5;
+        let r = log2(max(1e-6, 1.0 + clipPos.w)) * halfFcoef;
+        let ndcZ = (1.0 + r) * 0.5;
+        clipPos.z = ndcZ * clipPos.w;
+    #endif
+    out.pos = clipPos;
     return out;
 }
 
@@ -526,7 +568,21 @@ fn fs(in: VOut) -> @location(0) vec4f {
     if (pixel.x < 0 || pixel.y < 0 || pixel.x >= i32(dim.x) || pixel.y >= i32(dim.y)) {
         discard;
     }
-    let depth = textureLoad(sceneDepth, pixel, 0);
+    let rawDepth = textureLoad(sceneDepth, pixel, 0);
+
+    #if USE_LOGDEPTH
+        // _MainDepthTexture stores log2DepthFixPersp(w) =
+        //   (1 + log2(1+w)/log2(far+1)) / 2,  where w = view-space distance.
+        // Invert: w = pow(far+1, 2*D - 1) - 1, then convert back to the
+        // standard perspective ndc_z so invVP rebuilds world position the
+        // same way as the no-logdepth path.
+        let near = u.params.y;
+        let far  = u.params.z;
+        let w    = pow(far + 1.0, 2.0 * rawDepth - 1.0) - 1.0;
+        let depth = (far / (far - near)) * (1.0 - near / max(w, 1e-6));
+    #else
+        let depth = rawDepth;
+    #endif
 
     let uvScreen = (vec2f(in.pos.xy) + vec2f(0.5)) / vec2f(dim);
     let ndc = vec4f(uvScreen.x * 2.0 - 1.0, 1.0 - uvScreen.y * 2.0, depth, 1.0);
