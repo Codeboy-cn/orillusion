@@ -30,7 +30,7 @@ export const CANVAS_TEXTURE = '_CanvasTexture';
 export class GUIPass extends RenderGraphPass {
     public readonly name = 'GUIPass';
 
-    private _presentQuad!: ViewQuad;
+    protected _presentQuad!: ViewQuad;
 
     public setup(b: RenderGraphBuilder): void {
         b.read(FINAL_COLOR);

@@ -52,15 +52,15 @@ export class ReflectionPass extends RenderGraphPass {
     public probeCount!: number;
     public readonly mipCount: number = 8;
 
-    private readonly _passType: PassType = PassType.REFLECTION;
-    private _cubeCamera!: CubeCamera;
-    private _renderContext!: RenderContext;
-    private _rendererPassState!: RendererPassState;
-    private _preFilteredCompute!: ComputeShader;
-    private _preFilteredUniform!: UniformGPUBuffer;
+    protected readonly _passType: PassType = PassType.REFLECTION;
+    protected _cubeCamera!: CubeCamera;
+    protected _renderContext!: RenderContext;
+    protected _rendererPassState!: RendererPassState;
+    protected _preFilteredCompute!: ComputeShader;
+    protected _preFilteredUniform!: UniformGPUBuffer;
 
-    private _onChange = true;
-    private _needUpdate = true;
+    protected _onChange = true;
+    protected _needUpdate = true;
 
     public setup(b: RenderGraphBuilder): void {
         const view = b.view;
@@ -108,7 +108,7 @@ export class ReflectionPass extends RenderGraphPass {
         this._compute(ctx.view);
     }
 
-    private _compute(view: View3D): void {
+    protected _compute(view: View3D): void {
         if (!this._needUpdate) return;
         this._needUpdate = false;
         const gpu = view.engine3D.context3D.gpuContext;
@@ -124,7 +124,7 @@ export class ReflectionPass extends RenderGraphPass {
         gpu.endCommandEncoder(command);
     }
 
-    private _render(view: View3D, occlusion: OcclusionSystem): void {
+    protected _render(view: View3D, occlusion: OcclusionSystem): void {
         this._renderContext.gpu = view.engine3D.context3D.gpuContext;
         this._renderContext.clean();
 
@@ -167,7 +167,7 @@ export class ReflectionPass extends RenderGraphPass {
         this._onChange = false;
     }
 
-    private _renderFace(
+    protected _renderFace(
         view: View3D,
         camera: Camera3D,
         encoder: GPURenderPassEncoder,
@@ -204,7 +204,7 @@ export class ReflectionPass extends RenderGraphPass {
         }
     }
 
-    private _drawNodes(
+    protected _drawNodes(
         view: View3D,
         nodes: RenderNode[],
         _occlusion: OcclusionSystem,

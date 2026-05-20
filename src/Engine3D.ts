@@ -123,6 +123,7 @@ export class Engine3D {
                 useFrameGraph: true,
                 msaa: 0,
                 useOIT: false,
+                decals: false,
                 gpuCull: false,
                 gpuCullTwoPhase: false,
                 tonemap: {

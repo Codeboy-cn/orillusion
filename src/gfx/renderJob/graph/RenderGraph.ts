@@ -128,10 +128,22 @@ export class RenderGraph {
         const idx = this._passes.findIndex(p => p.name === name);
         if (idx < 0) throw new Error(`RenderGraph.replace: pass '${name}' not found.`);
         const prev = this._passes[idx];
+        // Preserve the original insertion order. replace is "in-place
+        // swap of one pass for another", and `insertedOrder` is the
+        // single tie-break key used by topoSort's chain-writers /
+        // resource-flow edges (GraphValidator.topoSort). Without
+        // preserving it, the new pass moves to the back of the order
+        // and any mutator-writer of one of its outputs (e.g.
+        // SortedTransparentPass mutating COLOR_BUFFER that ColorPass
+        // creates) flips relative to it, producing a fake cycle.
+        const prevOrder = this._insertedOrder(prev);
         prev.destroy();
         for (const n of prev.creates) this._pool.unregister(n);
         const pass = new Ctor(...args) as InstanceType<C>;
         this._setupAndRegister(pass);
+        if (prevOrder >= 0) {
+            (pass as any)[PASS_META] = { insertedOrder: prevOrder } satisfies PassMeta;
+        }
         this._passes.splice(idx, 1, pass);
         this._byName.delete(name);
         this._byName.set(pass.name, pass);

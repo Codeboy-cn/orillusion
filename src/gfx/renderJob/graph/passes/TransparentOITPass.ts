@@ -37,10 +37,10 @@ export const OIT_REVEAL_TEX = '_OITReveal';
 export class TransparentOITPass extends RenderGraphPass {
     public readonly name = 'TransparentOITPass';
 
-    private _ctx!: Context3D;
-    private readonly _passType: PassType = PassType.OIT_ACCUM;
-    private _rendererPassState: RendererPassState | null = null;
-    private _zPreTexture: RenderTexture | null = null;
+    protected _ctx!: Context3D;
+    protected readonly _passType: PassType = PassType.OIT_ACCUM;
+    protected _rendererPassState: RendererPassState | null = null;
+    protected _zPreTexture: RenderTexture | null = null;
 
     public setup(b: RenderGraphBuilder): void {
         this._ctx = b.context3D;
@@ -128,7 +128,7 @@ export class TransparentOITPass extends RenderGraphPass {
         gpu.lastRenderPassState = savedLastPS;
     }
 
-    private _ensureRtFrame(): void {
+    protected _ensureRtFrame(): void {
         if (this._rendererPassState) return;
         const ctx = this._ctx;
         const colorGBuffer = GBufferFrame.getGBufferFrame(GBufferFrame.colorPass_GBuffer, ctx);

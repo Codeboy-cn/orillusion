@@ -43,8 +43,8 @@ export class PostPass extends RenderGraphPass {
     public readonly postList: Map<string, PostBase> = new Map();
     public debugTextures: any[] = [];
 
-    private _ctx!: Context3D;
-    private _rendererPassState!: RendererPassState;
+    protected _ctx!: Context3D;
+    protected _rendererPassState!: RendererPassState;
 
     public setup(b: RenderGraphBuilder): void {
         const view = b.view;

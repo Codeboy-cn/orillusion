@@ -28,21 +28,21 @@ export const HIZ_PYRAMID = '_HiZPyramid';
 export class HiZPass extends RenderGraphPass {
     public readonly name = 'HiZPass';
 
-    private _ctx!: Context3D;
-    private _pyramid: RenderTexture | null = null;
-    private _numMips: number = 1;
-    private _initPipeline: GPUComputePipeline | null = null;
-    private _reducePipeline: GPUComputePipeline | null = null;
-    private _bindGroupLayout: GPUBindGroupLayout | null = null;
-    private _initBindGroup: GPUBindGroup | null = null;
-    private _reduceBindGroups: GPUBindGroup[] = [];
+    protected _ctx!: Context3D;
+    protected _pyramid: RenderTexture | null = null;
+    protected _numMips: number = 1;
+    protected _initPipeline: GPUComputePipeline | null = null;
+    protected _reducePipeline: GPUComputePipeline | null = null;
+    protected _bindGroupLayout: GPUBindGroupLayout | null = null;
+    protected _initBindGroup: GPUBindGroup | null = null;
+    protected _reduceBindGroups: GPUBindGroup[] = [];
     // Identities of the GPUTextures the cached bind groups reference.
     // The compressGBuffer source has autoResize=true and is recreated by
     // the canvas-resize listener, so bind groups built against the prior
     // GPUTexture would otherwise survive the resize and submit views of a
     // destroyed texture. Compare-and-rebuild on identity change.
-    private _lastCompressGpuTex: GPUTexture | null = null;
-    private _lastPyramidGpuTex: GPUTexture | null = null;
+    protected _lastCompressGpuTex: GPUTexture | null = null;
+    protected _lastPyramidGpuTex: GPUTexture | null = null;
 
     public setup(b: RenderGraphBuilder): void {
         this._ctx = b.context3D;
@@ -53,11 +53,11 @@ export class HiZPass extends RenderGraphPass {
         b.write<RenderTexture>(HIZ_PYRAMID, () => this._getOrAllocate());
     }
 
-    private _mipCount(w: number, h: number): number {
+    protected _mipCount(w: number, h: number): number {
         return 1 + Math.floor(Math.log2(Math.max(w, h)));
     }
 
-    private _getOrAllocate(): RenderTexture {
+    protected _getOrAllocate(): RenderTexture {
         const depthTex = GBufferFrame.getGBufferFrame(GBufferFrame.colorPass_GBuffer, this._ctx).depthTexture;
         const w = depthTex.width;
         const h = depthTex.height;
@@ -110,7 +110,7 @@ export class HiZPass extends RenderGraphPass {
         return this._pyramid;
     }
 
-    private _ensurePipelines(): void {
+    protected _ensurePipelines(): void {
         if (this._initPipeline && this._reducePipeline && this._bindGroupLayout) return;
         const device = this._ctx.device;
         // One layout reused by both pipelines (they have identical
@@ -144,7 +144,7 @@ export class HiZPass extends RenderGraphPass {
         });
     }
 
-    private _ensureBindGroups(): void {
+    protected _ensureBindGroups(): void {
         const device = this._ctx.device;
         const pyramid = this._pyramid!;
         const compressGBuffer = GBufferFrame.getGBufferFrame(GBufferFrame.colorPass_GBuffer, this._ctx).getCompressGBufferTexture();

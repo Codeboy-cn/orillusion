@@ -65,6 +65,12 @@ export type RenderSetting = {
      *  through the OIT accum/resolve features instead of the sorted
      *  transparent path. Default false — matches legacy behavior. */
     useOIT: boolean;
+    /** Opt-in projected decals. When true, ForwardRendererJob inserts
+     *  `DecalShadowVolumePass` between the opaque/transmission half and
+     *  the sorted transparent half — every active `DecalComponent`
+     *  projects its texture onto the opaque scene via stencil shadow
+     *  volumes. Default false. */
+    decals?: boolean;
     /**
      * Final HDR→LDR tonemap. Runs after every other post (Bloom,
      * FXAA, GodRay, etc.) so the ACES curve sees the composited HDR

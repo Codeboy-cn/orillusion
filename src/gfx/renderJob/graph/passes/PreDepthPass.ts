@@ -37,8 +37,8 @@ export class PreDepthPass extends RenderGraphPass {
     public zBufferTexture!: VirtualTexture;
     public rendererPassState!: RendererPassState;
 
-    private readonly _passType: PassType = PassType.DEPTH;
-    private _rtFrame!: RTFrame;
+    protected readonly _passType: PassType = PassType.DEPTH;
+    protected _rtFrame!: RTFrame;
 
     public setup(b: RenderGraphBuilder): void {
         const ctx = b.context3D;
@@ -114,7 +114,7 @@ export class PreDepthPass extends RenderGraphPass {
         ProfilerUtil.end('DepthPass Renderer');
     }
 
-    private _drawOpaque(view: any, encoder: GPURenderPassEncoder, nodes: RenderNode[], _occlusion: OcclusionSystem): void {
+    protected _drawOpaque(view: any, encoder: GPURenderPassEncoder, nodes: RenderNode[], _occlusion: OcclusionSystem): void {
         view.engine3D.context3D.gpuContext.bindCamera(encoder, view.camera);
         const render = view.engine3D.setting.render;
         const max = Math.min(nodes.length, render.drawOpMax);

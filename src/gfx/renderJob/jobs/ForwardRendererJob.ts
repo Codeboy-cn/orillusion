@@ -1,6 +1,7 @@
 import { View3D } from '../../../core/View3D';
 import { ClusterLightingPass } from '../graph/passes/ClusterLightingPass';
 import { ColorPass } from '../graph/passes/ColorPass';
+import { DecalShadowVolumePass } from '../graph/passes/DecalShadowVolumePass';
 import { GIPass } from '../graph/passes/GIPass';
 import { GPUCullPass } from '../graph/passes/GPUCullPass';
 import { GUIPass } from '../graph/passes/GUIPass';
@@ -43,6 +44,7 @@ export class ForwardRendererJob extends RendererJob {
         const giEnabled = !!setting.gi.enable;
         const useOIT = !!(setting.render as any).useOIT;
         const useGPUCull = !!(setting.render as any).gpuCull;
+        const useDecals = !!(setting.render as any).decals;
 
         // Cluster lighting — runs first so downstream passes can
         // sample _ClusterLightingBuffer.
@@ -100,6 +102,16 @@ export class ForwardRendererJob extends RendererJob {
         // Transmission split: opaque-with-transmission deferred to
         // after the pyramid so refraction samples the world behind.
         this.graph.add(TransmissionOpaquePass);
+
+        // Projected decals — opt-in via `setting.render.decals`.
+        // Placed between the opaque half and the transparent half.
+        // Per-mesh decal occlusion (e.g. buildings that shouldn't get
+        // painted) is composed by the application: exclude those meshes
+        // from `ColorPass.layerMask` and draw them in a user pass
+        // anchored after `DecalShadowVolumePass`.
+        if (useDecals) {
+            this.graph.add(DecalShadowVolumePass);
+        }
 
         // Transparent half. With useOIT, sorted gets the 'sorted'
         // filter (skips weighted-OIT materials); without it, sorted

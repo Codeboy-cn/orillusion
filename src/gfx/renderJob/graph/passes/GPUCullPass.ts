@@ -30,10 +30,10 @@ export const DRAW_COUNT_BUFFER = '_DrawCount';
 export class GPUCullPass extends RenderGraphPass {
     public readonly name = 'GPUCullPass';
 
-    private _system!: GPUCullSystem;
+    protected _system!: GPUCullSystem;
     /** Track which Scene3D's RenderNode set we last synced from to know
      *  when the scene swap requires a full repopulate. */
-    private _lastSyncedScene: Scene3D | null = null;
+    protected _lastSyncedScene: Scene3D | null = null;
 
     public setup(b: RenderGraphBuilder): void {
         this._system = new GPUCullSystem(b.context3D);

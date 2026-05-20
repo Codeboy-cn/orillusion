@@ -27,13 +27,13 @@ export const MOTION_VECTOR = '_MotionVector';
 export class MotionVectorPass extends RenderGraphPass {
     public readonly name = 'MotionVectorPass';
 
-    private _ctx!: Context3D;
-    private _mv: RenderTexture | null = null;
-    private _compute: ComputeShader | null = null;
-    private _mvData: UniformGPUBuffer | null = null;
-    private readonly _prevViewProj: Matrix4 = new Matrix4().identity();
-    private readonly _currViewProj: Matrix4 = new Matrix4().identity();
-    private readonly _scratch: Matrix4 = new Matrix4().identity();
+    protected _ctx!: Context3D;
+    protected _mv: RenderTexture | null = null;
+    protected _compute: ComputeShader | null = null;
+    protected _mvData: UniformGPUBuffer | null = null;
+    protected readonly _prevViewProj: Matrix4 = new Matrix4().identity();
+    protected readonly _currViewProj: Matrix4 = new Matrix4().identity();
+    protected readonly _scratch: Matrix4 = new Matrix4().identity();
 
     public setup(b: RenderGraphBuilder): void {
         this._ctx = b.context3D;
@@ -42,7 +42,7 @@ export class MotionVectorPass extends RenderGraphPass {
         b.write<RenderTexture>(MOTION_VECTOR, () => this._getOrAllocate());
     }
 
-    private _getOrAllocate(): RenderTexture {
+    protected _getOrAllocate(): RenderTexture {
         const [w, h] = this._ctx.presentationSize;
         if (this._mv && this._mv.width === w && this._mv.height === h) return this._mv;
         // rgba16float (not rg16) — rg16float is not in WebGPU's default
@@ -61,7 +61,7 @@ export class MotionVectorPass extends RenderGraphPass {
         return this._mv;
     }
 
-    private _ensureCompute(ctx: RenderGraphPassContext): void {
+    protected _ensureCompute(ctx: RenderGraphPassContext): void {
         if (this._compute) return;
         ShaderLib.register('MotionVector_cs', MotionVector_cs);
         this._compute = new ComputeShader(MotionVector_cs);

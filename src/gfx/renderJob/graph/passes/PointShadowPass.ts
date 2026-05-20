@@ -54,9 +54,9 @@ export class PointShadowPass extends RenderGraphPass {
     public readonly shadowSize: number = 1024;
     public shadowPassCount: number = 0;
 
-    private readonly _passType: PassType = PassType.POINT_SHADOW;
-    private readonly _shadowCameraDic = new Map<ILight, CubeShadowMapInfo>();
-    private _forceUpdate = false;
+    protected readonly _passType: PassType = PassType.POINT_SHADOW;
+    protected readonly _shadowCameraDic = new Map<ILight, CubeShadowMapInfo>();
+    protected _forceUpdate = false;
 
     public setup(b: RenderGraphBuilder): void {
         const ctx = b.context3D;
@@ -127,7 +127,7 @@ export class PointShadowPass extends RenderGraphPass {
         this._forceUpdate = false;
     }
 
-    private _getShadowCamera(view: View3D, light: ILight): CubeShadowMapInfo {
+    protected _getShadowCamera(view: View3D, light: ILight): CubeShadowMapInfo {
         // Resolve the cube camera's near/far from the light's own settings:
         // shadowCameraFar = 0 → auto (use range). Falls back to main camera
         // far when nothing is set. Far is also the shadow-map depth
@@ -181,7 +181,7 @@ export class PointShadowPass extends RenderGraphPass {
         return info;
     }
 
-    private _renderFaceOnce(
+    protected _renderFaceOnce(
         face: number,
         info: CubeShadowMapInfo,
         view: View3D,
@@ -215,7 +215,7 @@ export class PointShadowPass extends RenderGraphPass {
         renderContext.endRenderPass();
     }
 
-    private _drawNodes(
+    protected _drawNodes(
         view: View3D,
         camera: Camera3D,
         renderContext: RenderContext,

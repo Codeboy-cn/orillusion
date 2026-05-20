@@ -5,6 +5,7 @@ import { GlobalBindGroup } from '../../../graphics/webGpu/core/bindGroups/Global
 import { WebGPUDescriptorCreator } from '../../../graphics/webGpu/descriptor/WebGPUDescriptorCreator';
 import { EntityCollect } from '../../collect/EntityCollect';
 import { GBufferFrame } from '../../frame/GBufferFrame';
+import { RTFrame } from '../../frame/RTFrame';
 import { ClusterLightingBuffer } from '../../passRenderer/cluster/ClusterLightingBuffer';
 import { RenderContext } from '../../passRenderer/RenderContext';
 import { PassType } from '../../passRenderer/state/PassType';
@@ -73,15 +74,15 @@ export const NORMAL_BUFFER = '_NormalBuffer';
  * @group Graph
  */
 export class ColorPass extends RenderGraphPass {
-    public readonly name = 'ColorPass';
+    public readonly name: string = 'ColorPass';
 
     public rendererPassState!: RendererPassState;
 
-    private readonly _passType: PassType = PassType.COLOR;
-    private readonly _giEnabled: boolean;
-    private _ctx!: Context3D;
-    private _renderContext!: RenderContext;
-    private _splitRendererPassState!: RendererPassState;
+    protected readonly _passType: PassType = PassType.COLOR;
+    protected readonly _giEnabled: boolean;
+    protected _ctx!: Context3D;
+    protected _renderContext!: RenderContext;
+    protected _splitRendererPassState!: RendererPassState;
 
     constructor(public readonly config: { giEnabled: boolean } = { giEnabled: false }) {
         super();
@@ -89,11 +90,23 @@ export class ColorPass extends RenderGraphPass {
     }
 
     public setup(b: RenderGraphBuilder): void {
+        this._ctx = b.context3D;
+        const rtFrame = this.allocateRtFrame(b);
+        this.buildRenderStates(b, rtFrame);
+        this.declareShadingReads(b);
+        this.registerSharedOutputs(b);
+        this.declareSideEffects(b);
+    }
+
+    /** Allocate (or fetch from cache) the RT frame this pass renders into.
+     *  Override to return a different GBufferFrame key, a clone, or to
+     *  preconfigure loadOps. The default takes the shared `colorPass_GBuffer`
+     *  singleton and wires in the prepass depth when `zPrePass` is on. */
+    protected allocateRtFrame(b: RenderGraphBuilder): RTFrame {
         const view = b.view;
         const ctx = b.context3D;
-        this._ctx = ctx;
-
         const setting = view.engine3D.setting;
+
         // A7: validate MSAA value. WebGPU only mandates support for
         // sampleCount 1 and 4. 2 and 8 are device-dependent and most
         // desktop adapters expose them, but iOS Safari only surfaces
@@ -127,15 +140,27 @@ export class ColorPass extends RenderGraphPass {
             b.read(MAIN_DEPTH_TEXTURE);
             rtFrame.zPreTexture = b.graph.pool.get(MAIN_DEPTH_TEXTURE) as RenderTexture;
         }
+        return rtFrame;
+    }
 
+    /** Build the two RendererPassStates this pass uses: `rendererPassState`
+     *  for the first (clear) render pass, `_splitRendererPassState` for
+     *  any continuation (load/load) opened by downstream passes via
+     *  {@link TRANSPARENT_DRAW_CTX}. Override to use different load ops. */
+    protected buildRenderStates(b: RenderGraphBuilder, rtFrame: RTFrame): void {
+        const ctx = b.context3D;
         this.rendererPassState = WebGPUDescriptorCreator.createRendererPassState(ctx, rtFrame);
         const splitRtFrame = rtFrame.clone();
         splitRtFrame.depthLoadOp = 'load';
         for (const desc of splitRtFrame.rtDescriptors) desc.loadOp = 'load';
         this._splitRendererPassState = WebGPUDescriptorCreator.createRendererPassState(ctx, splitRtFrame);
         this._renderContext = new RenderContext(ctx, rtFrame);
+    }
 
-        // Read deps: the shading inputs.
+    /** Declare the per-frame shading inputs this pass reads. Override
+     *  to add/remove shading deps (e.g. skip shadow read in a depth-only
+     *  variant). */
+    protected declareShadingReads(b: RenderGraphBuilder): void {
         b.read(CLUSTER_LIGHTING_BUFFER);
         b.read(MAIN_SHADOW_MAP);
         b.read(POINT_SHADOW_CUBE_ARRAY);
@@ -144,8 +169,14 @@ export class ColorPass extends RenderGraphPass {
             b.read(DDGI_IRRADIANCE_MAP);
             b.read(DDGI_DEPTH_MAP);
         }
+    }
 
-        // Outputs: color + normal buffer.
+    /** Register the resources this pass produces for downstream passes:
+     *  `COLOR_BUFFER`, `NORMAL_BUFFER`, and the `TRANSPARENT_DRAW_CTX`
+     *  shared draw context. Override to no-op when chaining a second
+     *  opaque pass that shares the same GBuffer (only one pass can be
+     *  the registered creator — see RenderGraph.validateSingleCreator). */
+    protected registerSharedOutputs(b: RenderGraphBuilder): void {
         b.write<RenderTexture>(COLOR_BUFFER, () =>
             GBufferFrame.getGBufferFrame(GBufferFrame.colorPass_GBuffer, this._ctx).getColorTexture()
         );
@@ -162,13 +193,15 @@ export class ColorPass extends RenderGraphPass {
             splitRendererPassState: this._splitRendererPassState,
             renderContext: this._renderContext,
         }));
+    }
 
-        // Side-effect ordering. SceneCapturePass renders off-screen
-        // RTs that this frame's lit materials sample directly via
-        // SceneCaptureCameraComponent (no graph-pool handle). GPUCullPass
-        // (when present) populates the indirect draw buffers consumed
-        // through GlobalBindGroup. Neither flows as a `b.read`, so we
-        // declare the ordering explicitly.
+    /** Declare any non-resource ordering constraints. SceneCapturePass
+     *  renders off-screen RTs that this frame's lit materials sample
+     *  directly via SceneCaptureCameraComponent (no graph-pool handle).
+     *  GPUCullPass (when present) populates the indirect draw buffers
+     *  consumed through GlobalBindGroup. Neither flows as a `b.read`, so
+     *  we declare the ordering explicitly. */
+    protected declareSideEffects(b: RenderGraphBuilder): void {
         dependOnIfRegistered(b, 'SceneCapturePass', 'GPUCullPass');
     }
 
@@ -202,7 +235,7 @@ export class ColorPass extends RenderGraphPass {
 
         const opBundles = buildOpBundles(view, camera, this._passType, this.rendererPassState, cluster);
 
-        this._renderContext.beginOpaqueRenderPass();
+        this.beginColorRenderPass();
         const encoder = this._renderContext.encoder;
 
         if (opBundles.length > 0) {
@@ -231,19 +264,37 @@ export class ColorPass extends RenderGraphPass {
         // writeDepth=false` only paints empty pixels (where Z is still
         // the cleared 1.0). Same optimization Unity / UE apply by
         // default.
-        const sky = EntityCollect.instance.getSky(view.scene);
-        if (sky) {
-            gpu.bindCamera(encoder, camera);
-            if (!sky.preInit(this._passType)) {
-                sky.nodeUpdate(view, this._passType, this.rendererPassState, cluster);
+        if (this.shouldDrawSky()) {
+            const sky = EntityCollect.instance.getSky(view.scene);
+            if (sky) {
+                gpu.bindCamera(encoder, camera);
+                if (!sky.preInit(this._passType)) {
+                    sky.nodeUpdate(view, this._passType, this.rendererPassState, cluster);
+                }
+                sky.renderPass2(view, this._passType, this.rendererPassState, cluster, encoder);
             }
-            sky.renderPass2(view, this._passType, this.rendererPassState, cluster, encoder);
         }
 
         this._renderContext.endRenderPass();
     }
 
-    private _getCluster(view: View3D): ClusterLightingBuffer | undefined {
+    /** Open the render pass that the opaque draw + sky stages record into.
+     *  Default opens with color='clear', depth='clear' via
+     *  {@link RenderContext.beginOpaqueRenderPass}. Override to chain
+     *  onto a previous pass (color='load', depth='load') — e.g. a second
+     *  opaque pass that draws after a ClearDepthPass. */
+    protected beginColorRenderPass(): void {
+        this._renderContext.beginOpaqueRenderPass();
+    }
+
+    /** Whether this pass should draw the scene sky. Default true.
+     *  Override to skip — e.g. a chained second opaque pass where the
+     *  upstream pass already drew the sky. */
+    protected shouldDrawSky(): boolean {
+        return true;
+    }
+
+    protected _getCluster(view: View3D): ClusterLightingBuffer | undefined {
         return view.renderGraph?.getPass<ClusterLightingPass>('ClusterLightingPass')?.clusterLightingBuffer;
     }
 }

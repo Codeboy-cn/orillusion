@@ -48,23 +48,23 @@ export class ShadowPass extends RenderGraphPass {
     public depth2DArrayTexture!: Depth2DTextureArray;
     public shadowPassCount: number = 0;
 
-    private readonly _passType: PassType = PassType.SHADOW;
-    private readonly _rendererPassStates: RendererPassState[] = [];
-    private _activeRendererPassState: RendererPassState | null = null;
+    protected readonly _passType: PassType = PassType.SHADOW;
+    protected readonly _rendererPassStates: RendererPassState[] = [];
+    protected _activeRendererPassState: RendererPassState | null = null;
 
     // Static-cache infra — allocated lazily when
     // setting.shadow.enableStaticCache is true and first frame hits the
     // static-cache code path.
-    private _staticCacheReady = false;
-    private _staticDepthTextures: VirtualTexture[] = [];
-    private _staticPassStates: RendererPassState[] = [];
-    private _dynamicPassStates: RendererPassState[] = [];
-    private _staticDirtyLayers: boolean[] = [];
-    private _forceUpdate = false;
+    protected _staticCacheReady = false;
+    protected _staticDepthTextures: VirtualTexture[] = [];
+    protected _staticPassStates: RendererPassState[] = [];
+    protected _dynamicPassStates: RendererPassState[] = [];
+    protected _staticDirtyLayers: boolean[] = [];
+    protected _forceUpdate = false;
 
-    private _debugProbeDone = false;
-    private readonly _shadowPos = new Vector3();
-    private readonly _shadowCameraTarget = new Vector3();
+    protected _debugProbeDone = false;
+    protected readonly _shadowPos = new Vector3();
+    protected readonly _shadowCameraTarget = new Vector3();
 
     public setup(b: RenderGraphBuilder): void {
         const ctx = b.context3D;
@@ -106,7 +106,7 @@ export class ShadowPass extends RenderGraphPass {
         this._render(ctx.view, ctx.occlusion);
     }
 
-    private _render(view: View3D, occlusion: OcclusionSystem): void {
+    protected _render(view: View3D, occlusion: OcclusionSystem): void {
         const shadowSetting = view.engine3D.setting.shadow;
         if (!shadowSetting.enable) return;
         void this._debugProbeShadowMap(view);
@@ -188,7 +188,7 @@ export class ShadowPass extends RenderGraphPass {
         this._forceUpdate = false;
     }
 
-    private _ensureStaticCache(ctx: Context3D, w: number, h: number): void {
+    protected _ensureStaticCache(ctx: Context3D, w: number, h: number): void {
         if (this._staticCacheReady) return;
         const maxShadowMapNum = ctx.engine!.setting.shadow.maxShadowMapNum;
         this._staticDirtyLayers = new Array(maxShadowMapNum).fill(true);
@@ -216,7 +216,7 @@ export class ShadowPass extends RenderGraphPass {
         this._staticCacheReady = true;
     }
 
-    private _renderLayerSplit(view: View3D, shadowCamera: Camera3D, occlusion: OcclusionSystem, layer: number, w: number, h: number): void {
+    protected _renderLayerSplit(view: View3D, shadowCamera: Camera3D, occlusion: OcclusionSystem, layer: number, w: number, h: number): void {
         if (this._staticDirtyLayers[layer]) {
             this._activeRendererPassState = this._staticPassStates[layer];
             this._renderShadow(view, shadowCamera, occlusion, this._activeRendererPassState, 'static');
@@ -228,7 +228,7 @@ export class ShadowPass extends RenderGraphPass {
         this._copyDepthTexture(view, this._rendererPassStates[layer].depthTexture, this.depth2DArrayTexture, layer, w, h);
     }
 
-    private _renderShadow(view: View3D, shadowCamera: Camera3D, occlusion: OcclusionSystem, state: RendererPassState, kind: ShadowKind = 'all'): void {
+    protected _renderShadow(view: View3D, shadowCamera: Camera3D, occlusion: OcclusionSystem, state: RendererPassState, kind: ShadowKind = 'all'): void {
         (shadowCamera as any)._boundCtx ||= view.engine3D.context3D;
         const gpu = view.engine3D.context3D.gpuContext;
         // Pass-side layer mask + shadow-camera's own cullingMask filter
@@ -266,7 +266,7 @@ export class ShadowPass extends RenderGraphPass {
         gpu.endCommandEncoder(command);
     }
 
-    private _drawShadowNodes(view: View3D, shadowCamera: Camera3D, encoder: GPURenderPassEncoder, nodes: RenderNode[], kind: ShadowKind): void {
+    protected _drawShadowNodes(view: View3D, shadowCamera: Camera3D, encoder: GPURenderPassEncoder, nodes: RenderNode[], kind: ShadowKind): void {
         if (!nodes) return;
         GlobalBindGroup.updateCameraGroup(shadowCamera);
         view.engine3D.context3D.gpuContext.bindCamera(encoder, shadowCamera);
@@ -292,7 +292,7 @@ export class ShadowPass extends RenderGraphPass {
         }
     }
 
-    private _copyDepthTexture(view: View3D, src: Texture, dst: Texture, dstIndex: number, w: number, h: number): void {
+    protected _copyDepthTexture(view: View3D, src: Texture, dst: Texture, dstIndex: number, w: number, h: number): void {
         const gpu = view.engine3D.context3D.gpuContext;
         const cmd = gpu.beginCommandEncoder();
         cmd.copyTextureToTexture(
@@ -303,7 +303,7 @@ export class ShadowPass extends RenderGraphPass {
         gpu.endCommandEncoder(cmd);
     }
 
-    private _poseShadowCamera(dirLight: DirectLight, viewCamera: Camera3D, direction: Vector3, shadowCamera: Camera3D, _extents: number, _lookAt: Vector3): void {
+    protected _poseShadowCamera(dirLight: DirectLight, viewCamera: Camera3D, direction: Vector3, shadowCamera: Camera3D, _extents: number, _lookAt: Vector3): void {
         this._shadowPos.copy(dirLight.transform.worldPosition);
         this._shadowCameraTarget.copy(direction).normalize(viewCamera.far);
         Vector3.add(this._shadowCameraTarget, this._shadowPos, this._shadowCameraTarget);
@@ -316,7 +316,7 @@ export class ShadowPass extends RenderGraphPass {
      *  writes anything (or whether the depth attachment stays at its
      *  clear value). Mac Metal vs Windows Dawn D3D12 sometimes
      *  diverge here. Remove once the gap is understood. */
-    private async _debugProbeShadowMap(view: View3D): Promise<void> {
+    protected async _debugProbeShadowMap(view: View3D): Promise<void> {
         if (this._debugProbeDone || Time.frame < 60) return;
         const ps = this._rendererPassStates[0];
         const tex: any = ps?.depthTexture;

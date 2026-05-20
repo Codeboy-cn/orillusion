@@ -21,10 +21,10 @@ import { DDP_FRONT_TEX } from './TransparentDualDepthPeelingPass';
 export class TransparentDualDepthPeelingResolvePass extends RenderGraphPass {
     public readonly name = 'TransparentDualDepthPeelingResolvePass';
 
-    private _ctx!: Context3D;
-    private _pipeline: GPURenderPipeline | null = null;
-    private _bindGroupLayout: GPUBindGroupLayout | null = null;
-    private _sampler: GPUSampler | null = null;
+    protected _ctx!: Context3D;
+    protected _pipeline: GPURenderPipeline | null = null;
+    protected _bindGroupLayout: GPUBindGroupLayout | null = null;
+    protected _sampler: GPUSampler | null = null;
 
     public setup(b: RenderGraphBuilder): void {
         this._ctx = b.context3D;
@@ -32,7 +32,7 @@ export class TransparentDualDepthPeelingResolvePass extends RenderGraphPass {
         b.write(COLOR_BUFFER);  // mutator: composite DDP front into ColorBuffer
     }
 
-    private _ensurePipeline(colorBuffer: RenderTexture): void {
+    protected _ensurePipeline(colorBuffer: RenderTexture): void {
         if (this._pipeline) return;
         const device = this._ctx.device;
         const module = device.createShaderModule({

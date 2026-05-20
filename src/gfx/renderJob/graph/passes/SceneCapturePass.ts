@@ -67,7 +67,7 @@ export class SceneCapturePass extends RenderGraphPass {
     public readonly name = 'SceneCapturePass';
     public readonly materialPasses: readonly PassType[] = [PassType.COLOR];
 
-    private readonly _passType: PassType = PassType.COLOR;
+    protected readonly _passType: PassType = PassType.COLOR;
 
     public setup(b: RenderGraphBuilder): void {
         // Reading shadow handles forces this pass to run after the
@@ -111,7 +111,7 @@ export class SceneCapturePass extends RenderGraphPass {
         }
     }
 
-    private _renderOne(
+    protected _renderOne(
         view: View3D,
         cap: SceneCaptureCameraComponent,
         camera: Camera3D,
@@ -171,7 +171,7 @@ export class SceneCapturePass extends RenderGraphPass {
         renderContext.endRenderPass();
     }
 
-    private _drawNodes(
+    protected _drawNodes(
         view: View3D,
         renderContext: RenderContext,
         nodes: RenderNode[],
@@ -197,7 +197,7 @@ export class SceneCapturePass extends RenderGraphPass {
         }
     }
 
-    private _maskAccepts(cap: SceneCaptureCameraComponent, node: RenderNode): boolean {
+    protected _maskAccepts(cap: SceneCaptureCameraComponent, node: RenderNode): boolean {
         const rm = node.rendererMask;
         if ((rm & cap.captureMask) === 0) return false;
         if (cap.excludeMask !== 0 && (rm & cap.excludeMask) !== 0) return false;

@@ -77,19 +77,19 @@ export class GIPass extends RenderGraphPass {
     public bouncePass: DDGIMultiBouncePass | null = null;
     public irradianceComputePass: DDGIIrradianceComputePass | null = null;
 
-    private readonly _passType: PassType = PassType.GI;
-    private _volume!: DDGIIrradianceVolume;
-    private _cubeCamera!: CubeCamera;
-    private _renderContext!: RenderContext;
-    private _rendererPassState!: RendererPassState;
-    private _probeGBufferFrame!: ProbeGBufferFrame;
-    private readonly _probeCountPerFrame = 1;
+    protected readonly _passType: PassType = PassType.GI;
+    protected _volume!: DDGIIrradianceVolume;
+    protected _cubeCamera!: CubeCamera;
+    protected _renderContext!: RenderContext;
+    protected _rendererPassState!: RendererPassState;
+    protected _probeGBufferFrame!: ProbeGBufferFrame;
+    protected readonly _probeCountPerFrame = 1;
 
-    private _nextProbeIndex = -1;
-    private _tempProbeList: Probe[] = [];
-    private _isRenderCloudGI = false;
-    private _renderStatus: GlobalIrradianceStatus = 'none';
-    private _probeRenderResult = new ProbeRenderResult();
+    protected _nextProbeIndex = -1;
+    protected _tempProbeList: Probe[] = [];
+    protected _isRenderCloudGI = false;
+    protected _renderStatus: GlobalIrradianceStatus = 'none';
+    protected _probeRenderResult = new ProbeRenderResult();
 
     public setup(b: RenderGraphBuilder): void {
         const view = b.view;
@@ -200,7 +200,7 @@ export class GIPass extends RenderGraphPass {
         this._writeToTexture(this.irradianceDepthMap, depthData, width, height);
     }
 
-    private _renderProbes(view: View3D): void {
+    protected _renderProbes(view: View3D): void {
         const autoRenderProbe = view.engine3D.setting.gi.autoRenderProbe;
         let execRender = false;
         if (autoRenderProbe) {
@@ -248,7 +248,7 @@ export class GIPass extends RenderGraphPass {
         }
     }
 
-    private _updateProbe(view: View3D, probe: Probe, encoder: GPURenderPassEncoder): void {
+    protected _updateProbe(view: View3D, probe: Probe, encoder: GPURenderPassEncoder): void {
         const lights = EntityCollect.instance.getLights(view.scene);
         const cubeSize = this._volume.setting.probeSize;
         probe.drawCallFrame += 1;
@@ -286,7 +286,7 @@ export class GIPass extends RenderGraphPass {
         }
     }
 
-    private _renderProbeFace(view: View3D, probeCamera: Camera3D, encoder: GPURenderPassEncoder, _lights: ILight[]): void {
+    protected _renderProbeFace(view: View3D, probeCamera: Camera3D, encoder: GPURenderPassEncoder, _lights: ILight[]): void {
         this._volume.uploadBuffer();
         // GI probes bake from their own per-face camera; thread that
         // camera's cullingMask through the layer filter so per-probe
@@ -344,7 +344,7 @@ export class GIPass extends RenderGraphPass {
         }
     }
 
-    private _writeToTexture(texture: RenderTexture, array: Float32Array, width: number, height: number): void {
+    protected _writeToTexture(texture: RenderTexture, array: Float32Array, width: number, height: number): void {
         const ctx = texture._boundCtx!;
         const device = ctx.device;
         const buffer = device.createBuffer({

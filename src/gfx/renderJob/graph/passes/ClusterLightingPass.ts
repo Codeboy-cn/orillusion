@@ -39,10 +39,10 @@ export class ClusterLightingPass extends RenderGraphPass {
     public readonly maxNumLightsPerCluster = 64;
     public readonly clusterPix = 1;
 
-    private _generateCompute!: ComputeShader;
-    private _lightingCompute!: ComputeShader;
-    private _useCamera: Camera3D | null = null;
-    private _currentLightCount = 0;
+    protected _generateCompute!: ComputeShader;
+    protected _lightingCompute!: ComputeShader;
+    protected _useCamera: Camera3D | null = null;
+    protected _currentLightCount = 0;
 
     public setup(b: RenderGraphBuilder): void {
         const view = b.view;

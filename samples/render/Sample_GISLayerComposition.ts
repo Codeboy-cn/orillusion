@@ -1,25 +1,34 @@
 import {
-    AtmosphericComponent, BlendMode, BoxGeometry, CameraUtil, Color, DirectLight, Engine3D,
-    ForwardRendererJob, HoverCameraController, KelvinUtil, LitMaterial, MeshRenderer,
-    Object3D, PlaneGeometry, Scene3D, SortedTransparentPass, ShadowPass, ColorPass,
-    RenderLayer, View3D, Vector3,
+    AtmosphericComponent, BlendMode, BoxGeometry, CameraUtil, ClearDepthPass, Color,
+    ColorPass, DirectLight, Engine3D, ForwardRendererJob, HoverCameraController,
+    KelvinUtil, LitMaterial, MeshRenderer, Object3D, PlaneGeometry,
+    RenderGraphBuilder, RenderLayer, Scene3D, ShadowPass, SortedTransparentPass,
+    Vector3, View3D,
 } from "@orillusion/core";
 
 /*
- * Sample_GISLayerComposition — strict scene-composition layering.
+ * Sample_GISLayerComposition — strict scene-composition layering with a
+ * mid-pipeline depth clear, modeled on what a GIS / globe renderer
+ * actually needs:
  *
- * Demonstrates the layer-mask system added on top of RenderGraph:
+ *     [globe opaque]  Terrain + GroundDecal
+ *     [clear depth]   ── the planet surface is now considered "background";
+ *                        anything 3D drawn after this should not be z-fought
+ *                        or culled by the curved globe.
+ *     [world opaque]  Buildings / vehicles / markers (the World layer)
+ *     [transparent]   Water / Transparent / Overlay
+ *
+ * The depth clear lets the World layer be composited cleanly on top
+ * of the globe regardless of where its meshes actually sit in world Z.
+ *
+ * Three engine primitives compose this:
+ *
  *   - `RenderNode.renderLayer`  — which composition layers a node belongs to
  *   - `RenderGraphPass.layerMask` — which layers a pass draws
  *   - `Camera3D.cullingMask`    — which layers a camera can see
  *
  * Filtering rule applied at pass execute time:
  *     (node.renderLayer & pass.layerMask & camera.cullingMask) !== 0
- *
- * The engine ships only the `RenderLayer.{ None, Default, All }`
- * constants — every other bit's meaning is for the application to
- * define. This sample shows the convention by declaring a project-
- * local `GisLayer` mapping at file scope.
  */
 
 // ─── Project-defined layer semantics (NOT part of the engine) ─────
@@ -35,39 +44,117 @@ const GisLayer = {
     Overlay:     1 << 6,
 } as const;
 
-// ─── Custom renderer job: strict layer composition ────────────────
+// ─── Two opaque sub-passes around a depth clear ───────────────────
+//
+// Both subclass ColorPass. Because the engine made ColorPass's setup +
+// execute internals `protected` (allocateRtFrame / registerSharedOutputs /
+// beginColorRenderPass / shouldDrawSky), the two subclasses below are
+// just a handful of overrides — no copy-pasting of ColorPass internals,
+// no `as any` casts.
+
+class GisGlobeOpaquePass extends ColorPass {
+    public readonly name = 'GisGlobeOpaquePass';
+    // Everything else inherited from ColorPass — this pass IS the
+    // "primary" opaque pass for the frame: it owns the
+    // COLOR_BUFFER / NORMAL_BUFFER / TRANSPARENT_DRAW_CTX graph outputs
+    // (registered by ColorPass.registerSharedOutputs), it clears the
+    // render target on entry, and it draws the sky at the end.
+}
+
+class GisWorldOpaquePass extends ColorPass {
+    public readonly name = 'GisWorldOpaquePass';
+
+    protected override registerSharedOutputs(_b: RenderGraphBuilder): void {
+        // GisGlobeOpaquePass already creates COLOR_BUFFER / NORMAL_BUFFER /
+        // TRANSPARENT_DRAW_CTX. Each graph resource can have only one
+        // creator (RenderGraph.validateSingleCreator), so this chained
+        // pass leaves them alone — it consumes the same shared GBuffer
+        // by virtue of getGBufferFrame(colorPass_GBuffer) being a
+        // singleton.
+    }
+
+    protected override declareSideEffects(b: RenderGraphBuilder): void {
+        super.declareSideEffects(b);
+        // Topo order: must run after ClearDepthPass has zeroed the
+        // depth attachment for this frame.
+        b.dependsOn('ClearDepthPass');
+    }
+
+    protected override beginColorRenderPass(): void {
+        // color='load' preserves what GisGlobeOpaquePass drew (terrain,
+        // ground decals, sky). depth='load' picks up the cleared depth
+        // that ClearDepthPass just wrote, so this batch starts as if
+        // the depth buffer had never been touched by the globe pass.
+        const rc = this._renderContext;
+        rc.beginContinueRendererPassState('load', 'load');
+        rc.begineNewCommand();
+        rc.beginNewEncoder();
+    }
+
+    protected override shouldDrawSky(): boolean {
+        // Already drawn by GisGlobeOpaquePass at the end of its opaque
+        // batch. Drawing sky again here would re-pass the (now cleared)
+        // depth test on every pixel and clobber the world we just drew.
+        return false;
+    }
+}
+
+// ─── Custom renderer job: wires the three passes around the default
+//     forward pipeline. ───────────────────────────────────────────
 class GisRendererJob extends ForwardRendererJob {
     constructor(view: View3D) {
         super(view);
 
-        // ColorPass renders strictly the opaque "world" layers. Default
-        // (bit 0) is kept in the mask so any un-migrated node — like
-        // engine-internal helpers that still default to RenderLayer.Default
-        // — keeps rendering through ColorPass without explicit opt-in.
-        const colorPass = this.graph.getPass<ColorPass>('ColorPass');
-        if (colorPass) {
-            colorPass.layerMask = RenderLayer.Default | GisLayer.Terrain | GisLayer.World;
+        // 1. Replace the default ColorPass with GisGlobeOpaquePass and
+        //    restrict it to the planet-surface layers (+ Default so
+        //    engine-internal helpers that haven't been migrated to a
+        //    specific layer keep rendering through this pass).
+        this.graph.replace('ColorPass', GisGlobeOpaquePass);
+        const globe = this.graph.getPass<GisGlobeOpaquePass>('GisGlobeOpaquePass')!;
+        globe.layerMask = RenderLayer.Default | GisLayer.Terrain | GisLayer.GroundDecal;
+
+        // 2. Independent ClearDepthPass between the two opaque halves.
+        //    Color attachments are loaded (terrain + decals + sky stay),
+        //    depth attachment is cleared.
+        this.graph.add(ClearDepthPass, { after: 'GisGlobeOpaquePass' });
+
+        // 3. The second opaque pass — World layer (and anything else
+        //    you want freshly z-tested against the cleared depth).
+        this.graph.add(GisWorldOpaquePass);
+        const world = this.graph.getPass<GisWorldOpaquePass>('GisWorldOpaquePass')!;
+        world.layerMask = GisLayer.World;
+
+        // 4. The default transmission + sorted-transparent passes
+        //    consume TRANSPARENT_DRAW_CTX, which orders them after
+        //    GisGlobeOpaquePass (the producer). We need them to also
+        //    wait on GisWorldOpaquePass so the depth they `load` is
+        //    the world-segment depth, not the post-clear empty depth.
+        for (const name of ['TransmissionOpaquePass', 'SortedTransparentPass'] as const) {
+            const p = this.graph.getPass(name);
+            if (!p) continue;
+            const existing = p.dependencies ?? new Set<string>();
+            p.dependencies = new Set([...existing, 'GisWorldOpaquePass']);
         }
 
-        // SortedTransparentPass owns water + project-defined transparent
-        // overlays. Overlay HUD layer goes here too because it draws
-        // with alpha and should render last.
+        // 5. SortedTransparent owns water + project-defined transparent
+        //    overlays. Overlay HUD layer goes here too because it draws
+        //    with alpha and should render last.
         const sortedTr = this.graph.getPass<SortedTransparentPass>('SortedTransparentPass');
         if (sortedTr) {
             sortedTr.layerMask = GisLayer.Water | GisLayer.Transparent | GisLayer.Overlay;
         }
 
-        // Shadow casters: everything except the screen-space HUD.
-        // Removes Overlay billboards from the shadow map.
+        // 6. Shadow casters: everything except the screen-space HUD.
         const shadow = this.graph.getPass<ShadowPass>('ShadowPass');
         if (shadow) {
             shadow.layerMask = RenderLayer.remove(RenderLayer.All, GisLayer.Overlay);
         }
 
         this.graph.compile();
-        console.log('[GisRendererJob] pass layer-masks:');
+        console.log('[GisRendererJob] pass order:');
         for (const p of this.graph.passes) {
-            console.log(`  ${p.name.padEnd(28)} layerMask=0x${(p.layerMask >>> 0).toString(16).padStart(8, '0')}`);
+            const mask = (p.layerMask >>> 0).toString(16).padStart(8, '0');
+            console.log(`  ${p.name.padEnd(28)} layerMask=0x${mask}`);
         }
     }
 }
@@ -117,7 +204,7 @@ export class Sample_GISLayerComposition {
         dl.enableCSM = true;
         this.scene.addChild(light);
 
-        // Terrain — a large dark plane
+        // Terrain — large dark plane, drawn in the GLOBE pass.
         const terrain = new Object3D();
         const terrainMat = new LitMaterial();
         terrainMat.baseColor = new Color(0.28, 0.32, 0.26, 1);
@@ -126,11 +213,38 @@ export class Sample_GISLayerComposition {
         terrainMr.geometry = new PlaneGeometry(40, 40);
         terrainMr.material = terrainMat;
         terrainMr.receiveShadow = true;
-        // Project the node into the Terrain layer.
         terrainMr.renderLayer = GisLayer.Terrain;
         this.scene.addChild(terrain);
 
-        // Buildings — 3 boxes in the World layer
+        // Ground decals — a couple of bright rectangles painted slightly
+        // above the terrain plane. Drawn in the GLOBE pass (same depth
+        // segment as the terrain), so they share z-state with it.
+        const decalColors: [number, number, number][] = [
+            [0.95, 0.85, 0.25],   // road yellow
+            [0.20, 0.55, 0.95],   // water marker
+        ];
+        const decalRects: [Vector3, [number, number]][] = [
+            [new Vector3(0, 0.02, -6), [16, 1.2]],
+            [new Vector3(8, 0.02, 4),  [6, 6]],
+        ];
+        for (let i = 0; i < decalRects.length; i++) {
+            const [pos, size] = decalRects[i];
+            const decal = new Object3D();
+            decal.localPosition = pos;
+            const mat = new LitMaterial();
+            mat.baseColor = new Color(decalColors[i][0], decalColors[i][1], decalColors[i][2], 1);
+            mat.roughness = 0.8;
+            const mr = decal.addComponent(MeshRenderer);
+            mr.geometry = new PlaneGeometry(size[0], size[1]);
+            mr.material = mat;
+            mr.receiveShadow = true;
+            mr.renderLayer = GisLayer.GroundDecal;
+            this.scene.addChild(decal);
+        }
+
+        // Buildings — 3 boxes in the WORLD layer. Drawn after the
+        // mid-pipeline depth clear, so their depth comparisons are
+        // independent of the planet surface.
         const tints: [number, number, number][] = [
             [0.85, 0.82, 0.78],
             [0.78, 0.82, 0.86],
@@ -157,7 +271,7 @@ export class Sample_GISLayerComposition {
             this.scene.addChild(obj);
         }
 
-        // Water — a transparent blue plane slightly above terrain
+        // Water — a transparent blue plane slightly above terrain.
         const water = new Object3D();
         water.localPosition = new Vector3(10, 0.05, 6);
         const waterMat = new LitMaterial();
@@ -190,9 +304,10 @@ export class Sample_GISLayerComposition {
         // Diagnostic log so the layer assignment is visible without
         // having to inspect every node from the editor.
         const summary = [
-            ['terrain', GisLayer.Terrain],
-            ['buildings (x3)', GisLayer.World],
-            ['water', GisLayer.Water],
+            ['terrain',           GisLayer.Terrain],
+            ['ground decals (x2)', GisLayer.GroundDecal],
+            ['buildings (x3)',    GisLayer.World],
+            ['water',             GisLayer.Water],
             ['overlay billboard', GisLayer.Overlay],
         ] as const;
         console.log('[scene] layer assignments:');

@@ -43,8 +43,8 @@ export const SCENE_COLOR_PYRAMID = '_SceneColorPyramid';
 export class SceneColorPyramidPass extends RenderGraphPass {
     public readonly name = 'SceneColorPyramidPass';
 
-    private _ctx!: Context3D;
-    private _pyramid: RenderTexture | null = null;
+    protected _ctx!: Context3D;
+    protected _pyramid: RenderTexture | null = null;
 
     public setup(b: RenderGraphBuilder): void {
         this._ctx = b.context3D;
@@ -52,7 +52,7 @@ export class SceneColorPyramidPass extends RenderGraphPass {
         b.write<RenderTexture>(SCENE_COLOR_PYRAMID, () => this._getOrAllocate());
     }
 
-    private _getOrAllocate(): RenderTexture {
+    protected _getOrAllocate(): RenderTexture {
         const colorBuffer = GBufferFrame.getGBufferFrame(GBufferFrame.colorPass_GBuffer, this._ctx).getColorTexture();
         const expectedMips = this._mipCountFor(colorBuffer.width, colorBuffer.height);
         if (!this._pyramid || this._pyramid.width !== colorBuffer.width || this._pyramid.height !== colorBuffer.height) {
@@ -92,7 +92,7 @@ export class SceneColorPyramidPass extends RenderGraphPass {
         return this._pyramid;
     }
 
-    private _mipCountFor(w: number, h: number): number {
+    protected _mipCountFor(w: number, h: number): number {
         return Math.floor(Math.log2(Math.max(w, h))) + 1;
     }
 
@@ -100,7 +100,7 @@ export class SceneColorPyramidPass extends RenderGraphPass {
      *  chain. The wrapper RenderTexture, viewDescriptor, etc. stay
      *  the same so RTResourceMap and LitMaterial bindings keep
      *  pointing at the same handle. */
-    private _installMipChain(rt: RenderTexture): void {
+    protected _installMipChain(rt: RenderTexture): void {
         const mipLevelCount = Math.floor(Math.log2(Math.max(rt.width, rt.height))) + 1;
         rt.mipmapCount = mipLevelCount;
         rt.textureDescriptor.mipLevelCount = mipLevelCount;
