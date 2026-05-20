@@ -5,7 +5,7 @@ export class VertexBufferLayout implements GPUVertexBufferLayout {
     size: number;
     arrayStride: number;
     stepMode?: GPUVertexStepMode;
-    attributes: Iterable<GPUVertexAttribute>;
+    attributes: GPUVertexAttribute[];
 }
 
 export class VertexAttribute implements GPUVertexAttribute {

@@ -1,5 +1,5 @@
 import { BlendMode } from '../../../../../materials/BlendMode';
-import { GPUCompareFunction, GPUCullMode, GPUPrimitiveTopology } from '../../WebGPUConst';
+import { defaultStencilFaceState, GPUCompareFunction, GPUCullMode, GPUPrimitiveTopology, GPUStencilOperation } from '../../WebGPUConst';
 
 /**
  * @internal
@@ -16,6 +16,22 @@ export class ShaderState {
     public depthBias?: number = 0;
     public depthBiasSlopeScale?: number = 0;
     public depthBiasClamp?: number = 0;
+
+    public stencilFront?: GPUStencilFaceState = {
+        compare: GPUCompareFunction.always,
+        failOp: GPUStencilOperation.keep,
+        depthFailOp: GPUStencilOperation.keep,
+        passOp: GPUStencilOperation.keep,
+    };
+    public stencilBack?: GPUStencilFaceState = {
+        compare: GPUCompareFunction.always,
+        failOp: GPUStencilOperation.keep,
+        depthFailOp: GPUStencilOperation.keep,
+        passOp: GPUStencilOperation.keep,
+    };
+    public stencilReadMask?: number = 0xFF;
+    public stencilWriteMask?: number = 0xFF;
+    public stencilRef?: number = 0;
 
     public useLight: boolean = false;
     public useProbe: boolean = false;

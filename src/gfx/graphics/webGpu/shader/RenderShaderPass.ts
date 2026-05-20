@@ -257,6 +257,69 @@ export class RenderShaderPass extends ShaderPassBase {
     }
 
     /**
+     * Stencil front face state
+     */
+    public get stencilFront(): GPUStencilFaceState {
+        return this.shaderState.stencilFront;
+    }
+
+    public set stencilFront(value: GPUStencilFaceState) {
+        this.shaderState.stencilFront = value;
+        this._valueChange = true;
+    }
+
+    /**
+     * Stencil back face state
+     */
+    public get stencilBack(): GPUStencilFaceState {
+        return this.shaderState.stencilBack;
+    }
+
+    public set stencilBack(value: GPUStencilFaceState) {
+        this.shaderState.stencilBack = value;
+        this._valueChange = true;
+    }
+
+    /**
+     * Stencil read mask
+     */
+    public get stencilReadMask(): number {
+        return this.shaderState.stencilReadMask;
+    }
+
+    public set stencilReadMask(value: number) {
+        if (this.shaderState.stencilReadMask != value) {
+            this._valueChange = true;
+        }
+        this.shaderState.stencilReadMask = value;
+    }
+
+    /**
+     * Stencil write mask
+     */
+    public get stencilWriteMask(): number {
+        return this.shaderState.stencilWriteMask;
+    }
+
+    public set stencilWriteMask(value: number) {
+        if (this.shaderState.stencilWriteMask != value) {
+            this._valueChange = true;
+        }
+        this.shaderState.stencilWriteMask = value;
+    }
+
+    /**
+     * Stencil reference value (used with setStencilReference)
+     */
+    public get stencilRef(): number {
+        return this.shaderState.stencilRef;
+    }
+
+    public set stencilRef(value: number) {
+        this.shaderState.stencilRef = value;
+    }
+
+    /**
      * Sets the entry point names for the RenderShader vertex phase and fragment phase
      * @param vsEntryPoint 
      * @param fsEntryPoint 
@@ -995,7 +1058,7 @@ export class RenderShaderPass extends ShaderPassBase {
                     format: renderPassState.zPreTexture.format,
                 };
             } else {
-                renderPipelineDescriptor[`depthStencil`] = {
+                let depthStencilState: any = {
                     depthWriteEnabled: shaderState.depthWriteEnabled,
                     depthCompare: shaderState.depthCompare,
                     format: renderPassState.depthTexture.format,
@@ -1003,7 +1066,13 @@ export class RenderShaderPass extends ShaderPassBase {
                     depthBiasSlopeScale: shaderState.depthBiasSlopeScale,
                     depthBiasClamp: shaderState.depthBiasClamp,
                 };
-
+                if ((renderPassState.depthTexture.format as string).includes('stencil')) {
+                    depthStencilState.stencilFront = shaderState.stencilFront;
+                    depthStencilState.stencilBack = shaderState.stencilBack;
+                    depthStencilState.stencilReadMask = shaderState.stencilReadMask;
+                    depthStencilState.stencilWriteMask = shaderState.stencilWriteMask;
+                }
+                renderPipelineDescriptor[`depthStencil`] = depthStencilState;
             }
         }
 

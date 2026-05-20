@@ -183,6 +183,61 @@ export class Material {
         this._defaultSubShader.depthWriteEnabled = value;
     }
 
+    /**
+     * Stencil front face state
+     */
+    public get stencilFront(): GPUStencilFaceState {
+        return this._defaultSubShader.stencilFront;
+    }
+
+    public set stencilFront(value: GPUStencilFaceState) {
+        this._defaultSubShader.stencilFront = value;
+    }
+
+    /**
+     * Stencil back face state
+     */
+    public get stencilBack(): GPUStencilFaceState {
+        return this._defaultSubShader.stencilBack;
+    }
+
+    public set stencilBack(value: GPUStencilFaceState) {
+        this._defaultSubShader.stencilBack = value;
+    }
+
+    /**
+     * Stencil read mask
+     */
+    public get stencilReadMask(): number {
+        return this._defaultSubShader.stencilReadMask;
+    }
+
+    public set stencilReadMask(value: number) {
+        this._defaultSubShader.stencilReadMask = value;
+    }
+
+    /**
+     * Stencil write mask
+     */
+    public get stencilWriteMask(): number {
+        return this._defaultSubShader.stencilWriteMask;
+    }
+
+    public set stencilWriteMask(value: number) {
+        this._defaultSubShader.stencilWriteMask = value;
+    }
+
+    /**
+     * Stencil reference value
+     */
+    public get stencilRef(): number {
+        return this._defaultSubShader.stencilRef;
+    }
+
+    public set stencilRef(value: number) {
+        this._defaultSubShader.stencilRef = value;
+    }
+
     public set useBillboard(value: boolean) {
         this._defaultSubShader.setDefine("USE_BILLBOARD", value);
     }
