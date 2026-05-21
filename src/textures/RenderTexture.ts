@@ -90,7 +90,10 @@ export class RenderTexture extends Texture {
                 compare: 'less',
                 label: "sampler_comparison"
             });
-        } else if (this.format == GPUTextureFormat.depth24plus) {
+        } else if (this.format == GPUTextureFormat.depth24plus || this.format == GPUTextureFormat.depth24plus_stencil8 || this.format == GPUTextureFormat.depth32float_stencil8) {
+            // Combined depth+stencil formats sample as `depth` via a
+            // `aspect: 'depth-only'` view — callers that read the depth
+            // aspect get the same binding layout as depth-only formats.
             this.samplerBindingLayout = {
                 type: `filtering`,
             }

@@ -58,7 +58,13 @@ export class GBufferFrame extends RTFrame {
         } else {
             // Depth attachment must match the color attachments' sample
             // count when MSAA is enabled — WebGPU validates them together.
-            this.depthTexture = new RenderTexture(rtWidth, rtHeight, GPUTextureFormat.depth32float, false, undefined, 1, sampleCount, true, true, ctx);
+            // `useStencil` swaps in a combined depth+stencil format so
+            // material-level stencil state is actually validated by the
+            // pipeline; otherwise the cheaper depth-only format wins.
+            const depthFormat = ctx.engine?.setting.render.useStencil
+                ? GPUTextureFormat.depth24plus_stencil8
+                : GPUTextureFormat.depth32float;
+            this.depthTexture = new RenderTexture(rtWidth, rtHeight, depthFormat, false, undefined, 1, sampleCount, true, true, ctx);
             this.depthTexture.name = key + `_depthTexture`;
         }
 

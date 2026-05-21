@@ -170,18 +170,29 @@ export class WebGPUDescriptorCreator {
                 renderPassState.depthTexture = renderPassState.zPreTexture;
             }
 
+            // depth+stencil formats (depth24plus-stencil8 etc.) require
+            // stencilLoadOp + stencilStoreOp on every BeginRenderPass —
+            // omitting them triggers a Dawn validation error and the
+            // whole command buffer is rejected. Mirror the depth
+            // load/store choice: `load` when chaining a prepass, `clear`
+            // (to 0) otherwise.
+            const hasStencil = typeof renderPassState.depthTexture.format === 'string'
+                && (renderPassState.depthTexture.format as string).includes('stencil');
+            const dsAttach: GPURenderPassDepthStencilAttachment = {
+                view: renderPassState.depthTexture.getGPUView() as GPUTextureView,
+                depthLoadOp: renderPassState.zPreTexture ? `load` : renderPassState.depthLoadOp,
+                depthClearValue: renderPassState.zPreTexture ? 1 : renderPassState.depthCleanValue,
+                depthStoreOp: "store",
+            };
+            if (hasStencil) {
+                dsAttach.stencilLoadOp = renderPassState.zPreTexture ? 'load' : 'clear';
+                dsAttach.stencilClearValue = 0;
+                dsAttach.stencilStoreOp = 'store';
+            }
             renderPassDescriptor = {
                 label: `${renderPassState.label} renderPassDescriptor zPreTexture${renderPassState.zPreTexture ? `load` : `clear`}`,
                 colorAttachments: attachMentTexture,
-                depthStencilAttachment: {
-                    view: renderPassState.depthTexture.getGPUView() as GPUTextureView,
-                    depthLoadOp: renderPassState.zPreTexture ? `load` : renderPassState.depthLoadOp,
-                    depthClearValue: renderPassState.zPreTexture ? 1 : renderPassState.depthCleanValue,
-                    depthStoreOp: "store",
-                    // stencilClearValue: 0,
-                    // stencilLoadOp: 'clear',
-                    // stencilStoreOp: 'store',
-                },
+                depthStencilAttachment: dsAttach,
             };
         } else {
             renderPassDescriptor = {

@@ -221,8 +221,14 @@ export class ShaderReflection {
 
         shaderVariant += '|';
         for (const key in renderShader.shaderState) {
+            const v = renderShader.shaderState[key];
             shaderVariant += key + ':';
-            shaderVariant += renderShader.shaderState[key] + ';';
+            // Object-valued state (stencilFront/stencilBack) must be
+            // serialized structurally — `obj + ''` collapses every object
+            // to `[object Object]`, which would let two materials with
+            // different stencil face configs share one cached pipeline.
+            shaderVariant += (v !== null && typeof v === 'object') ? JSON.stringify(v) : v;
+            shaderVariant += ';';
         }
         return shaderVariant;
     }

@@ -71,6 +71,19 @@ export type RenderSetting = {
      *  projects its texture onto the opaque scene via stencil shadow
      *  volumes. Default false. */
     decals?: boolean;
+    /** Opt-in 8-bit stencil buffer on the main color pass.
+     *  When true, `GBufferFrame` allocates its depth attachment as
+     *  `depth24plus-stencil8` instead of the default `depth32float`,
+     *  so material-level stencil state (`Material.stencilFront/Back/
+     *  ReadMask/WriteMask/Ref`) is actually validated and bound at
+     *  pipeline build time. Off by default — adding stencil makes the
+     *  depth attachment incompatible with depth-only sampling paths
+     *  (SSR/SSGI/Outline read `_MainDepthTexture` as `sampleType: depth`),
+     *  so opt in only when the project actually needs stencil and the
+     *  z-prepass is disabled (`zPrePass: false`) — the prepass path
+     *  routes the color pass through a separate `depth32float`
+     *  `zPreTexture` and the stencil attachment is silently dropped. */
+    useStencil?: boolean;
     /**
      * Final HDR→LDR tonemap. Runs after every other post (Bloom,
      * FXAA, GodRay, etc.) so the ACES curve sees the composited HDR

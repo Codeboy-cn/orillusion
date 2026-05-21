@@ -44,6 +44,18 @@ export class GPUContextInstance {
             encoder.setPipeline(renderShader.pipeline);
         }
 
+        // Stencil reference is render-pass state, not pipeline state — it
+        // resets to 0 at every renderPassBegin and is not carried by
+        // setPipeline. Issue it on every material switch (lastShader change)
+        // so two materials sharing the same pipeline but different stencilRef
+        // still get the right reference, and so the value survives the
+        // per-pass reset after cleanCache(). GPURenderBundleEncoder does not
+        // support setStencilReference — bundles inherit it from the outer
+        // pass, so we skip it there.
+        if ('setStencilReference' in encoder) {
+            (encoder as GPURenderPassEncoder).setStencilReference(renderShader.shaderState.stencilRef ?? 0);
+        }
+
         for (let i = 1; i < renderShader.bindGroups.length; i++) {
             const bindGroup = renderShader.bindGroups[i];
             if (bindGroup) {
