@@ -7,6 +7,7 @@ import { RenderLayer } from '../config/RenderLayer';
 import { OcclusionSystem } from '../occlusion/OcclusionSystem';
 import { PassType } from '../passRenderer/state/PassType';
 import { RenderGraph } from './RenderGraph';
+import { Camera3D } from '../../../core/Camera3D';
 
 /**
  * Setup-time builder handed to {@link RenderGraphPass.setup}. A pass
@@ -188,7 +189,7 @@ export abstract class RenderGraphPass extends CEventDispatcher {
      */
     protected collectLayered(
         view: View3D,
-        camera?: import('../../../core/Camera3D').Camera3D,
+        camera?: Camera3D,
     ): { opaque: RenderNode[]; transparent: RenderNode[] } {
         const cam = camera ?? view.camera;
         const camMask = cam?.cullingMask ?? RenderLayer.All;

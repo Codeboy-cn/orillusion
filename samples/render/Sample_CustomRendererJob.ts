@@ -3,9 +3,10 @@ import {
     HoverCameraController, KelvinUtil, LitMaterial, MeshRenderer, Object3D,
     PlaneGeometry, Scene3D, View3D,
     // Graph composition surface
-    ClusterLightingPass, ColorPass, COLOR_BUFFER, GUIPass, PointShadowPass,
-    PostPass, ReflectionPass, RenderGraphBuilder, RenderGraphPass,
-    RenderGraphPassContext, RendererJob, ShadowPass,
+    ClusterLightingPass, ColorPass, COLOR_BUFFER, GBufferResourcePass,
+    GUIPass, PointShadowPass, PostPass, ReflectionPass, RenderGraphBuilder,
+    RenderGraphPass, RenderGraphPassContext, RendererJob, ShadowPass,
+    SkyPass,
 } from "@orillusion/core";
 
 /**
@@ -58,7 +59,12 @@ class MinimalRendererJob extends RendererJob {
         this.graph.add(ShadowPass);
         this.graph.add(PointShadowPass);
         this.graph.add(ReflectionPass);
+        // GBufferResourcePass owns the shared g-buffer / render-context /
+        // _TransparentDrawContext that ColorPass (and any chained color
+        // pass) consumes. Must be added before ColorPass.
+        this.graph.add(GBufferResourcePass);
         this.graph.add(ColorPass, { giEnabled: false });
+        this.graph.add(SkyPass);
         this.graph.add(PostPass);
         this.graph.add(GUIPass);
 

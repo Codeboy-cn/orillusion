@@ -2,6 +2,7 @@ import { View3D } from '../../../core/View3D';
 import { ClusterLightingPass } from '../graph/passes/ClusterLightingPass';
 import { ColorPass } from '../graph/passes/ColorPass';
 import { DecalShadowVolumePass } from '../graph/passes/DecalShadowVolumePass';
+import { GBufferResourcePass } from '../graph/passes/GBufferResourcePass';
 import { GIPass } from '../graph/passes/GIPass';
 import { GPUCullPass } from '../graph/passes/GPUCullPass';
 import { GUIPass } from '../graph/passes/GUIPass';
@@ -14,6 +15,7 @@ import { ReflectionPass } from '../graph/passes/ReflectionPass';
 import { SceneCapturePass } from '../graph/passes/SceneCapturePass';
 import { SceneColorPyramidPass } from '../graph/passes/SceneColorPyramidPass';
 import { ShadowPass } from '../graph/passes/ShadowPass';
+import { SkyPass } from '../graph/passes/SkyPass';
 import { SortedTransparentPass } from '../graph/passes/SortedTransparentPass';
 import { TransmissionOpaquePass } from '../graph/passes/TransmissionOpaquePass';
 import { TransparentDualDepthPeelingPass } from '../graph/passes/TransparentDualDepthPeelingPass';
@@ -92,9 +94,25 @@ export class ForwardRendererJob extends RendererJob {
         // No-op when no SceneCaptureCameraComponents are registered.
         this.graph.add(SceneCapturePass);
 
-        // Main color pass. Reads cluster + shadow + reflection inputs;
-        // writes _ColorBuffer + _NormalBuffer.
+        // GBuffer resource provider. Owns the colorPass_GBuffer
+        // singleton + RendererPassStates + RenderContext, and publishes
+        // _ColorBuffer / _NormalBuffer / _TransparentDrawContext. Lives
+        // as its own pass so multiple ColorPass instances can share the
+        // same g-buffer without any of them being the resource creator.
+        this.graph.add(GBufferResourcePass);
+
+        // Main color pass. Reads cluster + shadow + reflection inputs +
+        // the shared GBuffer published by GBufferResourcePass. Pure
+        // opaque draw — sky lives in its own pass below.
         this.graph.add(ColorPass, { giEnabled });
+
+        // Sky. Continuation render pass on the shared color attachment,
+        // gated by the depth written above. Mutator-write on
+        // COLOR_BUFFER + insertion-order positioning keeps it slotted
+        // after the primary opaque pass and before any downstream
+        // reader (pyramid, post). Omit this `add` for a sky-less
+        // pipeline; the rest of the graph keeps working.
+        this.graph.add(SkyPass);
 
         // Scene color pyramid snapshot for transmission / refraction.
         this.graph.add(SceneColorPyramidPass);

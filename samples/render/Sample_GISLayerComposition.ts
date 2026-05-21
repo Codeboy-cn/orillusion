@@ -46,32 +46,23 @@ const GisLayer = {
 
 // ─── Two opaque sub-passes around a depth clear ───────────────────
 //
-// Both subclass ColorPass. Because the engine made ColorPass's setup +
-// execute internals `protected` (allocateRtFrame / registerSharedOutputs /
-// beginColorRenderPass / shouldDrawSky), the two subclasses below are
-// just a handful of overrides — no copy-pasting of ColorPass internals,
-// no `as any` casts.
+// Both subclass ColorPass. The shared g-buffer + render-context plumbing
+// is owned by GBufferResourcePass, sky lives in its own SkyPass (added
+// automatically by ForwardRendererJob right after ColorPass), so
+// neither subclass has to be a "resource creator" nor toggle the sky.
+// What's left to override is the load-op policy on the second pass
+// (clear → load), because chained opaque sub-passes have to continue
+// the render-pass instead of starting one.
 
 class GisGlobeOpaquePass extends ColorPass {
     public readonly name = 'GisGlobeOpaquePass';
-    // Everything else inherited from ColorPass — this pass IS the
-    // "primary" opaque pass for the frame: it owns the
-    // COLOR_BUFFER / NORMAL_BUFFER / TRANSPARENT_DRAW_CTX graph outputs
-    // (registered by ColorPass.registerSharedOutputs), it clears the
-    // render target on entry, and it draws the sky at the end.
+    // Everything else inherited from ColorPass — clears the render
+    // target on entry. SkyPass runs right after via mutator-write
+    // insertion order, then ClearDepthPass runs after that.
 }
 
 class GisWorldOpaquePass extends ColorPass {
     public readonly name = 'GisWorldOpaquePass';
-
-    protected override registerSharedOutputs(_b: RenderGraphBuilder): void {
-        // GisGlobeOpaquePass already creates COLOR_BUFFER / NORMAL_BUFFER /
-        // TRANSPARENT_DRAW_CTX. Each graph resource can have only one
-        // creator (RenderGraph.validateSingleCreator), so this chained
-        // pass leaves them alone — it consumes the same shared GBuffer
-        // by virtue of getGBufferFrame(colorPass_GBuffer) being a
-        // singleton.
-    }
 
     protected override declareSideEffects(b: RenderGraphBuilder): void {
         super.declareSideEffects(b);
@@ -89,13 +80,6 @@ class GisWorldOpaquePass extends ColorPass {
         rc.beginContinueRendererPassState('load', 'load');
         rc.begineNewCommand();
         rc.beginNewEncoder();
-    }
-
-    protected override shouldDrawSky(): boolean {
-        // Already drawn by GisGlobeOpaquePass at the end of its opaque
-        // batch. Drawing sky again here would re-pass the (now cleared)
-        // depth test on every pixel and clobber the world we just drew.
-        return false;
     }
 }
 

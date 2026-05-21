@@ -21,6 +21,8 @@ export { PointShadowPass, POINT_SHADOW_CUBE_ARRAY } from './passes/PointShadowPa
 export { ReflectionPass, REFLECTION_CUBE_MAP } from './passes/ReflectionPass';
 export { GIPass, DDGI_IRRADIANCE_MAP, DDGI_DEPTH_MAP } from './passes/GIPass';
 export { ColorPass, COLOR_BUFFER, NORMAL_BUFFER } from './passes/ColorPass';
+export { GBufferResourcePass } from './passes/GBufferResourcePass';
+export { SkyPass } from './passes/SkyPass';
 export { ClearDepthPass, type ClearDepthPassConfig } from './passes/ClearDepthPass';
 export {
     TRANSPARENT_DRAW_CTX,
