@@ -188,6 +188,25 @@ export let Common_frag: string = /*wgsl*/ `
       return gBuffer ;
   }
 
+  // Per-pixel scene depth for the compressed gBuffer.x channel.
+  //
+  // Under USE_LOGDEPTH the rasterizer-interpolated fragCoord.z drifts from
+  // the true logarithmic curve on long triangles (the curve is non-linear
+  // in clip.w; the rasterizer interpolates ndc.z linearly in screen-space
+  // with perspective correction, which is only exact for functions linear
+  // in 1/w). clip.w itself IS interpolated exactly because it's linear in
+  // view-space, so we recompute via log2DepthFixPersp — the same function
+  // FragMain writes into @builtin(frag_depth), making gBuffer.x agree with
+  // _MainDepthTexture at every pixel. Without log-z the rasterizer value
+  // is already exact.
+  fn getGBufferDepth() -> f32 {
+    #if USE_LOGDEPTH
+      return log2DepthFixPersp(ORI_VertexVarying.fragPosition.w, globalUniform.near, globalUniform.far);
+    #else
+      return ORI_VertexVarying.fragCoord.z;
+    #endif
+  }
+
   fn transformUV( uv:vec2f , offsetScale:vec4f ) -> vec2f{
      return uv * offsetScale.zw + offsetScale.xy ;
   }

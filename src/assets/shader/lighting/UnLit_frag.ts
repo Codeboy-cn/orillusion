@@ -18,7 +18,7 @@ export let UnLit_frag: string = /*wgsl*/ `
         var viewColorPremul = vec4<f32>(ORI_ShadingInput.BaseColor.rgb * alpha , alpha) ;
         var vNormal = ORI_VertexVarying.vWorldNormal.rgb ;
         let gBuffer = packNHMDGBuffer(
-            ORI_VertexVarying.fragCoord.z,
+            getGBufferDepth(),
             vec3f(0.0),
             viewColorPremul.rgb,
             vec3f(1.0,0.0,0.0),

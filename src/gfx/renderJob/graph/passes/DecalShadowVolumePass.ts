@@ -509,13 +509,13 @@ struct Uniforms {
 fn vs(@location(0) pos: vec3f) -> @builtin(position) vec4f {
     var clipPos = u.vp * (u.model * vec4f(pos, 1.0));
     #if USE_LOGDEPTH
-        // Match Common_frag's log2DepthFixPersp, which is what writes the
-        // _MainDepthTexture when USE_LOGDEPTH is on. Encoding here keeps the
-        // depthCompare='less' stencil mark comparing apples to apples.
+        // Match the engine's log-z encoding (MathShader::log2Depth01):
+        //   ndc.z = log2(1 + w) / log2(far + 1),  w = clip.w.
+        // Same value the Common_frag FS writes into _MainDepthTexture,
+        // so depthCompare='less' on the stencil mark is comparing apples
+        // to apples.
         let far = u.params.z;
-        let halfFcoef = (2.0 / log2(far + 1.0)) * 0.5;
-        let r = log2(max(1e-6, 1.0 + clipPos.w)) * halfFcoef;
-        let ndcZ = (1.0 + r) * 0.5;
+        let ndcZ = log2(max(1e-6, 1.0 + clipPos.w)) / log2(far + 1.0);
         clipPos.z = ndcZ * clipPos.w;
     #endif
     return clipPos;
@@ -551,10 +551,10 @@ fn vs(@location(0) pos: vec3f) -> VOut {
     var out: VOut;
     var clipPos = u.vp * (u.model * vec4f(pos, 1.0));
     #if USE_LOGDEPTH
+        // Same encoding as MARK_WGSL — keeps the composite quad's depth
+        // test (when one exists) in lock-step with _MainDepthTexture.
         let far = u.params.z;
-        let halfFcoef = (2.0 / log2(far + 1.0)) * 0.5;
-        let r = log2(max(1e-6, 1.0 + clipPos.w)) * halfFcoef;
-        let ndcZ = (1.0 + r) * 0.5;
+        let ndcZ = log2(max(1e-6, 1.0 + clipPos.w)) / log2(far + 1.0);
         clipPos.z = ndcZ * clipPos.w;
     #endif
     out.pos = clipPos;
@@ -571,14 +571,16 @@ fn fs(in: VOut) -> @location(0) vec4f {
     let rawDepth = textureLoad(sceneDepth, pixel, 0);
 
     #if USE_LOGDEPTH
-        // _MainDepthTexture stores log2DepthFixPersp(w) =
-        //   (1 + log2(1+w)/log2(far+1)) / 2,  where w = view-space distance.
-        // Invert: w = pow(far+1, 2*D - 1) - 1, then convert back to the
-        // standard perspective ndc_z so invVP rebuilds world position the
-        // same way as the no-logdepth path.
+        // _MainDepthTexture stores ndc.z = log2(1+w) / log2(far+1) where
+        // w = view-space distance — the encoding shared by VertexFunction_vert
+        // (log2Depth) and Common_frag (log2DepthFixPersp); see also
+        // GBufferStand::inverseLog2Depth which inverts the same curve for
+        // gBuffer.x. Recover w, then re-project to the standard perspective
+        // ndc.z so invVP rebuilds world position the same way as the
+        // no-logdepth path.
         let near = u.params.y;
         let far  = u.params.z;
-        let w    = pow(far + 1.0, 2.0 * rawDepth - 1.0) - 1.0;
+        let w    = pow(far + 1.0, rawDepth) - 1.0;
         let depth = (far / (far - near)) * (1.0 - near / max(w, 1e-6));
     #else
         let depth = rawDepth;

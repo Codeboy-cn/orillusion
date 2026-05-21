@@ -61,7 +61,25 @@ export let ZPassShader_vs: string = /*wgsl*/ `
         rzMatrix[3] = vec4<f32>(0.0,0.0,0.0,1.0) ;
         var clipPos:vec4<f32> = fixProjMat * globalUniform.viewMat * (wPos) ;
 
-        // let d = log2Depth(clipPos.z * (globalUniform.far - globalUniform.near),globalUniform.near,globalUniform.far) ;
+        // Intentionally NOT applying log-z here even under USE_LOGDEPTH.
+        // The prepass needs to produce a depth value the color pass will
+        // less_equal-test against; the color FS writes log-encoded depth
+        // via log2DepthFixPersp (ndc.z = log2(1+w)/log2(far+1)), which is
+        // always strictly less than the standard linear ndc.z = (a*w+b)/w
+        // for w >= near, so leaving the prepass linear guarantees
+        // less_equal passes on every covered pixel.
+        //
+        // The seemingly natural fix — encode log-z here too — looks right
+        // at the vertex but fails at interior pixels: the rasterizer
+        // interpolates clip.z linearly in screen-space and the log curve
+        // is concave, so interpolated_L < exact_L between vertices. Under
+        // less_equal the color pass's per-pixel exact L incoming value is
+        // larger than the stored interpolated L → every interior fragment
+        // gets rejected and the scene goes blank. CDP-verified against
+        // Sample_DecalShadowVolume. The fix-for-the-fix would be running
+        // an FS in the prepass that recomputes per-pixel L the same way
+        // the color FS does, which means wiring up a real fragment stage
+        // to DepthMaterialPass — out of scope here.
         return VertexOutput(f32(vertex.index) , wPos.xyz, clipPos, clipPos);
     }
 

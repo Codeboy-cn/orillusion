@@ -219,7 +219,7 @@ export let BxDF_frag: string = /*wgsl*/ `
         var vNormal = ORI_VertexVarying.vWorldNormal.rgb ;
 
         let gBuffer = packNHMDGBuffer(
-          ORI_VertexVarying.fragCoord.z,
+          getGBufferDepth(),
           fragData.Albedo.rgb,
           viewColorPremul.rgb,
           vec3f(fragData.Roughness,fragData.Metallic,fragData.Ao),
