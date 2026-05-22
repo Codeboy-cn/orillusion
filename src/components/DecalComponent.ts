@@ -1,10 +1,9 @@
-import { View3D } from '../core/View3D';
 import { Object3D } from '../core/entities/Object3D';
 import { Texture } from '../gfx/graphics/webGpu/core/texture/Texture';
 import { Color } from '../math/Color';
 import { Quaternion } from '../math/Quaternion';
 import { Vector3 } from '../math/Vector3';
-import { ComponentBase } from './ComponentBase';
+import { DataComponentBase } from './DataComponentBase';
 
 const TMP_VEC3 = new Vector3();
 const TMP_QUAT = new Quaternion();
@@ -42,7 +41,7 @@ const UP_AXIS = new Vector3(0, 1, 0);
  *
  * @group Components
  */
-export class DecalComponent extends ComponentBase {
+export class DecalComponent extends DataComponentBase {
     /** Decal texture sampled in the composite pass. Any engine
      *  {@link Texture} works — load images with
      *  `Engine3D.res.loadTexture(url, …, 'srgb')` for a pooled
@@ -61,9 +60,6 @@ export class DecalComponent extends ComponentBase {
      *  faces roughly aligned with decal-up — closer to a rigid "stamp". */
     public maxAngleDeg: number = 90;
 
-    /** All currently enabled decal components — iterated by the pass. */
-    public static readonly activeRegistry: Set<DecalComponent> = new Set();
-
     /** Orient `obj`'s local +Y to point along `normal` (world space).
      *  Convenience helper for placing a decal on a curved surface. */
     public static alignTopToward(obj: Object3D, normal: Vector3): void {
@@ -77,13 +73,5 @@ export class DecalComponent extends ComponentBase {
         if (param?.texture) this.texture = param.texture;
         if (param?.tint) this.tint = param.tint;
         if (param?.maxAngleDeg !== undefined) this.maxAngleDeg = param.maxAngleDeg;
-    }
-
-    public onEnable(_view?: View3D): void {
-        DecalComponent.activeRegistry.add(this);
-    }
-
-    public onDisable(_view?: View3D): void {
-        DecalComponent.activeRegistry.delete(this);
     }
 }

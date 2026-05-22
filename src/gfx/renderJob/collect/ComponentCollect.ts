@@ -2,6 +2,7 @@ import { ColliderComponent } from "../../../components/ColliderComponent";
 import { IComponent } from "../../../components/IComponent";
 import { View3D } from "../../../core/View3D";
 import { Object3D } from "../../../core/entities/Object3D";
+import { RenderLayer } from "../config/RenderLayer";
 
 export class ComponentCollect {
 
@@ -36,6 +37,23 @@ export class ComponentCollect {
     public static graphicComponent: Map<View3D, Map<IComponent, Function>>;
 
     /**
+     * Type-keyed index of live components per View3D. The outer map is
+     * keyed by View, the inner map by the component's concrete class
+     * (`(this as any).constructor`), the value is the live set of
+     * instances enabled in that view.
+     *
+     * This is a pure registry — semantically independent of rendering.
+     * RenderGraph passes use {@link collectByTypeLayered} to enumerate
+     * a specific component type for a view, but the same index can
+     * back physics queries, editor enumeration, audio listener
+     * lookups, or any system that needs "give me every X in this
+     * scene/view" by type rather than by lifecycle callback.
+     *
+     * @internal
+     */
+    public static componentsByType: Map<View3D, Map<Function, Set<IComponent>>>;
+
+    /**
      * @internal
      */
     // private static waitStartComponentBak: Map<Object3D, IComponent[]>;
@@ -53,6 +71,7 @@ export class ComponentCollect {
             this.componentsComputeList = new Map<View3D, Map<IComponent, Function>>();
             this.componentsEnablePickerList = new Map<View3D, Map<ColliderComponent, Function>>();
             this.graphicComponent = new Map<View3D, Map<IComponent, Function>>();
+            this.componentsByType = new Map<View3D, Map<Function, Set<IComponent>>>();
             // this.waitStartComponentBak = new Map<Object3D, IComponent[]>();
             // this.waitStartComponentBody = new Map<Object3D, IComponent[]>();
             this.waitStartComponent = new Map<Object3D, IComponent[]>();
@@ -191,6 +210,93 @@ export class ComponentCollect {
         }
     }
 
+    /**
+     * Add `comp` to the type-keyed registry under `(view, ctor)`. Used
+     * by {@link DataComponentBase.onEnable} to make the instance
+     * discoverable via {@link collectByTypeLayered}.
+     *
+     * `ctor` should be the component's concrete class
+     * (`(this as any).constructor` from the instance). Subclasses are
+     * registered under their own class — a query for the parent class
+     * will not enumerate subclass instances. Idempotent.
+     */
+    public static register(view: View3D, ctor: Function, component: IComponent) {
+        this.init();
+        let perView = this.componentsByType.get(view);
+        if (!perView) {
+            perView = new Map<Function, Set<IComponent>>();
+            this.componentsByType.set(view, perView);
+        }
+        let set = perView.get(ctor);
+        if (!set) {
+            set = new Set<IComponent>();
+            perView.set(ctor, set);
+        }
+        set.add(component);
+    }
+
+    /**
+     * Remove `comp` from the type-keyed registry. Empty inner sets are
+     * left in place so the next register call can reuse them without
+     * a fresh allocation. Idempotent.
+     */
+    public static unregister(view: View3D, ctor: Function, component: IComponent) {
+        this.init();
+        const perView = this.componentsByType.get(view);
+        if (!perView) return;
+        const set = perView.get(ctor);
+        if (!set) return;
+        set.delete(component);
+    }
+
+    /**
+     * Collect all live components of `ctor` registered against `view`
+     * whose `visibleLayer` intersects `layerMask`. Pass
+     * {@link RenderLayer.All} (`0xFFFFFFFF`) to skip layer filtering —
+     * the bitwise AND then matches every bit.
+     *
+     * The caller owns `out`: it is cleared (`length = 0`) on entry and
+     * populated in place, so a pass can hold a scratch array as a
+     * member field and reuse it across frames without GC pressure
+     * (mirrors {@link EntityCollect.getLayerLists}'s buffer-reuse
+     * pattern). The returned reference is the same `out` for chaining.
+     *
+     * Callers that want to honour a camera's `cullingMask` should
+     * pre-AND it into `layerMask` themselves; the predicate inside
+     * does not re-read camera state.
+     *
+     * @param view       The View3D this pass executes against. A
+     *                   `null` view returns immediately.
+     * @param ctor       Concrete component class to enumerate. Must
+     *                   match what {@link register} stored — i.e. the
+     *                   subclass, not a base.
+     * @param layerMask  Already-combined pass × camera mask.
+     * @param out        Scratch array, owned by the caller; mutated.
+     */
+    public static collectByTypeLayered<T extends IComponent & { visibleLayer: number, enable: boolean }>(
+        view: View3D,
+        ctor: Function,
+        layerMask: number,
+        out: T[],
+    ): T[] {
+        this.init();
+        out.length = 0;
+        if (!view) return out;
+        const perView = this.componentsByType.get(view);
+        if (!perView) return out;
+        const set = perView.get(ctor);
+        if (!set || set.size === 0) return out;
+        const mask = (layerMask & RenderLayer.All) >>> 0;
+        if (mask === 0) return out;
+        for (const comp of set) {
+            const c = comp as unknown as T;
+            if (!c.enable) continue;
+            if (((c.visibleLayer | 0) & mask) === 0) continue;
+            out.push(c);
+        }
+        return out;
+    }
+
     // Called from Engine3D.dispose() so a disposed engine's View3D entries
     // don't linger in every per-view static map (would leak the View3D, its
     // scene tree, and every registered component callback).
@@ -202,6 +308,7 @@ export class ComponentCollect {
         this.componentsComputeList.delete(view);
         this.componentsEnablePickerList.delete(view);
         this.graphicComponent.delete(view);
+        this.componentsByType.delete(view);
     }
 
     // Some components bind with a null View3D because their owning Object3D

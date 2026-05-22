@@ -123,9 +123,9 @@ export abstract class RenderGraphPass extends CEventDispatcher {
      *  {@link RendererJob}s wiring built-in passes) override this to
      *  restrict the pass to specific composition layers — combined
      *  with the active camera's `cullingMask` at execute time via
-     *  bitwise AND, then matched against each node's `renderLayer`:
+     *  bitwise AND, then matched against each node's `visibleLayer`:
      *
-     *      (node.renderLayer & pass.layerMask & camera.cullingMask) !== 0
+     *      (node.visibleLayer & pass.layerMask & camera.cullingMask) !== 0
      *
      *  Use {@link collectLayered} from inside `execute()` to fetch the
      *  filtered opaque/transparent lists; it threads `layerMask` and

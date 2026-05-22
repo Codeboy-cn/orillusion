@@ -40,7 +40,6 @@ export class ShaderState {
     public castShadow: boolean = false;
     public castReflection: boolean = true;
     public receiveEnv: boolean = false;
-    public renderLayer: number = 1000;
     public renderOrder: number = 2000;
     public unclippedDepth: boolean = false;
     public transparent: boolean = false;
@@ -99,9 +98,6 @@ export class ShaderState {
         }
         if (values.has('receiveEnv')) {
             this.receiveEnv = values.get('receiveEnv');
-        }
-        if (values.has('renderLayer')) {
-            this.renderLayer = values.get('renderLayer');
         }
         if (values.has('renderOrder')) {
             this.renderOrder = values.get('renderOrder');

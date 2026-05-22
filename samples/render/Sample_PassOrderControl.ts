@@ -85,7 +85,7 @@ function paintCanvasTexture(engine: Engine3D, size: number, draw: (g: CanvasRend
 class BuildingOverlayPass extends RenderGraphPass {
     public readonly name = 'BuildingOverlayPass';
     /** This pass only draws what's on BUILDING_LAYER. `collectLayered`
-     *  intersects this with `node.renderLayer & camera.cullingMask`. */
+     *  intersects this with `node.visibleLayer & camera.cullingMask`. */
     public layerMask = BUILDING_LAYER;
 
     public setup(b: RenderGraphBuilder): void {
@@ -161,7 +161,7 @@ export class Sample_PassOrderControl {
         // ── Method 1: pass.layerMask
         // Strip BUILDING_LAYER from the prepass and the opaque draw.
         // Both passes filter their node list via
-        //     (node.renderLayer & pass.layerMask & camera.cullingMask) !== 0
+        //     (node.visibleLayer & pass.layerMask & camera.cullingMask) !== 0
         // so excluding the bit makes them skip every node tagged with
         // BUILDING_LAYER. Crucially, `_MainDepthTexture` then carries
         // terrain depth only when `DecalShadowVolumePass` reads it —
@@ -278,7 +278,7 @@ export class Sample_PassOrderControl {
             mr.castShadow = true;
             mr.receiveShadow = true;
             // The single tag — the rest is RenderGraph composition.
-            mr.renderLayer = BUILDING_LAYER;
+            mr.visibleLayer = BUILDING_LAYER;
             this.scene.addChild(obj);
         }
     }

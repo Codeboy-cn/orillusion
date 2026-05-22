@@ -108,10 +108,10 @@ export class Camera3D extends ComponentBase {
 
     /**
      * Layer-mask of layers this camera should see. Combined at pass
-     * execute time with `node.renderLayer` and the active pass's
+     * execute time with `node.visibleLayer` and the active pass's
      * `layerMask` via bitwise AND:
      *
-     *     (node.renderLayer & pass.layerMask & camera.cullingMask) !== 0
+     *     (node.visibleLayer & pass.layerMask & camera.cullingMask) !== 0
      *
      * Defaults to {@link RenderLayer.All} so untouched cameras keep
      * the historical "see everything" behaviour. Sub-cameras

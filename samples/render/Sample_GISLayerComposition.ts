@@ -23,12 +23,12 @@ import {
  *
  * Three engine primitives compose this:
  *
- *   - `RenderNode.renderLayer`  — which composition layers a node belongs to
+ *   - `RenderNode.visibleLayer`  — which composition layers a node belongs to
  *   - `RenderGraphPass.layerMask` — which layers a pass draws
  *   - `Camera3D.cullingMask`    — which layers a camera can see
  *
  * Filtering rule applied at pass execute time:
- *     (node.renderLayer & pass.layerMask & camera.cullingMask) !== 0
+ *     (node.visibleLayer & pass.layerMask & camera.cullingMask) !== 0
  */
 
 // ─── Project-defined layer semantics (NOT part of the engine) ─────
@@ -197,7 +197,7 @@ export class Sample_GISLayerComposition {
         terrainMr.geometry = new PlaneGeometry(40, 40);
         terrainMr.material = terrainMat;
         terrainMr.receiveShadow = true;
-        terrainMr.renderLayer = GisLayer.Terrain;
+        terrainMr.visibleLayer = GisLayer.Terrain;
         this.scene.addChild(terrain);
 
         // Ground decals — a couple of bright rectangles painted slightly
@@ -222,7 +222,7 @@ export class Sample_GISLayerComposition {
             mr.geometry = new PlaneGeometry(size[0], size[1]);
             mr.material = mat;
             mr.receiveShadow = true;
-            mr.renderLayer = GisLayer.GroundDecal;
+            mr.visibleLayer = GisLayer.GroundDecal;
             this.scene.addChild(decal);
         }
 
@@ -251,7 +251,7 @@ export class Sample_GISLayerComposition {
             mr.material = mat;
             mr.castShadow = true;
             mr.receiveShadow = true;
-            mr.renderLayer = GisLayer.World;
+            mr.visibleLayer = GisLayer.World;
             this.scene.addChild(obj);
         }
 
@@ -265,7 +265,7 @@ export class Sample_GISLayerComposition {
         const waterMr = water.addComponent(MeshRenderer);
         waterMr.geometry = new PlaneGeometry(10, 10);
         waterMr.material = waterMat;
-        waterMr.renderLayer = GisLayer.Water;
+        waterMr.visibleLayer = GisLayer.Water;
         this.scene.addChild(water);
 
         // Overlay billboard — translucent red. With camera.cullingMask
@@ -282,7 +282,7 @@ export class Sample_GISLayerComposition {
         overlayMr.geometry = new PlaneGeometry(4, 1);
         overlayMr.material = overlayMat;
         overlayMr.castShadow = false;
-        overlayMr.renderLayer = GisLayer.Overlay;
+        overlayMr.visibleLayer = GisLayer.Overlay;
         this.scene.addChild(overlay);
 
         // Diagnostic log so the layer assignment is visible without
@@ -296,7 +296,7 @@ export class Sample_GISLayerComposition {
         ] as const;
         console.log('[scene] layer assignments:');
         for (const [name, layer] of summary) {
-            console.log(`  ${name.padEnd(20)} renderLayer=0x${(layer >>> 0).toString(16).padStart(8, '0')}`);
+            console.log(`  ${name.padEnd(20)} visibleLayer=0x${(layer >>> 0).toString(16).padStart(8, '0')}`);
         }
     }
 }

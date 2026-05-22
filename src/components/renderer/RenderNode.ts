@@ -62,9 +62,9 @@ export class RenderNode extends ComponentBase {
      * collected into the default per-node opaque/transparent lists or
      * into a batched render-group (see {@link EntityBatchCollect}).
      *
-     * Historically this field was named `_renderLayer`; that name has
-     * moved to {@link _renderLayer} below to host the bitmask-based
-     * layer system.
+     * Historically this field was named `_renderLayer`; that name was
+     * vacated for the bitmask-based layer system, which now lives at
+     * {@link _visibleLayer} / {@link visibleLayer}.
      */
     protected _batchMode: BatchMode = BatchMode.None;
 
@@ -80,7 +80,7 @@ export class RenderNode extends ComponentBase {
      * assign project-specific bits (1..31) to organise the scene into
      * composition layers.
      */
-    protected _renderLayer: number = RenderLayer.Default;
+    protected _visibleLayer: number = RenderLayer.Default;
     protected _computes: RenderShaderCompute[];
 
 
@@ -138,17 +138,17 @@ export class RenderNode extends ComponentBase {
     }
 
     @EditorInspector
-    public get renderLayer(): number {
-        return this._renderLayer;
+    public get visibleLayer(): number {
+        return this._visibleLayer;
     }
 
-    public set renderLayer(value: number) {
+    public set visibleLayer(value: number) {
         // Normalise to uint32 so bitwise ops behave predictably even
         // when callers pass values produced by JS bit ops (which yield
         // signed int32) or negative bit-AND tricks. EntityCollect's
         // `getLayerLists` reads this field directly at pass-execute
         // time, so a simple store is sufficient — no index to refresh.
-        this._renderLayer = value >>> 0;
+        this._visibleLayer = value >>> 0;
     }
 
     public get geometry(): GeometryBase {

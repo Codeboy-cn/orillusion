@@ -1,7 +1,7 @@
 /**
  * Layer-mask helpers for renderable classification.
  *
- * The engine treats `RenderNode.renderLayer` as an opaque 32-bit value
+ * The engine treats `RenderNode.visibleLayer` as an opaque 32-bit value
  * and does NOT assign any semantic meaning to specific bits — projects
  * define their own enums to give bits meaning, matching the Unity
  * "Layer 0-31" convention. Only three universally meaningful values
@@ -25,7 +25,7 @@
  *
  * Visibility rule applied at pass execute time:
  *
- *     (node.renderLayer & pass.layerMask & camera.cullingMask) !== 0
+ *     (node.visibleLayer & pass.layerMask & camera.cullingMask) !== 0
  *
  * All three masks must share at least one set bit for the node to be
  * drawn by that pass through that camera.

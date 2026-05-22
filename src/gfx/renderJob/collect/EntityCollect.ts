@@ -403,7 +403,7 @@ export class EntityCollect {
      * built opaque + transparent arrays whose nodes pass the bitwise
      * AND test:
      *
-     *     (node.renderLayer & layerMask & cullingMask) !== 0
+     *     (node.visibleLayer & layerMask & cullingMask) !== 0
      *
      * Internally delegates the heavy lifting to {@link getRenderNodes}
      * so octree frustum culling, transparent z-sort, and the WBOIT
@@ -443,14 +443,38 @@ export class EntityCollect {
         const opOut: RenderNode[] = [];
         for (let i = 0, n = opIn.length; i < n; i++) {
             const node = opIn[i];
-            if (((node.renderLayer | 0) & mask) !== 0) opOut.push(node);
+            if (EntityCollect.matchesLayer(node.visibleLayer, mask, RenderLayer.All)) opOut.push(node);
         }
         const trOut: RenderNode[] = [];
         for (let i = 0, n = trIn.length; i < n; i++) {
             const node = trIn[i];
-            if (((node.renderLayer | 0) & mask) !== 0) trOut.push(node);
+            if (EntityCollect.matchesLayer(node.visibleLayer, mask, RenderLayer.All)) trOut.push(node);
         }
         return { opaque: opOut, transparent: trOut };
+    }
+
+    /**
+     * Layer-visibility predicate shared by every pass / collector that
+     * filters renderables by composition layer. Returns true when
+     * `layer`, `layerMask`, and `cullingMask` share at least one set
+     * bit — i.e. the renderable is opted into a layer that both the
+     * pass and the camera want to see.
+     *
+     * Centralising the bitwise idiom here keeps the semantics
+     * consistent between {@link EntityCollect.getLayerLists} (RenderNode
+     * path) and {@link ComponentCollect.collectByTypeLayered}
+     * (DataComponentBase path); callers should not re-implement the
+     * `(a & b & c) !== 0` test by hand.
+     *
+     * @param layer       The renderable's own layer membership value
+     *                    (e.g. `RenderNode.visibleLayer`).
+     * @param layerMask   Pass-side mask (e.g. {@link RenderGraphPass.layerMask}).
+     * @param cullingMask Camera-side mask (e.g. {@link Camera3D.cullingMask}).
+     *                    Pass {@link RenderLayer.All} when the caller has
+     *                    already AND-ed the camera mask into `layerMask`.
+     */
+    public static matchesLayer(layer: number, layerMask: number, cullingMask: number = RenderLayer.All): boolean {
+        return ((layer | 0) & (layerMask & cullingMask)) !== 0;
     }
 
     public getOpRenderGroup(scene: Scene3D): EntityBatchCollect {

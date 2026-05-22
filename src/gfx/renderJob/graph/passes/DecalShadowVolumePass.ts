@@ -3,6 +3,7 @@ import { Matrix4 } from '../../../../math/Matrix4';
 import { RenderTexture } from '../../../../textures/RenderTexture';
 import { Preprocessor } from '../../../graphics/webGpu/shader/util/Preprocessor';
 import { Texture } from '../../../graphics/webGpu/core/texture/Texture';
+import { ComponentCollect } from '../../collect/ComponentCollect';
 import { RenderGraphBuilder, RenderGraphPass, RenderGraphPassContext } from '../RenderGraphPass';
 import { COLOR_BUFFER } from './ColorPass';
 import { MAIN_DEPTH_TEXTURE } from './PreDepthPass';
@@ -93,6 +94,10 @@ export class DecalShadowVolumePass extends RenderGraphPass {
 
     private _decalGpu: WeakMap<DecalComponent, DecalGpu> = new WeakMap();
 
+    // Scratch list reused per-frame to avoid GC churn — populated by
+    // ComponentCollect.collectByTypeLayered each execute().
+    private _decalScratch: DecalComponent[] = [];
+
     private _mVP!: Matrix4;
     private _mInvVP!: Matrix4;
     private _mModel!: Matrix4;
@@ -142,10 +147,19 @@ export class DecalShadowVolumePass extends RenderGraphPass {
     }
 
     public execute(ctx: RenderGraphPassContext): void {
-        if (DecalComponent.activeRegistry.size === 0) return;
-
         const view = ctx.view;
         const camera = view.camera;
+
+        // Per-view collect — the static activeRegistry it replaces was
+        // shared across all views, which caused decals owned by one
+        // view to be re-projected through every other view's camera.
+        // ComponentCollect.componentsByType is keyed by View3D so each
+        // pass-execute sees only this view's decals.
+        const camMask = camera?.cullingMask ?? 0xFFFFFFFF;
+        const mask = (this.layerMask & camMask) >>> 0;
+        ComponentCollect.collectByTypeLayered<DecalComponent>(view, DecalComponent, mask, this._decalScratch);
+        if (this._decalScratch.length === 0) return;
+
         const engine = view.engine3D;
         const device = this._device;
         const gpu = engine.context3D.gpuContext;
@@ -194,8 +208,8 @@ export class DecalShadowVolumePass extends RenderGraphPass {
         // Per-decal: mark + composite. Each iteration clears stencil
         // first so decals don't interfere.
         let drawIdx = 0;
-        for (const decal of DecalComponent.activeRegistry) {
-            if (!decal.enable || !decal.texture) continue;
+        for (const decal of this._decalScratch) {
+            if (!decal.texture) continue;
             if (!decal.transform || !decal.transform.enable) continue;
             const gpuRes = this._updateDecalUniform(decal, vp, invVP, near, far);
             if (!gpuRes) continue;
