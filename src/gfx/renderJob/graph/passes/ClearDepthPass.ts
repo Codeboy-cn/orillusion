@@ -75,7 +75,14 @@ export class ClearDepthPass extends RenderGraphPass {
         const rt = b.graph.pool.get<RenderGraphRenderTarget>(rtName);
         const colorLoadOps: GPULoadOp[] = new Array(rt.colorTextures.length).fill('load');
 
-        this._rtPass = b.useRenderTarget(rtName, {
+        // borrowRenderTarget (not useRenderTarget): ClearDepthPass sits
+        // between two opaque halves whose order is fixed by the user's
+        // explicit `dependsOn` edges (see the GISLayerComposition
+        // sample). Joining MAIN_COLOR_RT's mutator chain would
+        // duplicate / contradict those edges and surface as a
+        // CyclicDependencyError when the late opaque also writes the
+        // RT through a subsequent mutator.
+        this._rtPass = b.borrowRenderTarget(rtName, {
             label: 'ClearDepth',
             colorLoadOps,
             depthLoadOp: 'clear',
