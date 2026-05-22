@@ -4,6 +4,7 @@ import { Context3D } from '../../../graphics/webGpu/Context3D';
 import { RTResourceMap } from '../../frame/RTResourceMap';
 import { RenderGraphBuilder, RenderGraphPass, RenderGraphPassContext } from '../RenderGraphPass';
 import { COLOR_BUFFER } from './ColorPass';
+import { MAIN_COLOR_RT } from './GBufferResourcePass';
 import { DDP_FRONT_TEX } from './TransparentDualDepthPeelingPass';
 
 /**
@@ -29,7 +30,8 @@ export class TransparentDualDepthPeelingResolvePass extends RenderGraphPass {
     public setup(b: RenderGraphBuilder): void {
         this._ctx = b.context3D;
         b.read(DDP_FRONT_TEX);
-        b.write(COLOR_BUFFER);  // mutator: composite DDP front into ColorBuffer
+        b.write(COLOR_BUFFER);              // legacy mutator-write
+        b.useRenderTarget(MAIN_COLOR_RT);   // typed mutator on the main RT
     }
 
     protected _ensurePipeline(colorBuffer: RenderTexture): void {

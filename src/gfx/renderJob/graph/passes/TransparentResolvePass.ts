@@ -5,6 +5,7 @@ import { GBufferFrame } from '../../frame/GBufferFrame';
 import { RTResourceMap } from '../../frame/RTResourceMap';
 import { RenderGraphBuilder, RenderGraphPass, RenderGraphPassContext } from '../RenderGraphPass';
 import { COLOR_BUFFER } from './ColorPass';
+import { MAIN_COLOR_RT } from './GBufferResourcePass';
 import { OIT_ACCUM_TEX, OIT_REVEAL_TEX } from './TransparentOITPass';
 
 /**
@@ -32,7 +33,8 @@ export class TransparentResolvePass extends RenderGraphPass {
         this._ctx = b.context3D;
         b.read(OIT_ACCUM_TEX);
         b.read(OIT_REVEAL_TEX);
-        b.write(COLOR_BUFFER);  // mutator: composite OIT into ColorBuffer
+        b.write(COLOR_BUFFER);              // legacy mutator-write
+        b.useRenderTarget(MAIN_COLOR_RT);   // typed mutator on the main RT
     }
 
     protected _ensurePipeline(colorBuffer: RenderTexture): void {

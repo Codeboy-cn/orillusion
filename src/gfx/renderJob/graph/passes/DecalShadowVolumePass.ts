@@ -6,6 +6,7 @@ import { Texture } from '../../../graphics/webGpu/core/texture/Texture';
 import { ComponentCollect } from '../../collect/ComponentCollect';
 import { RenderGraphBuilder, RenderGraphPass, RenderGraphPassContext } from '../RenderGraphPass';
 import { COLOR_BUFFER } from './ColorPass';
+import { MAIN_COLOR_RT } from './GBufferResourcePass';
 import { MAIN_DEPTH_TEXTURE } from './PreDepthPass';
 
 /** Format of the color target the composite step blends into — must
@@ -113,7 +114,11 @@ export class DecalShadowVolumePass extends RenderGraphPass {
         this._mInvModel = new Matrix4();
 
         b.read(MAIN_DEPTH_TEXTURE);
-        b.write(COLOR_BUFFER);
+        b.write(COLOR_BUFFER);            // legacy mutator-write
+        b.useRenderTarget(MAIN_COLOR_RT); // typed mutator on the main RT
+                                          // (execute still drives its own
+                                          // multi-sub-pass encoder for the
+                                          // blit/mark/composite stencil dance)
 
         const geo = buildUnitCubeGeometry();
         this._cubeIdxCount = geo.indexCount;
