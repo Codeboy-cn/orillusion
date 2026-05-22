@@ -992,6 +992,7 @@ export class RenderShaderPass extends ShaderPassBase {
                 topology: shaderState.topology,
                 cullMode: shaderState.cullMode,
                 frontFace: shaderState.frontFace,
+                unclippedDepth: shaderState.unclippedDepth,
             },
             vertex: undefined,
         };
@@ -1083,7 +1084,7 @@ export class RenderShaderPass extends ShaderPassBase {
         // different render targets (e.g. main GBuffer vs overlay BGRA8Unorm
         // canvas) produce incompatible pipelines, so they must cache
         // separately.
-        const pipelineKey = `${this.shaderVariant}|${RenderShaderPass._attachmentKey(renderPassState)}|a2c${shaderState.alphaToCoverageEnabled ? 1 : 0}`;
+        const pipelineKey = `${this.shaderVariant}|${RenderShaderPass._attachmentKey(renderPassState)}|a2c${shaderState.alphaToCoverageEnabled ? 1 : 0}|ucd${shaderState.unclippedDepth ? 1 : 0}`;
         let pipeline = PipelinePool.getSharePipeline(ctx, pipelineKey);
         if (pipeline) {
             this.pipeline = pipeline;
