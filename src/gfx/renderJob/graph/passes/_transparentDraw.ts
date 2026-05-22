@@ -16,6 +16,63 @@ import { RendererPassState } from '../../passRenderer/state/RendererPassState';
 import { buildTrBundles, preInitPassPipelines } from './_helpers';
 
 /**
+ * Encoder-driven counterpart to {@link drawNodes}. Calls
+ * {@link RenderNode.renderPass2} (encoder-direct draw, no splitTexture
+ * mid-pass split) rather than {@link RenderNode.renderPass}. Used by
+ * passes that drive their own {@link RenderGraphRenderPass} lifecycle
+ * and don't want the legacy {@link RenderContext} indirection.
+ *
+ * **Caller contract:** materials whose `shaderState.splitTexture` is
+ * true (Glass-style refractive shaders) MUST be filtered out before
+ * the list reaches this helper. The encoder-direct path has no hook
+ * for mid-pass splits — splitTexture materials drawn through here
+ * sample whatever's in the color attachment at the moment of draw,
+ * which is incorrect. ColorPass uses `transmissionFilter='exclude'`
+ * so the typical glass/refraction set is already excluded.
+ *
+ * @group Graph
+ */
+export function drawNodesEncoder(
+    view: View3D,
+    encoder: GPURenderPassEncoder,
+    passState: RendererPassState,
+    nodes: RenderNode[],
+    cluster: ClusterLightingBuffer | undefined,
+    options: DrawNodesOptions = {},
+): void {
+    const passType = options.passType ?? PassType.COLOR;
+    const oitFilter = options.oitFilter ?? null;
+    const transmissionFilter = options.transmissionFilter ?? null;
+
+    preInitPassPipelines(view, passType, passState, cluster);
+
+    const render = view.engine3D.setting.render;
+    const max = Math.min(nodes.length, render.drawOpMax);
+    for (let i = render.drawOpMin; i < max; ++i) {
+        const node = nodes[i];
+        if (!node.transform.enable) continue;
+        if (!node.enable) continue;
+        if (node.isDestroyed) continue;
+
+        if (oitFilter !== null) {
+            const mat = node.materials?.[0];
+            if (oitFilter === 'sorted' && mat?.oitMode === 'weighted') continue;
+            if (oitFilter === 'weighted' && mat?.oitMode !== 'weighted') continue;
+        }
+        if (transmissionFilter !== null) {
+            const mat = node.materials?.[0] as any;
+            const hasTransmission = typeof mat?.transmissionFactor === 'number' && mat.transmissionFactor > 0;
+            if (transmissionFilter === 'exclude' && hasTransmission) continue;
+            if (transmissionFilter === 'only' && !hasTransmission) continue;
+        }
+        if (!node.preInit(passType)) {
+            node.nodeUpdate(view, passType, passState, cluster);
+        }
+        node.renderPass2(view, passType, passState, cluster!, encoder, false);
+    }
+}
+
+/**
  * Resource handle name for the shared draw context published by
  * {@link ColorPass} and consumed by TransmissionOpaque /
  * SortedTransparent. Use in `b.read(TRANSPARENT_DRAW_CTX)` to declare

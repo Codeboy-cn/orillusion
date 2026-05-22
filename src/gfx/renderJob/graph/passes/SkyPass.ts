@@ -6,6 +6,7 @@ import { PassType } from '../../passRenderer/state/PassType';
 import { RenderGraphBuilder, RenderGraphPass, RenderGraphPassContext } from '../RenderGraphPass';
 import { ClusterLightingPass, CLUSTER_LIGHTING_BUFFER } from './ClusterLightingPass';
 import { COLOR_BUFFER } from './ColorPass';
+import { MAIN_COLOR_RT } from './GBufferResourcePass';
 import { TRANSPARENT_DRAW_CTX, TransparentDrawContext } from './_transparentDraw';
 
 /**
@@ -43,7 +44,15 @@ export class SkyPass extends RenderGraphPass {
     public setup(b: RenderGraphBuilder): void {
         b.read(TRANSPARENT_DRAW_CTX);
         b.read(CLUSTER_LIGHTING_BUFFER);
-        b.write(COLOR_BUFFER); // mutator
+        b.write(COLOR_BUFFER); // legacy mutator-write (keeps SceneColorPyramidPass topo edge)
+        // New-style declaration: also chain on the typed MAIN_COLOR_RT
+        // mutator chain so custom passes that key off the RT see a
+        // proper writer here. Execute still drives the encoder through
+        // the shared RenderContext (`TRANSPARENT_DRAW_CTX`) because
+        // sky-on-glass cases can hit splitTexture materials below it
+        // in the same frame — that mid-pass split path lives on
+        // RenderContext for now.
+        b.useRenderTarget(MAIN_COLOR_RT);
     }
 
     public execute(ctx: RenderGraphPassContext): void {

@@ -2,17 +2,18 @@ import { View3D } from '../../../../core/View3D';
 import { RenderTexture } from '../../../../textures/RenderTexture';
 import { GlobalBindGroup } from '../../../graphics/webGpu/core/bindGroups/GlobalBindGroup';
 import { ClusterLightingBuffer } from '../../passRenderer/cluster/ClusterLightingBuffer';
-import { RenderContext } from '../../passRenderer/RenderContext';
 import { PassType } from '../../passRenderer/state/PassType';
 import { RendererPassState } from '../../passRenderer/state/RendererPassState';
 import { RenderGraphBuilder, RenderGraphPass, RenderGraphPassContext } from '../RenderGraphPass';
+import { RenderGraphRenderPass, RenderPassOpenOptions } from '../RenderGraphRenderPass';
 import { buildOpBundles, dependOnIfRegistered } from './_helpers';
 import { ClusterLightingPass, CLUSTER_LIGHTING_BUFFER } from './ClusterLightingPass';
+import { MAIN_COLOR_RT } from './GBufferResourcePass';
 import { MAIN_SHADOW_MAP } from './ShadowPass';
 import { POINT_SHADOW_CUBE_ARRAY } from './PointShadowPass';
 import { REFLECTION_CUBE_MAP } from './ReflectionPass';
 import { DDGI_DEPTH_MAP, DDGI_IRRADIANCE_MAP } from './GIPass';
-import { drawNodes, TRANSPARENT_DRAW_CTX, TransparentDrawContext } from './_transparentDraw';
+import { drawNodesEncoder, TRANSPARENT_DRAW_CTX, TransparentDrawContext } from './_transparentDraw';
 
 // Re-export the shared draw-context contract through ColorPass so users
 // hitting the package barrel (`@orillusion/core`) can resolve
@@ -66,36 +67,48 @@ export const NORMAL_BUFFER = '_NormalBuffer';
 export class ColorPass extends RenderGraphPass {
     public readonly name: string = 'ColorPass';
 
-    public rendererPassState!: RendererPassState;
+    /** Typed render pass handle, opened per frame in {@link execute}. */
+    protected _rtPass!: RenderGraphRenderPass;
 
     protected readonly _passType: PassType = PassType.COLOR;
     protected readonly _giEnabled: boolean;
-    protected _renderContext!: RenderContext;
-    protected _splitRendererPassState!: RendererPassState;
 
     constructor(public readonly config: { giEnabled: boolean } = { giEnabled: false }) {
         super();
         this._giEnabled = config.giEnabled;
     }
 
+    /** Backwards-compat accessor for code that previously reached into
+     *  `colorPass.rendererPassState`. Resolves to the live
+     *  {@link RendererPassState} only between {@link begin} and
+     *  {@link end} during `execute()`. */
+    public get rendererPassState(): RendererPassState | null {
+        return this._rtPass?.passState ?? null;
+    }
+
     public setup(b: RenderGraphBuilder): void {
-        b.read(TRANSPARENT_DRAW_CTX);
-        // Note: ColorPass deliberately does NOT declare `b.write(COLOR_BUFFER)`.
-        // It does mutate the color attachment at runtime (via the encoder
-        // opened through the shared RenderContext), but advertising that
-        // as a graph mutator-write would chain every ColorPass instance
-        // by insertedOrder onto every downstream COLOR_BUFFER mutator
-        // (transmission, sorted-transparent, etc.). In a chained-opaque
-        // setup (e.g. Globe → ClearDepth → World), that chain forces the
-        // second ColorPass to run after the transparent half — directly
-        // contradicting any explicit `transparent.dependsOn(world)` edge
-        // and producing a CyclicDependencyError at compile time.
-        // Ordering relative to SkyPass / transparent passes is held by
-        // ForwardRendererJob's add() sequence (insertedOrder Kahn
-        // tie-break), which is reliable when the renderer job is the
-        // single source of truth for pass registration.
+        // borrowRenderTarget (not useRenderTarget): ColorPass deliberately
+        // does NOT register a mutator-write on MAIN_COLOR_RT. Subclasses
+        // in chained-opaque setups (Globe → ClearDepth → World) would
+        // otherwise join the transparent passes' mutator chain by
+        // insertedOrder and break the explicit `transparent.dependsOn(world)`
+        // edge with a CyclicDependencyError. Ordering between ColorPass /
+        // SkyPass / transparent halves is held by the renderer job's add()
+        // sequence (insertedOrder Kahn tie-break) — same contract as the
+        // pre-refactor design described in the original ColorPass.setup
+        // comment.
+        this._rtPass = b.borrowRenderTarget(MAIN_COLOR_RT, this.getRenderTargetOptions());
         this.declareShadingReads(b);
         this.declareSideEffects(b);
+    }
+
+    /** Per-frame loadOp/clearValue options applied to the
+     *  {@link RenderGraphRenderPass} this pass opens. Default returns
+     *  `undefined` so the framework's auto-derive rule applies.
+     *  Override to force e.g. `colorLoadOps:['load']` for a chained
+     *  opaque pass that draws on top of a previous half. */
+    protected getRenderTargetOptions(): RenderPassOpenOptions | undefined {
+        return undefined;
     }
 
     /** Declare the per-frame shading inputs this pass reads. Override
@@ -123,77 +136,59 @@ export class ColorPass extends RenderGraphPass {
     }
 
     public execute(ctx: RenderGraphPassContext): void {
-        // Resolve the shared render-pass state + encoder published by
-        // GBufferResourcePass. Cached on `this` for the duration of
-        // execute so beginColorRenderPass overrides can reach the same
-        // fields the legacy API exposed.
-        const drawCtx = ctx.get<TransparentDrawContext>(TRANSPARENT_DRAW_CTX);
-        this.rendererPassState = drawCtx.rendererPassState;
-        this._splitRendererPassState = drawCtx.splitRendererPassState;
-        this._renderContext = drawCtx.renderContext;
-
-        // Wire DDGI irradiance through the pool every frame so a
-        // future GI swap takes effect on the next frame (edit GIPass
-        // → irradiance updates, no restart).
-        if (this._giEnabled) {
-            const irradianceColor = ctx.get<RenderTexture>(DDGI_IRRADIANCE_MAP);
-            const irradianceDepth = ctx.get<RenderTexture>(DDGI_DEPTH_MAP);
-            if (irradianceColor && irradianceDepth) {
-                this.rendererPassState.irradianceBuffer = [irradianceColor, irradianceDepth];
-            }
-        }
-
         const view = ctx.view;
         const camera = view.camera;
         const cluster = this._getCluster(view);
 
-        const gpu = view.engine3D.context3D.gpuContext;
-        this._renderContext.gpu = gpu;
-        // Opaque-half call owns the render context — start fresh. The
-        // continuation halves (transmission, transparent) reopen with
-        // loadOp='load'.
-        this._renderContext.clean();
+        const encoder = ctx.beginRenderPass(this._rtPass);
+        const passState = this._rtPass.passState!;
+
+        // Wire DDGI irradiance through the pool every frame so a future
+        // GI swap takes effect on the next frame (edit GIPass →
+        // irradiance updates, no restart).
+        if (this._giEnabled) {
+            const irradianceColor = ctx.get<RenderTexture>(DDGI_IRRADIANCE_MAP);
+            const irradianceDepth = ctx.get<RenderTexture>(DDGI_DEPTH_MAP);
+            if (irradianceColor && irradianceDepth) {
+                passState.irradianceBuffer = [irradianceColor, irradianceDepth];
+            }
+        }
 
         GlobalBindGroup.updateCameraGroup(camera);
-        this.rendererPassState.camera3D = camera;
+        passState.camera3D = camera;
 
         const layered = this.collectLayered(view);
 
-        const opBundles = buildOpBundles(view, camera, this._passType, this.rendererPassState, cluster);
+        const opBundles = buildOpBundles(view, camera, this._passType, passState, cluster);
 
-        this.beginColorRenderPass();
-        const encoder = this._renderContext.encoder;
+        const gpu = view.engine3D.context3D.gpuContext;
 
         if (opBundles.length > 0) {
             encoder.executeBundles(opBundles);
         }
 
-        // bindCamera is unconditional: any continuation pass that
-        // reuses this encoder via the split render-pass state relies
-        // on the per-camera bind group being bound at group 0,
-        // independent of whether the opaque list was empty this frame.
+        // bindCamera is unconditional: the per-camera bind group must
+        // be live at group 0 for any per-node draw below to read
+        // camera uniforms, independent of whether the opaque list was
+        // empty this frame.
         gpu.bindCamera(encoder, camera);
         if (layered.opaque.length > 0) {
-            drawNodes(
+            // Use the encoder-driven draw helper (calls renderPass2,
+            // which doesn't engage the splitTexture mid-pass split).
+            // Safe for ColorPass because `transmissionFilter='exclude'`
+            // already filters out glass / transmission materials —
+            // splitTexture is only set on those.
+            drawNodesEncoder(
                 view,
-                this._renderContext,
-                this.rendererPassState,
+                encoder,
+                passState,
                 layered.opaque,
                 cluster,
                 { transmissionFilter: 'exclude', passType: this._passType },
             );
         }
 
-        this._renderContext.endRenderPass();
-    }
-
-    /** Open the render pass that the opaque draw records into.
-     *  Default opens with color='clear', depth='clear' via
-     *  {@link RenderContext.beginOpaqueRenderPass}. Override to chain
-     *  onto a previous pass (color='load', depth='load') — e.g. a second
-     *  opaque pass that draws after a ClearDepthPass. */
-    protected beginColorRenderPass(): void {
-        this._renderContext.beginOpaqueRenderPass();
+        ctx.endRenderPass(this._rtPass);
     }
 
     protected _getCluster(view: View3D): ClusterLightingBuffer | undefined {

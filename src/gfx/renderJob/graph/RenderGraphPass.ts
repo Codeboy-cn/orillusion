@@ -8,6 +8,10 @@ import { OcclusionSystem } from '../occlusion/OcclusionSystem';
 import { PassType } from '../passRenderer/state/PassType';
 import { RenderGraph } from './RenderGraph';
 import { Camera3D } from '../../../core/Camera3D';
+import type { RTFrame } from '../frame/RTFrame';
+import type { RenderGraphRenderTarget, RenderGraphRenderTargetDesc } from './RenderGraphRenderTarget';
+import type { RenderGraphRenderPass, RenderPassOpenOptions } from './RenderGraphRenderPass';
+import type { RenderGraphComputePass, ComputePipelineDesc } from './RenderGraphComputePass';
 
 /**
  * Setup-time builder handed to {@link RenderGraphPass.setup}. A pass
@@ -67,6 +71,70 @@ export interface RenderGraphBuilder {
      *  consumed by sibling materials). The named pass must already
      *  be registered in the graph before this call. */
     dependsOn(passName: string): void;
+
+    /**
+     * Allocate a fresh typed {@link RenderGraphRenderTarget} (colors +
+     * optional depth) and register it under `name`. Single-creator
+     * rule applies — only one pass per `name` may call this. Internally
+     * runs through `b.write(name, factory)` so the standard mutator
+     * chain still orders downstream `b.useRenderTarget` writers.
+     */
+    createRenderTarget(name: string, desc: RenderGraphRenderTargetDesc): RenderGraphRenderTarget;
+
+    /**
+     * Adopt an externally-allocated {@link RTFrame} (e.g.
+     * {@link GBufferFrame}) and publish it as a typed RT under `name`.
+     * The wrapper does not own the underlying textures. Single-creator
+     * rule applies.
+     */
+    adoptRenderTarget(
+        name: string,
+        rtFrame: RTFrame,
+        opts?: { label?: string },
+    ): RenderGraphRenderTarget;
+
+    /**
+     * Declare "this pass also writes to the RT named `name`" and
+     * return a {@link RenderGraphRenderPass} handle the pass uses in
+     * `execute()` to open the actual render pass encoder. Internally
+     * a mutator-form `b.write(name)` — multiple passes may chain on
+     * the same RT.
+     *
+     * The handle's loadOp / storeOp default to the per-frame
+     * auto-derive rule (first writer => 'clear', subsequent =>
+     * 'load'); `opts` lets a pass override either side explicitly
+     * (e.g. a mid-frame ClearDepthPass forcing depth='clear').
+     */
+    useRenderTarget(name: string, options?: RenderPassOpenOptions): RenderGraphRenderPass;
+
+    /**
+     * Like {@link useRenderTarget} but does NOT register a mutator-write
+     * edge on the RT. Returns a {@link RenderGraphRenderPass} handle the
+     * pass can open in `execute()`.
+     *
+     * Use when ordering is controlled by insertion order (or explicit
+     * `dependsOn`) rather than graph-derived mutator edges — the
+     * canonical case is {@link ColorPass} and its subclasses in a
+     * chained-opaque setup (e.g. Globe → ClearDepth → World). Declaring
+     * a mutator-write there would chain every ColorPass instance into
+     * the transmission/transparent mutator chain by insertedOrder,
+     * which combined with an explicit `dependsOn` from the transparent
+     * passes onto the second opaque pass produces a
+     * {@link CyclicDependencyError} at compile.
+     *
+     * The framework's per-frame auto-derive rule still applies (the
+     * underlying first-writer flag is set by every `begin()` call,
+     * mutator or borrowed).
+     */
+    borrowRenderTarget(name: string, options?: RenderPassOpenOptions): RenderGraphRenderPass;
+
+    /**
+     * Build a private compute-pass handle (pipeline + lifecycle owned
+     * by the caller). Does NOT register anything in the pool —
+     * storage texture / buffer dependencies still flow through
+     * `b.read` / `b.write`.
+     */
+    createComputePass(name: string, desc: ComputePipelineDesc): RenderGraphComputePass;
 }
 
 /**
@@ -86,6 +154,29 @@ export interface RenderGraphPassContext {
 
     /** Resolve a named resource through the graph pool. */
     get<T>(name: string): T;
+
+    /** Resolve a {@link RenderGraphRenderTarget} by name. Throws if
+     *  the handle exists but is not a render target (validator should
+     *  have caught it at compile, this is the defensive runtime
+     *  check). */
+    getRenderTarget(name: string): RenderGraphRenderTarget;
+
+    /** Open the underlying `GPURenderPassEncoder` for a handle
+     *  returned from `b.useRenderTarget(...)`. The encoder lifetime
+     *  extends to the matching {@link endRenderPass}. */
+    beginRenderPass(handle: RenderGraphRenderPass): GPURenderPassEncoder;
+
+    /** Close the render pass encoder + submit the per-pass command
+     *  buffer. Idempotent on already-ended handles. */
+    endRenderPass(handle: RenderGraphRenderPass): void;
+
+    /** Open the underlying `GPUComputePassEncoder` for a compute
+     *  handle. Pipeline is lazily built on the first call. */
+    beginComputePass(handle: RenderGraphComputePass): GPUComputePassEncoder;
+
+    /** Close the compute pass encoder + submit the per-pass command
+     *  buffer. */
+    endComputePass(handle: RenderGraphComputePass): void;
 }
 
 /**

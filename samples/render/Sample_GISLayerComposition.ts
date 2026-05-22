@@ -71,16 +71,12 @@ class GisWorldOpaquePass extends ColorPass {
         b.dependsOn('ClearDepthPass');
     }
 
-    protected override beginColorRenderPass(): void {
-        // color='load' preserves what GisGlobeOpaquePass drew (terrain,
-        // ground decals, sky). depth='load' picks up the cleared depth
-        // that ClearDepthPass just wrote, so this batch starts as if
-        // the depth buffer had never been touched by the globe pass.
-        const rc = this._renderContext;
-        rc.beginContinueRendererPassState('load', 'load');
-        rc.begineNewCommand();
-        rc.beginNewEncoder();
-    }
+    // No need to override getRenderTargetOptions(): this is the 2nd
+    // writer of MAIN_COLOR_RT this frame (after GisGlobeOpaquePass +
+    // the intervening ClearDepthPass which clears depth on the shared
+    // attachment), so the framework's auto-derive rule resolves
+    // color='load' (keeps the globe's pixels) and depth='load' (picks
+    // up the cleared depth ClearDepthPass just wrote) by itself.
 }
 
 // ─── Custom renderer job: wires the three passes around the default

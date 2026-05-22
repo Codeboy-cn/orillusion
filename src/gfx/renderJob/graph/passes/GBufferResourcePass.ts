@@ -6,9 +6,25 @@ import { RTFrame } from '../../frame/RTFrame';
 import { RenderContext } from '../../passRenderer/RenderContext';
 import { RendererPassState } from '../../passRenderer/state/RendererPassState';
 import { RenderGraphBuilder, RenderGraphPass, RenderGraphPassContext } from '../RenderGraphPass';
+import { RenderGraphRenderTarget } from '../RenderGraphRenderTarget';
 import { COLOR_BUFFER, NORMAL_BUFFER } from './ColorPass';
 import { MAIN_DEPTH_TEXTURE } from './PreDepthPass';
 import { TRANSPARENT_DRAW_CTX, TransparentDrawContext } from './_transparentDraw';
+
+/**
+ * Graph-pool handle for the engine's main color render target.
+ * Published by {@link GBufferResourcePass} (adopt mode — wraps the
+ * shared {@link GBufferFrame}). Downstream opaque + transparent
+ * passes declare a mutator-write via `b.useRenderTarget(MAIN_COLOR_RT)`
+ * and open per-frame render passes through the returned handle.
+ *
+ * Replaces the legacy {@link TRANSPARENT_DRAW_CTX} channel for new
+ * code — the latter remains published as a backwards-compatibility
+ * shim for the `Sample_PassOrderControl` sample.
+ *
+ * @group Graph
+ */
+export const MAIN_COLOR_RT = '_MainColorRT';
 
 /**
  * Resource-only pass that owns the shared main-color G-buffer and the
@@ -46,12 +62,17 @@ export class GBufferResourcePass extends RenderGraphPass {
     public rendererPassState!: RendererPassState;
     public splitRendererPassState!: RendererPassState;
     public renderContext!: RenderContext;
+    /** Typed RT handle wrapping the shared {@link GBufferFrame}. Adopt
+     *  mode — owns no textures. Consumers reach it through the pool
+     *  via `b.useRenderTarget(MAIN_COLOR_RT)`. */
+    public mainColorRT!: RenderGraphRenderTarget;
 
     protected _ctx!: Context3D;
 
     public setup(b: RenderGraphBuilder): void {
         this._ctx = b.context3D;
         const rtFrame = this._allocateRtFrame(b);
+        this.mainColorRT = b.adoptRenderTarget(MAIN_COLOR_RT, rtFrame, { label: 'MainColor' });
         this._buildRenderStates(b, rtFrame);
         this._publish(b);
     }

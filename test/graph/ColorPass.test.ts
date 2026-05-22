@@ -37,9 +37,11 @@ await test('ColorPass registers at stage=Opaque with static reads and exposes co
 
     const feature = view.renderGraph!.getPass('ColorPass') as ColorPass | null
     if (!feature) throw new Error('ColorPass not registered')
-    // Base reads when GI is disabled and zPrePass=true (engine default):
-    // cluster + shadow + point shadow + reflection + main depth (zPrePass).
-    expect(feature.reads.length).toEqual(5)
+    // Base shading reads when GI is disabled: cluster + shadow + point
+    // shadow + reflection. ColorPass no longer reads the deprecated
+    // TRANSPARENT_DRAW_CTX — it drives its own RenderGraphRenderPass
+    // through b.useRenderTarget(MAIN_COLOR_RT).
+    expect(feature.reads.length).toEqual(4)
     expect(feature.reads.indexOf(CLUSTER_LIGHTING_BUFFER) >= 0).toEqual(true)
     expect(feature.reads.indexOf(MAIN_SHADOW_MAP) >= 0).toEqual(true)
     expect(feature.reads.indexOf(POINT_SHADOW_CUBE_ARRAY) >= 0).toEqual(true)
@@ -74,8 +76,9 @@ await test('ColorPass reads include DDGI handles when gi.enable is true', async 
 
     const feature = view.renderGraph!.getPass('ColorPass') as ColorPass | null
     if (!feature) throw new Error('ColorPass not registered')
-    // 4 base + 1 zPrePass depth + 2 DDGI = 7
-    expect(feature.reads.length).toEqual(7)
+    // 4 base shading reads + 2 DDGI handles = 6 (TRANSPARENT_DRAW_CTX
+    // no longer read — see the 'static reads' test above for context).
+    expect(feature.reads.length).toEqual(6)
     expect(feature.reads.indexOf(DDGI_IRRADIANCE_MAP) >= 0).toEqual(true)
     expect(feature.reads.indexOf(DDGI_DEPTH_MAP) >= 0).toEqual(true)
 

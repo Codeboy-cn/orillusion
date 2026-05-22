@@ -1,6 +1,7 @@
 import { RenderGraphBuilder, RenderGraphPass, RenderGraphPassContext } from '../RenderGraphPass';
 import { COLOR_BUFFER } from './ColorPass';
 import { ClusterLightingPass } from './ClusterLightingPass';
+import { MAIN_COLOR_RT } from './GBufferResourcePass';
 import { SCENE_COLOR_PYRAMID } from './SceneColorPyramidPass';
 import { dependOnIfRegistered } from './_helpers';
 import {
@@ -38,7 +39,11 @@ export class TransmissionOpaquePass extends RenderGraphPass {
     public setup(b: RenderGraphBuilder): void {
         b.read(SCENE_COLOR_PYRAMID);
         b.read(TRANSPARENT_DRAW_CTX);
-        b.write(COLOR_BUFFER);  // mutator
+        b.write(COLOR_BUFFER);  // legacy mutator-write
+        // Typed MAIN_COLOR_RT mutator chain — see SortedTransparentPass
+        // for the rationale (encoder still goes through RenderContext
+        // to preserve mid-pass splitTexture handling).
+        b.useRenderTarget(MAIN_COLOR_RT);
 
         dependOnIfRegistered(b, 'GPUCullPass');
     }

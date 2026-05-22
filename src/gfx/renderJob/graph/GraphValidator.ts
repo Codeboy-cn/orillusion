@@ -63,6 +63,29 @@ export class MissingCreatorError extends GraphCompileError {
 }
 
 /**
+ * Raised when a pass calls `b.useRenderTarget('foo')` (or any other
+ * kind-typed accessor) for a `name` whose pool entry is not the
+ * expected kind. Eagerly thrown by the builder at setup time so the
+ * stack trace points to the actual call site.
+ *
+ * @group Graph
+ */
+export class WrongResourceKindError extends GraphCompileError {
+    public readonly pass: string;
+    public readonly resource: string;
+    public readonly expected: string;
+    public readonly actual: string;
+    constructor(pass: string, resource: string, expected: string, actual: string) {
+        super(`RenderGraph: pass '${pass}' uses '${resource}' as kind '${expected}', but the pool entry is kind '${actual}'. ` +
+            `Did the creator pass use a different builder method (e.g. b.write vs b.createRenderTarget), or is '${resource}' the wrong name?`);
+        this.pass = pass;
+        this.resource = resource;
+        this.expected = expected;
+        this.actual = actual;
+    }
+}
+
+/**
  * Raised when two passes call `b.write(name, factory)` for the same
  * `name`. Only one pass may be the creator of a given resource;
  * additional passes that also write must drop their factory and

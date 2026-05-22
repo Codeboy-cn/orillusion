@@ -1,9 +1,13 @@
 import { Context3D } from '../../graphics/webGpu/Context3D';
 import { View3D } from '../../../core/View3D';
 import { OcclusionSystem } from '../occlusion/OcclusionSystem';
-import { GraphValidator, MissingCreatorError, topoSort, UnresolvedResourceError } from './GraphValidator';
+import { RTFrame } from '../frame/RTFrame';
+import { GraphValidator, MissingCreatorError, topoSort, UnresolvedResourceError, WrongResourceKindError } from './GraphValidator';
 import { RenderGraphBuilder, RenderGraphPass, RenderGraphPassContext } from './RenderGraphPass';
 import { RenderGraphResourcePool } from './RenderGraphResourcePool';
+import { RenderGraphRenderTarget, RenderGraphRenderTargetDesc } from './RenderGraphRenderTarget';
+import { RenderGraphRenderPass, RenderPassOpenOptions } from './RenderGraphRenderPass';
+import { ComputePipelineDesc, RenderGraphComputePass } from './RenderGraphComputePass';
 
 /** Internal: per-graph metadata stamped onto a pass after add(). */
 const PASS_META = Symbol('RenderGraphPass.meta');
@@ -57,6 +61,11 @@ export class RenderGraph {
     private readonly _pool: RenderGraphResourcePool;
     private readonly _passes: RenderGraphPass[] = [];
     private readonly _byName: Map<string, RenderGraphPass> = new Map();
+    /** name → RenderGraphRenderTarget for every typed RT registered
+     *  through `b.createRenderTarget` / `b.adoptRenderTarget`. Lets
+     *  {@link execute} reset the per-frame first-writer flag in O(RT)
+     *  rather than scanning the pool. */
+    private readonly _renderTargets: Map<string, RenderGraphRenderTarget> = new Map();
     private _compiled: string[] | null = null;
     private _dirty: boolean = true;
     private _insertCounter: number = 0;
@@ -138,7 +147,7 @@ export class RenderGraph {
         // creates) flips relative to it, producing a fake cycle.
         const prevOrder = this._insertedOrder(prev);
         prev.destroy();
-        for (const n of prev.creates) this._pool.unregister(n);
+        for (const n of prev.creates) this._releaseCreated(n);
         const pass = new Ctor(...args) as InstanceType<C>;
         this._setupAndRegister(pass);
         if (prevOrder >= 0) {
@@ -163,7 +172,7 @@ export class RenderGraph {
         if (idx < 0) return false;
         const pass = this._passes[idx];
         pass.destroy();
-        for (const n of pass.creates) this._pool.unregister(n);
+        for (const n of pass.creates) this._releaseCreated(n);
         this._passes.splice(idx, 1);
         this._byName.delete(name);
         this._dirty = true;
@@ -264,6 +273,13 @@ export class RenderGraph {
         const pool = this._pool;
         const view = this._view;
         const graph = this;
+        // Reset per-frame first-writer flag on every registered RT so
+        // the auto-derive rule reapplies each frame: the first pass
+        // that opens this RT this frame gets clear-by-default; any
+        // later pass gets load-by-default.
+        for (const rt of this._renderTargets.values()) {
+            rt._firstWriterFiredThisFrame = false;
+        }
         const ctx: RenderGraphPassContext = {
             view,
             occlusion,
@@ -271,6 +287,25 @@ export class RenderGraph {
             frameIndex,
             get<T>(name: string): T {
                 return pool.get<T>(name);
+            },
+            getRenderTarget(name: string): RenderGraphRenderTarget {
+                const kind = pool.kindOf(name);
+                if (kind !== 'rendertarget') {
+                    throw new WrongResourceKindError('<ctx.getRenderTarget>', name, 'rendertarget', kind ?? 'unregistered');
+                }
+                return pool.get<RenderGraphRenderTarget>(name);
+            },
+            beginRenderPass(handle: RenderGraphRenderPass): GPURenderPassEncoder {
+                return handle.begin(this);
+            },
+            endRenderPass(handle: RenderGraphRenderPass): void {
+                handle.end(this);
+            },
+            beginComputePass(handle: RenderGraphComputePass): GPUComputePassEncoder {
+                return handle.begin(this);
+            },
+            endComputePass(handle: RenderGraphComputePass): void {
+                handle.end(this);
             },
         };
         const device = this._ctx.device;
@@ -344,6 +379,8 @@ export class RenderGraph {
             this._ctx.removeEventListener(Context3D.DEVICE_LOST, this._onDeviceLost, this);
         }
         for (const p of this._passes) p.destroy();
+        for (const rt of this._renderTargets.values()) rt.destroy(this._ctx);
+        this._renderTargets.clear();
         this._passes.length = 0;
         this._byName.clear();
         this._compiled = null;
@@ -366,6 +403,13 @@ export class RenderGraph {
         const writes: string[] = [];
         const creates: string[] = [];
         const deps: Set<string> = new Set(pass.dependencies ?? []);
+        const registerRT = (n: string, rt: RenderGraphRenderTarget): RenderGraphRenderTarget => {
+            this._pool.register(n, () => rt, 'rendertarget');
+            this._renderTargets.set(n, rt);
+            writes.push(n);
+            creates.push(n);
+            return rt;
+        };
         const builder: RenderGraphBuilder = {
             context3D: this._ctx,
             view: this._view,
@@ -402,6 +446,56 @@ export class RenderGraph {
                 }
                 deps.add(passName);
             },
+            createRenderTarget: (n: string, desc: RenderGraphRenderTargetDesc): RenderGraphRenderTarget => {
+                return registerRT(n, RenderGraphRenderTarget.allocate(n, this._ctx, desc));
+            },
+            adoptRenderTarget: (n: string, rtFrame: RTFrame, opts?: { label?: string }): RenderGraphRenderTarget => {
+                return registerRT(n, RenderGraphRenderTarget.fromRTFrame(n, rtFrame, opts));
+            },
+            useRenderTarget: (n: string, options?: RenderPassOpenOptions): RenderGraphRenderPass => {
+                if (!this._pool.has(n)) {
+                    throw new MissingCreatorError(pass.name, n);
+                }
+                const kind = this._pool.kindOf(n);
+                if (kind !== 'rendertarget') {
+                    throw new WrongResourceKindError(pass.name, n, 'rendertarget', kind ?? 'unregistered');
+                }
+                writes.push(n);
+                const rt = this._pool.get<RenderGraphRenderTarget>(n);
+                rt._writers.push(pass.name);
+                return new RenderGraphRenderPass(
+                    `${pass.name}::${n}`,
+                    pass.name,
+                    rt,
+                    options ?? {},
+                );
+            },
+            borrowRenderTarget: (n: string, options?: RenderPassOpenOptions): RenderGraphRenderPass => {
+                // Same as useRenderTarget but skips the writes.push(n).
+                // ColorPass and chained-opaque subclasses use this so they
+                // don't pollute the MAIN_COLOR_RT mutator chain — which
+                // would conflict with the transparent passes' explicit
+                // dependsOn edges (see GISLayerComposition sample for the
+                // canonical chained-opaque pipeline that motivated this).
+                if (!this._pool.has(n)) {
+                    throw new MissingCreatorError(pass.name, n);
+                }
+                const kind = this._pool.kindOf(n);
+                if (kind !== 'rendertarget') {
+                    throw new WrongResourceKindError(pass.name, n, 'rendertarget', kind ?? 'unregistered');
+                }
+                const rt = this._pool.get<RenderGraphRenderTarget>(n);
+                rt._writers.push(pass.name);
+                return new RenderGraphRenderPass(
+                    `${pass.name}::${n}`,
+                    pass.name,
+                    rt,
+                    options ?? {},
+                );
+            },
+            createComputePass: (name: string, desc: ComputePipelineDesc): RenderGraphComputePass => {
+                return new RenderGraphComputePass(name, desc);
+            },
         };
         pass.setup(builder);
         (pass as any).reads = Object.freeze(reads);
@@ -416,6 +510,20 @@ export class RenderGraph {
 
     private _insertedOrder(p: RenderGraphPass): number {
         return ((p as any)[PASS_META] as PassMeta | undefined)?.insertedOrder ?? -1;
+    }
+
+    /** Drop a name from the pool. If the entry is a typed
+     *  {@link RenderGraphRenderTarget} also call its `destroy` hook
+     *  and remove it from the per-frame reset map. */
+    private _releaseCreated(name: string): void {
+        if (this._pool.kindOf(name) === 'rendertarget') {
+            const rt = this._renderTargets.get(name);
+            if (rt) {
+                rt.destroy(this._ctx);
+                this._renderTargets.delete(name);
+            }
+        }
+        this._pool.unregister(name);
     }
 
     /** name → writers sorted by insertion order. Used by `dumpDot`

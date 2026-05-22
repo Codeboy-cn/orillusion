@@ -1,6 +1,7 @@
 import { RenderGraphBuilder, RenderGraphPass, RenderGraphPassContext } from '../RenderGraphPass';
 import { COLOR_BUFFER } from './ColorPass';
 import { ClusterLightingPass } from './ClusterLightingPass';
+import { MAIN_COLOR_RT } from './GBufferResourcePass';
 import { SCENE_COLOR_PYRAMID } from './SceneColorPyramidPass';
 import { dependOnIfRegistered } from './_helpers';
 import {
@@ -45,7 +46,12 @@ export class SortedTransparentPass extends RenderGraphPass {
     public setup(b: RenderGraphBuilder): void {
         b.read(SCENE_COLOR_PYRAMID);
         b.read(TRANSPARENT_DRAW_CTX);
-        b.write(COLOR_BUFFER);  // mutator
+        b.write(COLOR_BUFFER);  // legacy mutator-write
+        // Typed MAIN_COLOR_RT mutator chain — keeps the graph-level
+        // view of the render target consistent with the encoder
+        // lifecycle even though the actual draw goes through
+        // RenderContext (splitTexture / glass materials live here).
+        b.useRenderTarget(MAIN_COLOR_RT);
 
         dependOnIfRegistered(b, 'GPUCullPass');
     }
