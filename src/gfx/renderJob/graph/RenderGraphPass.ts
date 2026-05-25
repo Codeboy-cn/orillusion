@@ -72,6 +72,15 @@ export interface RenderGraphBuilder {
      *  be registered in the graph before this call. */
     dependsOn(passName: string): void;
 
+    /** Optional-dependency variant of {@link dependsOn}: if a pass
+     *  named `passName` is already registered, add an ordering edge
+     *  `<passName> → this`; otherwise silently skip. Use when this
+     *  pass only needs to run *after* another pass when it happens
+     *  to be present, without reading or writing any of its outputs
+     *  — and is fine running on its own when the upstream pass is
+     *  absent from the pipeline. */
+    dependsOnIfPresent(passName: string): void;
+
     /**
      * Allocate a fresh typed {@link RenderGraphRenderTarget} (colors +
      * optional depth) and register it under `name`. Single-creator

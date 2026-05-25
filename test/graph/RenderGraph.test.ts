@@ -359,6 +359,39 @@ await test('dependencies: b.dependsOn rejects unknown upstream pass', async () =
     expect(threw.message.includes('GhostPass')).toEqual(true)
 })
 
+await test('dependencies: b.dependsOnIfPresent adds an edge when the pass exists', async () => {
+    class UpstreamPass extends RenderGraphPass {
+        public readonly name = 'Upstream'
+        public setup(_: RenderGraphBuilder) { /* no resources */ }
+        public execute(_: RenderGraphPassContext) { /* noop */ }
+    }
+    class DownstreamPass extends RenderGraphPass {
+        public readonly name = 'Downstream'
+        public setup(b: RenderGraphBuilder) { b.dependsOnIfPresent('Upstream') }
+        public execute(_: RenderGraphPassContext) { /* noop */ }
+    }
+    const g = new RenderGraph(viewStub())
+    g.add(UpstreamPass)
+    const down = g.add(DownstreamPass)
+    g.compile()
+    expect(down.dependencies && down.dependencies.has('Upstream')).toEqual(true)
+    expect(g.passes.map(p => p.name)).toEqual(['Upstream', 'Downstream'])
+})
+
+await test('dependencies: b.dependsOnIfPresent silently skips when the pass is absent', async () => {
+    class LonelyPass extends RenderGraphPass {
+        public readonly name = 'Lonely'
+        public setup(b: RenderGraphBuilder) { b.dependsOnIfPresent('GhostPass') }
+        public execute(_: RenderGraphPassContext) { /* noop */ }
+    }
+    const g = new RenderGraph(viewStub())
+    const lonely = g.add(LonelyPass)
+    g.compile()
+    // No throw, no edge recorded.
+    expect(!lonely.dependencies || !lonely.dependencies.has('GhostPass')).toEqual(true)
+    expect(g.passes.map(p => p.name)).toEqual(['Lonely'])
+})
+
 await test('dependencies: assigning the field directly contributes a topo edge', async () => {
     const g = new RenderGraph(viewStub())
     const a = g.add(FakePass, { name: 'A' })

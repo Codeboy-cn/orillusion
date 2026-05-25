@@ -446,6 +446,9 @@ export class RenderGraph {
                 }
                 deps.add(passName);
             },
+            dependsOnIfPresent: (passName: string) => {
+                if (this._byName.has(passName)) deps.add(passName);
+            },
             createRenderTarget: (n: string, desc: RenderGraphRenderTargetDesc): RenderGraphRenderTarget => {
                 return registerRT(n, RenderGraphRenderTarget.allocate(n, this._ctx, desc));
             },
