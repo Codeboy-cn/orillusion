@@ -10,7 +10,7 @@ import { OcclusionSystem } from '../../occlusion/OcclusionSystem';
 import { PassType } from '../../passRenderer/state/PassType';
 import { RendererPassState } from '../../passRenderer/state/RendererPassState';
 import { RenderGraphBuilder, RenderGraphPass, RenderGraphPassContext } from '../RenderGraphPass';
-import { RenderGraphRenderPass } from '../RenderGraphRenderPass';
+import { RenderGraphRenderTarget } from '../RenderGraphRenderTarget';
 import { buildOpBundles, preInitPassPipelines } from './_helpers';
 
 /**
@@ -47,14 +47,13 @@ export class PreDepthPass extends RenderGraphPass {
 
     protected readonly _passType: PassType = PassType.DEPTH;
     protected _rtFrame!: RTFrame;
-    protected _rtPass!: RenderGraphRenderPass;
+    protected _target!: RenderGraphRenderTarget;
+    /** Live {@link RendererPassState} for the in-flight pass — set on
+     *  every {@link execute} between begin and end. */
+    protected _passState: RendererPassState | null = null;
 
-    /** Backwards-compat accessor — only valid between begin() and end()
-     *  inside execute. External code that snapshots this field across
-     *  frames will see a different RendererPassState identity per
-     *  options bucket; treat it as live-only data. */
     public get rendererPassState(): RendererPassState | null {
-        return this._rtPass?.passState ?? null;
+        return this._passState;
     }
 
     public setup(b: RenderGraphBuilder): void {
@@ -90,10 +89,10 @@ export class PreDepthPass extends RenderGraphPass {
         this._rtFrame.label = 'PreDepth';
 
         // Typed RT handle for the depth-only target. Adopt mode — we
-        // don't own depthTex (RTResourceMap does). The RGRenderPass
-        // handle drives the encoder lifecycle in execute().
+        // don't own depthTex (RTResourceMap does). The encoder lifecycle
+        // is driven by `target.beginPass(...)` in execute().
         b.adoptRenderTarget(PRE_DEPTH_RT, this._rtFrame, { label: 'PreDepth' });
-        this._rtPass = b.useRenderTarget(PRE_DEPTH_RT);
+        this._target = b.useRenderTarget(PRE_DEPTH_RT);
 
         // _MainDepthTexture: the depth-only target the color pass
         // hooks into via `rtFrame.zPreTexture`. Returns the live
@@ -110,8 +109,9 @@ export class PreDepthPass extends RenderGraphPass {
 
         ProfilerUtil.start('DepthPass Renderer');
 
-        const encoder = ctx.beginRenderPass(this._rtPass);
-        const passState = this._rtPass.passState!;
+        const opened = this._target.beginPass(ctx, {});
+        const { encoder, passState } = opened;
+        this._passState = passState;
         passState.camera3D = camera;
 
         const layered = this.collectLayered(view);
@@ -126,7 +126,8 @@ export class PreDepthPass extends RenderGraphPass {
 
         this._drawOpaque(view, encoder, layered.opaque, occlusion, passState);
 
-        ctx.endRenderPass(this._rtPass);
+        this._target.endPass(ctx, opened);
+        this._passState = null;
 
         ProfilerUtil.end('DepthPass Renderer');
     }

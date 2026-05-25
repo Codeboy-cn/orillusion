@@ -20,10 +20,13 @@ export {
     type RenderGraphRenderTargetDesc,
     type RTColorAttachmentDesc,
     type RTDepthAttachmentDesc,
+    type BeginPassOptions,
+    type OpenedRenderPass,
 } from './RenderGraphRenderTarget';
 export {
     RenderGraphRenderPass,
-    type RenderPassOpenOptions,
+    type RenderPipelineDesc,
+    type RenderDrawCall,
 } from './RenderGraphRenderPass';
 export {
     RenderGraphComputePass,

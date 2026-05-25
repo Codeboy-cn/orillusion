@@ -5,7 +5,7 @@ import { ClusterLightingBuffer } from '../../passRenderer/cluster/ClusterLightin
 import { PassType } from '../../passRenderer/state/PassType';
 import { RendererPassState } from '../../passRenderer/state/RendererPassState';
 import { RenderGraphBuilder, RenderGraphPass, RenderGraphPassContext } from '../RenderGraphPass';
-import { RenderGraphRenderPass, RenderPassOpenOptions } from '../RenderGraphRenderPass';
+import { BeginPassOptions, RenderGraphRenderTarget } from '../RenderGraphRenderTarget';
 import { buildOpBundles, dependOnIfRegistered } from './_helpers';
 import { ClusterLightingPass, CLUSTER_LIGHTING_BUFFER } from './ClusterLightingPass';
 import { MAIN_COLOR_RT } from './GBufferResourcePass';
@@ -67,8 +67,12 @@ export const NORMAL_BUFFER = '_NormalBuffer';
 export class ColorPass extends RenderGraphPass {
     public readonly name: string = 'ColorPass';
 
-    /** Typed render pass handle, opened per frame in {@link execute}. */
-    protected _rtPass!: RenderGraphRenderPass;
+    /** Bound color render target. Encoder opened per frame in
+     *  {@link execute} via `target.beginPass(...)`. */
+    protected _target!: RenderGraphRenderTarget;
+    /** Live {@link RendererPassState} for the in-flight pass — set on
+     *  every {@link execute} between begin and end. */
+    protected _passState: RendererPassState | null = null;
 
     protected readonly _passType: PassType = PassType.COLOR;
     protected readonly _giEnabled: boolean;
@@ -78,12 +82,8 @@ export class ColorPass extends RenderGraphPass {
         this._giEnabled = config.giEnabled;
     }
 
-    /** Backwards-compat accessor for code that previously reached into
-     *  `colorPass.rendererPassState`. Resolves to the live
-     *  {@link RendererPassState} only between {@link begin} and
-     *  {@link end} during `execute()`. */
     public get rendererPassState(): RendererPassState | null {
-        return this._rtPass?.passState ?? null;
+        return this._passState;
     }
 
     public setup(b: RenderGraphBuilder): void {
@@ -97,17 +97,17 @@ export class ColorPass extends RenderGraphPass {
         // sequence (insertedOrder Kahn tie-break) — same contract as the
         // pre-refactor design described in the original ColorPass.setup
         // comment.
-        this._rtPass = b.borrowRenderTarget(MAIN_COLOR_RT, this.getRenderTargetOptions());
+        this._target = b.borrowRenderTarget(MAIN_COLOR_RT);
         this.declareShadingReads(b);
         this.declareSideEffects(b);
     }
 
-    /** Per-frame loadOp/clearValue options applied to the
-     *  {@link RenderGraphRenderPass} this pass opens. Default returns
-     *  `undefined` so the framework's auto-derive rule applies.
-     *  Override to force e.g. `colorLoadOps:['load']` for a chained
-     *  opaque pass that draws on top of a previous half. */
-    protected getRenderTargetOptions(): RenderPassOpenOptions | undefined {
+    /** Per-frame loadOp/clearValue options applied when opening the
+     *  bound target. Default returns `undefined` so the framework's
+     *  auto-derive rule applies. Override to force e.g.
+     *  `colorLoadOps:['load']` for a chained opaque pass that draws on
+     *  top of a previous half. */
+    protected getRenderTargetOptions(): BeginPassOptions | undefined {
         return undefined;
     }
 
@@ -140,8 +140,9 @@ export class ColorPass extends RenderGraphPass {
         const camera = view.camera;
         const cluster = this._getCluster(view);
 
-        const encoder = ctx.beginRenderPass(this._rtPass);
-        const passState = this._rtPass.passState!;
+        const opened = this._target.beginPass(ctx, this.getRenderTargetOptions() ?? {});
+        const { encoder, passState } = opened;
+        this._passState = passState;
 
         // Wire DDGI irradiance through the pool every frame so a future
         // GI swap takes effect on the next frame (edit GIPass →
@@ -188,7 +189,8 @@ export class ColorPass extends RenderGraphPass {
             );
         }
 
-        ctx.endRenderPass(this._rtPass);
+        this._target.endPass(ctx, opened);
+        this._passState = null;
     }
 
     protected _getCluster(view: View3D): ClusterLightingBuffer | undefined {

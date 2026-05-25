@@ -1,6 +1,5 @@
 import { RenderGraphBuilder, RenderGraphPass, RenderGraphPassContext } from '../RenderGraphPass';
-import { RenderGraphRenderPass } from '../RenderGraphRenderPass';
-import { RenderGraphRenderTarget } from '../RenderGraphRenderTarget';
+import { BeginPassOptions, RenderGraphRenderTarget } from '../RenderGraphRenderTarget';
 import { MAIN_COLOR_RT } from './GBufferResourcePass';
 
 /**
@@ -56,7 +55,8 @@ export class ClearDepthPass extends RenderGraphPass {
     public readonly name: string;
 
     protected readonly _config: ClearDepthPassConfig;
-    protected _rtPass!: RenderGraphRenderPass;
+    protected _target!: RenderGraphRenderTarget;
+    protected _openOpts!: BeginPassOptions;
 
     constructor(config: ClearDepthPassConfig = {}) {
         super();
@@ -67,14 +67,6 @@ export class ClearDepthPass extends RenderGraphPass {
     public setup(b: RenderGraphBuilder): void {
         const rtName = this._config.rtName ?? MAIN_COLOR_RT;
 
-        // Look up the target RT so we can size the colorLoadOps array
-        // to its attachment count — auto-derive would default to
-        // 'clear' if this pass happens to be the first writer this
-        // frame, which is the opposite of what we want (we ALWAYS
-        // preserve color and clear depth).
-        const rt = b.graph.pool.get<RenderGraphRenderTarget>(rtName);
-        const colorLoadOps: GPULoadOp[] = new Array(rt.colorTextures.length).fill('load');
-
         // borrowRenderTarget (not useRenderTarget): ClearDepthPass sits
         // between two opaque halves whose order is fixed by the user's
         // explicit `dependsOn` edges (see the GISLayerComposition
@@ -82,11 +74,18 @@ export class ClearDepthPass extends RenderGraphPass {
         // duplicate / contradict those edges and surface as a
         // CyclicDependencyError when the late opaque also writes the
         // RT through a subsequent mutator.
-        this._rtPass = b.borrowRenderTarget(rtName, {
+        this._target = b.borrowRenderTarget(rtName);
+
+        // Size the colorLoadOps array to the target's attachment count —
+        // auto-derive would default to 'clear' if this pass happens to
+        // be the first writer this frame, which is the opposite of what
+        // we want (we ALWAYS preserve color and clear depth).
+        const colorLoadOps: GPULoadOp[] = new Array(this._target.colorTextures.length).fill('load');
+        this._openOpts = {
             label: 'ClearDepth',
             colorLoadOps,
             depthLoadOp: 'clear',
-        });
+        };
 
         if (this._config.after) {
             b.dependsOn(this._config.after);
@@ -94,7 +93,7 @@ export class ClearDepthPass extends RenderGraphPass {
     }
 
     public execute(ctx: RenderGraphPassContext): void {
-        ctx.beginRenderPass(this._rtPass);
-        ctx.endRenderPass(this._rtPass);
+        const opened = this._target.beginPass(ctx, this._openOpts);
+        this._target.endPass(ctx, opened);
     }
 }

@@ -9,8 +9,8 @@ import { PassType } from '../passRenderer/state/PassType';
 import { RenderGraph } from './RenderGraph';
 import { Camera3D } from '../../../core/Camera3D';
 import type { RTFrame } from '../frame/RTFrame';
-import type { RenderGraphRenderTarget, RenderGraphRenderTargetDesc } from './RenderGraphRenderTarget';
-import type { RenderGraphRenderPass, RenderPassOpenOptions } from './RenderGraphRenderPass';
+import type { BeginPassOptions, RenderGraphRenderTarget, RenderGraphRenderTargetDesc } from './RenderGraphRenderTarget';
+import type { RenderGraphRenderPass, RenderPipelineDesc } from './RenderGraphRenderPass';
 import type { RenderGraphComputePass, ComputePipelineDesc } from './RenderGraphComputePass';
 
 /**
@@ -94,23 +94,22 @@ export interface RenderGraphBuilder {
     ): RenderGraphRenderTarget;
 
     /**
-     * Declare "this pass also writes to the RT named `name`" and
-     * return a {@link RenderGraphRenderPass} handle the pass uses in
-     * `execute()` to open the actual render pass encoder. Internally
-     * a mutator-form `b.write(name)` — multiple passes may chain on
-     * the same RT.
+     * Declare "this pass also writes to the RT named `name`" and return
+     * the {@link RenderGraphRenderTarget} for use in `execute()`.
+     * Internally a mutator-form `b.write(name)` — multiple passes may
+     * chain on the same RT.
      *
-     * The handle's loadOp / storeOp default to the per-frame
-     * auto-derive rule (first writer => 'clear', subsequent =>
-     * 'load'); `opts` lets a pass override either side explicitly
-     * (e.g. a mid-frame ClearDepthPass forcing depth='clear').
+     * The pass opens the encoder per-frame via
+     * `target.beginPass(ctx, opts)`; load-ops default to the auto-derive
+     * rule (first writer ⇒ 'clear', subsequent ⇒ 'load') unless `opts`
+     * overrides them. Pipeline-owning passes can wrap the target in a
+     * {@link RenderGraphRenderPass} via {@link createRenderPass}.
      */
-    useRenderTarget(name: string, options?: RenderPassOpenOptions): RenderGraphRenderPass;
+    useRenderTarget(name: string): RenderGraphRenderTarget;
 
     /**
      * Like {@link useRenderTarget} but does NOT register a mutator-write
-     * edge on the RT. Returns a {@link RenderGraphRenderPass} handle the
-     * pass can open in `execute()`.
+     * edge on the RT.
      *
      * Use when ordering is controlled by insertion order (or explicit
      * `dependsOn`) rather than graph-derived mutator edges — the
@@ -123,10 +122,29 @@ export interface RenderGraphBuilder {
      * {@link CyclicDependencyError} at compile.
      *
      * The framework's per-frame auto-derive rule still applies (the
-     * underlying first-writer flag is set by every `begin()` call,
-     * mutator or borrowed).
+     * underlying first-writer flag is set by every `target.beginPass()`
+     * call, mutator or borrowed).
      */
-    borrowRenderTarget(name: string, options?: RenderPassOpenOptions): RenderGraphRenderPass;
+    borrowRenderTarget(name: string): RenderGraphRenderTarget;
+
+    /**
+     * Build a private render-pass handle around a single owned
+     * {@link GPURenderPipeline} that draws into `target`. The handle
+     * lazily compiles the pipeline on first `begin()` and reuses it
+     * across frames. Symmetric with {@link createComputePass}.
+     *
+     * Storage / attachment dependencies on `target` itself are declared
+     * separately through `b.useRenderTarget` / `b.borrowRenderTarget`
+     * (or `b.adoptRenderTarget` / `b.createRenderTarget` if this pass
+     * also creates the target). This call does NOT register anything in
+     * the pool.
+     */
+    createRenderPass(
+        name: string,
+        target: RenderGraphRenderTarget,
+        desc: RenderPipelineDesc,
+        openOptions?: BeginPassOptions,
+    ): RenderGraphRenderPass;
 
     /**
      * Build a private compute-pass handle (pipeline + lifecycle owned

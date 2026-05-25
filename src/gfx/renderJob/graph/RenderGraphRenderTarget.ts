@@ -1,9 +1,56 @@
 import { RenderTexture } from '../../../textures/RenderTexture';
 import { Context3D } from '../../graphics/webGpu/Context3D';
 import { RTDescriptor } from '../../graphics/webGpu/descriptor/RTDescriptor';
+import { WebGPUDescriptorCreator } from '../../graphics/webGpu/descriptor/WebGPUDescriptorCreator';
 import { RTFrame } from '../frame/RTFrame';
 import { RTResourceMap } from '../frame/RTResourceMap';
 import { RendererPassState } from '../passRenderer/state/RendererPassState';
+import { RenderGraphPassContext } from './RenderGraphPass';
+
+/**
+ * Per-call open options for {@link RenderGraphRenderTarget.beginPass}.
+ *
+ * Any field left `undefined` (or any array slot left `undefined`)
+ * defaults via the auto-derive rule:
+ *
+ *   - first writer of the RT this frame ⇒ `'clear'`
+ *   - subsequent writer of the same RT ⇒ `'load'`
+ *
+ * Callers explicitly set a field when they need to override the
+ * default — typical case is a mid-frame ClearDepth that wants
+ * `depthLoadOp: 'clear'` even though it isn't the first writer.
+ *
+ * @group Graph
+ */
+export interface BeginPassOptions {
+    /** Per-color-attachment loadOp. Length matches the RT's color
+     *  count. Each slot independently auto-derives when left
+     *  `undefined`. */
+    colorLoadOps?: (GPULoadOp | undefined)[];
+    /** Optional override of per-attachment clearValue (defaults to the
+     *  RT descriptor's clearValue). */
+    colorClearValues?: GPUColor[];
+    depthLoadOp?: GPULoadOp;
+    depthClearValue?: number;
+    stencilLoadOp?: GPULoadOp;
+    /** Suffix appended to the underlying command encoder + render pass
+     *  for devtools. Defaults to the target name. */
+    label?: string;
+}
+
+/**
+ * Live handle returned by {@link RenderGraphRenderTarget.beginPass}.
+ * Carries the WebGPU encoder + the resolved {@link RendererPassState}
+ * for the open invocation. Pass to {@link RenderGraphRenderTarget.endPass}
+ * to close the pass + submit the per-call command buffer.
+ *
+ * @group Graph
+ */
+export interface OpenedRenderPass {
+    encoder: GPURenderPassEncoder;
+    command: GPUCommandEncoder;
+    passState: RendererPassState;
+}
 
 /**
  * Per-color-attachment description.
@@ -18,8 +65,8 @@ export interface RTColorAttachmentDesc {
     name: string;
     format: GPUTextureFormat;
     /** Default clearValue used by the first writer's auto-clear path.
-     *  Can be overridden per-`useRenderTarget` via
-     *  {@link RenderPassOpenOptions.colorClearValues}. */
+     *  Can be overridden per-`beginPass` via
+     *  {@link BeginPassOptions.colorClearValues}. */
     clearValue?: GPUColor;
     /** Default storeOp. Defaults to `'store'`. */
     storeOp?: GPUStoreOp;
@@ -88,8 +135,9 @@ export interface RenderGraphRenderTargetDesc {
  *
  * Multi-writer rule: only one pass creates the RT (calls
  * `b.createRenderTarget` / `b.adoptRenderTarget`). Downstream passes
- * call `b.useRenderTarget(name, opts)` which records a mutator-write
- * and returns a {@link RenderGraphRenderPass} handle for that writer.
+ * call `b.useRenderTarget(name)` (or `b.borrowRenderTarget(name)`) to
+ * record a mutator-write and obtain the same RT handle; the encoder
+ * is opened in `execute()` via {@link beginPass}.
  *
  * @group Graph
  */
@@ -106,19 +154,19 @@ export class RenderGraphRenderTarget {
      *  {@link RTFrame} source (e.g. {@link GBufferFrame}). */
     public readonly owned: boolean;
 
-    /** Per-frame flag flipped by the first {@link RenderGraphRenderPass.begin}
-     *  call against this RT, reset by {@link RenderGraph.execute} at the
-     *  start of every frame. Drives the load-op auto-derive rule
-     *  (first writer => 'clear' default, subsequent => 'load' default). */
+    /** Per-frame flag flipped by the first {@link beginPass} call against
+     *  this RT, reset by {@link RenderGraph.execute} at the start of every
+     *  frame. Drives the load-op auto-derive rule (first writer => 'clear'
+     *  default, subsequent => 'load' default). */
     /** @internal */
     public _firstWriterFiredThisFrame: boolean = false;
 
     /** Cache of `(loadOp/clearValue combination)` → cloned {@link RTFrame}
      *  + cached {@link RendererPassState}. Keyed by a stable string built
-     *  by {@link RenderGraphRenderPass}._stateKey. Each entry's
-     *  clonedFrame.renderTargets array identity is stable across frames,
-     *  so {@link WebGPUDescriptorCreator}'s internal `stateVersion` does
-     *  not bump on every begin — only on actual rebuilds (e.g. resize). */
+     *  from the resolved open options. Each entry's clonedFrame.renderTargets
+     *  array identity is stable across frames, so
+     *  {@link WebGPUDescriptorCreator}'s internal `stateVersion` does not
+     *  bump on every begin — only on actual rebuilds (e.g. resize). */
     /** @internal */
     public _stateCache: Map<string, { rtFrame: RTFrame; passState: RendererPassState }> = new Map();
 
@@ -245,6 +293,112 @@ export class RenderGraphRenderTarget {
             rtFrame.depthCleanValue = desc.depth.depthClearValue ?? 1;
         }
         return new RenderGraphRenderTarget(name, desc, rtFrame, /*owned*/ true);
+    }
+
+    /**
+     * Open a render pass on this target. Resolves the load-op combination
+     * against the auto-derive rule (first-writer ⇒ clear, subsequent ⇒
+     * load) unless `opts` overrides it, looks up (or builds) the cached
+     * {@link RendererPassState} for that resolved bucket, opens a fresh
+     * {@link GPUCommandEncoder} + render-pass encoder, and returns the
+     * encoder + state.
+     *
+     * Each invocation opens an **independent** command encoder. WebGPU
+     * does not require encoders to be shared across passes for
+     * `loadOp='load'` chaining — the attachment contents carry over, not
+     * the encoder identity.
+     *
+     * Pair every successful call with {@link endPass} (typically in a
+     * `try/finally`).
+     */
+    public beginPass(ctx: RenderGraphPassContext, opts: BeginPassOptions): OpenedRenderPass {
+        const engineCtx = ctx.view.engine3D.context3D;
+        const firstWriter = !this._firstWriterFiredThisFrame;
+        const colorCount = this.rtFrame.rtDescriptors.length;
+
+        const resolvedColorLoadOps: GPULoadOp[] = new Array(colorCount);
+        for (let i = 0; i < colorCount; i++) {
+            const userOp = opts.colorLoadOps?.[i];
+            resolvedColorLoadOps[i] = userOp ?? (firstWriter ? 'clear' : 'load');
+        }
+        const resolvedDepthLoadOp: GPULoadOp =
+            opts.depthLoadOp ?? (firstWriter ? 'clear' : 'load');
+
+        const key = RenderGraphRenderTarget._stateKey(opts, resolvedColorLoadOps, resolvedDepthLoadOp);
+        let entry = this._stateCache.get(key);
+        if (!entry) {
+            // Clone the source rtFrame and stamp the resolved ops on
+            // the clone so the cached RendererPassState in
+            // WebGPUDescriptorCreator (keyed by rtFrame identity)
+            // matches this options bucket alone.
+            const clonedFrame = this.rtFrame.clone();
+            clonedFrame.label = `${this.rtFrame.label ?? this.name}::${key}`;
+            clonedFrame.depthLoadOp = resolvedDepthLoadOp;
+            clonedFrame.depthCleanValue =
+                opts.depthClearValue ?? this.rtFrame.depthCleanValue;
+            clonedFrame.sampleCount = this.rtFrame.sampleCount;
+            clonedFrame.customSize = this.rtFrame.customSize;
+            clonedFrame.isOutTarget = this.rtFrame.isOutTarget;
+            for (let i = 0; i < colorCount; i++) {
+                const d = clonedFrame.rtDescriptors[i];
+                d.loadOp = resolvedColorLoadOps[i];
+                const override = opts.colorClearValues?.[i];
+                if (override !== undefined) {
+                    d.clearValue = override;
+                }
+            }
+            const passState = WebGPUDescriptorCreator.createRendererPassState(engineCtx, clonedFrame);
+            entry = { rtFrame: clonedFrame, passState };
+            this._stateCache.set(key, entry);
+        } else {
+            // Re-call so any external resize-driven stateVersion bump
+            // propagates into the cached entry (no-op when nothing
+            // changed; the inner cache short-circuits by rtFrame
+            // identity).
+            WebGPUDescriptorCreator.createRendererPassState(engineCtx, entry.rtFrame);
+        }
+
+        const gpu = engineCtx.gpuContext;
+        const command = gpu.beginCommandEncoder();
+        const encoder = gpu.beginRenderPass(command, entry.passState);
+        this._firstWriterFiredThisFrame = true;
+        return { encoder, command, passState: entry.passState };
+    }
+
+    /**
+     * Close a pass opened with {@link beginPass} and submit the per-pass
+     * command buffer.
+     */
+    public endPass(ctx: RenderGraphPassContext, opened: OpenedRenderPass): void {
+        const gpu = ctx.view.engine3D.context3D.gpuContext;
+        gpu.endPass(opened.encoder);
+        gpu.endCommandEncoder(opened.command);
+    }
+
+    private static _stateKey(
+        opts: BeginPassOptions,
+        colorLoadOps: GPULoadOp[],
+        depthLoadOp: GPULoadOp,
+    ): string {
+        // Cheap stable serialization. Avoids JSON.stringify allocation
+        // on the hot path while remaining deterministic across
+        // identical option buckets.
+        let s = '';
+        for (let i = 0; i < colorLoadOps.length; i++) {
+            s += colorLoadOps[i];
+            s += '|';
+        }
+        s += depthLoadOp;
+        s += '|';
+        s += opts.depthClearValue ?? '';
+        s += '|';
+        if (opts.colorClearValues) {
+            for (const cv of opts.colorClearValues) {
+                s += JSON.stringify(cv);
+                s += ',';
+            }
+        }
+        return s;
     }
 
     /**

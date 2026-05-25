@@ -5,8 +5,8 @@ import { RTFrame } from '../frame/RTFrame';
 import { GraphValidator, MissingCreatorError, topoSort, UnresolvedResourceError, WrongResourceKindError } from './GraphValidator';
 import { RenderGraphBuilder, RenderGraphPass, RenderGraphPassContext } from './RenderGraphPass';
 import { RenderGraphResourcePool } from './RenderGraphResourcePool';
-import { RenderGraphRenderTarget, RenderGraphRenderTargetDesc } from './RenderGraphRenderTarget';
-import { RenderGraphRenderPass, RenderPassOpenOptions } from './RenderGraphRenderPass';
+import { BeginPassOptions, RenderGraphRenderTarget, RenderGraphRenderTargetDesc } from './RenderGraphRenderTarget';
+import { RenderGraphRenderPass, RenderPipelineDesc } from './RenderGraphRenderPass';
 import { ComputePipelineDesc, RenderGraphComputePass } from './RenderGraphComputePass';
 
 /** Internal: per-graph metadata stamped onto a pass after add(). */
@@ -452,7 +452,7 @@ export class RenderGraph {
             adoptRenderTarget: (n: string, rtFrame: RTFrame, opts?: { label?: string }): RenderGraphRenderTarget => {
                 return registerRT(n, RenderGraphRenderTarget.fromRTFrame(n, rtFrame, opts));
             },
-            useRenderTarget: (n: string, options?: RenderPassOpenOptions): RenderGraphRenderPass => {
+            useRenderTarget: (n: string): RenderGraphRenderTarget => {
                 if (!this._pool.has(n)) {
                     throw new MissingCreatorError(pass.name, n);
                 }
@@ -463,14 +463,9 @@ export class RenderGraph {
                 writes.push(n);
                 const rt = this._pool.get<RenderGraphRenderTarget>(n);
                 rt._writers.push(pass.name);
-                return new RenderGraphRenderPass(
-                    `${pass.name}::${n}`,
-                    pass.name,
-                    rt,
-                    options ?? {},
-                );
+                return rt;
             },
-            borrowRenderTarget: (n: string, options?: RenderPassOpenOptions): RenderGraphRenderPass => {
+            borrowRenderTarget: (n: string): RenderGraphRenderTarget => {
                 // Same as useRenderTarget but skips the writes.push(n).
                 // ColorPass and chained-opaque subclasses use this so they
                 // don't pollute the MAIN_COLOR_RT mutator chain — which
@@ -486,12 +481,15 @@ export class RenderGraph {
                 }
                 const rt = this._pool.get<RenderGraphRenderTarget>(n);
                 rt._writers.push(pass.name);
-                return new RenderGraphRenderPass(
-                    `${pass.name}::${n}`,
-                    pass.name,
-                    rt,
-                    options ?? {},
-                );
+                return rt;
+            },
+            createRenderPass: (
+                name: string,
+                target: RenderGraphRenderTarget,
+                desc: RenderPipelineDesc,
+                openOptions?: BeginPassOptions,
+            ): RenderGraphRenderPass => {
+                return new RenderGraphRenderPass(name, target, desc, openOptions);
             },
             createComputePass: (name: string, desc: ComputePipelineDesc): RenderGraphComputePass => {
                 return new RenderGraphComputePass(name, desc);
