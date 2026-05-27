@@ -96,8 +96,15 @@ class Sample_CSM {
             this.scene.addChild(floor);
         }
 
+        let mat = new LitMaterial();
+        mat.baseColor = new Color(0.6, 0.4, 0.2, 1);
+        let geo = new SphereGeometry(4, 20, 20);
         for (let i = 0; i < 1000; i++) {
-            let item = Object3DUtil.GetSingleSphere(4, 0.6, 0.4, 0.2);
+            let item = new Object3D();
+            let renderer = item.addComponent(MeshRenderer);
+            renderer.castGI = true;
+            renderer.geometry = geo;
+            renderer.material = mat;
             let angle = Math.PI * 4 * i / 50;
             item.x = Math.sin(angle) * (50 + i ** 1.4);
             item.z = Math.cos(angle) * (50 + i ** 1.4);
