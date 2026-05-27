@@ -17,6 +17,7 @@ import { BufferHandle, TextureHandle, makeBufferHandle, makeTextureHandle, resou
 import { RenderTexture } from '../../../textures/RenderTexture';
 import { GPUBufferBase } from '../../graphics/webGpu/core/buffer/GPUBufferBase';
 import { CResizeEvent } from '../../../event/CResizeEvent';
+import { RTResourceMap } from '../frame/RTResourceMap';
 
 /** Internal: per-graph metadata stamped onto a pass after add(). */
 const PASS_META = Symbol('RenderGraphPass.meta');
@@ -316,12 +317,26 @@ export class RenderGraph {
         const bufAssign = this._bufferPool.assign(this._lifetimes);
         this._textureBindings = texAssign.bindings;
         this._bufferBindings = bufAssign.bindings;
+        const legacyMap = RTResourceMap.forContext(this._ctx);
         for (const [name, rt] of texAssign.bindings) {
             // Persistent textures were registered as `() => tex` at
             // import time and don't appear in `texAssign.bindings`
             // (the pool filters persistent out). Transient ones get
             // their placeholder swapped for the resolved wrapper here.
             this._pool.register(name, () => rt, 'texture');
+            // Back-compat: descriptors marked `publishToLegacyMap`
+            // (typically dedicated mip-pyramids that historical
+            // material code reads via RTResourceMap.getTexture)
+            // get their pool wrapper published into the legacy map
+            // under the logical name. Only valid for `aliasable:false`
+            // resources — publishing an aliased wrapper would let
+            // material readers cache a pointer that the pool later
+            // hands to another logical resource.
+            const decl = this._transient.get(name);
+            const desc = decl?.desc as TextureDesc | undefined;
+            if (desc?.publishToLegacyMap) {
+                legacyMap.rtTextureMap.set(name, rt);
+            }
         }
         for (const [name, buf] of bufAssign.bindings) {
             this._pool.register(name, () => buf, 'buffer');

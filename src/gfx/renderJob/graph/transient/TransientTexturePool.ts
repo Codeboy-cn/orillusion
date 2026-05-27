@@ -259,14 +259,33 @@ export class TransientTexturePool {
         // RenderTexture ctor + resize() path forces useMipmap=false
         // and rebuilds the descriptor with mipLevelCount=1. Phase 4
         // removes this workaround at the RenderTexture level.
+        //
+        // Mirrors the proven workaround in
+        // SceneColorPyramidPass._installMipChain: patch
+        // textureDescriptor.mipLevelCount + viewDescriptor.mipLevelCount
+        // + the wrapper's mipmapCount field, then null the cached
+        // gpuTexture + view so the next access materializes with the
+        // right level count.
         const mips = desc.mipLevelCount ?? 1;
         if (mips > 1) {
-            const texDesc = (rt as unknown as { textureDescriptor?: GPUTextureDescriptor }).textureDescriptor;
-            if (texDesc) {
-                texDesc.mipLevelCount = mips;
-                (rt as unknown as { gpuTexture: GPUTexture | null }).gpuTexture = null;
-                (rt as unknown as { view: GPUTextureView | null }).view = null;
+            const rtAny = rt as unknown as {
+                textureDescriptor?: GPUTextureDescriptor;
+                viewDescriptor?: { mipLevelCount?: number };
+                mipmapCount?: number;
+                gpuTexture: GPUTexture | null;
+                view: GPUTextureView | null;
+                useMipmap?: boolean;
+            };
+            if (rtAny.textureDescriptor) {
+                rtAny.textureDescriptor.mipLevelCount = mips;
             }
+            if (rtAny.viewDescriptor) {
+                rtAny.viewDescriptor.mipLevelCount = mips;
+            }
+            rtAny.mipmapCount = mips;
+            rtAny.useMipmap = true;
+            rtAny.gpuTexture = null;
+            rtAny.view = null;
         }
         const estimatedBytes = estimateTextureBytes(desc, w, h);
         this._currentBytes += estimatedBytes;

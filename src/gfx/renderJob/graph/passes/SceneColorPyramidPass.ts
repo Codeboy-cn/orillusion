@@ -2,9 +2,9 @@ import { RenderTexture } from '../../../../textures/RenderTexture';
 import { Context3D } from '../../../graphics/webGpu/Context3D';
 import { GPUTextureFormat } from '../../../graphics/webGpu/WebGPUConst';
 import { TextureMipmapGenerator } from '../../../graphics/webGpu/core/texture/TextureMipmapGenerator';
-import { GBufferFrame } from '../../frame/GBufferFrame';
-import { RTResourceMap } from '../../frame/RTResourceMap';
 import { RenderGraphBuilder, RenderGraphPass, RenderGraphPassContext } from '../RenderGraphPass';
+import { TextureHandle } from '../transient/ResourceHandle';
+import { TextureIdentityWatcher } from '../transient/TextureIdentityWatcher';
 import { COLOR_BUFFER } from './ColorPass';
 
 /**
@@ -35,8 +35,16 @@ export const SCENE_COLOR_PYRAMID = '_SceneColorPyramid';
  * transmission materials sample the opaque-world backdrop without
  * seeing other transparents.
  *
- * Allocates one `RenderTexture` per Context3D, sized to match the
- * current color buffer and recreated on resize.
+ * Phase-3 migration: declares the pyramid as a transient texture with
+ * `aliasable: false` (mip-chain bind-group caches require stable
+ * `GPUTexture` identity across compiles) and `publishToLegacyMap: true`
+ * so {@link LitMaterial.transmissionFactor} and related callers that
+ * still read through `RTResourceMap.getTexture(ctx, '_SceneColorPyramid')`
+ * keep finding the right wrapper. The transient pool sizes the
+ * texture against `ctx.presentationSize` (which tracks the
+ * `_ColorBuffer` size in lockstep), and the
+ * {@link TextureIdentityWatcher} forces a mip-chain refresh when the
+ * canvas-resize-driven re-allocation hands us a fresh GPUTexture.
  *
  * @group Graph
  */
@@ -44,90 +52,46 @@ export class SceneColorPyramidPass extends RenderGraphPass {
     public readonly name = 'SceneColorPyramidPass';
 
     protected _ctx!: Context3D;
-    protected _pyramid: RenderTexture | null = null;
+    protected _handle!: TextureHandle;
+    protected readonly _watcher: TextureIdentityWatcher = new TextureIdentityWatcher();
 
     public setup(b: RenderGraphBuilder): void {
         this._ctx = b.context3D;
         b.read(COLOR_BUFFER);
-        b.write<RenderTexture>(SCENE_COLOR_PYRAMID, () => this._getOrAllocate());
-    }
-
-    protected _getOrAllocate(): RenderTexture {
-        const colorBuffer = GBufferFrame.getGBufferFrame(GBufferFrame.colorPass_GBuffer, this._ctx).getColorTexture();
-        const expectedMips = this._mipCountFor(colorBuffer.width, colorBuffer.height);
-        if (!this._pyramid || this._pyramid.width !== colorBuffer.width || this._pyramid.height !== colorBuffer.height) {
-            // Allocate via RTResourceMap (not `new RenderTexture(...)`)
-            // so LitMaterial.transmissionFactor's setter can find the
-            // pyramid via `RTResourceMap.getTexture(ctx, '_SceneColorPyramid')`.
-            // Without going through the map, transmission materials
-            // would forever bind the white-texture placeholder and
-            // refraction would render as flat lit color.
-            this._pyramid = RTResourceMap.createRTTexture(
-                this._ctx, SCENE_COLOR_PYRAMID,
-                colorBuffer.width, colorBuffer.height,
-                GPUTextureFormat.rgba16float,
-                false, 0,
-            );
-            this._pyramid.name = SCENE_COLOR_PYRAMID;
-            // RenderTexture.resize() unconditionally writes useMipmap
-            // = false and mipLevelCount = 1, so we can't get a mipped
-            // RT through the public constructor. Patch the descriptor
-            // and re-allocate the GPUTexture in-place after the RT
-            // wrapper exists — only this specific RT needs the chain;
-            // keeping the change scoped here avoids cascading impacts
-            // on r32float / depth / etc. RTs whose sampler bindings
-            // depend on the single-mip layout.
-            this._installMipChain(this._pyramid);
-        } else if ((this._pyramid.textureDescriptor as any)?.mipLevelCount !== expectedMips) {
-            // The RT was created via RTResourceMap → autoResize=true, so
-            // a canvas resize fires RenderTexture.resize() on the wrapper,
-            // delay-destroys our custom-mip GPUTexture, and rebuilds the
-            // descriptor with mipLevelCount=1. width/height match the new
-            // canvas size in lock-step with `colorBuffer`, so the outer
-            // branch above doesn't fire — without this re-install, the
-            // next pyramid.getGPUTexture() materializes a 1-mip texture
-            // and webGPUGenerateMipmap fails on every higher level.
-            this._installMipChain(this._pyramid);
-        }
-        return this._pyramid;
+        // Pool wrapper carries the full mip chain — RenderTexture's
+        // current resize() path forces mipLevelCount=1, so the pool
+        // also patches the GPUTextureDescriptor.mipLevelCount after
+        // construction (see TransientTexturePool._allocateSlot). Phase 4
+        // will fix that at the RenderTexture level and let us drop the
+        // pool-side patch.
+        const [w, h] = this._ctx.presentationSize;
+        const mips = this._mipCountFor(w, h);
+        this._handle = b.declareTexture(SCENE_COLOR_PYRAMID, {
+            format: GPUTextureFormat.rgba16float,
+            width: 'screen', height: 'screen',
+            mipLevelCount: mips,
+            aliasable: false,
+            publishToLegacyMap: true,
+            label: SCENE_COLOR_PYRAMID,
+        });
+        // 'sample' hint adds TEXTURE_BINDING. The COPY_DST bit comes
+        // for free via the analyzer's default debug-copy bits and is
+        // what copyTextureToTexture needs for mip 0 below.
+        b.write(this._handle, 'sample');
     }
 
     protected _mipCountFor(w: number, h: number): number {
         return Math.floor(Math.log2(Math.max(w, h))) + 1;
     }
 
-    /** Re-create the pyramid's underlying GPUTexture with a full mip
-     *  chain. The wrapper RenderTexture, viewDescriptor, etc. stay
-     *  the same so RTResourceMap and LitMaterial bindings keep
-     *  pointing at the same handle. */
-    protected _installMipChain(rt: RenderTexture): void {
-        const mipLevelCount = Math.floor(Math.log2(Math.max(rt.width, rt.height))) + 1;
-        rt.mipmapCount = mipLevelCount;
-        rt.textureDescriptor.mipLevelCount = mipLevelCount;
-        if (rt.viewDescriptor) {
-            rt.viewDescriptor.mipLevelCount = mipLevelCount;
-        }
-        // gpuTexture is `protected` on Texture; cast to any so this
-        // feature (which lives outside the texture class hierarchy)
-        // can swap the underlying GPU handle without losing the
-        // wrapper instance the rest of the engine already holds
-        // references to.
-        const rtAny = rt as any;
-        const old = rtAny.gpuTexture;
-        if (old instanceof GPUTexture) {
-            old.destroy();
-        }
-        rtAny.gpuTexture = this._ctx.device.createTexture(rt.textureDescriptor);
-        // Force view recreation on next access so the shader sees the
-        // new mip layout.
-        rtAny._view = null;
-        rt.view = null as any;
-    }
-
     public execute(ctx: RenderGraphPassContext): void {
         const colorBuffer = ctx.get<RenderTexture>(COLOR_BUFFER);
         if (!colorBuffer) return;
-        const pyramid = this._getOrAllocate();
+        const pyramid = ctx.getTexture(this._handle);
+        // Pool-driven identity change (canvas resize ⇒ next compile
+        // re-allocates a fresh wrapper). The watcher fires once per
+        // such swap so mip-chain consumers know to drop cached views.
+        this._watcher.update([{ key: 'pyramid', tex: pyramid }]);
         const gpu = ctx.view.engine3D.context3D.gpuContext;
         const command = gpu.beginCommandEncoder();
         // Copy mip 0 from the live color buffer.
@@ -140,9 +104,7 @@ export class SceneColorPyramidPass extends RenderGraphPass {
         // Refresh mips 1..N. webGPUGenerateMipmap submits its own
         // command encoder (it has to — running inside the live one
         // would auto-finish the main loop's encoder mid-frame and
-        // explode the next end-pass). It reads mip i and writes
-        // mip i+1 with hardware blits, so for an HD-ish viewport
-        // (1080p) the cost is ~0.05ms.
+        // explode the next end-pass).
         TextureMipmapGenerator.webGPUGenerateMipmap(pyramid);
     }
 }

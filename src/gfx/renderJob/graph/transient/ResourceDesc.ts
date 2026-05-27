@@ -79,6 +79,17 @@ export interface TextureDesc {
      *  `GPUTexture` identity must remain stable across compile windows.
      *  Default `true`. */
     aliasable?: boolean;
+    /** When `true`, the graph also publishes the pool-bound wrapper
+     *  into the legacy {@link RTResourceMap} under the resource's
+     *  logical name after each compile. This is a back-compat shim
+     *  for resources that historical material / system code reads
+     *  via `RTResourceMap.getTexture(ctx, name)` (e.g. transmission
+     *  materials looking up `_SceneColorPyramid`, GPU culling looking
+     *  up `_HiZPyramid`). Should only be set when `aliasable: false`
+     *  — publishing a pool-aliased wrapper to RTResourceMap would
+     *  hand readers a stale pointer the next time the wrapper is
+     *  reused by another logical resource. Default `false`. */
+    publishToLegacyMap?: boolean;
     /** Debug label suffix forwarded to the underlying GPUTexture. */
     label?: string;
 }

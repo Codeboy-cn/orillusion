@@ -131,7 +131,13 @@ interface PassWithLifetimeArrays {
 }
 
 function seedLifetime(decl: TransientResourceDeclaration, orderLength: number): ResourceLifetime {
-    const persistent = decl.persistent || (decl.desc as TextureDesc | BufferDesc).aliasable === false;
+    // `persistent` here means "externally-owned, pool MUST NOT allocate"
+    // — only true for importExternalTexture / importExternalBuffer
+    // resources. `aliasable: false` is a DIFFERENT concept: the pool
+    // still allocates (and tracks lifetime + size), it just refuses
+    // to share the wrapper with other lifetimes. The dedicated path
+    // is handled inside TransientTexturePool itself.
+    const persistent = decl.persistent;
     const firstUseIdx = decl.persistent ? 0 : Number.POSITIVE_INFINITY;
     const lastUseIdx = decl.persistent ? Math.max(0, orderLength - 1) : -1;
     return {
