@@ -81,7 +81,7 @@ class Sample_PixelPick_ECEF {
 
         // Orbit camera around the ECEF anchor.
         const hoverCtrl = camera.object3D.addComponent(HoverCameraController);
-        hoverCtrl.setCamera(45, -25, 200, anchorPos);
+        hoverCtrl.setCamera(45, -25, 100, anchorPos);
 
         // Sun + atmospheric sky tied to the light direction.
         const lightObj = new Object3D();
@@ -126,12 +126,18 @@ class Sample_PixelPick_ECEF {
         view.camera = camera;
         engine.startRenderView(view);
 
-        // Debug overlay graphics — draw with depthCompare=always so the
-        // pick-normal line is visible even when occluded.
+        // Debug overlay graphics. Parented under the ECEF anchor (not
+        // the scene root) so that endpoints can be supplied in anchor-
+        // local space. Graphic3D stores vertex positions as raw float32
+        // and only RTE-corrects the model matrix translation, so feeding
+        // world-space ECEF endpoints (~6.4e6 m) collapses precision and
+        // makes the lines jitter when the camera zooms in. Local coords
+        // keep the float32 math in the safe range while the anchor's
+        // big world translation rides the double-precision matrix path.
         this.g = new Graphic3D();
-        scene.addChild(this.g);
+        this.anchor.addChild(this.g);
 
-        // Three world-axis probe lines through the anchor. Under
+        // Three local-axis probe lines through the anchor. Under
         // logDepth they should occlude correctly against the spheres /
         // box; if Graphic3DShader still skipped its log-depth branch
         // they would either always-pass or always-fail the depth test
@@ -142,8 +148,8 @@ class Sample_PixelPick_ECEF {
             [new Vector3(0, 0, 1), Color.COLOR_BLUE],
         ];
         for (const [dir, c] of axes) {
-            const a = anchorPos.clone().addScaledVector(dir, -60);
-            const b = anchorPos.clone().addScaledVector(dir, 60);
+            const a = new Vector3().addScaledVector(dir, -60);
+            const b = new Vector3().addScaledVector(dir, 60);
             this.g.drawLines(`probe_${c.r}${c.g}${c.b}`, [a, b], c);
         }
 
@@ -202,9 +208,14 @@ class Sample_PixelPick_ECEF {
         console.log('[PixelPick_ECEF]', { target: target.name, pickedWorld: pickedWorld.clone(), expectedCentre: expectedCentre.clone(), delta });
 
         // Draw a short normal stub at the pick point so the surface
-        // location can be eyeballed against the geometry.
-        const tip = pickedWorld.clone().addScaledVector(e.data.worldNormal, 5);
-        this.g.drawLines('pickNormal', [pickedWorld, tip], Color.COLOR_BLUE);
+        // location can be eyeballed against the geometry. Convert the
+        // world-space pick point into anchor-local space first — see
+        // the Graphic3D parenting note above for why local coords are
+        // required to avoid jitter.
+        const anchorWorld = this.anchor.transform.worldPosition;
+        const localPicked = pickedWorld.clone().sub(anchorWorld);
+        const localTip = localPicked.clone().addScaledVector(e.data.worldNormal, 5);
+        this.g.drawLines('pickNormal', [localPicked, localTip], Color.COLOR_BLUE);
 
         // Visual feedback: brief emissive pulse on the target. changeColor
         // only animates one direction (toward Color.a as target intensity),

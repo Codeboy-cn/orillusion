@@ -353,8 +353,14 @@ await test('dependencies: b.dependsOn rejects unknown upstream pass', async () =
         public execute(_: RenderGraphPassContext) { /* noop */ }
     }
     const g = new RenderGraph(viewStub())
+    g.add(Naughty)
+    // setup() is deferred to compile(); the dependsOn check fires
+    // there. _byName is populated at add() time (never mid-setup), so
+    // the missing-target case is reported immediately as a plain
+    // Error from inside the builder rather than going through the
+    // multi-round retry loop.
     let threw: Error | null = null
-    try { g.add(Naughty) } catch (e) { threw = e as Error }
+    try { g.compile() } catch (e) { threw = e as Error }
     if (!threw) throw new Error('did not throw')
     expect(threw.message.includes('GhostPass')).toEqual(true)
 })

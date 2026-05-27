@@ -2,9 +2,9 @@ import { Context3D } from '../../graphics/webGpu/Context3D';
 import { View3D } from '../../../core/View3D';
 import { OcclusionSystem } from '../occlusion/OcclusionSystem';
 import { RTFrame } from '../frame/RTFrame';
-import { GraphValidator, MissingCreatorError, topoSort, UnresolvedResourceError, WrongResourceKindError } from './GraphValidator';
+import { GraphValidator, topoSort, UnresolvedResourceError, WrongResourceKindError } from './GraphValidator';
 import { RenderGraphBuilder, RenderGraphPass, RenderGraphPassContext } from './RenderGraphPass';
-import { RenderGraphResourcePool } from './RenderGraphResourcePool';
+import { RenderGraphResourcePool, ResourceKind } from './RenderGraphResourcePool';
 import { BeginPassOptions, RenderGraphRenderTarget, RenderGraphRenderTargetDesc } from './RenderGraphRenderTarget';
 import { RenderGraphRenderPass, RenderPipelineDesc } from './RenderGraphRenderPass';
 import { ComputePipelineDesc, RenderGraphComputePass } from './RenderGraphComputePass';
@@ -19,10 +19,63 @@ import { GPUBufferBase } from '../../graphics/webGpu/core/buffer/GPUBufferBase';
 import { CResizeEvent } from '../../../event/CResizeEvent';
 import { RTResourceMap } from '../frame/RTResourceMap';
 
-/** Internal: per-graph metadata stamped onto a pass after add(). */
+/** Internal: per-graph metadata stamped onto a pass at add() time. */
 const PASS_META = Symbol('RenderGraphPass.meta');
 interface PassMeta {
     insertedOrder: number;
+    /** Has the pass's `setup()` been run + committed? `add()` stamps
+     *  `false`; the first `compile()` that processes the pass flips it
+     *  to `true`. `replace`/`remove` consult this to decide whether the
+     *  pass actually owns any pool entries worth releasing. */
+    setupDone: boolean;
+}
+
+/**
+ * Sentinel thrown by the transactional builder when a setup() call
+ * references a resource (or upstream pass) that has not yet been
+ * registered. The current attempt is rolled back (draft discarded);
+ * `_runPendingSetups` retries the pass on a later round after other
+ * passes have had a chance to publish the missing name.
+ */
+class _PendingSetupError extends Error {
+    constructor(public readonly resourceName: string) {
+        super(`RenderGraph: setup pending — '${resourceName}' not yet registered.`);
+        this.name = '_PendingSetupError';
+    }
+}
+
+/**
+ * Per-attempt buffer of side-effects a pass's setup() would apply to
+ * the graph. Committed by `_commitDraft` only if setup completes
+ * without throwing `_PendingSetupError`; discarded on pending so the
+ * pass can be retried with no lingering state.
+ */
+class _SetupDraft {
+    reads: string[] = [];
+    writes: string[] = [];
+    creates: string[] = [];
+    deps: Set<string>;
+    /** name → would-be pool entry (overwrites real pool on commit). */
+    poolEntries = new Map<string, { getter: () => unknown; kind: ResourceKind; persistent: boolean }>();
+    /** name → newly-allocated RT (added to `_renderTargets` on commit). */
+    rtEntries = new Map<string, RenderGraphRenderTarget>();
+    /** name → transient kind for this attempt (for in-flight single-
+     *  creator + recordAccessHint visibility). */
+    transientKinds = new Map<string, 'texture' | 'buffer'>();
+    /** Deferred transient registry mutations (declare/import). Captured
+     *  as closures so commit replays them in setup order. */
+    transientOps: Array<() => void> = [];
+    /** Deferred `_writers.push` calls — only for tooling, but kept in
+     *  draft so they're not applied on a failed attempt. */
+    rtWriterPushes: Array<{ rt: RenderGraphRenderTarget; passName: string }> = [];
+    /** Deferred access-hint records (`recordAccessHint`). */
+    hintOps: Array<() => void> = [];
+    /** Deferred `_eagerAllocateAndPublish` calls (publishToLegacyMap). */
+    eagerPublishes: Array<{ name: string; desc: TextureDesc }> = [];
+
+    constructor(initialDeps: Iterable<string> | undefined) {
+        this.deps = new Set(initialDeps ?? []);
+    }
 }
 
 /**
@@ -34,14 +87,23 @@ interface PassMeta {
  *
  *   graph.add(MyPass, ...args)
  *     → new MyPass(...args)            // ctor: nothing GPU
- *     → pass.setup(builder)            // alloc + b.read/b.write
- *     → graph.compile() (lazy)         // validator + topoSort
+ *     → (defer; setup runs at compile)
+ *     → graph.compile() (lazy)         // setup → validator → topoSort
+ *       → pass.setup(builder)          // declares reads/writes/creates
  *     → pass.execute(ctx)              // each frame, in topo order
  *     → pass.destroy()                 // on graph.destroy() or remove()
  *
+ * Setup is **deferred** to `compile()` and runs with a transactional
+ * builder + multi-round iteration: a pass that reads a resource (or
+ * uses an RT) declared by another not-yet-set-up pass throws an
+ * internal `_PendingSetupError`, its draft is discarded, and the pass
+ * is retried after other passes commit their declarations. This makes
+ * `add()` call order irrelevant — the topo sort still ultimately
+ * picks the right execute order from the declared reads/writes/deps.
+ *
  * The graph collects `b.read` / `b.write` calls into the pass's
- * `reads` / `writes` / `creates` arrays after setup runs, then freezes
- * them. See {@link RenderGraphPass} for the contract.
+ * `reads` / `writes` / `creates` arrays during setup, freezing them
+ * at commit time. See {@link RenderGraphPass} for the contract.
  *
  * ## Hot-swap contract
  *
@@ -159,32 +221,31 @@ export class RenderGraph {
     }
 
     /**
-     * Construct a pass, run its `setup`, register it. The factory
-     * signature passes ctor args through to `new Ctor(...args)`; the
-     * builder captures `b.read` / `b.write` calls into the pass's
-     * `reads` / `writes` / `creates` arrays.
+     * Construct a pass and queue it for the next `compile()`. The
+     * factory passes ctor args through to `new Ctor(...args)`; the
+     * pass's `setup()` is NOT run here — it runs at compile time so
+     * `add()` call order is independent of resource-dependency order.
      *
      * Returns the constructed pass so callers can hold a reference if
      * needed — but the canonical way to reach a pass after add is
-     * `graph.getPass<T>(name)`.
+     * `graph.getPass<T>(name)`. Note that `pass.reads`/`writes`/
+     * `creates` are empty arrays until the first `compile()` runs the
+     * pass's setup.
      */
     public add<C extends new (...args: any[]) => RenderGraphPass>(
         Ctor: C,
         ...args: ConstructorParameters<C>
     ): InstanceType<C> {
         const pass = new Ctor(...args) as InstanceType<C>;
-        this._setupAndRegister(pass);
-        this._passes.push(pass);
-        this._byName.set(pass.name, pass);
-        this._dirty = true;
+        this._registerPending(pass);
         return pass;
     }
 
-    /** Replace a pass by name. The replacement runs through the same
-     *  factory + setup pipeline as `add`. The old pass's `destroy()` is
-     *  called and any resource handles it created are unregistered from
-     *  the pool before the new pass's `setup()` runs, so stale getters
-     *  never co-exist with the replacement. */
+    /** Replace a pass by name. The replacement is queued for setup at
+     *  the next `compile()` — same deferred-setup contract as `add()`.
+     *  The old pass's `destroy()` is called immediately and any resource
+     *  handles it owns are unregistered from the pool, but only if it
+     *  had completed setup (otherwise it owns nothing yet). */
     public replace<C extends new (...args: any[]) => RenderGraphPass>(
         name: string,
         Ctor: C,
@@ -201,14 +262,20 @@ export class RenderGraph {
         // and any mutator-writer of one of its outputs (e.g.
         // SortedTransparentPass mutating COLOR_BUFFER that ColorPass
         // creates) flips relative to it, producing a fake cycle.
-        const prevOrder = this._insertedOrder(prev);
+        const prevMeta = (prev as any)[PASS_META] as PassMeta | undefined;
         prev.destroy();
-        for (const n of prev.creates) this._releaseCreated(n);
-        const pass = new Ctor(...args) as InstanceType<C>;
-        this._setupAndRegister(pass);
-        if (prevOrder >= 0) {
-            (pass as any)[PASS_META] = { insertedOrder: prevOrder } satisfies PassMeta;
+        if (prevMeta?.setupDone) {
+            for (const n of prev.creates) this._releaseCreated(n);
         }
+        const pass = new Ctor(...args) as InstanceType<C>;
+        // Initialize empty frozen arrays + meta with preserved order.
+        (pass as any).reads = Object.freeze([]);
+        (pass as any).writes = Object.freeze([]);
+        (pass as any).creates = Object.freeze([]);
+        (pass as any)[PASS_META] = {
+            insertedOrder: prevMeta?.insertedOrder ?? this._insertCounter++,
+            setupDone: false,
+        } satisfies PassMeta;
         this._passes.splice(idx, 1, pass);
         this._byName.delete(name);
         this._byName.set(pass.name, pass);
@@ -227,8 +294,14 @@ export class RenderGraph {
         const idx = this._passes.findIndex(p => p.name === name);
         if (idx < 0) return false;
         const pass = this._passes[idx];
+        const meta = (pass as any)[PASS_META] as PassMeta | undefined;
         pass.destroy();
-        for (const n of pass.creates) this._releaseCreated(n);
+        // Only release pool entries if the pass actually completed
+        // setup — a pass that's added then immediately removed before
+        // any compile owns nothing yet.
+        if (meta?.setupDone) {
+            for (const n of pass.creates) this._releaseCreated(n);
+        }
         this._passes.splice(idx, 1);
         this._byName.delete(name);
         this._dirty = true;
@@ -308,6 +381,12 @@ export class RenderGraph {
     public compile(): void {
         if (this._batchDepth > 0) return;
         if (!this._dirty && this._compiled) return;
+        // Run setup() for any pass that hasn't yet been processed. This
+        // is the deferred-setup step that lets `add()` call order be
+        // independent of resource-dependency order: forward references
+        // throw a `_PendingSetupError` internally, the draft is rolled
+        // back, and the pass is retried on a later round.
+        this._runPendingSetups();
         const activePasses = this._passes.filter(p => p.enabled);
         const activeByName: Map<string, RenderGraphPass> = new Map();
         for (const p of activePasses) activeByName.set(p.name, p);
@@ -638,34 +717,126 @@ export class RenderGraph {
         legacyMap.rtTextureMap.set(name, rt);
     }
 
-    /** Construct a builder for `pass`, run `setup`, capture the
-     *  reads/writes/creates into frozen arrays on the pass.
+    /**
+     * Push a freshly-constructed pass into the queue. Stamps insertion
+     * order and an empty per-pass meta so `_insertedOrder` returns a
+     * stable value even before the pass's setup runs. The actual
+     * `pass.setup(builder)` is deferred to the next `compile()` via
+     * {@link _runPendingSetups}.
      *
-     *  Incremental validation: `b.read(name)` and mutator-form
-     *  `b.write(name)` throw immediately if no preceding pass has
-     *  created `name`. This catches missing-producer mistakes at the
-     *  builder call site (clear stack pointing into the pass's setup)
-     *  rather than at first execute. The convention is therefore
-     *  "register producer passes before consumer passes" — which
-     *  matches every default RendererJob today. */
-    private _setupAndRegister(pass: RenderGraphPass): void {
-        const reads: string[] = [];
-        const writes: string[] = [];
-        const creates: string[] = [];
-        const deps: Set<string> = new Set(pass.dependencies ?? []);
-        const registerRT = (n: string, rt: RenderGraphRenderTarget): RenderGraphRenderTarget => {
-            this._pool.register(n, () => rt, 'rendertarget');
-            this._renderTargets.set(n, rt);
-            writes.push(n);
-            creates.push(n);
-            return rt;
+     * Duplicate pass names are tolerated here — the validator surfaces
+     * `'duplicate pass name'` at compile time so the error path lines
+     * up with every other compile-time check.
+     */
+    private _registerPending(pass: RenderGraphPass): void {
+        (pass as any).reads = Object.freeze([]);
+        (pass as any).writes = Object.freeze([]);
+        (pass as any).creates = Object.freeze([]);
+        (pass as any)[PASS_META] = {
+            insertedOrder: this._insertCounter++,
+            setupDone: false,
+        } satisfies PassMeta;
+        this._passes.push(pass);
+        this._byName.set(pass.name, pass);
+        this._dirty = true;
+    }
+
+    /**
+     * Run `setup()` for every pass added but not yet committed. The
+     * loop iterates rounds in insertion order; a pass whose setup
+     * throws {@link _PendingSetupError} (forward-referenced resource
+     * or dependsOn target) is deferred to a later round. A round
+     * that makes zero progress proves the missing names are genuinely
+     * unresolvable — re-surface the first culprit as
+     * {@link UnresolvedResourceError} for an actionable message.
+     */
+    private _runPendingSetups(): void {
+        const all = this._passes.filter(p => !((p as any)[PASS_META] as PassMeta).setupDone);
+        if (all.length === 0) return;
+
+        let remaining = all.slice();
+        let lastError: { pass: RenderGraphPass; error: _PendingSetupError } | null = null;
+        // Safety bound: each round must commit at least one pass to make
+        // progress, so worst-case rounds = passes. Use 2N+2 as a slack
+        // margin in case of internal logic bugs.
+        const maxRounds = all.length * 2 + 2;
+        let round = 0;
+        while (remaining.length > 0) {
+            if (++round > maxRounds) {
+                throw new Error(
+                    `RenderGraph.compile: pending setups did not converge after ${round} rounds. ` +
+                    `Remaining: ${remaining.map(p => p.name).join(', ')}.`,
+                );
+            }
+            const stillPending: RenderGraphPass[] = [];
+            let progress = false;
+            for (const pass of remaining) {
+                let draft: _SetupDraft;
+                try {
+                    draft = this._runSetupTransactional(pass);
+                } catch (e) {
+                    if (e instanceof _PendingSetupError) {
+                        stillPending.push(pass);
+                        lastError = { pass, error: e };
+                        continue;
+                    }
+                    throw e;
+                }
+                this._commitDraft(pass, draft);
+                ((pass as any)[PASS_META] as PassMeta).setupDone = true;
+                progress = true;
+            }
+            if (!progress) {
+                // Genuinely unresolvable — re-surface as the standard
+                // compile-time error so users see consistent messaging.
+                const { pass, error } = lastError!;
+                throw new UnresolvedResourceError(pass.name, error.resourceName);
+            }
+            remaining = stillPending;
+        }
+    }
+
+    /**
+     * Single transactional attempt of `pass.setup(builder)`. Builder
+     * mutations accumulate into a fresh {@link _SetupDraft} instead of
+     * directly mutating `_pool` / `_renderTargets` / `_transient`. The
+     * caller commits the draft via {@link _commitDraft} when setup
+     * returns without throwing; on `_PendingSetupError` the draft is
+     * dropped and the pass is retried after a sibling commit publishes
+     * the missing name.
+     *
+     * The builder's visibility checks consult both the committed graph
+     * state AND the in-flight draft so self-references within a single
+     * setup (e.g. `b.declareTexture` followed by `b.write(handle)`) are
+     * resolved against names declared earlier in the same call.
+     */
+    private _runSetupTransactional(pass: RenderGraphPass): _SetupDraft {
+        const draft = new _SetupDraft(pass.dependencies);
+        const ctx = this._ctx;
+
+        const hasName = (n: string): boolean =>
+            this._pool.has(n) || draft.poolEntries.has(n);
+        const kindOfName = (n: string): ResourceKind | null => {
+            const e = draft.poolEntries.get(n);
+            if (e) return e.kind;
+            return this._pool.kindOf(n);
         };
-        // Placeholder getter installed when a transient resource is
-        // declared; replaced by the real pool-assigned getter after
-        // compile. Throwing here surfaces a programmer error where
-        // someone tries to fetch a transient resource via the legacy
-        // `pool.get(name)` from inside setup() (no resources are
-        // materialized until compile).
+        const getRT = (n: string): RenderGraphRenderTarget | null => {
+            const r = draft.rtEntries.get(n);
+            if (r) return r;
+            if (this._pool.kindOf(n) === 'rendertarget') {
+                return this._pool.get<RenderGraphRenderTarget>(n);
+            }
+            return null;
+        };
+        const isTransientDeclared = (n: string): boolean =>
+            this._transient.has(n) || draft.transientKinds.has(n);
+        const transientKindOf = (n: string): 'texture' | 'buffer' | undefined => {
+            const k = draft.transientKinds.get(n);
+            if (k) return k;
+            return this._transient.get(n)?.kind;
+        };
+
         const placeholderGetter = (name: string) => () => {
             throw new Error(
                 `RenderGraph: transient resource '${name}' has not been materialized yet — ` +
@@ -673,27 +844,35 @@ export class RenderGraph {
                 `not via pool.get during setup.`,
             );
         };
+
         const recordHintIfTransient = (name: string, mode: 'read' | 'write', access?: AccessHint): void => {
-            const decl = this._transient.get(name);
-            if (!decl) return;
+            const kind = transientKindOf(name);
+            if (!kind) return;
             // Default hints reflect the typical mode:
-            //   read → 'sample' (most reads sample), write → 'storage'
-            //   (compute writes; for attachment writes pass authors are
-            //   expected to flow through b.useRenderTarget which folds
-            //   in the 'attachment' bit elsewhere).
+            //   read → 'sample', write → 'storage'. Attachment writes
+            //   route through b.useRenderTarget which folds in the
+            //   RENDER_ATTACHMENT bit elsewhere.
             const hint: AccessHint = access ?? (mode === 'read' ? 'sample' : 'storage');
-            this._transient.recordAccessHint(name, decl.kind, hint, mode);
+            draft.hintOps.push(() => this._transient.recordAccessHint(name, kind, hint, mode));
         };
+
+        const registerRT = (n: string, rt: RenderGraphRenderTarget): RenderGraphRenderTarget => {
+            draft.poolEntries.set(n, { getter: () => rt, kind: 'rendertarget', persistent: false });
+            draft.rtEntries.set(n, rt);
+            draft.writes.push(n);
+            draft.creates.push(n);
+            draft.rtWriterPushes.push({ rt, passName: pass.name });
+            return rt;
+        };
+
         const builder: RenderGraphBuilder = {
-            context3D: this._ctx,
+            context3D: ctx,
             view: this._view,
             graph: this,
             read: ((target: string | TextureHandle | BufferHandle, access?: AccessHint) => {
                 const n = resourceName(target);
-                if (!this._pool.has(n)) {
-                    throw new UnresolvedResourceError(pass.name, n);
-                }
-                reads.push(n);
+                if (!hasName(n)) throw new _PendingSetupError(n);
+                draft.reads.push(n);
                 recordHintIfTransient(n, 'read', access);
             }) as RenderGraphBuilder['read'],
             write: (<T>(target: string | TextureHandle | BufferHandle, getterOrAccess?: (() => T) | AccessHint): T | void => {
@@ -701,146 +880,146 @@ export class RenderGraph {
                 //   write(name, getter)      — legacy creator
                 //   write(handle, access?)   — new mutator + hint
                 //   write(name, access?)     — string mutator + hint
-                // The legacy form's second arg is a function; everything
-                // else is undefined or a string AccessHint.
                 if (typeof getterOrAccess === 'function') {
                     const n = resourceName(target);
                     const getter = getterOrAccess as () => T;
-                    writes.push(n);
-                    this._pool.register(n, getter);
-                    creates.push(n);
+                    draft.writes.push(n);
+                    draft.creates.push(n);
+                    draft.poolEntries.set(n, {
+                        getter: getter as () => unknown,
+                        kind: 'opaque',
+                        persistent: false,
+                    });
                     return getter();
                 }
                 const n = resourceName(target);
-                if (!this._pool.has(n)) {
-                    throw new MissingCreatorError(pass.name, n);
-                }
-                writes.push(n);
+                if (!hasName(n)) throw new _PendingSetupError(n);
+                draft.writes.push(n);
                 recordHintIfTransient(n, 'write', getterOrAccess as AccessHint | undefined);
                 return undefined;
             }) as RenderGraphBuilder['write'],
             readWrite: (target: TextureHandle | BufferHandle, access?: AccessHint): void => {
                 const n = resourceName(target);
-                if (!this._pool.has(n)) {
-                    throw new UnresolvedResourceError(pass.name, n);
-                }
-                reads.push(n);
-                writes.push(n);
+                if (!hasName(n)) throw new _PendingSetupError(n);
+                draft.reads.push(n);
+                draft.writes.push(n);
                 recordHintIfTransient(n, 'read', access);
                 recordHintIfTransient(n, 'write', access);
             },
             declareTexture: (n: string, desc: TextureDesc): TextureHandle => {
-                this._transient.declareTexture(n, desc, pass.name);
-                // creates marks this pass as the single creator for the
-                // single-creator validator; writes / reads are NOT
-                // auto-pushed here — callers must follow up with
-                // `b.write(handle, hint)` / `b.read(handle, hint)` /
-                // `b.readWrite(handle, hint)` to declare the actual
-                // access pattern. That keeps the per-pass writes / reads
-                // arrays free of duplicates and makes the access intent
-                // explicit at the call site (good for grep + review).
-                creates.push(n);
-                // Back-compat early-publish path: resources marked
-                // `publishToLegacyMap` are typically read by materials
-                // (LitMaterial.transmissionFactor setter looks up
-                // `_SceneColorPyramid` via `RTResourceMap.getTexture`)
-                // BEFORE the first compile runs — Sample code instantiates
-                // these materials in `initScene()`, which sits between
-                // `graph.add(...)` and the first `graph.execute(...)`.
-                // If we defer allocation to compile, the material's setter
-                // sees a missing entry and binds the white-texture
-                // placeholder forever. Eager-allocate the wrapper here so
-                // the RTResourceMap entry exists by the time the material
-                // setter runs; the wrapper's identity is stable because
-                // `aliasable:false` resources always go through the
-                // pool's dedicated path (lookup-by-name) and never get
-                // re-aliased. The next compile re-registers the same
-                // wrapper through the normal `pool.assign` path and
-                // sets `publishToLegacyMap.set` (idempotent).
+                if (isTransientDeclared(n)) {
+                    throw new Error(
+                        `RenderGraph.transient: resource '${n}' already declared — ` +
+                        `pass '${pass.name}' must use a different name.`,
+                    );
+                }
+                draft.transientKinds.set(n, 'texture');
+                draft.transientOps.push(() => this._transient.declareTexture(n, desc, pass.name));
+                draft.creates.push(n);
+                draft.poolEntries.set(n, { getter: placeholderGetter(n), kind: 'texture', persistent: false });
+                // publishToLegacyMap back-compat: materials that read
+                // RTResourceMap.getTexture(name) during initScene need
+                // the dedicated wrapper allocated before the first
+                // execute() runs. Queued into draft.eagerPublishes so
+                // commit runs it AFTER the pool placeholder registration
+                // (the eager-allocate overwrites the placeholder with
+                // the real wrapper). aliasable:false guarantees the
+                // wrapper identity is stable across compiles.
                 if (desc.publishToLegacyMap && desc.aliasable === false) {
-                    this._eagerAllocateAndPublish(n, desc);
-                } else {
-                    // Placeholder so other passes' setup() can b.read(n)
-                    // before compile materializes the real binding.
-                    this._pool.register(n, placeholderGetter(n), 'texture');
+                    draft.eagerPublishes.push({ name: n, desc });
                 }
                 return makeTextureHandle(n);
             },
             declareBuffer: (n: string, desc: BufferDesc): BufferHandle => {
-                this._transient.declareBuffer(n, desc, pass.name);
-                this._pool.register(n, placeholderGetter(n), 'buffer');
-                creates.push(n);
+                if (isTransientDeclared(n)) {
+                    throw new Error(
+                        `RenderGraph.transient: resource '${n}' already declared — ` +
+                        `pass '${pass.name}' must use a different name.`,
+                    );
+                }
+                draft.transientKinds.set(n, 'buffer');
+                draft.transientOps.push(() => this._transient.declareBuffer(n, desc, pass.name));
+                draft.poolEntries.set(n, { getter: placeholderGetter(n), kind: 'buffer', persistent: false });
+                draft.creates.push(n);
                 return makeBufferHandle(n);
             },
             importExternalTexture: (n: string, tex: RenderTexture): TextureHandle => {
-                this._transient.importExternalTexture(n, tex, pass.name);
-                this._pool.register(n, () => tex, 'texture');
-                this._pool.markPersistent(n);
+                if (isTransientDeclared(n)) {
+                    throw new Error(
+                        `RenderGraph.transient: resource '${n}' already declared — ` +
+                        `pass '${pass.name}' must use a different name.`,
+                    );
+                }
+                draft.transientKinds.set(n, 'texture');
+                draft.transientOps.push(() => this._transient.importExternalTexture(n, tex, pass.name));
+                draft.poolEntries.set(n, { getter: () => tex, kind: 'texture', persistent: true });
                 // Imports DO push writes — the import semantically is
-                // "this pass produces the resource" (single-creator
-                // rule via creates, mutator-chain root via writes), so
-                // downstream b.read/b.write callers can find a writer
-                // when topo sort walks the resource flow. There's no
-                // separate access call expected for imports.
-                writes.push(n);
-                creates.push(n);
+                // "this pass produces the resource" so downstream
+                // b.read / b.write callers can find a writer when topo
+                // sort walks the resource flow.
+                draft.writes.push(n);
+                draft.creates.push(n);
                 return makeTextureHandle(n);
             },
             importExternalBuffer: (n: string, buf: GPUBufferBase): BufferHandle => {
-                this._transient.importExternalBuffer(n, buf, pass.name);
-                this._pool.register(n, () => buf, 'buffer');
-                this._pool.markPersistent(n);
-                writes.push(n);
-                creates.push(n);
+                if (isTransientDeclared(n)) {
+                    throw new Error(
+                        `RenderGraph.transient: resource '${n}' already declared — ` +
+                        `pass '${pass.name}' must use a different name.`,
+                    );
+                }
+                draft.transientKinds.set(n, 'buffer');
+                draft.transientOps.push(() => this._transient.importExternalBuffer(n, buf, pass.name));
+                draft.poolEntries.set(n, { getter: () => buf, kind: 'buffer', persistent: true });
+                draft.writes.push(n);
+                draft.creates.push(n);
                 return makeBufferHandle(n);
             },
             dependsOn: (passName: string) => {
+                // `_byName` is populated at add() time, never during
+                // setup commits, so there's no benefit to deferring
+                // this check through the multi-round loop — a missing
+                // target is genuinely missing. Throw a plain Error
+                // with an actionable message.
                 if (!this._byName.has(passName)) {
                     throw new Error(
-                        `RenderGraph: pass '${pass.name}' calls b.dependsOn('${passName}') but no pass named '${passName}' is registered yet. ` +
-                        `Add the upstream pass before this one.`,
+                        `RenderGraph: pass '${pass.name}' calls b.dependsOn('${passName}') but no pass named '${passName}' is registered. ` +
+                        `Add the upstream pass to the graph before calling compile().`,
                     );
                 }
-                deps.add(passName);
+                draft.deps.add(passName);
             },
             dependsOnIfPresent: (passName: string) => {
-                if (this._byName.has(passName)) deps.add(passName);
+                if (this._byName.has(passName)) draft.deps.add(passName);
             },
             createRenderTarget: (n: string, desc: RenderGraphRenderTargetDesc): RenderGraphRenderTarget => {
-                return registerRT(n, RenderGraphRenderTarget.allocate(n, this._ctx, desc));
+                return registerRT(n, RenderGraphRenderTarget.allocate(n, ctx, desc));
             },
             adoptRenderTarget: (n: string, rtFrame: RTFrame, opts?: { label?: string }): RenderGraphRenderTarget => {
                 return registerRT(n, RenderGraphRenderTarget.fromRTFrame(n, rtFrame, opts));
             },
             useRenderTarget: (n: string): RenderGraphRenderTarget => {
-                if (!this._pool.has(n)) {
-                    throw new MissingCreatorError(pass.name, n);
-                }
-                const kind = this._pool.kindOf(n);
+                if (!hasName(n)) throw new _PendingSetupError(n);
+                const kind = kindOfName(n);
                 if (kind !== 'rendertarget') {
                     throw new WrongResourceKindError(pass.name, n, 'rendertarget', kind ?? 'unregistered');
                 }
-                writes.push(n);
-                const rt = this._pool.get<RenderGraphRenderTarget>(n);
-                rt._writers.push(pass.name);
+                const rt = getRT(n)!;
+                draft.writes.push(n);
+                draft.rtWriterPushes.push({ rt, passName: pass.name });
                 return rt;
             },
             borrowRenderTarget: (n: string): RenderGraphRenderTarget => {
                 // Same as useRenderTarget but skips the writes.push(n).
-                // ColorPass and chained-opaque subclasses use this so they
-                // don't pollute the MAIN_COLOR_RT mutator chain — which
-                // would conflict with the transparent passes' explicit
-                // dependsOn edges (see GISLayerComposition sample for the
-                // canonical chained-opaque pipeline that motivated this).
-                if (!this._pool.has(n)) {
-                    throw new MissingCreatorError(pass.name, n);
-                }
-                const kind = this._pool.kindOf(n);
+                // ColorPass and chained-opaque subclasses use this so
+                // they don't pollute the MAIN_COLOR_RT mutator chain.
+                if (!hasName(n)) throw new _PendingSetupError(n);
+                const kind = kindOfName(n);
                 if (kind !== 'rendertarget') {
                     throw new WrongResourceKindError(pass.name, n, 'rendertarget', kind ?? 'unregistered');
                 }
-                const rt = this._pool.get<RenderGraphRenderTarget>(n);
-                rt._writers.push(pass.name);
+                const rt = getRT(n)!;
+                draft.rtWriterPushes.push({ rt, passName: pass.name });
                 return rt;
             },
             createRenderPass: (
@@ -856,14 +1035,41 @@ export class RenderGraph {
             },
         };
         pass.setup(builder);
-        (pass as any).reads = Object.freeze(reads);
-        (pass as any).writes = Object.freeze(writes);
-        (pass as any).creates = Object.freeze(creates);
-        if (deps.size > 0) {
-            pass.dependencies = deps;
+        return draft;
+    }
+
+    /**
+     * Apply a successful draft to real graph state. Pool registrations
+     * land first so subsequent passes' setup can resolve names through
+     * `_pool.has`. Transient declarations + access hints + writer-push
+     * tooling and the publishToLegacyMap eager allocations run after.
+     * The pass's frozen `reads` / `writes` / `creates` arrays and
+     * `dependencies` set are finalized last.
+     */
+    private _commitDraft(pass: RenderGraphPass, draft: _SetupDraft): void {
+        for (const [name, e] of draft.poolEntries) {
+            this._pool.register(name, e.getter, e.kind);
+            if (e.persistent) this._pool.markPersistent(name);
         }
-        // Stamp insertion order for stable topo tie-break.
-        (pass as any)[PASS_META] = { insertedOrder: this._insertCounter++ } satisfies PassMeta;
+        for (const [name, rt] of draft.rtEntries) {
+            this._renderTargets.set(name, rt);
+        }
+        for (const op of draft.transientOps) op();
+        for (const e of draft.rtWriterPushes) {
+            e.rt._writers.push(e.passName);
+        }
+        for (const op of draft.hintOps) op();
+        // Eager-publish runs LAST so its `_pool.register` call overwrites
+        // the placeholder getter installed during the declareTexture step.
+        for (const e of draft.eagerPublishes) {
+            this._eagerAllocateAndPublish(e.name, e.desc);
+        }
+        (pass as any).reads = Object.freeze(draft.reads.slice());
+        (pass as any).writes = Object.freeze(draft.writes.slice());
+        (pass as any).creates = Object.freeze(draft.creates.slice());
+        if (draft.deps.size > 0) {
+            pass.dependencies = draft.deps;
+        }
     }
 
     private _insertedOrder(p: RenderGraphPass): number {

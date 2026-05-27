@@ -53,6 +53,15 @@ export class RendererJob {
     public start(): void {
         this.renderState = true;
         if (this._view.engine3D.setting.render.debug) this.debug();
+        // Eagerly compile the graph: setup is deferred to compile time
+        // (so add() order can be arbitrary), but synchronous user code
+        // that follows startRenderView — typically initScene + the
+        // material constructors that look up RTResourceMap entries —
+        // needs feature.reads/writes populated and publishToLegacyMap
+        // wrappers installed in the legacy texture map before the
+        // first frame. Compiling here matches the eager-publish
+        // contract the legacy add-time setup used to satisfy.
+        this.graph.compile();
     }
 
     public stop(): void { }

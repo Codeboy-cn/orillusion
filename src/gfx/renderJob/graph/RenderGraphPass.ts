@@ -294,9 +294,11 @@ export interface RenderGraphPassContext {
  * their identity via `name`, allocate GPU resources and declare
  * dependencies in `setup`, and submit GPU work in `execute`.
  *
- * `reads`, `writes`, and `creates` are populated by {@link RenderGraph.add}
- * after `setup()` runs, by recording the `b.read` / `b.write` calls
- * the pass made. They are then frozen.
+ * `reads`, `writes`, and `creates` are populated by {@link RenderGraph.compile}
+ * after `setup()` runs (setup is deferred from `add()` to the next
+ * compile, so `add()` call order doesn't constrain resource-dependency
+ * order). They start as frozen empty arrays at add() time and are
+ * replaced with the recorded `b.read` / `b.write` names on commit.
  *
  * @group Graph
  */
@@ -333,13 +335,15 @@ export abstract class RenderGraphPass extends CEventDispatcher {
      *  the camera mask through {@link EntityCollect.getLayerLists}. */
     public layerMask: number = RenderLayer.All;
 
-    /** Names this pass reads. Populated by `RenderGraph.add()` from
-     *  `b.read(...)` calls inside `setup()`; frozen afterwards. */
+    /** Names this pass reads. Populated on the first
+     *  `RenderGraph.compile()` that processes this pass, from the
+     *  `b.read(...)` calls inside its `setup()`. Empty frozen array
+     *  before compile. */
     public readonly reads!: readonly string[];
 
     /** Names this pass writes (creator + mutator combined). Populated
-     *  by `RenderGraph.add()` from `b.write(...)` calls inside
-     *  `setup()`; frozen afterwards. */
+     *  on the first `RenderGraph.compile()` from the `b.write(...)`
+     *  calls inside `setup()`. Empty frozen array before compile. */
     public readonly writes!: readonly string[];
 
     /** Subset of `writes` for which this pass was the creator (called
@@ -356,8 +360,11 @@ export abstract class RenderGraphPass extends CEventDispatcher {
     public dependencies?: ReadonlySet<string>;
 
     /** Allocate GPU resources, declare graph-level dependencies via
-     *  `b.read` / `b.write`. Called once when `graph.add()` wires
-     *  this pass into the graph. */
+     *  `b.read` / `b.write`. Called from `RenderGraph.compile()` —
+     *  setup is deferred from `add()` so `add()` call order doesn't
+     *  constrain resource-dependency order. Forward references (reads
+     *  to a resource a later-added pass creates) are resolved through
+     *  a multi-round retry loop in `compile()`. */
     public setup(_b: RenderGraphBuilder): void {
         // No-op by default.
     }

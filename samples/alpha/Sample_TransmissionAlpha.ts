@@ -88,7 +88,7 @@ class Sample_TransmissionAlpha {
         // matches.
         camera.object3D
             .addComponent(HoverCameraController)
-            .setCamera(180, 0, 5, new Vector3(0, 0.5, 0));
+            .setCamera(0, 0, 5, new Vector3(0, 0.5, 0));
 
         this.view = new View3D();
         this.view.scene = this.scene;
