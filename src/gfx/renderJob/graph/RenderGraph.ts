@@ -87,6 +87,19 @@ export class RenderGraph {
      *  Phase 6 work (storeOp='discard' derivation, debug dumpDot)
      *  can consult per-resource intervals without re-running analyze. */
     private _lifetimes: ResourceLifetime[] = [];
+    /** Per-resource last-use compile-order index. Used by
+     *  {@link RenderGraphRenderTarget.beginPass} to auto-derive
+     *  `storeOp='discard'` for attachments whose last writer is the
+     *  current pass and which have no downstream reader. Built each
+     *  compile; missing entries imply "no transient lifetime known
+     *  → must store" (safe default). */
+    private _lastUseByName: Map<string, number> = new Map();
+    /** Index into `_compiled` of the pass currently in `execute()`.
+     *  Set per-pass during {@link execute} so
+     *  {@link RenderGraphRenderTarget.beginPass} can compare against
+     *  `_lastUseByName` without threading an extra parameter through
+     *  every encoder-open API. */
+    private _currentPassIdx: number = -1;
     /** logical name → pool-resolved RenderTexture for the current
      *  compile window. Cleared each {@link compile} and repopulated
      *  from {@link TransientTexturePool.assign}. */
@@ -341,6 +354,15 @@ export class RenderGraph {
         for (const [name, buf] of bufAssign.bindings) {
             this._pool.register(name, () => buf, 'buffer');
         }
+        // Build last-use lookup for storeOp='discard' derivation
+        // (Phase 6). Persistent imports keep their default lastUseIdx
+        // of N-1 and effectively never trigger discard — that's the
+        // right behavior (external owners may cross-frame sample).
+        this._lastUseByName.clear();
+        for (const lt of this._lifetimes) {
+            if (lt.persistent) continue;
+            this._lastUseByName.set(lt.name, lt.lastUseIdx);
+        }
         this._dirty = false;
         console.debug('[RenderGraph] compiled pass order:', this._compiled.join(' → '));
         if (this._lifetimes.length > 0) {
@@ -423,11 +445,17 @@ export class RenderGraph {
         const device = this._ctx.device;
         const devMode = this._ctx.engine?.setting.render.debug === true;
         if (devMode && device) device.pushErrorScope('validation');
-        for (const name of order) {
+        for (let i = 0; i < order.length; i++) {
+            const name = order[i];
             const p = this._byName.get(name)!;
             if (!p.enabled) continue;
+            // Track which compile-order index is in flight so
+            // RenderGraphRenderTarget.beginPass can compare against
+            // the per-resource last-use map to derive storeOp='discard'.
+            this._currentPassIdx = i;
             p.execute(ctx);
         }
+        this._currentPassIdx = -1;
         if (devMode && device) {
             void device.popErrorScope().then(err => {
                 if (err) {
@@ -530,6 +558,28 @@ export class RenderGraph {
      */
     public get transientRegistry(): TransientResourceRegistry {
         return this._transient;
+    }
+
+    /**
+     * Phase 6 storeOp='discard' helper. Returns `true` when the named
+     * transient resource's last-use compile-order index equals the pass
+     * currently in `execute()` — meaning a render pass writing to it
+     * right now can drop the store (no later pass will read the
+     * attachment, so the store is wasted bandwidth on tile-based GPUs).
+     *
+     * Returns `false` for any non-transient resource (no lifetime info)
+     * or when called outside of `execute()`. The safe default
+     * (return false → keep storeOp='store') means missing lifetime
+     * info never accidentally discards live data — discards only fire
+     * when the analyzer has definitively scoped a resource and the
+     * pass position matches the last-use boundary.
+     *
+     * @internal
+     */
+    public isLastUseInCurrentPass(name: string): boolean {
+        if (this._currentPassIdx < 0) return false;
+        const lastIdx = this._lastUseByName.get(name);
+        return lastIdx !== undefined && lastIdx === this._currentPassIdx;
     }
 
     /**

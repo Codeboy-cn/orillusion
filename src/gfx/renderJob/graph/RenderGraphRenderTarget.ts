@@ -324,7 +324,23 @@ export class RenderGraphRenderTarget {
         const resolvedDepthLoadOp: GPULoadOp =
             opts.depthLoadOp ?? (firstWriter ? 'clear' : 'load');
 
-        const key = RenderGraphRenderTarget._stateKey(opts, resolvedColorLoadOps, resolvedDepthLoadOp);
+        // Resolve per-attachment storeOp ahead of cache key building so
+        // discard-vs-store sliced state never collides in `_stateCache`.
+        // The base storeOp comes from the source RTFrame descriptor
+        // (default 'store'); we override to 'discard' when the
+        // analyzer says this attachment's logical resource is at its
+        // last-use boundary in the current pass — see compile()'s
+        // `_lastUseByName` and `isLastUseInCurrentPass`.
+        const graph = ctx.graph;
+        const resolvedColorStoreOps: GPUStoreOp[] = new Array(colorCount);
+        for (let i = 0; i < colorCount; i++) {
+            const base = (this.rtFrame.rtDescriptors[i]?.storeOp as GPUStoreOp) ?? 'store';
+            const colorName = this.desc.colors[i]?.name;
+            const canDiscard = colorName && graph?.isLastUseInCurrentPass(colorName);
+            resolvedColorStoreOps[i] = canDiscard ? 'discard' : base;
+        }
+
+        const key = RenderGraphRenderTarget._stateKey(opts, resolvedColorLoadOps, resolvedDepthLoadOp, resolvedColorStoreOps);
         let entry = this._stateCache.get(key);
         if (!entry) {
             // Clone the source rtFrame and stamp the resolved ops on
@@ -339,14 +355,27 @@ export class RenderGraphRenderTarget {
             clonedFrame.sampleCount = this.rtFrame.sampleCount;
             clonedFrame.customSize = this.rtFrame.customSize;
             clonedFrame.isOutTarget = this.rtFrame.isOutTarget;
+            // Apply resolved load + store ops onto the cloned RTFrame
+            // descriptors. The resolvedColorStoreOps array was built
+            // above with `discard` overrides from the analyzer's
+            // last-use info; safe default for missing lifetime info
+            // is the source RTFrame's storeOp (typically 'store').
             for (let i = 0; i < colorCount; i++) {
                 const d = clonedFrame.rtDescriptors[i];
                 d.loadOp = resolvedColorLoadOps[i];
+                d.storeOp = resolvedColorStoreOps[i];
                 const override = opts.colorClearValues?.[i];
                 if (override !== undefined) {
                     d.clearValue = override;
                 }
             }
+            // Depth-attachment discard is a follow-up: RTFrame has
+            // depthLoadOp but no symmetric depthStoreOp field, and
+            // RendererPassState's renderPassDescriptor.depthStencilAttachment
+            // is built once + cached, so we'd need to patch it after
+            // createRendererPassState. Color attachments alone already
+            // capture the common discard wins (transparency side-band
+            // accums, multi-target intermediates).
             const passState = WebGPUDescriptorCreator.createRendererPassState(engineCtx, clonedFrame);
             entry = { rtFrame: clonedFrame, passState };
             this._stateCache.set(key, entry);
@@ -379,10 +408,15 @@ export class RenderGraphRenderTarget {
         opts: BeginPassOptions,
         colorLoadOps: GPULoadOp[],
         depthLoadOp: GPULoadOp,
+        colorStoreOps: GPUStoreOp[],
     ): string {
         // Cheap stable serialization. Avoids JSON.stringify allocation
         // on the hot path while remaining deterministic across
-        // identical option buckets.
+        // identical option buckets. Includes storeOps so the
+        // analyzer-driven discard derivation doesn't collide with a
+        // prior store-only cache entry under the same loadOp key —
+        // without it, an RT opened first with 'store' then later with
+        // 'discard' would reuse the wrong RendererPassState.
         let s = '';
         for (let i = 0; i < colorLoadOps.length; i++) {
             s += colorLoadOps[i];
@@ -392,6 +426,10 @@ export class RenderGraphRenderTarget {
         s += '|';
         s += opts.depthClearValue ?? '';
         s += '|';
+        for (let i = 0; i < colorStoreOps.length; i++) {
+            s += colorStoreOps[i];
+            s += '|';
+        }
         if (opts.colorClearValues) {
             for (const cv of opts.colorClearValues) {
                 s += JSON.stringify(cv);
