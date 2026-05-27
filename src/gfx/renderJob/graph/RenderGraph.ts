@@ -8,6 +8,15 @@ import { RenderGraphResourcePool } from './RenderGraphResourcePool';
 import { BeginPassOptions, RenderGraphRenderTarget, RenderGraphRenderTargetDesc } from './RenderGraphRenderTarget';
 import { RenderGraphRenderPass, RenderPipelineDesc } from './RenderGraphRenderPass';
 import { ComputePipelineDesc, RenderGraphComputePass } from './RenderGraphComputePass';
+import { TransientResourceRegistry } from './transient/TransientResourceRegistry';
+import { TransientTexturePool } from './transient/TransientTexturePool';
+import { TransientBufferPool } from './transient/TransientBufferPool';
+import { LifetimeAnalyzer, ResourceLifetime } from './transient/LifetimeAnalyzer';
+import { AccessHint, BufferDesc, TextureDesc } from './transient/ResourceDesc';
+import { BufferHandle, TextureHandle, makeBufferHandle, makeTextureHandle, resourceName } from './transient/ResourceHandle';
+import { RenderTexture } from '../../../textures/RenderTexture';
+import { GPUBufferBase } from '../../graphics/webGpu/core/buffer/GPUBufferBase';
+import { CResizeEvent } from '../../../event/CResizeEvent';
 
 /** Internal: per-graph metadata stamped onto a pass after add(). */
 const PASS_META = Symbol('RenderGraphPass.meta');
@@ -66,23 +75,56 @@ export class RenderGraph {
      *  {@link execute} reset the per-frame first-writer flag in O(RT)
      *  rather than scanning the pool. */
     private readonly _renderTargets: Map<string, RenderGraphRenderTarget> = new Map();
+    /** Per-graph transient resource subsystem. Populated by `b.declareTexture`
+     *  / `b.declareBuffer` / `b.importExternalTexture` during pass setup;
+     *  consumed by {@link LifetimeAnalyzer} + the physical pools in
+     *  {@link compile}. */
+    private readonly _transient: TransientResourceRegistry = new TransientResourceRegistry();
+    private readonly _texturePool: TransientTexturePool;
+    private readonly _bufferPool: TransientBufferPool;
+    /** Latest lifetime analysis output. Held across frames so future
+     *  Phase 6 work (storeOp='discard' derivation, debug dumpDot)
+     *  can consult per-resource intervals without re-running analyze. */
+    private _lifetimes: ResourceLifetime[] = [];
+    /** logical name → pool-resolved RenderTexture for the current
+     *  compile window. Cleared each {@link compile} and repopulated
+     *  from {@link TransientTexturePool.assign}. */
+    private _textureBindings: Map<string, RenderTexture> = new Map();
+    private _bufferBindings: Map<string, GPUBufferBase> = new Map();
     private _compiled: string[] | null = null;
     private _dirty: boolean = true;
     private _insertCounter: number = 0;
     private _batchDepth: number = 0;
     private readonly _onDeviceLost: (event: { data: unknown }) => void;
+    private readonly _onCanvasResize: () => void;
 
     constructor(view: View3D) {
         this._view = view;
         this._ctx = view.engine3D.context3D;
         this._pool = new RenderGraphResourcePool(this._ctx);
+        this._texturePool = new TransientTexturePool(this._ctx);
+        this._bufferPool = new TransientBufferPool(this._ctx);
 
         // Release pool registrations when the device is lost. Fresh
         // textures + buffers come back via re-init, so the next
         // `add()` cycle re-registers everything.
-        this._onDeviceLost = () => this._pool.dispose();
+        this._onDeviceLost = () => {
+            this._pool.dispose();
+            this._texturePool.dispose();
+            this._bufferPool.dispose();
+            this._textureBindings.clear();
+            this._bufferBindings.clear();
+            this._dirty = true;
+        };
+        // Canvas resize invalidates size-token resolution (e.g.
+        // `width: 'screen/2'`). Mark dirty so the next `compile()`
+        // re-analyzes lifetimes against the new presentationSize and
+        // the pool re-allocates same-bucket-but-new-resolution slots.
+        // Skip if the addEventListener API isn't present (test stubs).
+        this._onCanvasResize = () => { this._dirty = true; };
         if (typeof this._ctx.addEventListener === 'function') {
             this._ctx.addEventListener(Context3D.DEVICE_LOST, this._onDeviceLost, this);
+            this._ctx.addEventListener(CResizeEvent.RESIZE, this._onCanvasResize, this);
         }
     }
 
@@ -259,8 +301,42 @@ export class RenderGraph {
         validator.validateSingleCreator();
         validator.validateResolvable();
         this._compiled = topoSort(activePasses, activeByName, this._insertedOrder.bind(this));
+
+        // Transient pool: analyze lifetimes against the freshly-compiled
+        // order, then ask the pools to assign physical wrappers (aliasing
+        // when intervals don't overlap). The bindings re-register over
+        // the placeholder getters installed at declare time.
+        this._lifetimes = LifetimeAnalyzer.analyze(
+            this._compiled,
+            activeByName,
+            this._transient,
+            this._ctx.presentationSize as [number, number],
+        );
+        const texAssign = this._texturePool.assign(this._lifetimes);
+        const bufAssign = this._bufferPool.assign(this._lifetimes);
+        this._textureBindings = texAssign.bindings;
+        this._bufferBindings = bufAssign.bindings;
+        for (const [name, rt] of texAssign.bindings) {
+            // Persistent textures were registered as `() => tex` at
+            // import time and don't appear in `texAssign.bindings`
+            // (the pool filters persistent out). Transient ones get
+            // their placeholder swapped for the resolved wrapper here.
+            this._pool.register(name, () => rt, 'texture');
+        }
+        for (const [name, buf] of bufAssign.bindings) {
+            this._pool.register(name, () => buf, 'buffer');
+        }
         this._dirty = false;
         console.debug('[RenderGraph] compiled pass order:', this._compiled.join(' → '));
+        if (this._lifetimes.length > 0) {
+            const ts = this._texturePool.stats();
+            console.debug(
+                `[RenderGraph] transient: ${this._lifetimes.length} lifetimes ` +
+                `(${texAssign.bindings.size} tex / ${bufAssign.bindings.size} buf bound), ` +
+                `tex pool ${ts.slotCount} slots / ${(ts.currentBytes / 1024 / 1024).toFixed(2)} MB ` +
+                `(peak ${(ts.peakBytes / 1024 / 1024).toFixed(2)} MB)`,
+            );
+        }
     }
 
     /** Run one frame. Lazy-compiles on first call (or after a
@@ -287,6 +363,27 @@ export class RenderGraph {
             frameIndex,
             get<T>(name: string): T {
                 return pool.get<T>(name);
+            },
+            getTexture(name: string | TextureHandle): RenderTexture {
+                const n = resourceName(name);
+                const kind = pool.kindOf(n);
+                if (kind !== 'texture' && kind !== 'opaque') {
+                    // 'opaque' covers legacy `b.write(name, getter)`
+                    // texture resources whose kind was never typed —
+                    // accept them so callers can migrate to
+                    // ctx.getTexture without first re-declaring
+                    // upstream producers.
+                    throw new WrongResourceKindError('<ctx.getTexture>', n, 'texture', kind ?? 'unregistered');
+                }
+                return pool.get<RenderTexture>(n);
+            },
+            getBuffer(name: string | BufferHandle): GPUBufferBase {
+                const n = resourceName(name);
+                const kind = pool.kindOf(n);
+                if (kind !== 'buffer' && kind !== 'opaque') {
+                    throw new WrongResourceKindError('<ctx.getBuffer>', n, 'buffer', kind ?? 'unregistered');
+                }
+                return pool.get<GPUBufferBase>(n);
             },
             getRenderTarget(name: string): RenderGraphRenderTarget {
                 const kind = pool.kindOf(name);
@@ -377,6 +474,7 @@ export class RenderGraph {
     public destroy(): void {
         if (typeof this._ctx.removeEventListener === 'function') {
             this._ctx.removeEventListener(Context3D.DEVICE_LOST, this._onDeviceLost, this);
+            this._ctx.removeEventListener(CResizeEvent.RESIZE, this._onCanvasResize, this);
         }
         for (const p of this._passes) p.destroy();
         for (const rt of this._renderTargets.values()) rt.destroy(this._ctx);
@@ -386,6 +484,37 @@ export class RenderGraph {
         this._compiled = null;
         this._dirty = true;
         this._pool.dispose();
+        this._transient.dispose();
+        this._texturePool.dispose();
+        this._bufferPool.dispose();
+        this._textureBindings.clear();
+        this._bufferBindings.clear();
+    }
+
+    /**
+     * Snapshot of the transient pools' current allocations + HWM stats.
+     * Use this to monitor whether lifetime-aliasing is actually saving
+     * memory after migrating a pass to `b.declareTexture`. The numbers
+     * are rough estimates (4 bpp fallback for unknown formats) — useful
+     * for ratio comparisons, not absolute accounting.
+     */
+    public transientStats(): {
+        texture: { currentBytes: number; peakBytes: number; bucketCount: number; slotCount: number };
+        buffer: { currentBytes: number; peakBytes: number; bucketCount: number; slotCount: number };
+        lifetimes: number;
+    } {
+        return {
+            texture: this._texturePool.stats(),
+            buffer: this._bufferPool.stats(),
+            lifetimes: this._lifetimes.length,
+        };
+    }
+
+    /**
+     * @internal Test/debug accessor for the transient registry.
+     */
+    public get transientRegistry(): TransientResourceRegistry {
+        return this._transient;
     }
 
     /** Construct a builder for `pass`, run `setup`, capture the
@@ -410,32 +539,118 @@ export class RenderGraph {
             creates.push(n);
             return rt;
         };
+        // Placeholder getter installed when a transient resource is
+        // declared; replaced by the real pool-assigned getter after
+        // compile. Throwing here surfaces a programmer error where
+        // someone tries to fetch a transient resource via the legacy
+        // `pool.get(name)` from inside setup() (no resources are
+        // materialized until compile).
+        const placeholderGetter = (name: string) => () => {
+            throw new Error(
+                `RenderGraph: transient resource '${name}' has not been materialized yet — ` +
+                `it can only be resolved via ctx.getTexture/getBuffer(name) inside execute(), ` +
+                `not via pool.get during setup.`,
+            );
+        };
+        const recordHintIfTransient = (name: string, mode: 'read' | 'write', access?: AccessHint): void => {
+            const decl = this._transient.get(name);
+            if (!decl) return;
+            // Default hints reflect the typical mode:
+            //   read → 'sample' (most reads sample), write → 'storage'
+            //   (compute writes; for attachment writes pass authors are
+            //   expected to flow through b.useRenderTarget which folds
+            //   in the 'attachment' bit elsewhere).
+            const hint: AccessHint = access ?? (mode === 'read' ? 'sample' : 'storage');
+            this._transient.recordAccessHint(name, decl.kind, hint, mode);
+        };
         const builder: RenderGraphBuilder = {
             context3D: this._ctx,
             view: this._view,
             graph: this,
-            read: (n: string) => {
+            read: ((target: string | TextureHandle | BufferHandle, access?: AccessHint) => {
+                const n = resourceName(target);
                 if (!this._pool.has(n)) {
                     throw new UnresolvedResourceError(pass.name, n);
                 }
                 reads.push(n);
-            },
-            write: <T>(n: string, getter?: () => T): T | void => {
-                if (!getter && !this._pool.has(n)) {
-                    throw new MissingCreatorError(pass.name, n);
-                }
-                writes.push(n);
-                if (getter) {
-                    // Pool stores the getter itself — pool.get() calls it
-                    // fresh each time. Pass authors close over a local
-                    // variable / instance field for stable identity, or
-                    // implement internal caching with rebuild-on-resize
-                    // (see HiZPass._getOrAllocate).
+                recordHintIfTransient(n, 'read', access);
+            }) as RenderGraphBuilder['read'],
+            write: (<T>(target: string | TextureHandle | BufferHandle, getterOrAccess?: (() => T) | AccessHint): T | void => {
+                // Disambiguate the three overloads:
+                //   write(name, getter)      — legacy creator
+                //   write(handle, access?)   — new mutator + hint
+                //   write(name, access?)     — string mutator + hint
+                // The legacy form's second arg is a function; everything
+                // else is undefined or a string AccessHint.
+                if (typeof getterOrAccess === 'function') {
+                    const n = resourceName(target);
+                    const getter = getterOrAccess as () => T;
+                    writes.push(n);
                     this._pool.register(n, getter);
                     creates.push(n);
                     return getter();
                 }
+                const n = resourceName(target);
+                if (!this._pool.has(n)) {
+                    throw new MissingCreatorError(pass.name, n);
+                }
+                writes.push(n);
+                recordHintIfTransient(n, 'write', getterOrAccess as AccessHint | undefined);
                 return undefined;
+            }) as RenderGraphBuilder['write'],
+            readWrite: (target: TextureHandle | BufferHandle, access?: AccessHint): void => {
+                const n = resourceName(target);
+                if (!this._pool.has(n)) {
+                    throw new UnresolvedResourceError(pass.name, n);
+                }
+                reads.push(n);
+                writes.push(n);
+                recordHintIfTransient(n, 'read', access);
+                recordHintIfTransient(n, 'write', access);
+            },
+            declareTexture: (n: string, desc: TextureDesc): TextureHandle => {
+                this._transient.declareTexture(n, desc, pass.name);
+                // Placeholder so other passes' setup() can b.read(n)
+                // before compile materializes the real binding.
+                this._pool.register(n, placeholderGetter(n), 'texture');
+                // creates marks this pass as the single creator for the
+                // single-creator validator; writes / reads are NOT
+                // auto-pushed here — callers must follow up with
+                // `b.write(handle, hint)` / `b.read(handle, hint)` /
+                // `b.readWrite(handle, hint)` to declare the actual
+                // access pattern. That keeps the per-pass writes / reads
+                // arrays free of duplicates and makes the access intent
+                // explicit at the call site (good for grep + review).
+                creates.push(n);
+                return makeTextureHandle(n);
+            },
+            declareBuffer: (n: string, desc: BufferDesc): BufferHandle => {
+                this._transient.declareBuffer(n, desc, pass.name);
+                this._pool.register(n, placeholderGetter(n), 'buffer');
+                creates.push(n);
+                return makeBufferHandle(n);
+            },
+            importExternalTexture: (n: string, tex: RenderTexture): TextureHandle => {
+                this._transient.importExternalTexture(n, tex, pass.name);
+                this._pool.register(n, () => tex, 'texture');
+                this._pool.markPersistent(n);
+                // Imports DO push writes — the import semantically is
+                // "this pass produces the resource" (single-creator
+                // rule via creates, mutator-chain root via writes), so
+                // downstream b.read/b.write callers can find a writer
+                // when topo sort walks the resource flow. There's no
+                // separate access call expected for imports.
+                writes.push(n);
+                creates.push(n);
+                return makeTextureHandle(n);
+            },
+            importExternalBuffer: (n: string, buf: GPUBufferBase): BufferHandle => {
+                this._transient.importExternalBuffer(n, buf, pass.name);
+                this._pool.register(n, () => buf, 'buffer');
+                this._pool.markPersistent(n);
+                writes.push(n);
+                creates.push(n);
+                return makeBufferHandle(n);
             },
             dependsOn: (passName: string) => {
                 if (!this._byName.has(passName)) {
@@ -515,7 +730,9 @@ export class RenderGraph {
 
     /** Drop a name from the pool. If the entry is a typed
      *  {@link RenderGraphRenderTarget} also call its `destroy` hook
-     *  and remove it from the per-frame reset map. */
+     *  and remove it from the per-frame reset map. Transient
+     *  declarations are unregistered from the registry so the
+     *  single-creator check stays clean for any subsequent re-add. */
     private _releaseCreated(name: string): void {
         if (this._pool.kindOf(name) === 'rendertarget') {
             const rt = this._renderTargets.get(name);
@@ -525,6 +742,9 @@ export class RenderGraph {
             }
         }
         this._pool.unregister(name);
+        this._transient.unregister(name);
+        this._textureBindings.delete(name);
+        this._bufferBindings.delete(name);
     }
 
     /** name → writers sorted by insertion order. Used by `dumpDot`

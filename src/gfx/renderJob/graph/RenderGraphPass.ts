@@ -12,6 +12,10 @@ import type { RTFrame } from '../frame/RTFrame';
 import type { BeginPassOptions, RenderGraphRenderTarget, RenderGraphRenderTargetDesc } from './RenderGraphRenderTarget';
 import type { RenderGraphRenderPass, RenderPipelineDesc } from './RenderGraphRenderPass';
 import type { RenderGraphComputePass, ComputePipelineDesc } from './RenderGraphComputePass';
+import type { RenderTexture } from '../../../textures/RenderTexture';
+import type { GPUBufferBase } from '../../graphics/webGpu/core/buffer/GPUBufferBase';
+import type { AccessHint, BufferDesc, TextureDesc } from './transient/ResourceDesc';
+import type { BufferHandle, TextureHandle } from './transient/ResourceHandle';
 
 /**
  * Setup-time builder handed to {@link RenderGraphPass.setup}. A pass
@@ -46,8 +50,15 @@ export interface RenderGraphBuilder {
 
     /** Declare a read dependency on a named resource. The named
      *  handle must have a creator before this pass executes;
-     *  validator enforces. */
-    read(name: string): void;
+     *  validator enforces.
+     *
+     *  Pass a {@link TextureHandle} / {@link BufferHandle} returned by
+     *  `b.declareTexture` / `b.declareBuffer` / `b.importExternalTexture`
+     *  / `b.importExternalBuffer` to type-check the target and to
+     *  contribute the optional `access` hint to the resource's final
+     *  `GPUTextureUsage` / `GPUBufferUsage`. String form keeps working
+     *  for legacy resources registered through `b.write(name, getter)`. */
+    read(target: string | TextureHandle | BufferHandle, access?: AccessHint): void;
 
     /** Creator overload: declare a write to `name`, register `getter`
      *  in the pool. The `getter` is called every `pool.get(name)` —
@@ -55,13 +66,74 @@ export interface RenderGraphBuilder {
      *  field for stable identity (eager case), or implement internal
      *  caching that rebuilds on resize (lazy case). Returns
      *  `getter()` once for caller convenience. Single-creator rule
-     *  applies. */
+     *  applies.
+     *
+     *  This overload is the legacy path; new passes should prefer
+     *  `b.declareTexture` / `b.declareBuffer` so the graph can manage
+     *  lifecycle + aliasing instead of the pass owning a private
+     *  RenderTexture. Phase 5 will deprecate this overload. */
     write<T>(name: string, getter: () => T): T;
 
     /** Mutator overload: declare this pass writes to an existing
      *  named resource (created by another pass). Multi-mutator OK;
-     *  ordering is by insertion. */
-    write(name: string): void;
+     *  ordering is by insertion.
+     *
+     *  Handle form contributes an access hint to the resource's usage
+     *  union; string form preserves legacy behavior. */
+    write(target: string | TextureHandle | BufferHandle, access?: AccessHint): void;
+
+    /** Combined read + write of an in-place mutated resource (e.g. a
+     *  compute pass that samples and stores back to the same storage
+     *  texture). Same as calling `b.read(target, access)` followed by
+     *  `b.write(target, access)` — both arrays are populated and the
+     *  hint is unioned into the resource's usage. */
+    readWrite(target: TextureHandle | BufferHandle, access?: AccessHint): void;
+
+    /**
+     * Declare a transient texture this pass owns. The graph allocates
+     * the underlying {@link RenderTexture} after compile from a pooled
+     * physical slot (possibly aliased with another resource whose
+     * lifetime ends before this one starts). The pass fetches the
+     * actual texture from `ctx.getTexture(name)` inside `execute()`.
+     *
+     * Single-creator rule applies — declaring the same name twice
+     * throws. `declareTexture` registers the pass as the resource's
+     * creator (single-creator rule) but does NOT auto-record a read or
+     * write access — pass authors must follow up with one of:
+     *   - `b.write(handle, hint)` / `b.read(handle, hint)`, or
+     *   - `b.readWrite(handle, hint)`
+     * to declare how the pass actually uses the resource. Hints
+     * (`'sample' | 'storage' | 'attachment' | 'copy'`) drive the final
+     * `GPUTextureUsage` union when `desc.usage === 'auto'` (default).
+     * A `declareTexture` with no follow-up access is treated as an
+     * orphan declaration and skipped by the pool with a warning.
+     */
+    declareTexture(name: string, desc: TextureDesc): TextureHandle;
+
+    /**
+     * Declare a transient buffer this pass owns. Symmetric with
+     * {@link declareTexture}: registers the creator only, the actual
+     * access pattern must be declared via `b.read/write/readWrite`.
+     * The pool reuses buffer wrappers by `(rounded-pow2 size, usage)`
+     * bucket and grows them via `GPUBufferBase.resizeBuffer` when needed.
+     */
+    declareBuffer(name: string, desc: BufferDesc): BufferHandle;
+
+    /**
+     * Publish an externally-owned {@link RenderTexture} under `name`
+     * as a persistent (non-aliasable, non-pool-allocated) resource.
+     * Use for textures whose lifecycle is managed outside the graph
+     * (e.g. {@link RTResourceMap}-cached resources, history textures
+     * for TAA). Returns a {@link TextureHandle} so callers can use the
+     * handle-typed `read` / `write` overloads.
+     */
+    importExternalTexture(name: string, tex: RenderTexture): TextureHandle;
+
+    /**
+     * Publish an externally-owned {@link GPUBufferBase} as a persistent
+     * resource. Symmetric with {@link importExternalTexture}.
+     */
+    importExternalBuffer(name: string, buf: GPUBufferBase): BufferHandle;
 
     /** Declare an explicit ordering dependency on another pass by
      *  name, independent of any read/write resource edge. Use this
@@ -181,6 +253,17 @@ export interface RenderGraphPassContext {
 
     /** Resolve a named resource through the graph pool. */
     get<T>(name: string): T;
+
+    /** Resolve a {@link RenderTexture} by name. Returns the pool-assigned
+     *  physical wrapper for transient resources or the imported texture
+     *  for resources registered via `b.importExternalTexture`. Throws if
+     *  `name` is not a texture kind (validator should have caught the
+     *  mismatch at compile; this is the defensive runtime check). */
+    getTexture(name: string | TextureHandle): RenderTexture;
+
+    /** Resolve a {@link GPUBufferBase} by name. Symmetric with
+     *  {@link getTexture}. */
+    getBuffer(name: string | BufferHandle): GPUBufferBase;
 
     /** Resolve a {@link RenderGraphRenderTarget} by name. Throws if
      *  the handle exists but is not a render target (validator should

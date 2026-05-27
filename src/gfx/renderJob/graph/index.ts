@@ -4,6 +4,32 @@ export {
     type RenderGraphBuilder,
 } from './RenderGraphPass';
 export { RenderGraphResourcePool, type ResourceKind } from './RenderGraphResourcePool';
+export type { SizeSpec, AccessHint, TextureDesc, BufferDesc } from './transient/ResourceDesc';
+export type { TextureHandle, BufferHandle } from './transient/ResourceHandle';
+export {
+    TransientResourceRegistry,
+    type TransientResourceKind,
+    type TransientResourceDeclaration,
+} from './transient/TransientResourceRegistry';
+export {
+    LifetimeAnalyzer,
+    resolveSizeSpec,
+    type ResourceLifetime,
+} from './transient/LifetimeAnalyzer';
+export {
+    TransientTexturePool,
+    computeBucketKey,
+    estimateTextureBytes,
+    type PooledTexture,
+    type TransientTextureAssignment,
+} from './transient/TransientTexturePool';
+export {
+    TransientBufferPool,
+    roundUpToPow2,
+    type PooledBuffer,
+    type TransientBufferAssignment,
+} from './transient/TransientBufferPool';
+export { TextureIdentityWatcher, type WatchedTexture } from './transient/TextureIdentityWatcher';
 export {
     GraphCompileError,
     CyclicDependencyError,

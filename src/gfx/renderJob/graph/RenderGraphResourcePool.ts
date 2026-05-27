@@ -39,6 +39,12 @@ export class RenderGraphResourcePool {
     private readonly _ctx: Context3D;
     private readonly _registry: Map<string, () => unknown> = new Map();
     private readonly _kinds: Map<string, ResourceKind> = new Map();
+    /** Sidecar marking which resources are persistent (externally
+     *  owned and never aliased / pool-allocated). Used by the
+     *  transient subsystem to skip these during {@link LifetimeAnalyzer}
+     *  + pool allocation, and by tooling to render imported handles
+     *  distinctly. */
+    private readonly _persistent: Set<string> = new Set();
 
     constructor(ctx: Context3D) {
         this._ctx = ctx;
@@ -60,6 +66,18 @@ export class RenderGraphResourcePool {
         this._kinds.set(name, kind);
     }
 
+    /** Mark `name` as persistent — the transient pool will not allocate
+     *  or alias a wrapper for it. The persistent flag is independent of
+     *  the kind tag: any kind can be marked persistent. Calling on an
+     *  unregistered name still records the flag (set on `register`). */
+    public markPersistent(name: string): void {
+        this._persistent.add(name);
+    }
+
+    public isPersistent(name: string): boolean {
+        return this._persistent.has(name);
+    }
+
     /** Drop the getter for `name`. Idempotent — silently no-ops if the
      *  name isn't registered. Called from `RenderGraph.remove()` and
      *  from `RenderGraph.replace()`'s pre-install cleanup so old
@@ -67,6 +85,7 @@ export class RenderGraphResourcePool {
     public unregister(name: string): void {
         this._registry.delete(name);
         this._kinds.delete(name);
+        this._persistent.delete(name);
     }
 
     /** Resolve a named resource. Throws if no getter is registered. */
@@ -95,5 +114,6 @@ export class RenderGraphResourcePool {
     public dispose(): void {
         this._registry.clear();
         this._kinds.clear();
+        this._persistent.clear();
     }
 }
