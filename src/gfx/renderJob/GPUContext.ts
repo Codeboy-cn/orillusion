@@ -162,7 +162,18 @@ export class GPUContextInstance {
                     att.view = renderPassState.multiTexture.createView();
                     att.resolveTarget = renderTarget.getGPUView();
                 } else {
-                    att.view = renderTarget.getGPUTexture().createView();
+                    // Use the wrapper's prepared view (from viewDescriptor,
+                    // mipLevelCount=1 by construction) rather than a raw
+                    // `getGPUTexture().createView()` (which defaults to all
+                    // mips). The two are equivalent for today's
+                    // mipLevelCount=1 RenderTextures, but if any
+                    // future RT carries a mip chain (transient pool's
+                    // SceneColorPyramid, or GBuffer.colorBuffer once its
+                    // useMipmap intent is honored), the raw default-view
+                    // path would be multi-mip and WebGPU rejects multi-mip
+                    // views used as attachments. The prepared view is also
+                    // cached on first access, avoiding a per-frame createView.
+                    att.view = renderTarget.getGPUView() as GPUTextureView;
                 }
             }
             return command.beginRenderPass(renderPassState.renderPassDescriptor);

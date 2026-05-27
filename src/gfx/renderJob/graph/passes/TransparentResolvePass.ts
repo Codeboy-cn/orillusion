@@ -124,7 +124,11 @@ export class TransparentResolvePass extends RenderGraphPass {
         const passDesc: GPURenderPassDescriptor = {
             label: 'OITResolvePass',
             colorAttachments: [{
-                view: colorBuffer.getGPUTexture().createView(),
+                // Use the wrapper's prepared single-mip view rather
+                // than `getGPUTexture().createView()` (defaults to all
+                // mips). Multi-mip views as attachments are rejected
+                // by WebGPU; the prepared view is cached too.
+                view: colorBuffer.getGPUView() as GPUTextureView,
                 loadOp: 'load',
                 storeOp: 'store',
                 clearValue: [0, 0, 0, 0],

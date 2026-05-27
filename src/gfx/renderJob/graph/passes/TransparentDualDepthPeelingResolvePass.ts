@@ -105,7 +105,9 @@ export class TransparentDualDepthPeelingResolvePass extends RenderGraphPass {
         const passDesc: GPURenderPassDescriptor = {
             label: 'DDPResolvePass',
             colorAttachments: [{
-                view: colorBuffer.getGPUTexture().createView(),
+                // Wrapper's prepared single-mip view (see OITResolve
+                // for the same fix's rationale).
+                view: colorBuffer.getGPUView() as GPUTextureView,
                 loadOp: 'load',
                 storeOp: 'store',
                 clearValue: [0, 0, 0, 0],
