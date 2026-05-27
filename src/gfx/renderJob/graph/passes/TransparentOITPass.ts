@@ -6,10 +6,11 @@ import { RTDescriptor } from '../../../graphics/webGpu/descriptor/RTDescriptor';
 import { WebGPUDescriptorCreator } from '../../../graphics/webGpu/descriptor/WebGPUDescriptorCreator';
 import { GBufferFrame } from '../../frame/GBufferFrame';
 import { RTFrame } from '../../frame/RTFrame';
-import { RTResourceMap } from '../../frame/RTResourceMap';
 import { PassType } from '../../passRenderer/state/PassType';
 import { RendererPassState } from '../../passRenderer/state/RendererPassState';
 import { RenderGraphBuilder, RenderGraphPass, RenderGraphPassContext } from '../RenderGraphPass';
+import { TextureHandle } from '../transient/ResourceHandle';
+import { TextureIdentityWatcher } from '../transient/TextureIdentityWatcher';
 import { ClusterLightingPass } from './ClusterLightingPass';
 import { COLOR_BUFFER } from './ColorPass';
 import { MAIN_DEPTH_TEXTURE } from './PreDepthPass';
@@ -41,6 +42,13 @@ export class TransparentOITPass extends RenderGraphPass {
     protected readonly _passType: PassType = PassType.OIT_ACCUM;
     protected _rendererPassState: RendererPassState | null = null;
     protected _zPreTexture: RenderTexture | null = null;
+    protected _accumHandle!: TextureHandle;
+    protected _revealHandle!: TextureHandle;
+    /** Detect pool-driven attachment identity swaps (canvas resize ⇒
+     *  pool re-allocates same-bucket-but-different-size slot, or
+     *  re-aliasing across compiles). Forces RTFrame + RendererPassState
+     *  rebuild on hit. */
+    protected readonly _watcher: TextureIdentityWatcher = new TextureIdentityWatcher();
 
     public setup(b: RenderGraphBuilder): void {
         this._ctx = b.context3D;
@@ -56,22 +64,37 @@ export class TransparentOITPass extends RenderGraphPass {
             b.read(MAIN_DEPTH_TEXTURE);
             this._zPreTexture = b.graph.pool.get(MAIN_DEPTH_TEXTURE) as RenderTexture;
         }
-        // Lazy alloc: rtFrame depends on the colorPass GBuffer's
-        // current depth texture, so build it on first read.
-        b.write<RenderTexture>(OIT_ACCUM_TEX, () => {
-            this._ensureRtFrame();
-            return RTResourceMap.getTexture(this._ctx, OIT_ACCUM_TEX);
+        // Declare the two side-band attachments as transient. The
+        // physical pool may alias them with any other rgba16f / r8 screen-
+        // sized scratch (e.g. Phase-1 MotionVector for the rgba16f bucket)
+        // whose lifetime ends before OIT runs.
+        this._accumHandle = b.declareTexture(OIT_ACCUM_TEX, {
+            format: GPUTextureFormat.rgba16float,
+            width: 'screen', height: 'screen',
+            label: OIT_ACCUM_TEX,
         });
-        b.write<RenderTexture>(OIT_REVEAL_TEX, () => {
-            this._ensureRtFrame();
-            return RTResourceMap.getTexture(this._ctx, OIT_REVEAL_TEX);
+        b.write(this._accumHandle, 'attachment');
+        this._revealHandle = b.declareTexture(OIT_REVEAL_TEX, {
+            format: GPUTextureFormat.r8unorm,
+            width: 'screen', height: 'screen',
+            label: OIT_REVEAL_TEX,
         });
+        b.write(this._revealHandle, 'attachment');
 
         dependOnIfRegistered(b, 'GPUCullPass');
     }
 
     public execute(ctx: RenderGraphPassContext): void {
-        this._ensureRtFrame();
+        const accum = ctx.getTexture(this._accumHandle);
+        const reveal = ctx.getTexture(this._revealHandle);
+        // Rebuild RTFrame + RendererPassState if the pool handed us a
+        // different RenderTexture (resize / new alias slot).
+        const dirty = this._watcher.update([
+            { key: 'accum', tex: accum },
+            { key: 'reveal', tex: reveal },
+        ]);
+        if (dirty) this._rendererPassState = null;
+        this._ensureRtFrame(accum, reveal);
         const view = ctx.view;
         const cluster = ctx.graph.getPass<ClusterLightingPass>('ClusterLightingPass')?.clusterLightingBuffer;
         const gpu = view.engine3D.context3D.gpuContext;
@@ -128,15 +151,14 @@ export class TransparentOITPass extends RenderGraphPass {
         gpu.lastRenderPassState = savedLastPS;
     }
 
-    protected _ensureRtFrame(): void {
+    protected _ensureRtFrame(accum: RenderTexture, reveal: RenderTexture): void {
         if (this._rendererPassState) return;
         const ctx = this._ctx;
         const colorGBuffer = GBufferFrame.getGBufferFrame(GBufferFrame.colorPass_GBuffer, ctx);
-        const w = ctx.presentationSize[0];
-        const h = ctx.presentationSize[1];
 
-        const accum = RTResourceMap.createRTTexture(ctx, OIT_ACCUM_TEX, w, h, GPUTextureFormat.rgba16float, false, 0);
-        const reveal = RTResourceMap.createRTTexture(ctx, OIT_REVEAL_TEX, w, h, GPUTextureFormat.r8unorm, false, 0);
+        // Naming attachments after their logical handles keeps DevTools
+        // labels stable across pool re-aliases — easier to follow in
+        // captures than the pool's auto-generated UUID name.
         accum.name = OIT_ACCUM_TEX;
         reveal.name = OIT_REVEAL_TEX;
 

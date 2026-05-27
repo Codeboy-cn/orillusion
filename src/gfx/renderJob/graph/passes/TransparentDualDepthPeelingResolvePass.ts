@@ -1,7 +1,6 @@
 import { DDPResolveShader } from '../../../../assets/shader/post/DDPResolveShader';
 import { RenderTexture } from '../../../../textures/RenderTexture';
 import { Context3D } from '../../../graphics/webGpu/Context3D';
-import { RTResourceMap } from '../../frame/RTResourceMap';
 import { RenderGraphBuilder, RenderGraphPass, RenderGraphPassContext } from '../RenderGraphPass';
 import { COLOR_BUFFER } from './ColorPass';
 import { MAIN_COLOR_RT } from './GBufferResourcePass';
@@ -29,7 +28,11 @@ export class TransparentDualDepthPeelingResolvePass extends RenderGraphPass {
 
     public setup(b: RenderGraphBuilder): void {
         this._ctx = b.context3D;
-        b.read(DDP_FRONT_TEX);
+        // 'sample' hint adds TEXTURE_BINDING to the DDP front's usage
+        // union (DDP pass contributed RENDER_ATTACHMENT). Without the
+        // hint the pool would allocate without TEXTURE_BINDING and
+        // createView() in execute would throw.
+        b.read(DDP_FRONT_TEX, 'sample');
         b.write(COLOR_BUFFER);              // legacy mutator-write
         b.useRenderTarget(MAIN_COLOR_RT);   // typed mutator on the main RT
     }
@@ -81,7 +84,7 @@ export class TransparentDualDepthPeelingResolvePass extends RenderGraphPass {
     }
 
     public execute(ctx: RenderGraphPassContext): void {
-        const front = RTResourceMap.getTexture(this._ctx, DDP_FRONT_TEX);
+        const front = ctx.getTexture(DDP_FRONT_TEX);
         const colorBuffer = ctx.get<RenderTexture>(COLOR_BUFFER);
         if (!front || !colorBuffer) return;
 

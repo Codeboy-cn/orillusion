@@ -2,7 +2,6 @@ import { OITResolveShader } from '../../../../assets/shader/post/OITResolveShade
 import { RenderTexture } from '../../../../textures/RenderTexture';
 import { Context3D } from '../../../graphics/webGpu/Context3D';
 import { GBufferFrame } from '../../frame/GBufferFrame';
-import { RTResourceMap } from '../../frame/RTResourceMap';
 import { RenderGraphBuilder, RenderGraphPass, RenderGraphPassContext } from '../RenderGraphPass';
 import { COLOR_BUFFER } from './ColorPass';
 import { MAIN_COLOR_RT } from './GBufferResourcePass';
@@ -31,8 +30,13 @@ export class TransparentResolvePass extends RenderGraphPass {
 
     public setup(b: RenderGraphBuilder): void {
         this._ctx = b.context3D;
-        b.read(OIT_ACCUM_TEX);
-        b.read(OIT_REVEAL_TEX);
+        // Hint 'sample' contributes TEXTURE_BINDING to the accum/reveal
+        // usage union, so the transient pool allocates them with
+        // RENDER_ATTACHMENT (from OIT's write) | TEXTURE_BINDING (from
+        // this read). Without the hint usage would lack TEXTURE_BINDING
+        // and createBindGroup would throw at the createView() below.
+        b.read(OIT_ACCUM_TEX, 'sample');
+        b.read(OIT_REVEAL_TEX, 'sample');
         b.write(COLOR_BUFFER);              // legacy mutator-write
         b.useRenderTarget(MAIN_COLOR_RT);   // typed mutator on the main RT
     }
@@ -87,8 +91,12 @@ export class TransparentResolvePass extends RenderGraphPass {
     }
 
     public execute(ctx: RenderGraphPassContext): void {
-        const accum = RTResourceMap.getTexture(this._ctx, OIT_ACCUM_TEX);
-        const reveal = RTResourceMap.getTexture(this._ctx, OIT_REVEAL_TEX);
+        // Pull from the graph pool — the OIT pass declared these as
+        // transient, so the pool may have aliased them to share
+        // physical storage with another rgba16f / r8 screen-sized
+        // resource whose lifetime ended before OIT ran.
+        const accum = ctx.getTexture(OIT_ACCUM_TEX);
+        const reveal = ctx.getTexture(OIT_REVEAL_TEX);
         const colorBuffer = ctx.get<RenderTexture>(COLOR_BUFFER);
         if (!accum || !reveal || !colorBuffer) return;
 

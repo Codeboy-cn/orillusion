@@ -5,10 +5,11 @@ import { GlobalBindGroup } from '../../../graphics/webGpu/core/bindGroups/Global
 import { RTDescriptor } from '../../../graphics/webGpu/descriptor/RTDescriptor';
 import { WebGPUDescriptorCreator } from '../../../graphics/webGpu/descriptor/WebGPUDescriptorCreator';
 import { RTFrame } from '../../frame/RTFrame';
-import { RTResourceMap } from '../../frame/RTResourceMap';
 import { PassType } from '../../passRenderer/state/PassType';
 import { RendererPassState } from '../../passRenderer/state/RendererPassState';
 import { RenderGraphBuilder, RenderGraphPass, RenderGraphPassContext } from '../RenderGraphPass';
+import { TextureHandle } from '../transient/ResourceHandle';
+import { TextureIdentityWatcher } from '../transient/TextureIdentityWatcher';
 import { ClusterLightingPass } from './ClusterLightingPass';
 import { COLOR_BUFFER } from './ColorPass';
 import { SCENE_COLOR_PYRAMID } from './SceneColorPyramidPass';
@@ -77,23 +78,45 @@ export class TransparentDualDepthPeelingPass extends RenderGraphPass {
     protected _ctx!: Context3D;
     protected readonly _passType: PassType = PassType.OIT_DEPTH_PEEL_FRONT;
     protected _rendererPassState: RendererPassState | null = null;
+    protected _frontHandle!: TextureHandle;
+    protected _depthHandle!: TextureHandle;
+    protected readonly _watcher: TextureIdentityWatcher = new TextureIdentityWatcher();
 
     public setup(b: RenderGraphBuilder): void {
         this._ctx = b.context3D;
         b.read(COLOR_BUFFER);
         b.read(SCENE_COLOR_PYRAMID);
-        for (const tex of [DDP_FRONT_TEX, DDP_FRONT_DEPTH_TEX]) {
-            b.write<RenderTexture>(tex, () => {
-                this._ensureRtFrame();
-                return RTResourceMap.getTexture(this._ctx, tex);
-            });
-        }
+        // Single-layer DDP front-color (HDR) + private depth. Both
+        // declared as transient — the pool may alias the front colour
+        // with any other screen-sized rgba16f scratch (e.g. OIT accum,
+        // MotionVector) whose lifetime ends before DDP runs, and the
+        // depth attachment with any other screen-sized depth24plus
+        // scratch.
+        this._frontHandle = b.declareTexture(DDP_FRONT_TEX, {
+            format: GPUTextureFormat.rgba16float,
+            width: 'screen', height: 'screen',
+            label: DDP_FRONT_TEX,
+        });
+        b.write(this._frontHandle, 'attachment');
+        this._depthHandle = b.declareTexture(DDP_FRONT_DEPTH_TEX, {
+            format: GPUTextureFormat.depth24plus,
+            width: 'screen', height: 'screen',
+            label: DDP_FRONT_DEPTH_TEX,
+        });
+        b.write(this._depthHandle, 'attachment');
 
         dependOnIfRegistered(b, 'GPUCullPass');
     }
 
     public execute(ctx: RenderGraphPassContext): void {
-        this._ensureRtFrame();
+        const front = ctx.getTexture(this._frontHandle);
+        const depth = ctx.getTexture(this._depthHandle);
+        const dirty = this._watcher.update([
+            { key: 'front', tex: front },
+            { key: 'depth', tex: depth },
+        ]);
+        if (dirty) this._rendererPassState = null;
+        this._ensureRtFrame(front, depth);
         const view = ctx.view;
         const cluster = ctx.graph.getPass<ClusterLightingPass>('ClusterLightingPass')?.clusterLightingBuffer;
         const gpu = view.engine3D.context3D.gpuContext;
@@ -133,22 +156,13 @@ export class TransparentDualDepthPeelingPass extends RenderGraphPass {
         gpu.lastRenderPassState = savedLastPS;
     }
 
-    protected _ensureRtFrame(): void {
+    protected _ensureRtFrame(front: RenderTexture, depth: RenderTexture): void {
         if (this._rendererPassState) return;
         const ctx = this._ctx;
-        const w = ctx.presentationSize[0];
-        const h = ctx.presentationSize[1];
 
-        // Single-layer depth peeling RTs.
-        // _DDPFront: HDR colour accum (PBR shading writes >1.0 colours
-        //   legitimately; RGBA8 would clip).
-        // _DDPFrontDepth: private depth buffer for transparent depth-
-        //   test. Depth-write enabled per DDPFrontPass; cleared each
-        //   frame so transparent-vs-transparent occlusion resets every
-        //   frame and doesn't bleed into the next.
-        const front = RTResourceMap.createRTTexture(ctx, DDP_FRONT_TEX, w, h, GPUTextureFormat.rgba16float, false, 0);
+        // Pinning the human-readable label across pool re-aliases so
+        // DevTools captures stay grep-able.
         front.name = DDP_FRONT_TEX;
-        const depth = RTResourceMap.createRTTexture(ctx, DDP_FRONT_DEPTH_TEX, w, h, GPUTextureFormat.depth24plus, false, 0);
         depth.name = DDP_FRONT_DEPTH_TEX;
 
         const frontDesc = new RTDescriptor();
