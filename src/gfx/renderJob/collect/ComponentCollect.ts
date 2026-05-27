@@ -212,7 +212,7 @@ export class ComponentCollect {
 
     /**
      * Add `comp` to the type-keyed registry under `(view, ctor)`. Used
-     * by {@link DataComponentBase.onEnable} to make the instance
+     * by {@link ComponentBase.onEnable} to make the instance
      * discoverable via {@link collectByTypeLayered}.
      *
      * `ctor` should be the component's concrete class

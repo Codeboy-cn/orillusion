@@ -463,7 +463,7 @@ export class EntityCollect {
      * Centralising the bitwise idiom here keeps the semantics
      * consistent between {@link EntityCollect.getLayerLists} (RenderNode
      * path) and {@link ComponentCollect.collectByTypeLayered}
-     * (DataComponentBase path); callers should not re-implement the
+     * (ComponentBase path); callers should not re-implement the
      * `(a & b & c) !== 0` test by hand.
      *
      * @param layer       The renderable's own layer membership value

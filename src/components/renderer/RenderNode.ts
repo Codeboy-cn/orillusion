@@ -20,7 +20,6 @@ import { OctreeEntity } from "../../core/tree/octree/OctreeEntity";
 import { Transform } from "../Transform";
 import { Material } from "../../materials/Material";
 import { BatchMode } from "../../gfx/renderJob/config/BatchMode";
-import { RenderLayer } from "../../gfx/renderJob/config/RenderLayer";
 import { RenderShaderCompute } from "../../gfx/graphics/webGpu/compute/RenderShaderCompute";
 import { PassType } from "../../gfx/renderJob/passRenderer/state/PassType";
 import { ProfilerUtil } from "../../util/ProfilerUtil";
@@ -64,23 +63,10 @@ export class RenderNode extends ComponentBase {
      *
      * Historically this field was named `_renderLayer`; that name was
      * vacated for the bitmask-based layer system, which now lives at
-     * {@link _visibleLayer} / {@link visibleLayer}.
+     * {@link ComponentBase.visibleLayer}.
      */
     protected _batchMode: BatchMode = BatchMode.None;
 
-    /**
-     * Layer-mask bits this renderer belongs to. Combined at pass
-     * execute time with {@link RenderGraphPass.layerMask} and
-     * {@link Camera3D.cullingMask} using a bitwise AND — the node is
-     * drawn only when all three share at least one set bit.
-     *
-     * Defaults to {@link RenderLayer.Default} (bit 0) so untouched
-     * legacy nodes remain visible to every built-in pass (whose
-     * default `layerMask` is `RenderLayer.All`). Application code can
-     * assign project-specific bits (1..31) to organise the scene into
-     * composition layers.
-     */
-    protected _visibleLayer: number = RenderLayer.Default;
     protected _computes: RenderShaderCompute[];
 
 
@@ -135,20 +121,6 @@ export class RenderNode extends ComponentBase {
 
     public set batchMode(value: BatchMode) {
         this._batchMode = value;
-    }
-
-    @EditorInspector
-    public get visibleLayer(): number {
-        return this._visibleLayer;
-    }
-
-    public set visibleLayer(value: number) {
-        // Normalise to uint32 so bitwise ops behave predictably even
-        // when callers pass values produced by JS bit ops (which yield
-        // signed int32) or negative bit-AND tricks. EntityCollect's
-        // `getLayerLists` reads this field directly at pass-execute
-        // time, so a simple store is sufficient — no index to refresh.
-        this._visibleLayer = value >>> 0;
     }
 
     public get geometry(): GeometryBase {

@@ -3,7 +3,7 @@ import { Texture } from '../gfx/graphics/webGpu/core/texture/Texture';
 import { Color } from '../math/Color';
 import { Quaternion } from '../math/Quaternion';
 import { Vector3 } from '../math/Vector3';
-import { DataComponentBase } from './DataComponentBase';
+import { ComponentBase } from './ComponentBase';
 
 const TMP_VEC3 = new Vector3();
 const TMP_QUAT = new Quaternion();
@@ -41,7 +41,7 @@ const UP_AXIS = new Vector3(0, 1, 0);
  *
  * @group Components
  */
-export class DecalComponent extends DataComponentBase {
+export class DecalComponent extends ComponentBase {
     /** Decal texture sampled in the composite pass. Any engine
      *  {@link Texture} works — load images with
      *  `Engine3D.res.loadTexture(url, …, 'srgb')` for a pooled
