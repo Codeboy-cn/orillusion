@@ -58,6 +58,22 @@ export class HiZPass extends RenderGraphPass {
 
     public setup(b: RenderGraphBuilder): void {
         this._ctx = b.context3D;
+        // Pre-init the colorPass_GBuffer here with the default sampleCount=0
+        // so it lands in the per-context cache before GBufferResourcePass.setup
+        // (which runs later in ForwardRendererJob and would otherwise create
+        // the GBuffer with `setting.render.msaa`). The legacy HiZPass did
+        // this implicitly via its lazy `_getOrAllocate` at execute time —
+        // removing the lazy path in this migration accidentally unmasked a
+        // pre-existing engine bug where MSAA + the rgba32float compressGBuffer
+        // attachment trips WebGPU's "RGBA32Float does not support
+        // multisampling" validation (samples like Sample_Glass with msaa:4
+        // render pure black as a result). Calling getGBufferFrame here
+        // preserves the original behaviour: ColorPassGBuffer is sampleCount=0
+        // (matching the engine's `useCompressGBuffer:false` default semantics),
+        // and MSAA still affects the upstream color attachment via per-pipeline
+        // sample count. Fixing the engine-side MSAA path properly is its own
+        // task — this preserves status quo for the migration.
+        GBufferFrame.getGBufferFrame(GBufferFrame.colorPass_GBuffer, this._ctx);
         const [w, h] = this._ctx.presentationSize;
         const mips = this._mipCount(w, h);
         this._handle = b.declareTexture(HIZ_PYRAMID, {

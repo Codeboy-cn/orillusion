@@ -133,7 +133,7 @@ interface PassWithLifetimeArrays {
 function seedLifetime(decl: TransientResourceDeclaration, orderLength: number): ResourceLifetime {
     // `persistent` here means "externally-owned, pool MUST NOT allocate"
     // — only true for importExternalTexture / importExternalBuffer
-    // resources. `aliasable: false` is a DIFFERENT concept: the pool
+    // resources. `aliasable: false` is a DIFFERENT concern: the pool
     // still allocates (and tracks lifetime + size), it just refuses
     // to share the wrapper with other lifetimes. The dedicated path
     // is handled inside TransientTexturePool itself.

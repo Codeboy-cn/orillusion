@@ -72,11 +72,23 @@ export class SceneColorPyramidPass extends RenderGraphPass {
             mipLevelCount: mips,
             aliasable: false,
             publishToLegacyMap: true,
+            // Explicit usage — TextureMipmapGenerator.webGPUGenerateMipmap
+            // (called in execute() below to refresh mips 1..N) opens a
+            // render pass per mip with the mip as colorAttachment[0],
+            // which requires RENDER_ATTACHMENT. Hint-derived usage
+            // ('sample' → TEXTURE_BINDING + COPY) misses this bit, so
+            // the mipgen pass throws a usage-mismatch validation error.
+            // Bits:
+            //   RENDER_ATTACHMENT — mipgen blits per mip
+            //   TEXTURE_BINDING   — transmission samplers
+            //   COPY_DST          — mip-0 copyTextureToTexture from _ColorBuffer
+            //   COPY_SRC          — dev-time debug captures
+            usage: GPUTextureUsage.RENDER_ATTACHMENT
+                 | GPUTextureUsage.TEXTURE_BINDING
+                 | GPUTextureUsage.COPY_SRC
+                 | GPUTextureUsage.COPY_DST,
             label: SCENE_COLOR_PYRAMID,
         });
-        // 'sample' hint adds TEXTURE_BINDING. The COPY_DST bit comes
-        // for free via the analyzer's default debug-copy bits and is
-        // what copyTextureToTexture needs for mip 0 below.
         b.write(this._handle, 'sample');
     }
 

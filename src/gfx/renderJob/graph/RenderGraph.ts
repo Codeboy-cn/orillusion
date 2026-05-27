@@ -532,6 +532,62 @@ export class RenderGraph {
         return this._transient;
     }
 
+    /**
+     * Back-compat helper for `desc.publishToLegacyMap` resources that
+     * need to be readable through `RTResourceMap.getTexture(name)` BEFORE
+     * the first {@link compile} runs (e.g. transmission materials whose
+     * constructors look up `_SceneColorPyramid` during scene setup).
+     *
+     * Allocates the dedicated pool slot eagerly (the wrapper identity
+     * is stable because `aliasable:false` resources always go through
+     * the per-name dedicated path), registers it in the graph pool,
+     * and publishes the wrapper into the legacy map. The next compile
+     * re-runs through {@link TransientTexturePool.assign} and returns
+     * the same wrapper from `_dedicatedByName`, then re-publishes
+     * (idempotent set).
+     *
+     * @internal
+     */
+    private _eagerAllocateAndPublish(name: string, desc: TextureDesc): void {
+        const [pw, ph] = this._ctx.presentationSize as [number, number];
+        const w = typeof desc.width === 'number' ? desc.width
+            : desc.width === 'screen' ? pw
+            : desc.width === 'screen/2' ? Math.max(1, Math.floor(pw / 2))
+            : desc.width === 'screen/4' ? Math.max(1, Math.floor(pw / 4))
+            : desc.width === 'screen/8' ? Math.max(1, Math.floor(pw / 8))
+            : pw;
+        const h = typeof desc.height === 'number' ? desc.height
+            : desc.height === 'screen' ? ph
+            : desc.height === 'screen/2' ? Math.max(1, Math.floor(ph / 2))
+            : desc.height === 'screen/4' ? Math.max(1, Math.floor(ph / 4))
+            : desc.height === 'screen/8' ? Math.max(1, Math.floor(ph / 8))
+            : ph;
+        const usage = typeof desc.usage === 'number' ? desc.usage
+            : (GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.RENDER_ATTACHMENT
+               | GPUTextureUsage.COPY_SRC | GPUTextureUsage.COPY_DST);
+        // Synthesize a minimal ResourceLifetime so the pool's
+        // _allocateSlot can take its normal dedicated path. The
+        // first/last idx are placeholders; the pool ignores them on
+        // dedicated allocation.
+        const lt: ResourceLifetime = {
+            name, kind: 'texture', desc,
+            firstUseIdx: 0, lastUseIdx: 0,
+            resolvedUsage: usage,
+            resolvedWidth: w, resolvedHeight: h,
+            persistent: false,
+        };
+        const single = this._texturePool.assign([lt]);
+        const rt = single.bindings.get(name);
+        if (!rt) {
+            // Defensive: should be unreachable because pool always
+            // allocates dedicated slots for aliasable:false.
+            return;
+        }
+        this._pool.register(name, () => rt, 'texture');
+        const legacyMap = RTResourceMap.forContext(this._ctx);
+        legacyMap.rtTextureMap.set(name, rt);
+    }
+
     /** Construct a builder for `pass`, run `setup`, capture the
      *  reads/writes/creates into frozen arrays on the pass.
      *
@@ -625,9 +681,6 @@ export class RenderGraph {
             },
             declareTexture: (n: string, desc: TextureDesc): TextureHandle => {
                 this._transient.declareTexture(n, desc, pass.name);
-                // Placeholder so other passes' setup() can b.read(n)
-                // before compile materializes the real binding.
-                this._pool.register(n, placeholderGetter(n), 'texture');
                 // creates marks this pass as the single creator for the
                 // single-creator validator; writes / reads are NOT
                 // auto-pushed here — callers must follow up with
@@ -637,6 +690,30 @@ export class RenderGraph {
                 // arrays free of duplicates and makes the access intent
                 // explicit at the call site (good for grep + review).
                 creates.push(n);
+                // Back-compat early-publish path: resources marked
+                // `publishToLegacyMap` are typically read by materials
+                // (LitMaterial.transmissionFactor setter looks up
+                // `_SceneColorPyramid` via `RTResourceMap.getTexture`)
+                // BEFORE the first compile runs — Sample code instantiates
+                // these materials in `initScene()`, which sits between
+                // `graph.add(...)` and the first `graph.execute(...)`.
+                // If we defer allocation to compile, the material's setter
+                // sees a missing entry and binds the white-texture
+                // placeholder forever. Eager-allocate the wrapper here so
+                // the RTResourceMap entry exists by the time the material
+                // setter runs; the wrapper's identity is stable because
+                // `aliasable:false` resources always go through the
+                // pool's dedicated path (lookup-by-name) and never get
+                // re-aliased. The next compile re-registers the same
+                // wrapper through the normal `pool.assign` path and
+                // sets `publishToLegacyMap.set` (idempotent).
+                if (desc.publishToLegacyMap && desc.aliasable === false) {
+                    this._eagerAllocateAndPublish(n, desc);
+                } else {
+                    // Placeholder so other passes' setup() can b.read(n)
+                    // before compile materializes the real binding.
+                    this._pool.register(n, placeholderGetter(n), 'texture');
+                }
                 return makeTextureHandle(n);
             },
             declareBuffer: (n: string, desc: BufferDesc): BufferHandle => {

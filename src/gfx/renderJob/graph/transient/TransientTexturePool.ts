@@ -260,30 +260,26 @@ export class TransientTexturePool {
         // and rebuilds the descriptor with mipLevelCount=1. Phase 4
         // removes this workaround at the RenderTexture level.
         //
-        // Mirrors the proven workaround in
-        // SceneColorPyramidPass._installMipChain: patch
-        // textureDescriptor.mipLevelCount + viewDescriptor.mipLevelCount
-        // + the wrapper's mipmapCount field, then null the cached
-        // gpuTexture + view so the next access materializes with the
-        // right level count.
+        // Patch only `textureDescriptor.mipLevelCount` + null the
+        // cached gpuTexture/view so the next materialize uses the new
+        // mip count. Do NOT also touch `mipmapCount` / `viewDescriptor`
+        // / `useMipmap` on the wrapper — those propagate into
+        // `textureBindingLayout.sampleType` rebuilds that flip r32float
+        // from `unfilterable-float` (correct) to filterable `float`
+        // (rejected by validation). HiZ + downstream r32float consumers
+        // bind via their own explicit views + bind-group layouts so the
+        // wrapper-level sample-type defaults don't matter for them; for
+        // rgba16float pyramids the defaults already match (filterable).
         const mips = desc.mipLevelCount ?? 1;
         if (mips > 1) {
             const rtAny = rt as unknown as {
                 textureDescriptor?: GPUTextureDescriptor;
-                viewDescriptor?: { mipLevelCount?: number };
-                mipmapCount?: number;
                 gpuTexture: GPUTexture | null;
                 view: GPUTextureView | null;
-                useMipmap?: boolean;
             };
             if (rtAny.textureDescriptor) {
                 rtAny.textureDescriptor.mipLevelCount = mips;
             }
-            if (rtAny.viewDescriptor) {
-                rtAny.viewDescriptor.mipLevelCount = mips;
-            }
-            rtAny.mipmapCount = mips;
-            rtAny.useMipmap = true;
             rtAny.gpuTexture = null;
             rtAny.view = null;
         }
