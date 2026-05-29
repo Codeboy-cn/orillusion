@@ -421,6 +421,58 @@ await test('dependencies: cycle through dependencies is detected', async () => {
     if (!(threw instanceof CyclicDependencyError)) throw new Error('did not throw CyclicDependencyError')
 })
 
+await test('dependencies: dependsOn pulls a late-added dependent up next to its dep', async () => {
+    // Insertion order: A, B, C, D. D dependsOn A. Without the effective-
+    // order shift Kahn would compile to [A, B, C, D] (the old insertion-
+    // order tie-break); with it, D's scheduling key collapses to "just
+    // after A" so the compiled order becomes [A, D, B, C].
+    const t = makeTopoInput([
+        { name: 'A' },
+        { name: 'B' },
+        { name: 'C' },
+        { name: 'D', deps: ['A'] },
+    ])
+    expect(topoSort(t.passes, t.byName, t.insertedOrder)).toEqual(['A', 'D', 'B', 'C'])
+})
+
+await test('dependencies: dependsOn chain places each link right after its dep', async () => {
+    // X dependsOn A; Y dependsOn X. Both X and Y are added after the
+    // independent B and C, yet they should land right after A.
+    const t = makeTopoInput([
+        { name: 'A' },
+        { name: 'B' },
+        { name: 'C' },
+        { name: 'X', deps: ['A'] },
+        { name: 'Y', deps: ['X'] },
+    ])
+    expect(topoSort(t.passes, t.byName, t.insertedOrder)).toEqual(['A', 'X', 'Y', 'B', 'C'])
+})
+
+await test('dependencies: dependsOn keys against the latest of multiple deps', async () => {
+    // E dependsOn A and C. Latest dep is C, so E should sit right after
+    // C — past B (between A and C), but ahead of unrelated, later D.
+    const t = makeTopoInput([
+        { name: 'A' },
+        { name: 'B' },
+        { name: 'C' },
+        { name: 'D' },
+        { name: 'E', deps: ['A', 'C'] },
+    ])
+    expect(topoSort(t.passes, t.byName, t.insertedOrder)).toEqual(['A', 'B', 'C', 'E', 'D'])
+})
+
+await test('dependencies: siblings sharing a dep keep their insertion order as the secondary tie-break', async () => {
+    // B and C both dependsOn A, so both get effective key ~A+ε. The
+    // secondary tie-break is original insertion order, so B precedes C.
+    const t = makeTopoInput([
+        { name: 'A' },
+        { name: 'X' },
+        { name: 'B', deps: ['A'] },
+        { name: 'C', deps: ['A'] },
+    ])
+    expect(topoSort(t.passes, t.byName, t.insertedOrder)).toEqual(['A', 'B', 'C', 'X'])
+})
+
 // -----------------------------------------------------------------------------
 // dumpDot — stable output for snapshot testing
 // -----------------------------------------------------------------------------

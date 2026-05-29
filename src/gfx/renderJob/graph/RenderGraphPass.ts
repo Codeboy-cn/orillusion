@@ -141,7 +141,17 @@ export interface RenderGraphBuilder {
      *  pass consumes through a non-graph channel (e.g. GPU indirect
      *  buffers consumed via GlobalBindGroup, or off-screen RTs
      *  consumed by sibling materials). The named pass must already
-     *  be registered in the graph before this call. */
+     *  be registered in the graph before this call.
+     *
+     *  Beyond the topology edge, this also positions the dependent
+     *  in the compiled schedule: the pass pops from the ready queue
+     *  immediately after its latest explicit dep, ahead of unrelated
+     *  passes that happen to have lower insertion order. In other
+     *  words `b.dependsOn(X)` reads as "schedule me with X", not
+     *  merely "after X somewhere" — a custom pass added late via
+     *  `renderJob.graph.add(...)` that depends on a built-in pass
+     *  will compile next to that built-in rather than at the tail
+     *  of the pipeline. */
     dependsOn(passName: string): void;
 
     /** Optional-dependency variant of {@link dependsOn}: if a pass
@@ -150,7 +160,8 @@ export interface RenderGraphBuilder {
      *  pass only needs to run *after* another pass when it happens
      *  to be present, without reading or writing any of its outputs
      *  — and is fine running on its own when the upstream pass is
-     *  absent from the pipeline. */
+     *  absent from the pipeline. When the edge is added it carries
+     *  the same scheduling-shift behavior as {@link dependsOn}. */
     dependsOnIfPresent(passName: string): void;
 
     /**
@@ -356,7 +367,13 @@ export abstract class RenderGraphPass extends CEventDispatcher {
      *  before the next compile. Each entry adds a topo-sort edge
      *  `<name> → this`, independent of any resource edge. Use for
      *  side-effect dependencies the graph can't see (indirect buffers,
-     *  off-screen RTs consumed via materials, etc.). */
+     *  off-screen RTs consumed via materials, etc.).
+     *
+     *  Beyond the edge, an entry here also positions this pass in the
+     *  compiled schedule: the effective scheduling key collapses to
+     *  "just after the latest dep", so a late-added pass with explicit
+     *  dependencies runs next to its dep instead of trailing at the
+     *  end of the queue. See {@link topoSort} for the full rule. */
     public dependencies?: ReadonlySet<string>;
 
     /** Allocate GPU resources, declare graph-level dependencies via

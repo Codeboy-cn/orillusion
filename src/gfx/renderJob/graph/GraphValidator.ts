@@ -173,10 +173,19 @@ export class GraphValidator {
 }
 
 /**
- * Kahn-style topological sort on the reads/writes DAG. The single
- * sort key is **insertion order** — the order in which `graph.add()`
- * was called. Together with the resource and `dependencies` edges
- * this fully determines the schedule: same input → same output.
+ * Kahn-style topological sort on the reads/writes DAG. Tie-breaks
+ * between equally-ready passes use **effective scheduling order**:
+ *   - A pass with no explicit `dependencies` keeps its original
+ *     `insertedOrder` as its key (the order of `graph.add()`).
+ *   - A pass with explicit `dependencies` is shifted to sit just
+ *     after its latest explicit dep — so `b.dependsOn(X)` reads as
+ *     "schedule me with X", not merely "after X somewhere". A late-
+ *     added pass that depends on an early one therefore pops from
+ *     the ready queue immediately after its dep, ahead of unrelated
+ *     passes that happen to have lower insertion order.
+ *
+ * Together with the resource and `dependencies` edges this fully
+ * determines the schedule: same input → same output.
  *
  * Multi-writer support:
  * - Writers of the same resource are ordered by insertion.
@@ -193,7 +202,10 @@ export class GraphValidator {
  * Side-effect ordering uses {@link RenderGraphPass.dependencies}
  * (set via `b.dependsOn(name)` or direct field assignment) for
  * cases the graph can't infer from reads/writes — see the field's
- * docstring for examples.
+ * docstring for examples. Resource-derived reader/writer edges do
+ * NOT participate in the effective-order shift: they're frequently
+ * long-range (a final GUI pass reads FINAL_COLOR), and shifting on
+ * every read edge would defeat insertion-order scheduling entirely.
  *
  * Returns the ordered pass names; throws {@link CyclicDependencyError}
  * with the cycle path if a cycle is detected.
@@ -271,12 +283,49 @@ export function topoSort(
         }
     }
 
-    // Kahn with insertion-order tie-break for determinism.
+    // Effective scheduling key: a pass with explicit `dependencies`
+    // shifts to sit just after the latest of its deps, so `dependsOn(X)`
+    // pulls a late-added pass up next to X instead of stranding it at
+    // the back of the queue behind unrelated, earlier-inserted passes.
+    // Walked in insertion order — `b.dependsOn` enforces the dep is
+    // already registered, so by the time we visit a dependent its dep
+    // is already in `eff`. The remaining edge case (a dep populated
+    // via direct field assignment that's added later) falls back to
+    // the dep's `insertedOrder`, which keeps the shift monotonic but
+    // approximate; the topology edges still pin the actual ordering.
+    const eff = new Map<string, number>();
+    const epsilon = 1 / (passes.length + 1);
+    const byInsertion = [...passes].sort((a, b) => insertedOrder(a) - insertedOrder(b));
+    for (const p of byInsertion) {
+        let key = insertedOrder(p);
+        if (p.dependencies && p.dependencies.size > 0) {
+            let maxDepKey = -Infinity;
+            for (const depName of p.dependencies) {
+                if (depName === p.name) continue;
+                const dep = byName.get(depName);
+                if (!dep) continue;
+                const depKey = eff.get(depName) ?? insertedOrder(dep);
+                if (depKey > maxDepKey) maxDepKey = depKey;
+            }
+            if (maxDepKey > -Infinity) key = maxDepKey + epsilon;
+        }
+        eff.set(p.name, key);
+    }
+
+    // Kahn with effective-order primary key and insertion-order
+    // secondary tie-break for determinism when two passes share the
+    // same effective key (e.g. two siblings both depending on the
+    // same upstream pass).
     const ready: RenderGraphPass[] = [];
     for (const p of passes) {
         if (inDegree.get(p.name) === 0) ready.push(p);
     }
-    const cmp = (a: RenderGraphPass, b: RenderGraphPass) => insertedOrder(a) - insertedOrder(b);
+    const cmp = (a: RenderGraphPass, b: RenderGraphPass) => {
+        const da = eff.get(a.name)!;
+        const db = eff.get(b.name)!;
+        if (da !== db) return da - db;
+        return insertedOrder(a) - insertedOrder(b);
+    };
     ready.sort(cmp);
 
     const order: string[] = [];
