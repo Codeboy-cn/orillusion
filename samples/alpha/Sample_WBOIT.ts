@@ -303,7 +303,7 @@ class Sample_WBOIT {
      *     within-sphere triangle-order banding documented up top).
      *
      *   - `depth-peel`: alphaMode='BLEND' + oitMode='depth-peel' →
-     *     order-correct OIT via depth peeling (Babylon-style). Each
+     *     order-correct OIT via depth peeling. Each
      *     transparent fragment runs through a private depth buffer
      *     with depth-test + depth-write enabled, so the front-most
      *     fragment per pixel wins via GPU depth-test. At α=1 this is

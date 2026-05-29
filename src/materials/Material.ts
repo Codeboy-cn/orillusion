@@ -43,7 +43,7 @@ export class Material {
      *    back depth-weight ratio saturates the paper's z/200 norm).
      *    Use for unbounded transparent layer counts: particles, smoke,
      *    foliage, hair cards.
-     *  - `'depth-peel'`: Dual depth peeling (Babylon-style). Multi-pass
+     *  - `'depth-peel'`: Dual depth peeling. Multi-pass
      *    (passCount × 2 layers), order-correct over operator. α=1 is
      *    cleanly opaque — front fragment dominates because subsequent
      *    layers get multiplied by (1 - frontColor.a) = 0. Hard layer

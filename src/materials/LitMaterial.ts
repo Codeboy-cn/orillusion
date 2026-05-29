@@ -187,8 +187,8 @@ export class LitMaterial extends Material {
      *
      *  Transmission materials stay on the OPAQUE queue (renderOrder
      *  < 3000) — the alpha channel is folded into the transmitted
-     *  color in the shader. That's the same contract Unity HDRP,
-     *  UE Refraction and Three.js MeshPhysicalMaterial use. */
+     *  color in the shader. That's the standard PBR-pipeline
+     *  contract for refractive surfaces. */
     /** glTF KHR_materials_transmission `transmissionTexture` — R channel
      *  is multiplied with `transmissionFactor` per fragment, so the same
      *  material can have opaque + glassy regions (e.g. a frosted window

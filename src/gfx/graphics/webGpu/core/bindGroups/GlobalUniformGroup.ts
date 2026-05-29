@@ -17,7 +17,6 @@ import { MatrixBindGroup } from "./MatrixBindGroup";
 
 /**
  * @internal
- * @author sirxu
  * @group GFX
  */
 export class GlobalUniformGroup {

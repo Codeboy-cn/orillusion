@@ -1,11 +1,11 @@
 /**
  * Layer-mask helpers for renderable classification.
  *
- * The engine treats `RenderNode.visibleLayer` as an opaque 32-bit value
- * and does NOT assign any semantic meaning to specific bits — projects
- * define their own enums to give bits meaning, matching the Unity
- * "Layer 0-31" convention. Only three universally meaningful values
- * are reserved here:
+ * The engine treats `RenderNode.visibleLayer` as an opaque 32-bit
+ * mask (one bit per logical layer) and does NOT assign any semantic
+ * meaning to specific bits — projects define their own enums to give
+ * bits meaning. Only three universally meaningful values are
+ * reserved here:
  *
  *   - `None    = 0`          no layer membership; special renderers
  *                            (Sky, Reflection, Graphic3D) and
@@ -55,8 +55,8 @@ export namespace RenderLayer {
     export function remove(src: number, m: number): number { return (src & ~m) >>> 0; }
 
     /** Any-match test: returns true when `src` and `m` share at least
-     *  one set bit. Matches Unity's "is this layer in the camera's
-     *  culling mask" semantics. */
+     *  one set bit. Standard "is this layer in the camera's culling
+     *  mask" semantics. */
     export function has(src: number, m: number): boolean { return (src & m) !== 0; }
 }
 

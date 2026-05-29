@@ -1,5 +1,6 @@
 /**
- * Port of three.js `webgl_animation_skinning_additive_blending`.
+ * Skinned-mesh additive-blending demo — locomotion crossfade plus
+ * additive pose-layer overlays.
  *
  * Loads `Xbot.glb` (Mixamo's Xbot — robot character with 7 baked animations:
  * idle, walk, run, sneak_pose, sad_pose, agree, headShake). The first three
@@ -7,7 +8,7 @@
  * are "additive" pose clips that overlay on top of whatever locomotion is
  * playing.
  *
- * GUI parity with three.js:
+ * GUI layout:
  *
  *   Folder "Base Actions"
  *     buttons:  None | idle | walk | run
@@ -19,11 +20,10 @@
  *   Folder "General Speed"
  *     slider [0, 1.5] :  modify time scale
  *
- * The "additive" semantics in three.js are implemented via
- * AnimationUtils.makeClipAdditive() at load time, then a second mixer layer
- * with weighted clip actions. We get the same effect via our P1
- * AnimationLayer mechanism in `LayerBlendMode.Additive`: each pose clip
- * lives on its own layer, and the layer's `weight` is the slider value.
+ * Additive semantics are realized via the AnimationLayer mechanism in
+ * `LayerBlendMode.Additive`: each pose clip lives on its own layer, and
+ * the layer's `weight` is the slider value. The layer reads its clip's
+ * curves and applies (clip - rest) × weight on top of the base layer.
  */
 import { GUIHelp } from "@orillusion/debug/GUIHelp";
 import {
@@ -81,7 +81,7 @@ class Sample_AnimationAdditiveBlending {
     async initScene() {
         GUIHelp.init();
 
-        // Floor — three.js uses a small plane; ours is a thin cube.
+        // Floor — a thin cube stands in for a ground plane.
         this.scene.addChild(Object3DUtil.GetSingleCube(40, 0.2, 40, 0.6, 0.6, 0.6));
 
         // Light
@@ -107,14 +107,14 @@ class Sample_AnimationAdditiveBlending {
 
         // Each additive pose lives on its own layer, blend mode Additive.
         // The layer reads its clip's curves and applies (clip - rest) × weight
-        // on top of whatever the base layer wrote — mirroring three.js's
-        // makeClipAdditive() + setEffectiveWeight() chain.
+        // on top of whatever the base layer wrote — equivalent to the
+        // makeClipAdditive() + setEffectiveWeight() pattern.
         for (const name of ADDITIVE_ACTIONS) {
             const layer = new AnimationLayer(
                 `additive:${name}`,
                 this.additiveWeights[name],
                 LayerBlendMode.Additive,
-                null, // full body — three.js doesn't restrict pose layers to a region
+                null, // full body — pose layers are not restricted to a region
             );
             layer.clipName = name;
             this.animator.addLayer(layer);
@@ -153,8 +153,8 @@ class Sample_AnimationAdditiveBlending {
 
     private _activateBase(name: string) {
         // "None" zeros out every base clip — the additive layers still play
-        // on top of whatever rest pose the rig settles into. (Three.js does
-        // the same: deactivate all base actions when "None" is picked.)
+        // on top of whatever rest pose the rig settles into. Deactivates
+        // all base actions when "None" is picked.
         if (name === 'None') {
             for (const cs of this.animator.clipsState) {
                 if (BASE_ACTIONS.includes(cs.clip.clipName)) cs.weight = 0;
@@ -162,8 +162,8 @@ class Sample_AnimationAdditiveBlending {
             this.activeBaseAction = 'None';
             return;
         }
-        // crossFade with a fixed half-second duration — matches three.js's
-        // executeCrossFade default.
+        // crossFade with a fixed half-second duration — the conventional
+        // default for animation locomotion blends.
         this.animator.crossFade(name, 0.5);
         this.activeBaseAction = name;
     }

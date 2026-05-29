@@ -3,7 +3,7 @@ import { PassType } from '../../gfx/renderJob/passRenderer/state/PassType';
 
 /**
  * Multi-pass companion shader for the depth-extraction sub-pass of
- * Dual Depth Peeling (Babylon-style OIT). Materials with
+ * Dual Depth Peeling OIT. Materials with
  * `oitMode === 'depth-peel'` register this pass via
  * {@link PassGenerate.createDepthPeelPasses} so the
  * {@link DualDepthPeelingRenderer} can render them through a

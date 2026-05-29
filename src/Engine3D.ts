@@ -129,11 +129,11 @@ export class Engine3D {
                 gpuCullTwoPhase: false,
                 tonemap: {
                     enable: true,
-                    // ACES Filmic at exposure 1.0 — matches three.js
-                    // ACESFilmicToneMapping + toneMappingExposure=1.0
-                    // and Filament's neutral default. Acts on the
-                    // composited linear HDR scene right before the
-                    // sRGB-view swapchain encode.
+                    // ACES Filmic at exposure 1.0 — the standard
+                    // HDR-to-display tonemap, matching Filament's
+                    // neutral default. Acts on the composited linear
+                    // HDR scene right before the sRGB-view swapchain
+                    // encode.
                     exposure: 1.0,
                     mode: 'ACES',
                 },

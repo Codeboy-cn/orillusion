@@ -43,7 +43,7 @@ export const DDP_TEX_NAMES = [
 export const DDP_DEFAULT_PASS_COUNT = 5;
 
 /**
- * Dual Depth Peeling OIT pass (Babylon-style, stage-3 MVP).
+ * Dual Depth Peeling OIT pass (stage-3 MVP).
  *
  * STAGE 3 IMPLEMENTATION SCOPE: single-layer depth peeling.
  *

@@ -108,7 +108,7 @@ await test('Vector3 normalize', async () => {
     expect(a.z).toSubequal(0);
 })
 
-// --- three.js mutator semantics (Phase A) ---
+// --- Standard mutator semantics ---
 
 await test('Vector3 add returns this (mutator)', async () => {
     let a = new Vector3(1, 2, 3);
@@ -125,22 +125,22 @@ await test('Vector3 clone preserves source', async () => {
     expect(c.x).toEqual(11);
 })
 
-// --- Phase C renamed methods ---
+// --- Short-name aliases ---
 
-await test('Vector3 sub (renamed from subtract)', async () => {
+await test('Vector3 sub', async () => {
     let a = new Vector3(20, 10, 0);
     a.sub(new Vector3(5, 3, 1));
     expect(a.x).toEqual(15);
     expect(a.z).toEqual(-1);
 })
 
-await test('Vector3 cross (renamed from crossProduct)', async () => {
+await test('Vector3 cross', async () => {
     let a = new Vector3(1, 0, 0);
     a.cross(new Vector3(0, 1, 0));
     expect(a.z).toEqual(1);
 })
 
-// --- Phase D three.js-canonical additions ---
+// --- Canonical instance-API additions ---
 
 await test('Vector3 addVectors (this = a + b)', async () => {
     let out = new Vector3();

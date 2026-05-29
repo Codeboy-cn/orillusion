@@ -11,7 +11,6 @@ import { UniformGPUBuffer } from '../core/buffer/UniformGPUBuffer';
 
 /**
  * @internal
- * @author sirxu
  * compute shader kernel
  */
 export class ComputeShader extends ShaderPassBase {

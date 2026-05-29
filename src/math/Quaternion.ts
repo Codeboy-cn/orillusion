@@ -563,9 +563,9 @@ export class Quaternion {
         return v;
     }
 
-    // -------- three.js-style standard instance API --------
+    // -------- Standard instance API --------
 
-    /** Set this = a * b. Three.js-canonical alias of {@link multiply}. */
+    /** Set this = a * b. Canonical alias of {@link multiply}. */
     public multiplyQuaternions(a: Quaternion, b: Quaternion): this {
         return this.multiply(a, b);
     }
@@ -640,7 +640,7 @@ export class Quaternion {
         return this.normalize();
     }
 
-    /** Three.js-canonical alias of {@link slerp} (qa, qb, t form). */
+    /** Canonical alias of {@link slerp} (qa, qb, t form). */
     public slerpQuaternions(qa: Quaternion, qb: Quaternion, t: number): this {
         this.slerp(qa, qb, t);
         return this;

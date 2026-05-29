@@ -3,7 +3,7 @@ import { PassType } from '../../gfx/renderJob/passRenderer/state/PassType';
 
 /**
  * Multi-pass companion shader for the back-color accumulation sub-pass
- * of Dual Depth Peeling (Babylon-style OIT). Back-layer accumulation
+ * of Dual Depth Peeling OIT. Back-layer accumulation
  * is associative under the under-blend so a single buffer suffices
  * (no ping-pong needed): each peel iteration writes the layer at the
  * current furthest depth into the back MRT.

@@ -38,9 +38,8 @@ fn sampleLighting(light:LightData,direction:vec3f,iblSpecularResult:vec3f , inte
   var lighting:vec3f = lightContribution(NdotH,NdotL,NdotV,HdotL,fragData.Roughness,fragData.Albedo.rgb / 3.14, metallic ,shadow,fragData.F0,lightColor.rgb);
   // ACES is now applied as a final post-pass (TonemapPost) so the
   // light contribution stays linear HDR here. Just modulate by
-  // attenuation. Direct premultiply matches three.js's totalDirect
-  // accumulation before MeshPhysicalMaterial's gl_FragColor.rgb tone
-  // mapping at the end of the pipeline.
+  // attenuation. Direct premultiply matches the standard PBR
+  // totalDirect accumulation done before the final tonemap.
   lighting = lighting * att;
   return lighting ;
 }

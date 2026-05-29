@@ -8,11 +8,11 @@ import { Context3D, bindCtx } from '../gfx/graphics/webGpu/Context3D';
 /**
  * Color-space hint for image-backed textures. `'srgb'` selects the
  * `rgba8unorm-srgb` GPU format so the sampler hardware-decodes the
- * stored sRGB-encoded bytes to linear at sample time (matches
- * three.js's `texture.colorSpace = SRGBColorSpace`). `'linear'`
- * keeps the legacy `rgba8unorm` format — appropriate for normal
- * maps, masks, height/displacement, metallic/roughness packs, and
- * other non-color data.
+ * stored sRGB-encoded bytes to linear at sample time (the standard
+ * choice for color/albedo maps). `'linear'` keeps the plain
+ * `rgba8unorm` format — appropriate for normal maps, masks,
+ * height/displacement, metallic/roughness packs, and other
+ * non-color data.
  *
  * @group Texture
  */

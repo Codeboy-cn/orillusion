@@ -11,7 +11,7 @@ export let PCF_frag: string = /*wgsl*/ `
         return textureSampleCompareLevel(shadowMap, shadowMapSampler, uv, depthTexIndex, refDepth);
     }
 
-    // 3x3 tent-weight PCF. Weights follow Unity URP's tent kernel:
+    // 3x3 tent-weight PCF. Standard tent kernel weights:
     // center 4, edges 2, corners 1 (sum 16). Equivalent to (2-|x|)*(2-|y|).
     // Hardware sampler_comparison is LINEAR so each tap already does a 2x2
     // compare-and-filter; combined with the tent this gives an effective

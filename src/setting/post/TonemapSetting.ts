@@ -1,8 +1,8 @@
 /**
  * Tonemap Setting — final HDR→LDR curve applied after every other
  * post-effect, just before the swapchain receives the frame. Defaults
- * to ACES Filmic, mirroring three.js's `ACESFilmicToneMapping` +
- * `outputColorSpace = SRGBColorSpace` pairing.
+ * to ACES Filmic, paired with an sRGB output color space — the standard
+ * HDR-to-display pairing.
  *
  * @group Setting
  */
@@ -11,8 +11,7 @@ export type TonemapSetting = {
      *  acts as a straight passthrough — useful for A/B comparisons. */
     enable: boolean;
     /** Linear scale multiplied onto the HDR color before the curve.
-     *  1.0 keeps engine intensity matching three.js's default
-     *  `renderer.toneMappingExposure = 1.0`. */
+     *  1.0 is the neutral default (no exposure compensation). */
     exposure: number;
     /** Curve selector. 'ACES' applies the Filmic Narkowicz fit;
      *  'None' is straight passthrough (same effect as enable=false

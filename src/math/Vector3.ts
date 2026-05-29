@@ -601,7 +601,7 @@ export class Vector3 {
         return Vector3.add(this, a, this) as this;
     }
 
-    /** Set this = a + b. Three.js-style ternary mutator. */
+    /** Set this = a + b. Ternary mutator form. */
     public addVectors(a: Vector3, b: Vector3): this {
         return Vector3.add(a, b, this) as this;
     }
@@ -1065,9 +1065,9 @@ export class Vector3 {
         return this;
     }
 
-    // -------- three.js-style standard instance API --------
+    // -------- Standard instance API --------
 
-    /** Dot product. Three.js-canonical alias of {@link dotProduct}. */
+    /** Dot product. Canonical alias of {@link dotProduct}. */
     public dot(v: Vector3): number {
         return this.x * v.x + this.y * v.y + this.z * v.z;
     }
@@ -1090,7 +1090,7 @@ export class Vector3 {
         return Math.acos(Math.max(-1, Math.min(1, theta)));
     }
 
-    /** Set this to v1 + (v2 - v1) * alpha. Three.js-canonical alias of {@link lerp}. */
+    /** Set this to v1 + (v2 - v1) * alpha. Canonical alias of {@link lerp}. */
     public lerpVectors(v1: Vector3, v2: Vector3, alpha: number): this {
         this.lerp(v1, v2, alpha);
         return this;
@@ -1184,7 +1184,7 @@ export class Vector3 {
         return this.normalize() as this;
     }
 
-    /** Three.js-canonical alias of {@link setFromArray}. */
+    /** Canonical alias of {@link setFromArray}. */
     public fromArray(array: ArrayLike<number>, offset: number = 0): this {
         this.x = array[offset];
         this.y = array[offset + 1];

@@ -352,7 +352,7 @@ export class Vector2 {
         return this;
     }
 
-    // -------- three.js-style standard instance API --------
+    // -------- Standard instance API --------
 
     /** Set this = a + b. */
     public addVectors(a: Vector2, b: Vector2): this {
@@ -369,7 +369,7 @@ export class Vector2 {
         return Vector2.multiply(a, b, this) as this;
     }
 
-    /** Negate this vector. Three.js-canonical alias of {@link neg}. */
+    /** Negate this vector. Canonical alias of {@link neg}. */
     public negate(): this {
         return Vector2.negate(this, this) as this;
     }
@@ -379,7 +379,7 @@ export class Vector2 {
         return this.x * this.x + this.y * this.y;
     }
 
-    /** Euclidean distance to v. Three.js-canonical alias of {@link distance}. */
+    /** Euclidean distance to v. Canonical alias of {@link distance}. */
     public distanceTo(v: Vector2): number {
         return this.distance(v);
     }

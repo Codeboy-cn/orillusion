@@ -5,10 +5,9 @@
  * onUpdate the FSM advances time, evaluates transitions, and may issue a
  * crossFade on the underlying animator.
  *
- * Why no visual graph editor: Unity's Mecanim took 10 years to ship the
- * editor UX. For a runtime engine, a JSON/TS DSL covers 90% of use cases at
- * <5% the implementation cost. DCC tooling (Blender / Maya) is the right
- * home for authoring.
+ * Why no visual graph editor: shipping a graph UX is a multi-year investment.
+ * A JSON/TS DSL covers 90% of use cases at <5% the cost; DCC tooling
+ * (Blender / Maya) is the right home for authoring.
  *
  * @group Animation
  */

@@ -468,8 +468,8 @@ export class GLTFSubParserConverter {
                     mc.geometry = geometry;
                     mc.material = mat;
 
-                    // Three.js's GLTFLoader marks every primitive of a
-                    // skin-referencing node as `isSkinnedMesh`, even when the
+                    // Reference glTF loaders mark every primitive of a
+                    // skin-referencing node as skinned, even when the
                     // mesh primitive lacks joints/weights vertex attributes.
                     // In Kira's glb three primitives are in this state
                     // (`Kira_Feet`, `Kira_Pants_B`, `Kira_Shirt.0010`) — they
@@ -477,9 +477,9 @@ export class GLTFSubParserConverter {
                     // normal views. With no joint attributes our skinning
                     // shader can't deform them, and parenting them to the glTF
                     // node leaves them at the bind pose far below the
-                    // skeleton-posed body. Hide them to match three.js's
-                    // visual outcome (in three.js the SkinnedMesh collapses
-                    // to origin and is occluded by the floor).
+                    // skeleton-posed body. Hide them to match the standard
+                    // visual outcome (the unskinned primitive collapses to
+                    // origin and is occluded by the floor).
                     if (nodeInfo.skin && !attribArrays[VertexAttributeName.joints0]) {
                         mc.enable = false;
                     }
@@ -608,7 +608,7 @@ export class GLTFSubParserConverter {
         // weight)` — at bind pose `jointWorld * invBind = identity`, so
         // un-normalized weights collapse those vertices toward the origin
         // by `(1 - sumW)` of their bind position, which manifests as the
-        // jacket's waist getting pinched. three.js's GLTFLoader does the
+        // jacket's waist getting pinched. Reference glTF loaders do the
         // same normalization step at load time.
         const wAttr0 = attribArrays[VertexAttributeName.weights0];
         const wAttr1 = attribArrays[VertexAttributeName.weights1];
@@ -648,7 +648,7 @@ export class GLTFSubParserConverter {
                     // * v) such vertices collapse to origin (mul by 0).
                     // Redirect them to follow joint[0] (skin root) at
                     // full weight — equivalent to "rigid attached to
-                    // root", same fallback three.js GLTFLoader applies.
+                    // root", the standard fallback for zero-weight verts.
                     w0[v*4] = 1; w0[v*4+1] = 0; w0[v*4+2] = 0; w0[v*4+3] = 0;
                     if (w1) { w1[v*4] = 0; w1[v*4+1] = 0; w1[v*4+2] = 0; w1[v*4+3] = 0; }
                 } else if (Math.abs(s - 1) > 1e-4) {

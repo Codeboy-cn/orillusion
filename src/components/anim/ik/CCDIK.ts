@@ -18,7 +18,7 @@ import { Matrix4 } from "../../../math/Matrix4";
 import type { AnimatorComponent } from "../AnimatorComponent";
 import type { Object3D } from "../../../core/entities/Object3D";
 
-/** Euler order for `rotationMin`/`rotationMax` clamp (matches three.js / Matrix4.getEuler). */
+/** Euler order for `rotationMin`/`rotationMax` clamp (matches Matrix4.getEuler). */
 export type CCDIKEulerOrder = 'XYZ' | 'YXZ' | 'ZXY' | 'ZYX' | 'YZX' | 'XZY';
 
 /**
@@ -45,12 +45,13 @@ export type CCDIKEulerOrder = 'XYZ' | 'YXZ' | 'ZXY' | 'ZYX' | 'YZX' | 'XZY';
  *      freedom but can't bend backwards arbitrarily.
  *
  *      Compatibility knobs:
- *        - `eulerOrder` (default `'XYZ'`, three.js default) — picks which
- *          Euler decomposition is used. Different orders give different
- *          "valid" boxes for the same quaternion.
+ *        - `eulerOrder` (default `'XYZ'`, the common IK-rig convention) —
+ *          picks which Euler decomposition is used. Different orders give
+ *          different "valid" boxes for the same quaternion.
  *        - `radians` (default `false`) — values are degrees by default
  *          (Orillusion convention); set `true` to interpret as radians
- *          (so three.js IK configs can be pasted in unchanged).
+ *          (the common IK-rig convention, so external IK configs can be
+ *          pasted in unchanged).
  *
  * Hinge takes precedence: when `hingeAxis` is set, the Euler box is
  * ignored (a 1-DOF hinge is already strictly less free than any 3-axis
@@ -69,9 +70,9 @@ export interface CCDIKLink {
     rotationMin?: Vector3;
     /** Per-axis Euler upper bound applied to the bone's local rotation. */
     rotationMax?: Vector3;
-    /** Euler order for `rotationMin`/`rotationMax`. Default `'XYZ'` (three.js default). */
+    /** Euler order for `rotationMin`/`rotationMax`. Default `'XYZ'` (common IK-rig convention). */
     eulerOrder?: CCDIKEulerOrder;
-    /** If true, `rotationMin`/`rotationMax` are radians (three.js style). Default false (degrees). */
+    /** If true, `rotationMin`/`rotationMax` are radians (common IK-rig convention). Default false (degrees). */
     radians?: boolean;
 }
 
@@ -80,13 +81,13 @@ export interface CCDIKConfig {
     /**
      * End-effector bone name. CCD measures distance from THIS bone's
      * worldPosition to `target`, and never rotates this bone (its
-     * position is dragged by its parent in the chain). Mirrors
-     * three.js CCDIKSolver `effector` field.
+     * position is dragged by its parent in the chain). Matches the
+     * standard CCD solver `effector` field for config compatibility.
      */
     effector: string;
     /**
      * Joints to rotate, in **tip→root** order (closest to effector first),
-     * matching three.js CCDIKSolver `links` ordering. Each link carries
+     * matching the standard CCD solver `links` ordering. Each link carries
      * its own `boneName` and per-bone constraints.
      */
     links: CCDIKLink[];
@@ -175,7 +176,7 @@ export class CCDIK {
         }
 
         // Build joints array in **root→tip** order for the iteration loop.
-        // Public `links` is tip→root (three.js convention) — reverse it
+        // Public `links` is tip→root (the common IK convention) — reverse it
         // so the algorithm walks naturally from tip toward root.
         // joints layout: [root-most rotated, ..., tip-most rotated, effector].
         const effectorBone = animator.getJointObject(this.effector);
@@ -415,8 +416,7 @@ function composeWorldQuat(obj: Object3D | null, out: Quaternion): Quaternion {
 
 /**
  * Build a quaternion from intrinsic Euler angles (radians) under the
- * given order. Matches three.js Quaternion.setFromEuler — pair this with
- * Matrix4.getEuler to round-trip without drift.
+ * given order. Pair this with Matrix4.getEuler to round-trip without drift.
  */
 function _eulerToQuat(x: number, y: number, z: number, order: CCDIKEulerOrder, out: Quaternion): Quaternion {
     const c1 = Math.cos(x * 0.5), s1 = Math.sin(x * 0.5);

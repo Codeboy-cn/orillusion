@@ -111,7 +111,7 @@ export let DirectShadow_frag: string = /*wgsl*/ `
         // in the projected-light-direction axis, which is exactly the
         // direction depth varies along, so bias must grow the same way to
         // cover one-texel quantization on the receiver plane. Floor NoL
-        // at 0.1 (10x cap) — matches Unity URP / UE behaviour and keeps
+        // at 0.1 (10x cap) — matches common PBR-pipeline behaviour and keeps
         // silhouette-edge derivative spikes bounded.
         //
         // Additionally fold in a screen-space slope term (Plan C analytic
@@ -162,7 +162,7 @@ export let DirectShadow_frag: string = /*wgsl*/ `
           // Smooth fade across the last 10% of the shadow frustum's depth
           // range so receivers don't pop from "shadowed" to "fully lit"
           // when they leave the ortho depth range. Matches the frustum-
-          // edge fade used in Unity/Babylon/Three.
+          // edge fade common to shadow-map implementations.
           let edgeFade = smoothstep(0.9, 1.0, shadowPos.z);
           visibility = mix(visibility, 1.0, edgeFade);
       }

@@ -193,7 +193,7 @@ export let PBRLItShader: string = /*wgsl*/ `
             // KHR_materials_transmission — sample the opaque-world
             // backdrop captured by SceneColorPyramidFeature.
             //
-            // Refraction follows Three.js's getVolumeTransmissionRay:
+            // Refraction follows the KHR_materials_volume convention:
             // build a 3D refracted ray of length thickness starting
             // from the fragment's world position, then project its
             // exit point back to clip space and sample the pyramid at
@@ -216,9 +216,9 @@ export let PBRLItShader: string = /*wgsl*/ `
             // Ray length in world units, scaled per-axis by modelScale
             // (vertex stage computed length(worldMat[i].xyz) into
             // ORI_VertexVarying.modelScale). Uniform meshes collapse to
-            // (s,s,s); unscaled to (1,1,1). Matches three.js's
-            // getVolumeTransmissionRay so a stretched glass cube
-            // refracts proportionally to its world dimensions.
+            // (s,s,s); unscaled to (1,1,1). Matches the standard
+            // KHR_materials_volume transmission ray so a stretched
+            // glass cube refracts proportionally to its world dims.
             let transmissionRay = refractDir * materialUniform.thicknessFactor * ORI_VertexVarying.modelScale;
             let exitWorld = ORI_VertexVarying.vWorldPos.xyz + transmissionRay;
             // Project exit point back to NDC, then to UV space. Y is
@@ -232,13 +232,13 @@ export let PBRLItShader: string = /*wgsl*/ `
             // angles, and clamp behaviour beats whatever the sampler's
             // address mode would do (typically smear edge pixels).
             let sampleUV = clamp(refractedUV, vec2f(0.002), vec2f(0.998));
-            // Roughness-aware mip selection. Three.js's
-            // getTransmissionSample uses applyIorToRoughness +
-            // textureBicubic, we approximate with a simple linear
+            // Roughness-aware mip selection. The reference
+            // implementation pairs an IOR-roughness adjustment with
+            // bicubic sampling; we approximate with a simple linear
             // mapping into the pyramid's mip chain — mip 0 for
             // polished glass, deepest mip for fully rough.
             let pyramidLodMax = f32(textureNumLevels(sceneColorPyramid)) - 1.0;
-            // applyIorToRoughness (three.js): refraction blur scales
+            // IOR-roughness adjustment: refraction blur scales
             // by an IOR-derived factor. ior=1 (no refraction) drops
             // the factor to 0 → sharp sample regardless of roughness;
             // ior >= 1.5 (typical glass / crystal) clamps the factor
@@ -250,8 +250,8 @@ export let PBRLItShader: string = /*wgsl*/ `
             let lod = effectiveRefractionRoughness * pyramidLodMax;
             let transmittedRGBA = textureSampleLevel(sceneColorPyramid, sceneColorPyramidSampler, sampleUV, lod);
             let transmitted = transmittedRGBA.rgb;
-            // Volumetric attenuation. Three.js's
-            // applyVolumeAttenuation uses log-space:
+            // Volumetric attenuation, log-space form (the standard
+            // KHR_materials_volume derivation):
             //   coeff       = -log(attenuationColor) / attenuationDistance
             //   transmittance = exp(-coeff * thickness)
             //                 = pow(attenuationColor, thickness / distance)
@@ -274,43 +274,42 @@ export let PBRLItShader: string = /*wgsl*/ `
                 tf = tf * textureSample(transmissionMap, transmissionMapSampler, uv).r;
             #endif
             // Tint the transmitted backdrop by both baseColor (the
-            // user's material colour, equivalent to three.js's
-            // material.color) AND attenuationColor (the volume tint
-            // along the light path, KHR_materials_volume). Previously
-            // only attenuationColor was applied, so the color slider
-            // had no effect on glass with high transmission — three.js
-            // multiplies both because they describe different physical
-            // quantities (surface tint vs volume absorption).
+            // user's material colour) AND attenuationColor (the
+            // volume tint along the light path, KHR_materials_volume).
+            // Previously only attenuationColor was applied, so the
+            // color slider had no effect on glass with high
+            // transmission — the standard PBR derivation multiplies
+            // both because they describe different physical quantities
+            // (surface tint vs volume absorption).
             let tint = materialUniform.attenuationColor.rgb * materialUniform.baseColor.rgb;
             let transmittedTinted = transmitted * transmittance * tint;
-            // Default behavior matches three.js's regular transmission
-            // path on an opaque canvas: mix lit color with the
-            // attenuated backdrop and keep alpha at 1 so opaque-queue
-            // depth and blending semantics hold.
+            // Default behavior matches the standard KHR_materials_
+            // transmission path on an opaque canvas: mix lit color
+            // with the attenuated backdrop and keep alpha at 1 so
+            // opaque-queue depth and blending semantics hold.
             //
             // When transmissionAlphaMode is non-zero, the fragment also
             // attenuates its output alpha by transmission so an
             // alpha-true swapchain composites whatever lives behind the
             // canvas (HTML page background, video, ...) through the
-            // glass — the trick three.js's
-            // webgl_materials_physical_transmission_alpha sample relies
-            // on. Sampling the pyramid alpha for this would feed back
+            // glass — the alpha-canvas transmission trick.
+            // Sampling the pyramid alpha for this would feed back
             // into itself (the pyramid is captured AfterOpaque, after
             // this fragment writes), so we derive alpha from 1 - tf
             // directly. The mode is opt-in to preserve existing
             // demos that share an opaque canvas with other geometry.
             let alphaMode = clamp(materialUniform.transmissionAlphaMode, 0.0, 1.0);
-            // RGB: in alpha-cutout mode (Three's transmission_alpha demo)
-            // we approximate MeshPhysicalMaterial's specular-preserving
-            // behaviour — the diffuse lobe is replaced by the attenuated
-            // backdrop sample, but a fixed fraction of the lit signal
-            // (specular + env reflection) survives unattenuated. In
-            // opaque mode the original full mix stays; existing samples
-            // rely on it for clean refraction through colored backdrops.
+            // RGB: in alpha-cutout mode we approximate the standard
+            // PBR material's specular-preserving behaviour — the
+            // diffuse lobe is replaced by the attenuated backdrop
+            // sample, but a fixed fraction of the lit signal (specular
+            // + env reflection) survives unattenuated. In opaque mode
+            // the original full mix stays; existing samples rely on it
+            // for clean refraction through colored backdrops.
             let lit = ORI_FragmentOutput.color.rgb;
             // Pull the *real* IBL specular term BxDF_frag exported via
-            // fragData.Specular. Three.js's MeshPhysicalMaterial keeps
-            // the diffuse and specular sums separated, applies
+            // fragData.Specular. The standard PBR transmission flow
+            // keeps the diffuse and specular sums separated, applies
             // transmission only to the diffuse, and adds specular back
             // unconditionally. We do the equivalent here by subtracting
             // spec from the combined lit value to approximate the
@@ -319,7 +318,7 @@ export let PBRLItShader: string = /*wgsl*/ `
             // transmission=1 used to wipe out the entire lit signal
             // (including specular), producing a glass surface with no
             // visible env reflection / rim highlights — visually much
-            // weaker than three.js at the same parameters.
+            // weaker than the reference render at the same parameters.
             let cleanSpec = fragData.Specular;
             let litMinusSpec = max(lit - cleanSpec, vec3f(0.0));
             let diffuseLike = litMinusSpec;
@@ -347,22 +346,22 @@ export let PBRLItShader: string = /*wgsl*/ `
             let tintedSpec = cleanSpec * specTint;
             let preservedSpec = tintedSpec;
             // KHR_materials_transmission spec: "A material with metallic
-            // = 1 cannot transmit light." Three.js gets this for free
-            // because its PBR multiplies diffuse by kD = (1-F)*(1-
-            // metallic), so a pure metal has zero diffuse term and
-            // transmission, which only replaces diffuse, has no
-            // visible effect — the surface becomes a pure mirror.
+            // = 1 cannot transmit light." Standard PBR pipelines get
+            // this for free because they multiply diffuse by kD =
+            // (1-F)*(1-metallic), so a pure metal has zero diffuse
+            // term and transmission, which only replaces diffuse, has
+            // no visible effect — the surface becomes a pure mirror.
             // Our diffuseLike here also includes direct-light spec
             // contribution, so we need to gate transmission explicitly
             // by (1 - metallic) to get the same chrome-at-metallic=1
-            // look three.js's reference produces.
+            // look the reference render produces.
             let metalMask = 1.0 - clamp(fragData.Metallic, 0.0, 1.0);
             let effectiveTf = tf * metalMask;
             // bodyRGB is the diffuse / transmitted-backdrop part of
             // the dragon (no specular). Spec is added separately
             // below so it can also contribute on top of the canvas
             // composite over a transparent backdrop (cells region) —
-            // matching three.js's "specular halo over alpha-canvas"
+            // matching the standard "specular halo over alpha-canvas"
             // behaviour.
             //
             // Refracted-alpha gating + attenuation fallback. When the
@@ -384,10 +383,10 @@ export let PBRLItShader: string = /*wgsl*/ `
             let transmittedFinal = mix(transmittedFallback, transmittedTinted, refractCoverage);
             let bodyRGB = mix(diffuseLike, transmittedFinal, effectiveTf);
             let dragonOpaqueRGB = bodyRGB + preservedSpec;
-            // Alpha-blend simulation for cutout mode. Three's
-            // MeshPhysicalMaterial sets material.transparent=true and
-            // the GPU blend state runs the over-operator; we draw with
-            // BlendMode.NONE in the opaque queue (depth-tested
+            // Alpha-blend simulation for cutout mode. The standard
+            // PBR transparent path sets material.transparent=true and
+            // lets the GPU blend state run the over-operator; we draw
+            // with BlendMode.NONE in the opaque queue (depth-tested
             // override), so we emulate the same math in the shader.
             // backdropDirect samples the pyramid at THIS fragment's
             // screen position (no refraction offset) — the pyramid
@@ -395,7 +394,7 @@ export let PBRLItShader: string = /*wgsl*/ `
             // at this stage of the frame thanks to the
             // TransmissionOpaqueFeature pipeline split.
             //
-            //   srcA      = opacity * pyramid.a            // = three.js's diffuseColor.a
+            //   srcA      = opacity * pyramid.a            // standard diffuseColor.a
             //   resultRGB = srcA * dragon + (1 - srcA) * pyramid.a * pyramid.rgb
             //   resultA   = srcA + pyramid.a * (1 - srcA)
             //
@@ -412,8 +411,8 @@ export let PBRLItShader: string = /*wgsl*/ `
             // alpha-canvas trick fully revealed HTML through cells,
             // but that collapsed the dragon's body to invisible at
             // cells coverage — the user reads it as "no alpha-blend
-            // with the colour cells", which is what three.js's
-            // MeshPhysicalMaterial actually shows at high transmission
+            // with the colour cells", which is what the standard PBR
+            // transparent path actually shows at high transmission
             // (the dragon body does occupy those pixels).
             let bodySrcA = opacity;
             // canvasAlpha keeps the cloth-blocks-HTML semantics: at
@@ -436,7 +435,7 @@ export let PBRLItShader: string = /*wgsl*/ `
             // alphaMode='BLEND' (Sample_Transmission). Forward the
             // computed BaseColor.a (= baseColor.a * maskTex.a from
             // USE_ALPHA_A) so opacity=0 produces an invisible surface
-            // — three.js's MeshPhysicalMaterial does the equivalent.
+            // — matching the standard PBR transparent contract.
             // For alphaMode='OPAQUE' GPU pipelines the value is
             // ignored anyway (no blending), so this doesn't change
             // opaque-glass demos.

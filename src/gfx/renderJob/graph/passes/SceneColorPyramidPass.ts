@@ -21,8 +21,8 @@ import { COLOR_BUFFER } from './ColorPass';
  * {@link TextureMipmapGenerator}. PBRLitShader's transmission block
  * picks an LOD from `roughness` so polished glass reads from mip 0
  * (sharp refraction) and frosted glass reads from a higher LOD
- * (blurred backdrop) — the path Three.js's getTransmissionSample
- * follows.
+ * (blurred backdrop) — the standard roughness-aware transmission
+ * sampling path.
  *
  * @group Graph
  */

@@ -1,11 +1,12 @@
 /**
- * Port of three.js `webgl_animation_skinning_ik`.
+ * Skinned-mesh IK demo — CCD IK on a character arm chain targeting a
+ * moving sphere.
  *
  * Loads `kira.glb` (Mixamo's Kira character + bedroom scene), runs CCD IK on
  * her left arm chain so `hand_l` reaches the world position of the moving
- * sphere — exactly the same setup as the upstream example.
+ * sphere.
  *
- * GUI parity with three.js (no folders, all root-level toggles):
+ * GUI layout (no folders, all root-level toggles):
  *   - followSphere : the orbit camera target snaps to the moving sphere
  *   - turnHead     : the `head` bone tracks (look-at) the sphere
  *   - ik_solver    : auto-update IK every frame
@@ -51,8 +52,8 @@ class Sample_AnimationIK {
     private _lookParentW = new Quaternion();
     private _lookComposeTmp = new Quaternion();
 
-    // IK target bone (`target_hand_l`) — the dummy bone driven directly,
-    // matching three.js's transformControls.attach(target_hand_l).
+    // IK target bone (`target_hand_l`) — the dummy bone driven directly
+    // by the gizmo / sliders.
     //
     // GUI sliders bind to `_targetWorldOffset` — a WORLD-space delta
     // applied on top of `_targetWorldBase` (the bind-pose worldPosition
@@ -256,8 +257,8 @@ class Sample_AnimationIK {
             // without joints attributes (see GLTFSubParserConverter line
             // ~456). Mixamo authored boule under the same skin as
             // Kira's body but it has no per-vertex joint weights, so
-            // the loader silently disables it (mirrors three.js's
-            // isSkinnedMesh-collapse behavior). For the IK demo we need
+            // the loader silently disables it (the standard
+            // skinned-mesh-collapse behaviour). For the IK demo we need
             // it visible, so re-enable here AND replace the GLB-default
             // material with a fresh LitMaterial set to a bright orange
             // emissive — the GLB default material is white PBR, almost
@@ -291,7 +292,7 @@ class Sample_AnimationIK {
                 // this.sphere.y = wp.y;
                 // this.sphere.z = wp.z;
             }
-            // Match the three.js `webgl_animation_skinning_ik` config:
+            // IK chain config:
             //   target   = target_hand_l   (a dummy bone parented at the
             //                                wrist; we drag this around to
             //                                tell IK where the hand should
@@ -300,7 +301,7 @@ class Sample_AnimationIK {
             //   effector = hand_l           (the bone we measure distance
             //                                from; CCD never rotates it)
             //   links    = [lowerarm_l, Upperarm_l]   (tip→root order,
-            //                                three.js convention; only
+            //                                the common IK convention; only
             //                                these two bones get rotated)
             const targetHandL = this.animator.getJointObject('target_hand_l');
             this._ikTargetBone = targetHandL;
@@ -334,12 +335,11 @@ class Sample_AnimationIK {
                 this._targetMarker.z = this._targetWorldBase.z;
             }
 
-            // Attach sphere under hand_l so it tracks the solved hand pose
-            // (three.js: OOI.hand_l.attach(OOI.sphere)). We must preserve
-            // sphere's worldPosition across the reparent — Orillusion's
-            // addChild is a plain hierarchy splice that leaves localPos
-            // unchanged, so we compute the new local from the current
-            // worldPos in hand_l's frame and write it back.
+            // Attach sphere under hand_l so it tracks the solved hand pose.
+            // We must preserve sphere's worldPosition across the reparent —
+            // Orillusion's addChild is a plain hierarchy splice that leaves
+            // localPos unchanged, so we compute the new local from the
+            // current worldPos in hand_l's frame and write it back.
             if (handBone && this.sphere) {
                 const sphereWp = this.sphere.transform.worldPosition;
                 const invHandWorld = new Matrix4();
@@ -592,10 +592,8 @@ class Sample_AnimationIK {
                 // chain (Kira node has localQ = (0.5, -0.5, 0.5, 0.5)),
                 // building yaw from atan2(x, z) and applying it as world
                 // rotation makes the back of the head face the target.
-                // Same fix three.js sample does:
-                //   OOI.head.lookAt(target);
-                //   OOI.head.rotation.y += Math.PI;
-                // — flip the yaw by π so the face leads.
+                // Fix: build lookAt yaw, then flip by π so the face
+                // (rather than the back of the head) leads.
                 const ang = Math.atan2(this._lookDir.x, this._lookDir.z) + Math.PI;
                 this._lookQWorld.set(0, Math.sin(ang * 0.5), 0, Math.cos(ang * 0.5));
                 const parentObj = this.headBone.parent ? (this.headBone.parent.object3D as Object3D) : null;

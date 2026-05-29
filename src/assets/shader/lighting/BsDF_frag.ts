@@ -37,7 +37,7 @@ export let BsDF_frag: string = /*wgsl*/ `
 
       fragData.NoV = saturate(dot(fragData.N, fragData.V)) ;
 
-      // F0 follows the KHR_materials_specular convention three.js uses:
+      // F0 follows the KHR_materials_specular convention:
       // for dielectrics, F0 starts at the canonical 0.04 (Schlick approx
       // for ior=1.5 glass) and is *modulated* by specularColor — i.e.
       // specularColor (1,1,1) keeps F0 at 0.04, tinting it shifts the

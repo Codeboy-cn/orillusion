@@ -4,7 +4,6 @@ import { Context3D } from '../Context3D';
 import { RendererPassState } from '../../../renderJob/passRenderer/state/RendererPassState';
 /**
  * @internal
- * @author sirxu
  */
 export class WebGPUDescriptorCreator {
 

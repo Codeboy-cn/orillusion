@@ -267,7 +267,7 @@ export class PassGenerate {
     }
 
     /**
-     * Dual depth peeling pass generator (Babylon-style OIT). For each
+     * Dual depth peeling pass generator. For each
      * material color pass, clones THREE derived passes — one per sub-
      * pass-type (DEPTH / FRONT / BACK) — each with the corresponding
      * `USE_OIT_DEPTH_PEEL_*` define set so the shader writes the right

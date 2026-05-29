@@ -17,8 +17,7 @@ import {
 } from "@orillusion/core";
 
 /**
- * Port of three.js's webgpu_materials_transmission demo.
- *   https://threejs.org/examples/?q=alpha#webgpu_materials_transmission
+ * Physical-transmission demo — IBL-only PBR sphere with alpha stripes.
  *
  * Single sphere with an IBL-only PBR material that demonstrates the full
  * KHR_materials_transmission / _ior / _volume / _specular control surface.
@@ -27,11 +26,11 @@ import {
  * the env reflection and refraction, the alpha-cut side reveals the
  * HDR sky directly through the geometry.
  *
- * GUI exposes the same parameter surface as the three.js demo:
+ * GUI exposes the standard transmission parameter surface:
  *   color, transmission, opacity, metalness, roughness, ior, thickness,
  *   specularIntensity, specularColor, envMapIntensity, exposure.
  *
- * No DirectLight — environment-only lighting matches the reference.
+ * No DirectLight — environment-only lighting.
  */
 class Sample_Transmission {
     engine!: Engine3D;
@@ -53,9 +52,8 @@ class Sample_Transmission {
         this.scene = new Scene3D();
 
         // HDR cube — both visible background (SkyRenderer) AND IBL
-        // (scene.envMap). Royal Esplanade is the same HDR the three.js
-        // reference demo ships with — Poly Haven CC0 / public domain,
-        // direct port for visual parity.
+        // (scene.envMap). Royal Esplanade (Poly Haven CC0 / public
+        // domain) — chosen for its strong reflection cues.
         const hdr = await this.engine.res.loadHDRTextureCube('/hdri/royal_esplanade_1k.hdr');
         const sky = this.scene.addComponent(SkyRenderer);
         sky.map = hdr;
@@ -94,8 +92,8 @@ class Sample_Transmission {
         mr.addMask(RendererMask.IgnoreDepthPass);
         mr.geometry = new SphereGeometry(20, 64, 32);
 
-        // Match three.js MeshPhysicalMaterial defaults from the demo
-        // exactly (color=#ffffff, transmission=1, opacity=1, metalness=0,
+        // Standard PBR transmission defaults
+        // (color=#ffffff, transmission=1, opacity=1, metalness=0,
         // roughness=0, ior=1.5, thickness=10, specularIntensity=1,
         // specularColor=#ffffff, envMapIntensity=1).
         const mat = new LitMaterial();
@@ -108,7 +106,7 @@ class Sample_Transmission {
         mat.thicknessFactor = 10.0;
         mat.attenuationColor = new Color(1, 1, 1, 1);
         mat.attenuationDistance = Number.POSITIVE_INFINITY;
-        // Procedural 2×2 alpha map — same trick as the three.js demo.
+        // Procedural 2×2 alpha map.
         // Top-left + bottom-right cells fully transparent (alpha=0),
         // the other two fully opaque (alpha=255). When sampled across
         // the sphere's UVs this paints two quadrants where the alpha
@@ -124,10 +122,9 @@ class Sample_Transmission {
 
     private makeAlphaMap(): BitmapTexture2D {
         // Horizontal stripe pattern that wraps as 4 rings around the
-        // sphere — matches the three.js demo's visual where the
-        // alpha-cut produces 4 floating bands separated by transparent
-        // gaps (poles compress to thin caps, equator strip is the
-        // widest band).
+        // sphere — the alpha-cut produces 4 floating bands separated
+        // by transparent gaps (poles compress to thin caps, equator
+        // strip is the widest band).
         //
         // Texture is 32 wide × 128 tall: width hits the 32-px minimum
         // the WebGPU filtering-sampler path requires, height is split
@@ -139,8 +136,7 @@ class Sample_Transmission {
         // the sphere's V coordinate runs pole-to-pole, this produces
         // 4 floating bands (small cap at top, two large bowls in the
         // middle, small cap at bottom) separated by 4 see-through
-        // gaps — matches the alpha-stripe look in three.js's
-        // webgpu_materials_transmission demo.
+        // gaps — the standard alpha-stripe transmission visual.
         //
         // Canvas2D `fillStyle = '#000000'` produces alpha=255 (opaque
         // black), not alpha=0. clearRect on a fresh canvas leaves
@@ -239,8 +235,8 @@ class Sample_Transmission {
             (this.mat as any).shader.envIntensity = params.envMapIntensity * this.envBaseIntensity;
         });
         GUIHelp.add(params, 'exposure', 0, 2, 0.01).onChange(() => {
-            // Drive the global tonemap exposure — three.js's demo binds
-            // the same slider to renderer.toneMappingExposure.
+            // Drive the global tonemap exposure — equivalent to a
+            // renderer.toneMappingExposure slider.
             this.engine.setting.render.tonemap.exposure = params.exposure;
         });
 

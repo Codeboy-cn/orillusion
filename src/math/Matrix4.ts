@@ -2070,9 +2070,6 @@ export class Matrix4 {
         return this;
     }
 
-    /**
-     * from unity AMath.PI
-     */
     public setTRInverse(pos: Vector3, q: Quaternion) {
         q = q.clone().invert();
         Quaternion.quaternionToMatrix(q, this);

@@ -220,7 +220,7 @@ export class Vector4 {
         return new Vector4(this.x, this.y, this.z, this.w);
     }
 
-    // -------- three.js-style standard instance API --------
+    // -------- Standard instance API --------
 
     public add(a: Vector4): this {
         return Vector4.add(this, a, this) as this;

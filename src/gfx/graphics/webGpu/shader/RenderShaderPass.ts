@@ -946,7 +946,7 @@ export class RenderShaderPass extends ShaderPassBase {
             };
         }
 
-        // Dual Depth Peeling per-target blend wiring (Babylon-style).
+        // Dual Depth Peeling per-target blend wiring.
         //
         // OIT_DEPTH_PEEL_DEPTH writes (-d, d) to RG32F and uses MAX
         // blending per-channel so multiple fragments at the same pixel
@@ -976,9 +976,9 @@ export class RenderShaderPass extends ShaderPassBase {
         if (this.passType === PassType.OIT_DEPTH_PEEL_BACK && targets.length >= 1) {
             // Back uses under-blend for back-to-front associative
             // accumulation: dst = src.a*src.rgb + (1-src.a)*dst, with
-            // the shader emitting un-premultiplied (rgb, α). Babylon
-            // expresses this as src=ONE_MINUS_DST_ALPHA, dst=ONE for
-            // the under-blend convention.
+            // the shader emitting un-premultiplied (rgb, α). The
+            // standard under-blend wiring is src=ONE_MINUS_DST_ALPHA,
+            // dst=ONE.
             targets[0].blend = {
                 color: { srcFactor: 'one-minus-dst-alpha', dstFactor: 'one', operation: 'add' },
                 alpha: { srcFactor: 'one-minus-dst-alpha', dstFactor: 'one', operation: 'add' },

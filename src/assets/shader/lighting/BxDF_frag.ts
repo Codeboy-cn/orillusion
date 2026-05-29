@@ -43,7 +43,7 @@ export let BxDF_frag: string = /*wgsl*/ `
 
       // F0 derived from IOR via the Schlick approximation:
       //   F0 = ((ior - 1) / (ior + 1))^2
-      // Matches three.js's MeshPhysicalMaterial. At the canonical
+      // The standard KHR_materials_ior derivation. At the canonical
       // ior=1.5 this collapses to 0.04 (the legacy hard-coded value),
       // so existing demos that don't touch ior get unchanged visuals.
       // Pulling ior down (water = 1.33, F0 ≈ 0.02) softens the rim

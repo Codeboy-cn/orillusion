@@ -98,7 +98,7 @@ await test('Vector2 normalize', async () => {
     expect(a.y).toSubequal(0.44721359549);
 })
 
-// --- Phase D three.js-canonical additions ---
+// --- Canonical instance-API additions ---
 
 await test('Vector2 addVectors / subVectors / multiplyVectors', async () => {
     let out = new Vector2();

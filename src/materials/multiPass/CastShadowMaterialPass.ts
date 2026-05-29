@@ -29,7 +29,7 @@ export class CastShadowMaterialPass extends RenderShaderPass {
 
         // Directional shadow cast uses the traditional front-face path
         // (cullMode inherited from ShaderState default = back, i.e. renders
-        // front faces). This is what Unity URP and classic UE4 do.
+        // front faces). This is the common shadow-cast convention.
         //
         // Why not back-face (cullMode='front'), despite it eliminating
         // self-shadow moire: back-face cast stores the far side of each

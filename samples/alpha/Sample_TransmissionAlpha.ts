@@ -16,10 +16,9 @@ import {
 } from "@orillusion/core";
 
 /**
- * 1:1 reproduction of three.js example
- *   https://threejs.org/examples/#webgl_materials_physical_transmission_alpha
+ * Physical-transmission demo with canvas-alpha composite.
  *
- * The defining trick of that demo isn't the transmission shader itself —
+ * The defining trick of this demo isn't the transmission shader itself —
  * it's the canvas-alpha composite. A CSS table with four colored cells
  * (#ff0000 / #00ff00 / #0000ff / #000000) is placed *behind* the WebGL
  * canvas; the canvas is created with `alpha: true` and never draws a
@@ -175,53 +174,52 @@ class Sample_TransmissionAlpha {
             }
         }
         if (this.dragonMat) {
-            // Preset matches the values three.js reads from the asset
-            // itself (DragonAttenuation.glb's KHR_materials_volume +
+            // Preset matches the values authored in the asset itself
+            // (DragonAttenuation.glb's KHR_materials_volume +
             // KHR_materials_ior). The shader now keeps half the lit
             // signal as a specular / env-reflection proxy in cutout
             // mode and scales the refraction offset by thickness, so
             // the heavy attenuation (thickness 2.27 / distance 0.155)
             // produces the characteristic deep amber + bright
-            // highlights of three.js's reference render rather than
-            // a uniformly dark body.
+            // highlights of the reference render rather than a
+            // uniformly dark body.
             this.dragonMat.baseColor = new Color(1, 1, 1, 1);
             this.dragonMat.transmissionFactor = 1.0;
             this.dragonMat.metallic = 0;
             this.dragonMat.roughness = 0;
             this.dragonMat.ior = 1.5;
-            // Three.js-equivalent visual via compensated ratio.
+            // Reference-equivalent visual via compensated ratio.
             //
             // The asset's authored values (thickness=2.27, distance=
-            // 0.155) push the Beer-Lambert ratio to ~14.6, which on
-            // three.js still reads as amber because of three things
-            // we don't replicate: per-fragment 3D refraction-ray
-            // length, sRGB → linear color management, and an ACES
-            // final-pass tonemap. Stacking those compensations would
-            // be a multi-feature shader rewrite.
+            // 0.155) push the Beer-Lambert ratio to ~14.6, which in
+            // the reference render still reads as amber because of
+            // three things we don't replicate: per-fragment 3D
+            // refraction-ray length, sRGB → linear color management,
+            // and an ACES final-pass tonemap. Stacking those
+            // compensations would be a multi-feature shader rewrite.
             //
             // Pragmatic match: lower the ratio to ~0.5 so our flat
-            // attenuation produces a similar amber/golden hue to
-            // Three's render at the heavier ratio. Slider stays in
-            // range — drag thickness up to 2.27 or attenuation
-            // distance down to 0.155 to feel the asset default.
-            // thickness=2.27 keeps the asset's authored value (now
-            // drives both Beer-Lambert path length AND the new 3D
-            // refraction-ray screen offset). attenuationDistance
-            // softened from the asset's 0.155 to 2.0 — without
-            // three.js's sRGB-managed colour pipeline and final-pass
-            // ACES tonemap to bring back highlights, even a ratio of
-            // 4-5 collapses the body to deep red. Ratio ≈ 1 keeps the
-            // authored amber hue visible while the new 3D refraction
-            // produces the per-fragment colour variation that gives
-            // the volumetric look.
+            // attenuation produces a similar amber/golden hue to the
+            // reference at the heavier ratio. Slider stays in range —
+            // drag thickness up to 2.27 or attenuation distance down
+            // to 0.155 to feel the asset default. thickness=2.27 keeps
+            // the asset's authored value (now drives both Beer-Lambert
+            // path length AND the new 3D refraction-ray screen
+            // offset). attenuationDistance softened from the asset's
+            // 0.155 to 2.0 — without an sRGB-managed colour pipeline
+            // and final-pass ACES tonemap to bring back highlights,
+            // even a ratio of 4-5 collapses the body to deep red.
+            // Ratio ≈ 1 keeps the authored amber hue visible while
+            // the new 3D refraction produces the per-fragment colour
+            // variation that gives the volumetric look.
             this.dragonMat.thicknessFactor = 2.27;
             this.dragonMat.attenuationColor = new Color(246 / 255, 209 / 255, 72 / 255, 1);
             this.dragonMat.attenuationDistance = 2.0;
-            // Three's demo is IBL-dominated (no explicit DirectLight,
-            // only scene.environment). Our DirectLight at intensity=3
-            // adds a strong warm-white wash that flattens the glass
-            // contrast. Drop it so the IBL specular and the env
-            // reflection get the visual weight they have in three.js.
+            // The reference demo is IBL-dominated (no explicit
+            // DirectLight, only scene.environment). Our DirectLight at
+            // intensity=3 adds a strong warm-white wash that flattens
+            // the glass contrast. Drop it so the IBL specular and the
+            // env reflection get their proper visual weight.
             this.lightBaseIntensity = 1.5;
             this.directLight.intensity = this.lightBaseIntensity;
             // Critical for the canvas-alpha trick: with this mode on,
@@ -231,18 +229,17 @@ class Sample_TransmissionAlpha {
             this.dragonMat.transmissionAlphaMode = true;
         }
 
-        // Three.js renders the asset unmodified — we do the same.
+        // Render the asset unmodified.
         // DragonAttenuation.glb is authored so the dragon's body straddles
-        // y=0..1 in world units, which is why Three's example targets
-        // y=0.5 with a fov-40 camera 5 units away.
+        // y=0..1 in world units, which is why the camera targets y=0.5
+        // at fov-40, 5 units away.
     }
 
     private initGUI() {
         if (!this.dragonMat) return;
 
-        // Mirror three.js example's params block, in the same order
-        // and with the same ranges. Initial values match the preset
-        // applied to the dragon material in loadDragon().
+        // Params block — initial values match the preset applied to
+        // the dragon material in loadDragon().
         const params = {
             color: { rgba: [255, 255, 255, 1] },
             transmission: 1,
@@ -298,7 +295,7 @@ class Sample_TransmissionAlpha {
                 this.dragonMat.baseColor = new Color(c.r, c.g, c.b, a);
             }),
             'Opacity',
-            'baseColor.a — 1 = fully visible, 0 = fully gone. When an opaque object (cloth) sits behind the glass, lowers the dragon visibility proportionally; when nothing is behind (the HTML area) it has no effect (matches Three.js behaviour)',
+            'baseColor.a — 1 = fully visible, 0 = fully gone. When an opaque object (cloth) sits behind the glass, lowers the dragon visibility proportionally; when nothing is behind (the HTML area) it has no effect',
         );
 
         decorate(

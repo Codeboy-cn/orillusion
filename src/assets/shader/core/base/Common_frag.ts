@@ -58,7 +58,7 @@ export let Common_frag: string = /*wgsl*/ `
     #if USE_OIT_DEPTH_PEEL_DEPTH
       // Dual Depth Peeling — depth-extraction sub-pass.
       //
-      // Babylon-style algorithm: each pixel maintains (depth_min,
+      // Dual-depth-peel algorithm: each pixel maintains (depth_min,
       // depth_max) in an RG32F MRT cleared to (-MAX_DEPTH, -MAX_DEPTH).
       // Every transparent fragment writes vec4(-fragDepth, fragDepth)
       // and the attachment is configured with MAX blend (per-channel),

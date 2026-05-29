@@ -3,7 +3,6 @@ import { UUID } from '../../../../../util/Global';
 import { bindCtx, Context3D } from '../../Context3D';
 import { MatrixGPUBuffer } from '../buffer/MatrixGPUBuffer';
 /**
- * @author sirxu
  * @internal
  * @group GFX
  */

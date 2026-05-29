@@ -3,7 +3,7 @@ import { PassType } from '../../gfx/renderJob/passRenderer/state/PassType';
 
 /**
  * Multi-pass companion shader for the front-color accumulation sub-pass
- * of Dual Depth Peeling (Babylon-style OIT). Each peel iteration
+ * of Dual Depth Peeling OIT. Each peel iteration
  * advances the front layer one step deeper into the scene, accumulating
  * lit colour into the front MRT with the over operator:
  *
