@@ -2,7 +2,7 @@ import { ColliderComponent } from "../../../components/ColliderComponent";
 import { IComponent } from "../../../components/IComponent";
 import { View3D } from "../../../core/View3D";
 import { Object3D } from "../../../core/entities/Object3D";
-import { RenderLayer } from "../config/RenderLayer";
+import { VisibleLayer } from "../config/VisibleLayer";
 
 export class ComponentCollect {
 
@@ -252,7 +252,7 @@ export class ComponentCollect {
     /**
      * Collect all live components of `ctor` registered against `view`
      * whose `visibleLayer` intersects `layerMask`. Pass
-     * {@link RenderLayer.All} (`0xFFFFFFFF`) to skip layer filtering —
+     * {@link VisibleLayer.All} (`0xFFFFFFFF`) to skip layer filtering —
      * the bitwise AND then matches every bit.
      *
      * The caller owns `out`: it is cleared (`length = 0`) on entry and
@@ -286,7 +286,7 @@ export class ComponentCollect {
         if (!perView) return out;
         const set = perView.get(ctor);
         if (!set || set.size === 0) return out;
-        const mask = (layerMask & RenderLayer.All) >>> 0;
+        const mask = (layerMask & VisibleLayer.All) >>> 0;
         if (mask === 0) return out;
         for (const comp of set) {
             const c = comp as unknown as T;

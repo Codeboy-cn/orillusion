@@ -13,7 +13,7 @@ import { Vector3 } from '../../../math/Vector3';
 import { Time } from '../../../util/Time';
 import { zSorterUtil } from '../../../util/ZSorterUtil';
 import { BatchModeUtil, BatchMode } from '../config/BatchMode';
-import { RenderLayer } from '../config/RenderLayer';
+import { VisibleLayer } from '../config/VisibleLayer';
 import { Probe } from '../passRenderer/ddgi/Probe';
 // import { Graphic3DBatchRenderer } from '../passRenderer/graphic/Graphic3DBatchRenderer';
 import { RendererMask } from '../passRenderer/state/RendererMask';
@@ -411,7 +411,7 @@ export class EntityCollect {
      * filtering step is a single linear scan over the (already
      * frustum-culled) lists.
      *
-     * When `(layerMask & cullingMask) === RenderLayer.All`, the result
+     * When `(layerMask & cullingMask) === VisibleLayer.All`, the result
      * arrays are populated from the same scan rather than aliased to
      * the singleton's lists — callers can safely mutate / store the
      * returned arrays without affecting subsequent calls.
@@ -422,13 +422,13 @@ export class EntityCollect {
      * @param layerMask   Pass-side layer mask, e.g. from
      *                    {@link RenderGraphPass.layerMask}.
      * @param cullingMask Camera-side culling mask, defaults to
-     *                    {@link RenderLayer.All}.
+     *                    {@link VisibleLayer.All}.
      */
     public getLayerLists(
         scene: Scene3D,
         camera: Camera3D,
         layerMask: number,
-        cullingMask: number = RenderLayer.All,
+        cullingMask: number = VisibleLayer.All,
     ): { opaque: RenderNode[]; transparent: RenderNode[] } {
         const mask = (layerMask & cullingMask) >>> 0;
         if (mask === 0) {
@@ -443,12 +443,12 @@ export class EntityCollect {
         const opOut: RenderNode[] = [];
         for (let i = 0, n = opIn.length; i < n; i++) {
             const node = opIn[i];
-            if (EntityCollect.matchesLayer(node.visibleLayer, mask, RenderLayer.All)) opOut.push(node);
+            if (EntityCollect.matchesLayer(node.visibleLayer, mask, VisibleLayer.All)) opOut.push(node);
         }
         const trOut: RenderNode[] = [];
         for (let i = 0, n = trIn.length; i < n; i++) {
             const node = trIn[i];
-            if (EntityCollect.matchesLayer(node.visibleLayer, mask, RenderLayer.All)) trOut.push(node);
+            if (EntityCollect.matchesLayer(node.visibleLayer, mask, VisibleLayer.All)) trOut.push(node);
         }
         return { opaque: opOut, transparent: trOut };
     }
@@ -470,10 +470,10 @@ export class EntityCollect {
      *                    (e.g. `RenderNode.visibleLayer`).
      * @param layerMask   Pass-side mask (e.g. {@link RenderGraphPass.layerMask}).
      * @param cullingMask Camera-side mask (e.g. {@link Camera3D.cullingMask}).
-     *                    Pass {@link RenderLayer.All} when the caller has
+     *                    Pass {@link VisibleLayer.All} when the caller has
      *                    already AND-ed the camera mask into `layerMask`.
      */
-    public static matchesLayer(layer: number, layerMask: number, cullingMask: number = RenderLayer.All): boolean {
+    public static matchesLayer(layer: number, layerMask: number, cullingMask: number = VisibleLayer.All): boolean {
         return ((layer | 0) & (layerMask & cullingMask)) !== 0;
     }
 

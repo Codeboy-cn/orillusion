@@ -32,7 +32,7 @@
  *
  * @group GFX
  */
-export namespace RenderLayer {
+export namespace VisibleLayer {
     /** No layer membership. Used by special renderers that bypass the
      *  layer-bucket index entirely (Sky / Reflection / Graphic3D) and
      *  by nodes the application wants temporarily hidden. */
@@ -61,7 +61,7 @@ export namespace RenderLayer {
 }
 
 /**
- * Class-style facade over the {@link RenderLayer} namespace functions,
+ * Class-style facade over the {@link VisibleLayer} namespace functions,
  * mirroring the `RendererMaskUtil` convention already used elsewhere
  * in the engine. Both forms compile to the same operations — pick
  * whichever reads better at the call site.
@@ -69,8 +69,8 @@ export namespace RenderLayer {
  * @internal
  * @group GFX
  */
-export class RenderLayerUtil {
-    public static addMask(src: number, tag: number): number { return RenderLayer.add(src, tag); }
-    public static removeMask(src: number, tag: number): number { return RenderLayer.remove(src, tag); }
-    public static hasMask(m1: number, m2: number): boolean { return RenderLayer.has(m1, m2); }
+export class VisibleLayerUtil {
+    public static addMask(src: number, tag: number): number { return VisibleLayer.add(src, tag); }
+    public static removeMask(src: number, tag: number): number { return VisibleLayer.remove(src, tag); }
+    public static hasMask(m1: number, m2: number): boolean { return VisibleLayer.has(m1, m2); }
 }

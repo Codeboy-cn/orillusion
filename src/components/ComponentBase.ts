@@ -2,7 +2,7 @@ import { View3D } from "../core/View3D";
 import { Object3D } from "../core/entities/Object3D";
 import { CEventDispatcher } from "../event/CEventDispatcher";
 import { ComponentCollect } from "../gfx/renderJob/collect/ComponentCollect";
-import { RenderLayer } from "../gfx/renderJob/config/RenderLayer";
+import { VisibleLayer } from "../gfx/renderJob/config/VisibleLayer";
 import { EditorInspector } from "../util/SerializeDecoration";
 import { IComponent } from "./IComponent";
 import { Transform } from "./Transform";
@@ -28,7 +28,7 @@ export class ComponentBase implements IComponent {
      */
     public object3D: Object3D = null;
 
-    protected _visibleLayer: number = RenderLayer.Default;
+    protected _visibleLayer: number = VisibleLayer.Default;
 
     /**
      * Composition-layer membership bitmask. The pass / camera /
@@ -36,9 +36,9 @@ export class ComponentBase implements IComponent {
      *
      *     (component.visibleLayer & pass.layerMask & camera.cullingMask) !== 0
      *
-     * Defaults to {@link RenderLayer.Default} (bit 0) so a fresh
+     * Defaults to {@link VisibleLayer.Default} (bit 0) so a fresh
      * subclass is visible to passes whose `layerMask` is
-     * {@link RenderLayer.All} (which includes bit 0). Application code
+     * {@link VisibleLayer.All} (which includes bit 0). Application code
      * can assign project-specific bits (1..31) to organise the scene
      * into composition layers.
      */

@@ -2,7 +2,7 @@ import {
     AtmosphericComponent, BitmapTexture2D, BoxGeometry, CameraUtil, ClusterLightingPass,
     COLOR_BUFFER, Color, ColorPass, DecalComponent, DirectLight, drawNodes, Engine3D,
     GlobalBindGroup, HoverCameraController, KelvinUtil, LitMaterial, MeshRenderer, Object3D,
-    PreDepthPass, RenderGraphBuilder, RenderGraphPass, RenderGraphPassContext, RenderLayer,
+    PreDepthPass, RenderGraphBuilder, RenderGraphPass, RenderGraphPassContext, VisibleLayer,
     Scene3D, SphereGeometry, TRANSPARENT_DRAW_CTX, TransparentDrawContext, Vector3, View3D,
 } from "@orillusion/core";
 
@@ -47,7 +47,7 @@ import {
  * ──────────────────────────────────────────────────────────────────── */
 
 /** Project-defined renderable layer. Bit 0 is reserved by the engine
- *  for `RenderLayer.Default` (the implicit layer of any new node), so
+ *  for `VisibleLayer.Default` (the implicit layer of any new node), so
  *  application code occupies bits 1..31. */
 const BUILDING_LAYER = 1 << 1;
 
@@ -166,7 +166,7 @@ export class Sample_PassOrderControl {
         // BUILDING_LAYER. Crucially, `_MainDepthTexture` then carries
         // terrain depth only when `DecalShadowVolumePass` reads it —
         // decals project onto terrain instead of onto building walls.
-        const excludeBuildings = RenderLayer.remove(RenderLayer.All, BUILDING_LAYER);
+        const excludeBuildings = VisibleLayer.remove(VisibleLayer.All, BUILDING_LAYER);
         colorPass.layerMask = excludeBuildings;
         if (preDepthPass) preDepthPass.layerMask = excludeBuildings;
 

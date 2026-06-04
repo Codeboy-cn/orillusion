@@ -24,7 +24,7 @@ import {
  * have wrapped onto their walls.
  *
  * That is the "most convenient" order-control knob; see
- * `Sample_PassOrderControl.ts` for the alternatives (RenderLayer-based
+ * `Sample_PassOrderControl.ts` for the alternatives (VisibleLayer-based
  * routing into a custom user pass with explicit topo dependencies).
  * ──────────────────────────────────────────────────────────────────── */
 

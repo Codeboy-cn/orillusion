@@ -12,7 +12,7 @@ import { CameraType } from './CameraType';
 import { Context3D } from '../gfx/graphics/webGpu/Context3D';
 import { CResizeEvent } from '../event/CResizeEvent';
 import { ILight } from '../components/lights/ILight';
-import { RenderLayer } from '../gfx/renderJob/config/RenderLayer';
+import { VisibleLayer } from '../gfx/renderJob/config/VisibleLayer';
 
 /**
  * Camera components
@@ -113,7 +113,7 @@ export class Camera3D extends ComponentBase {
      *
      *     (node.visibleLayer & pass.layerMask & camera.cullingMask) !== 0
      *
-     * Defaults to {@link RenderLayer.All} so untouched cameras keep
+     * Defaults to {@link VisibleLayer.All} so untouched cameras keep
      * the historical "see everything" behaviour. Sub-cameras
      * (minimaps, reflection probes, picking-only views) can clear
      * specific bits to suppress unwanted layers.
@@ -122,7 +122,7 @@ export class Camera3D extends ComponentBase {
      * a layer must clear both masks AND the node's own membership to
      * be drawn.
      */
-    public cullingMask: number = RenderLayer.All;
+    public cullingMask: number = VisibleLayer.All;
 
     /**
    * @internal

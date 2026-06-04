@@ -4,9 +4,9 @@
  * the default per-node opaque/transparent lists).
  *
  * Historically this enum was named `RenderLayer`, but the values
- * actually express *batching behavior*, not layer membership — the
- * old name has been reclaimed for the new layer-mask system in
- * {@link RenderLayer}. Migration: replace `RenderLayer.*` usages with
+ * actually express *batching behavior*, not layer membership — it was
+ * renamed to `BatchMode`, and the layer-mask concern now lives in
+ * {@link VisibleLayer}. Migration: replace `RenderLayer.*` usages with
  * `BatchMode.*` and `RenderLayerUtil` with {@link BatchModeUtil}.
  *
  * @group GFX

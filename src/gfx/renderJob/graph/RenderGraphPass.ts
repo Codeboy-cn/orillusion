@@ -3,7 +3,7 @@ import { View3D } from '../../../core/View3D';
 import { CEventDispatcher } from '../../../event/CEventDispatcher';
 import { RenderNode } from '../../../components/renderer/RenderNode';
 import { EntityCollect } from '../collect/EntityCollect';
-import { RenderLayer } from '../config/RenderLayer';
+import { VisibleLayer } from '../config/VisibleLayer';
 import { OcclusionSystem } from '../occlusion/OcclusionSystem';
 import { PassType } from '../passRenderer/state/PassType';
 import { RenderGraph } from './RenderGraph';
@@ -332,7 +332,7 @@ export abstract class RenderGraphPass extends CEventDispatcher {
     public enabled: boolean = true;
 
     /** Which scene layers this pass consumes, as a bitmask. Default
-     *  {@link RenderLayer.All} reproduces the legacy "draw every
+     *  {@link VisibleLayer.All} reproduces the legacy "draw every
      *  collected node" behaviour. Custom passes (or custom
      *  {@link RendererJob}s wiring built-in passes) override this to
      *  restrict the pass to specific composition layers — combined
@@ -344,7 +344,7 @@ export abstract class RenderGraphPass extends CEventDispatcher {
      *  Use {@link collectLayered} from inside `execute()` to fetch the
      *  filtered opaque/transparent lists; it threads `layerMask` and
      *  the camera mask through {@link EntityCollect.getLayerLists}. */
-    public layerMask: number = RenderLayer.All;
+    public layerMask: number = VisibleLayer.All;
 
     /** Names this pass reads. Populated on the first
      *  `RenderGraph.compile()` that processes this pass, from the
@@ -405,7 +405,7 @@ export abstract class RenderGraphPass extends CEventDispatcher {
      * `EntityCollect.instance.getRenderNodes(view.scene, camera)`
      * call inside `execute()` — passes that don't override
      * `layerMask` get identical results because the default
-     * `RenderLayer.All` mask is a no-op intersection.
+     * `VisibleLayer.All` mask is a no-op intersection.
      *
      * Shadow / reflection / GI-probe / scene-capture passes that
      * render through a non-main camera should pass that camera
@@ -417,7 +417,7 @@ export abstract class RenderGraphPass extends CEventDispatcher {
         camera?: Camera3D,
     ): { opaque: RenderNode[]; transparent: RenderNode[] } {
         const cam = camera ?? view.camera;
-        const camMask = cam?.cullingMask ?? RenderLayer.All;
+        const camMask = cam?.cullingMask ?? VisibleLayer.All;
         return EntityCollect.instance.getLayerLists(view.scene, cam, this.layerMask, camMask);
     }
 }

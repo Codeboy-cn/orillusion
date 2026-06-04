@@ -2,7 +2,7 @@ import {
     AtmosphericComponent, BlendMode, BoxGeometry, CameraUtil, ClearDepthPass, Color,
     ColorPass, DirectLight, Engine3D, ForwardRendererJob, HoverCameraController,
     KelvinUtil, LitMaterial, MeshRenderer, Object3D, PlaneGeometry,
-    RenderGraphBuilder, RenderLayer, Scene3D, ShadowPass, SortedTransparentPass,
+    RenderGraphBuilder, VisibleLayer, Scene3D, ShadowPass, SortedTransparentPass,
     Vector3, View3D,
 } from "@orillusion/core";
 
@@ -33,7 +33,7 @@ import {
 
 // ─── Project-defined layer semantics (NOT part of the engine) ─────
 // Application code owns the bit ↔ meaning mapping. Bit 0 is reserved
-// for RenderLayer.Default (legacy / unassigned), so application bits
+// for VisibleLayer.Default (legacy / unassigned), so application bits
 // start from bit 1.
 const GisLayer = {
     Terrain:     1 << 1,
@@ -91,7 +91,7 @@ class GisRendererJob extends ForwardRendererJob {
         //    specific layer keep rendering through this pass).
         this.graph.replace('ColorPass', GisGlobeOpaquePass);
         const globe = this.graph.getPass<GisGlobeOpaquePass>('GisGlobeOpaquePass')!;
-        globe.layerMask = RenderLayer.Default | GisLayer.Terrain | GisLayer.GroundDecal;
+        globe.layerMask = VisibleLayer.Default | GisLayer.Terrain | GisLayer.GroundDecal;
 
         // 2. Independent ClearDepthPass between the two opaque halves.
         //    Color attachments are loaded (terrain + decals + sky stay),
@@ -127,7 +127,7 @@ class GisRendererJob extends ForwardRendererJob {
         // 6. Shadow casters: everything except the screen-space HUD.
         const shadow = this.graph.getPass<ShadowPass>('ShadowPass');
         if (shadow) {
-            shadow.layerMask = RenderLayer.remove(RenderLayer.All, GisLayer.Overlay);
+            shadow.layerMask = VisibleLayer.remove(VisibleLayer.All, GisLayer.Overlay);
         }
 
         this.graph.compile();
@@ -160,8 +160,8 @@ export class Sample_GISLayerComposition {
 
         // Demonstrate Camera3D.cullingMask too: drop the Overlay layer
         // from the main view's visible set. (Switch back to
-        // RenderLayer.All to see the Overlay objects.)
-        camera.cullingMask = RenderLayer.remove(RenderLayer.All, GisLayer.Overlay);
+        // VisibleLayer.All to see the Overlay objects.)
+        camera.cullingMask = VisibleLayer.remove(VisibleLayer.All, GisLayer.Overlay);
         console.log(`[main camera] cullingMask=0x${(camera.cullingMask >>> 0).toString(16).padStart(8, '0')} (Overlay layer hidden)`);
 
         const view = new View3D();
@@ -266,7 +266,7 @@ export class Sample_GISLayerComposition {
 
         // Overlay billboard — translucent red. With camera.cullingMask
         // configured to drop Overlay (above), this object stays hidden
-        // in the main view. Flip the cullingMask back to RenderLayer.All
+        // in the main view. Flip the cullingMask back to VisibleLayer.All
         // to confirm it shows up.
         const overlay = new Object3D();
         overlay.localPosition = new Vector3(0, 8, 0);
