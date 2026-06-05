@@ -21,9 +21,7 @@ import {
 // handles resolve; graph's toposort places it after shadows/reflection/GI.
 
 await test('ColorPass registers at stage=Opaque with static reads and exposes color/normal buffers', async () => {
-    const engine = await Engine3D.init({
-        setting: { render: { useFrameGraph: true } as any },
-    })
+    const engine = await Engine3D.init({})
     const scene = new Scene3D()
     const cameraObj = new Object3D()
     const camera = cameraObj.addComponent(Camera3D)
@@ -59,7 +57,6 @@ await test('ColorPass registers at stage=Opaque with static reads and exposes co
 await test('ColorPass reads include DDGI handles when gi.enable is true', async () => {
     const engine = await Engine3D.init({
         setting: {
-            render: { useFrameGraph: true },
             gi: { enable: true },
         } as any,
     })

@@ -9,14 +9,11 @@ import {
     MAIN_SHADOW_MAP,
 } from '@orillusion/core'
 
-// C3 acceptance: ShadowPass is registered in the graph under
-// useFrameGraph=true and exposes `_MainShadowMap` as an external
-// handle resolving to the renderer's Depth2DTextureArray.
+// ShadowPass is registered in the graph and exposes `_MainShadowMap`
+// as an external handle resolving to the renderer's Depth2DTextureArray.
 
 await test('ShadowPass is registered and exposes _MainShadowMap', async () => {
-    const engine = await Engine3D.init({
-        setting: { render: { useFrameGraph: true } as any },
-    })
+    const engine = await Engine3D.init({})
     const scene = new Scene3D()
     const cameraObj = new Object3D()
     const camera = cameraObj.addComponent(Camera3D)

@@ -18,7 +18,7 @@ import {
 
 await test('PreDepthPass is NOT registered when zPrePass is false', async () => {
     const engine = await Engine3D.init({
-        setting: { render: { useFrameGraph: true, zPrePass: false } as any },
+        setting: { render: { zPrePass: false } as any },
     })
     const scene = new Scene3D()
     const cameraObj = new Object3D()
@@ -38,7 +38,7 @@ await test('PreDepthPass is NOT registered when zPrePass is false', async () => 
 
 await test('PreDepthPass is registered and exposes _MainDepthTexture + _ZBufferTexture when zPrePass is true', async () => {
     const engine = await Engine3D.init({
-        setting: { render: { useFrameGraph: true, zPrePass: true } as any },
+        setting: { render: { zPrePass: true } as any },
     })
     const scene = new Scene3D()
     const cameraObj = new Object3D()

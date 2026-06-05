@@ -17,8 +17,8 @@ import { COLOR_BUFFER } from './ColorPass';
  * whatever texture the last enabled post wrote — tone-mapped color
  * when the full chain runs, FXAA-sharpened color when only FXAA is
  * enabled, or the colorPass GBuffer texture when no post effects are
- * enabled at all. {@link FrameGraphRendererJob._present} reads this
- * handle to decide what texture to draw to the canvas.
+ * enabled at all. {@link GUIPass} reads this handle to decide what
+ * texture to draw to the canvas.
  *
  * @group Graph
  */
@@ -156,8 +156,8 @@ export class PostPass extends RenderGraphPass {
         gpu.endCommandEncoder(command);
     }
 
-    /** Tears down every attached PostBase instance. Called from
-     *  FrameGraphRendererJob.destroy via the graph's destroy() walk. */
+    /** Tears down every attached PostBase instance. Called via the
+     *  graph's destroy() walk. */
     public destroy(): void {
         for (const post of this.postList.values()) {
             post.destroy?.();

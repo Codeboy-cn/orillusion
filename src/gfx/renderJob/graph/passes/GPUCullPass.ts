@@ -20,7 +20,7 @@ export const DRAW_COUNT_BUFFER = '_DrawCount';
  *   3. Output buffers (`_VisibilityBuffer`, `_DrawCmds`, `_DrawCount`)
  *      are exposed via the graph pool for downstream renderer use.
  *
- * **Renderer integration is OPT-IN** — ColorPassRenderer continues to
+ * **Renderer integration is OPT-IN** — `ColorPass` continues to
  * iterate the CPU `transparentList` / `opaqueList` by default. Wiring
  * `drawIndexedIndirect` against `_DrawCmds` is the next step (see
  * GPUContext.drawIndexedIndirect already in place).

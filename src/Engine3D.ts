@@ -100,10 +100,6 @@ export class Engine3D {
                 // pipeline (post-bb408b8) IBL stays full HDR all the
                 // way to TonemapPost, so 1.0 is the correct default.
                 hdrExposure: 1.0,
-                debugQuad: -1,
-                maxPointLight: 1000,
-                maxDirectLight: 4,
-                maxSportLight: 1000,
                 drawOpMin: 0,
                 drawOpMax: Number.MAX_SAFE_INTEGER,
                 drawTrMin: 0,
@@ -119,14 +115,11 @@ export class Engine3D {
                 zPrePass: true,
                 useLogDepth: false,
                 useCompressGBuffer: false,
-                gi: false,
-                useFrameGraph: true,
                 msaa: 0,
                 useOIT: false,
                 decals: false,
                 useStencil: false,
                 gpuCull: false,
-                gpuCullTwoPhase: false,
                 tonemap: {
                     enable: true,
                     // ACES Filmic at exposure 1.0 — the standard

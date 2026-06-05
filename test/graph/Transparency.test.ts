@@ -39,9 +39,7 @@ await test('Engine3D defaults expose msaa and useOIT settings', async () => {
 })
 
 await test('SceneColorPyramidPass registers and exposes _SceneColorPyramid', async () => {
-    const engine = await Engine3D.init({
-        setting: { render: { useFrameGraph: true } as any },
-    })
+    const engine = await Engine3D.init({})
     const scene = new Scene3D()
     const cameraObj = new Object3D()
     const camera = cameraObj.addComponent(Camera3D)
@@ -68,7 +66,7 @@ await test('SceneColorPyramidPass registers and exposes _SceneColorPyramid', asy
 
 await test('SortedTransparentPass is registered with filter=all when useOIT is off', async () => {
     const engine = await Engine3D.init({
-        setting: { render: { useFrameGraph: true, useOIT: false } as any },
+        setting: { render: { useOIT: false } as any },
     })
     const scene = new Scene3D()
     const cameraObj = new Object3D()
@@ -92,7 +90,7 @@ await test('SortedTransparentPass is registered with filter=all when useOIT is o
 
 await test('useOIT=true registers OIT + Resolve features alongside sorted', async () => {
     const engine = await Engine3D.init({
-        setting: { render: { useFrameGraph: true, useOIT: true } as any },
+        setting: { render: { useOIT: true } as any },
     })
     const scene = new Scene3D()
     const cameraObj = new Object3D()
@@ -203,9 +201,7 @@ await test('OIT_ACCUM passType bit is unique', async () => {
 // -----------------------------------------------------------------------------
 
 await test('SortedTransparentPass reads _TransparentDrawContext (not ColorPass via getPass)', async () => {
-    const engine = await Engine3D.init({
-        setting: { render: { useFrameGraph: true } as any },
-    })
+    const engine = await Engine3D.init({})
     const scene = new Scene3D()
     const cameraObj = new Object3D()
     const camera = cameraObj.addComponent(Camera3D)
@@ -226,9 +222,7 @@ await test('SortedTransparentPass reads _TransparentDrawContext (not ColorPass v
 })
 
 await test('remove(ColorPass) surfaces the transparent-draw-context dependency on the next compile', async () => {
-    const engine = await Engine3D.init({
-        setting: { render: { useFrameGraph: true } as any },
-    })
+    const engine = await Engine3D.init({})
     const scene = new Scene3D()
     const cameraObj = new Object3D()
     const camera = cameraObj.addComponent(Camera3D)
@@ -257,9 +251,7 @@ await test('remove(ColorPass) surfaces the transparent-draw-context dependency o
 })
 
 await test('TransmissionOpaquePass reads _TransparentDrawContext when registered', async () => {
-    const engine = await Engine3D.init({
-        setting: { render: { useFrameGraph: true } as any },
-    })
+    const engine = await Engine3D.init({})
     const scene = new Scene3D()
     const cameraObj = new Object3D()
     const camera = cameraObj.addComponent(Camera3D)

@@ -18,9 +18,7 @@ import {
 // ddgiProbeRenderer is created by ForwardRenderJob.start().
 
 await test('GIPass is NOT registered when gi.enable is false (default)', async () => {
-    const engine = await Engine3D.init({
-        setting: { render: { useFrameGraph: true } as any },
-    })
+    const engine = await Engine3D.init({})
     const scene = new Scene3D()
     const cameraObj = new Object3D()
     const camera = cameraObj.addComponent(Camera3D)
@@ -41,7 +39,6 @@ await test('GIPass is NOT registered when gi.enable is false (default)', async (
 await test('GIPass is registered when gi.enable is true, with shadow reads + DDGI writes', async () => {
     const engine = await Engine3D.init({
         setting: {
-            render: { useFrameGraph: true },
             gi: { enable: true },
         } as any,
     })

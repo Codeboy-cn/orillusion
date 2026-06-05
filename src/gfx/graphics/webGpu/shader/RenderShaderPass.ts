@@ -406,10 +406,10 @@ export class RenderShaderPass extends ShaderPassBase {
      * graph's resource pool may not have produced the GPUTexture yet
      * when the declaration happens.
      *
-     * Shim for Phase B: a frame-graph-aware feature can hand its
-     * material a named handle at setup time, and the legacy
-     * `RenderNode.nodeUpdate` path keeps working in parallel. No
-     * behavior change when `declareBinding` is never called.
+     * A frame-graph-aware feature can hand its material a named handle
+     * at setup time, and the `RenderNode.nodeUpdate` path keeps working
+     * in parallel. No behavior change when `declareBinding` is never
+     * called.
      *
      * @param name   Shader-side texture binding name (e.g. `shadowMap`).
      * @param handleName  Frame Graph handle name (e.g. `_MainShadowMap`).

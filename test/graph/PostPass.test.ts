@@ -17,9 +17,7 @@ import {
 // during RendererJob construction, so it's available then).
 
 await test('PostPass registered eagerly at stage=Post, reads _ColorBuffer, writes _FinalColor', async () => {
-    const engine = await Engine3D.init({
-        setting: { render: { useFrameGraph: true } as any },
-    })
+    const engine = await Engine3D.init({})
     const scene = new Scene3D()
     const cameraObj = new Object3D()
     const camera = cameraObj.addComponent(Camera3D)

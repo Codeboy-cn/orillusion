@@ -10,15 +10,13 @@ import {
     CLUSTER_LIGHTING_BUFFER,
 } from '@orillusion/core'
 
-// C1 acceptance: ClusterLightingPass must be registered by
-// ForwardRendererJob and must publish `_ClusterLightingBuffer` as an
-// external handle after the first frame. The legacy fallback must not
-// double-dispatch the compute (cluster lives in the graph only).
+// ClusterLightingPass must be registered by ForwardRendererJob and
+// must publish `_ClusterLightingBuffer` as an external handle after
+// the first frame. The cluster compute lives in the graph only and
+// must be dispatched exactly once.
 
 await test('ClusterLightingPass is registered by ForwardRendererJob', async () => {
-    const engine = await Engine3D.init({
-        setting: { render: { useFrameGraph: true } as any },
-    })
+    const engine = await Engine3D.init({})
     const scene = new Scene3D()
     const cameraObj = new Object3D()
     const camera = cameraObj.addComponent(Camera3D)
@@ -40,9 +38,7 @@ await test('ClusterLightingPass is registered by ForwardRendererJob', async () =
 })
 
 await test('_ClusterLightingBuffer external handle is registered eagerly at construction', async () => {
-    const engine = await Engine3D.init({
-        setting: { render: { useFrameGraph: true } as any },
-    })
+    const engine = await Engine3D.init({})
     const scene = new Scene3D()
     const cameraObj = new Object3D()
     const camera = cameraObj.addComponent(Camera3D)

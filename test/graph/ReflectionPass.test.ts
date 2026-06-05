@@ -15,9 +15,7 @@ import {
 // face render.
 
 await test('ReflectionPass is registered at stage=GI and exposes _ReflectionCubeMap', async () => {
-    const engine = await Engine3D.init({
-        setting: { render: { useFrameGraph: true } as any },
-    })
+    const engine = await Engine3D.init({})
     const scene = new Scene3D()
     const cameraObj = new Object3D()
     const camera = cameraObj.addComponent(Camera3D)
