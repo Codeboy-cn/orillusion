@@ -82,9 +82,12 @@ export class ComponentBase implements IComponent {
 
     /**
      * Return the Transform component attached to the Object3D.
+     * Null before the component is attached — `addComponent` assigns
+     * `object3D` only after construction — so constructor-time callers
+     * can probe safely via `this.transform?.`.
      */
     public get transform(): Transform {
-        return this.object3D.transform;
+        return this.object3D ? this.object3D.transform : null;
     }
 
     /**
