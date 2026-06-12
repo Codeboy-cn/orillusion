@@ -2,6 +2,7 @@
 
 //TODO dynamic lights need fixed
 
+import { IESProfilesPool } from "../../../../../../components/lights/IESProfiles";
 import { LightData } from "../../../../../../components/lights/LightData";
 import { Camera3D } from "../../../../../../core/Camera3D";
 import { Scene3D } from "../../../../../../core/Scene3D";
@@ -47,8 +48,17 @@ export class LightEntries {
 
         let lights = EntityCollect.instance.getLights(view.scene);
         for (let i = 0; i < lights.length; i++) {
-            const light = lights[i].lightData;
+            const lightComponent = lights[i];
+            const light = lightComponent.lightData;
             light.index = i;
+            if (lightComponent.iesProfile) {
+                // Late registration: the engine ctx is only known here,
+                // not when the profile was assigned to the light. The
+                // pool is per-Context3D, so sibling engines keep
+                // independent texture arrays and layer indices.
+                const iesPool = IESProfilesPool.for(view.engine3D.context3D);
+                light.iesIndex = iesPool.register(lightComponent.iesProfile);
+            }
             if (view.engine3D.setting.useRTE) {
                 const oldPos = light.lightPosition;
 

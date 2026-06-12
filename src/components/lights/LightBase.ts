@@ -162,8 +162,11 @@ export class LightBase extends ComponentBase implements ILight {
 
     public set iesProfiles(iesProfiles: IESProfiles) {
         this._iesProfiles = iesProfiles;
-        this.lightData.iesIndex = iesProfiles.index;
-        IESProfiles.use = true;
+        // The layer index is assigned when LightEntries registers the
+        // profile into the owning engine's IESProfilesPool at upload
+        // time — the engine ctx is unknown here (light may not be
+        // attached to a rendered view yet).
+        this.lightData.iesIndex = iesProfiles ? iesProfiles.index : -1;
         this.onChange();
     }
 

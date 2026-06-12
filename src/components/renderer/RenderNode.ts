@@ -14,7 +14,7 @@ import { RendererPassState } from "../../gfx/renderJob/passRenderer/state/Render
 import { GetCountInstanceID, UUID } from "../../util/Global";
 import { Reference } from "../../util/Reference";
 import { ComponentBase } from "../ComponentBase";
-import { IESProfiles } from "../lights/IESProfiles";
+import { IESProfilesPool } from "../lights/IESProfiles";
 import { Octree } from "../../core/tree/octree/Octree";
 import { OctreeEntity } from "../../core/tree/octree/OctreeEntity";
 import { Transform } from "../Transform";
@@ -705,7 +705,7 @@ export class RenderNode extends ComponentBase {
                         }
                     }
 
-                    let iesTexture = IESProfiles.iesTexture;
+                    let iesTexture = IESProfilesPool.for(view.engine3D.context3D).iesTexture;
                     if (iesTexture) {
                         renderShader.setTexture(`iesTextureArrayMap`, iesTexture);
                     }

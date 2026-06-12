@@ -2,7 +2,7 @@ import { ShaderLib } from "../../../../assets/shader/ShaderLib";
 import { Color } from "../../../../math/Color";
 import { VertexAttributeName } from "../../../../core/geometry/VertexAttributeName";
 import { BlendFactor, BlendMode } from "../../../../materials/BlendMode";
-import { IESProfiles } from "../../../../components/lights/IESProfiles";
+import { IESProfilesPool } from "../../../../components/lights/IESProfiles";
 import { GeometryBase } from "../../../../core/geometry/GeometryBase";
 import { Engine3D } from "../../../../Engine3D";
 import { GlobalBindGroupLayout } from "../core/bindGroups/GlobalBindGroupLayout";
@@ -1229,7 +1229,7 @@ export class RenderShaderPass extends ShaderPassBase {
         this.defineValue[`USE_HARD_SHADOW`] = setting.shadow.type == `HARD`;
         this.defineValue[`USE_SOFT_SHADOW`] = setting.shadow.type == `SOFT`;
         this.defineValue[`USE_CSM`] = CSM.Cascades > 1;
-        this.defineValue[`USE_IES_PROFILE`] = IESProfiles.use;
+        this.defineValue[`USE_IES_PROFILE`] = IESProfilesPool.for(this._boundCtx!).use;
 
         this.defineValue[`USE_RTE`] = setting.useRTE;
     }
