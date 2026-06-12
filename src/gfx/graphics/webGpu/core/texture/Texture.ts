@@ -1,6 +1,6 @@
 import { GPUAddressMode, GPUFilterMode } from '../../WebGPUConst';
 import { TextureMipmapGenerator } from './TextureMipmapGenerator';
-import { Context3D, bindCtx } from '../../Context3D';
+import { Context3D, bindCtx, resolveDefaultCtx } from '../../Context3D';
 
 /**
  * Texture — CPU-authoritative scene-graph object (Plan B).
@@ -19,14 +19,18 @@ export class Texture implements GPUSamplerDescriptor {
     public _boundCtx: Context3D | null = null;
 
     /**
-     * Ensure this texture is bound to a Context3D and return it. A ctx must
-     * be available either by explicit arg or via prior `bindCtx()` — there
-     * is no ambient fallback.
+     * Ensure this texture is bound to a Context3D and return it. Resolution
+     * order: explicit arg, prior `bindCtx()`, then the single-engine default
+     * (same contract as Engine3D._defaultContext() for no-arg material
+     * constructors). Throws only when the choice is ambiguous — no engine
+     * yet, or several engines alive without an explicit ctx.
      */
     public _ensureBound(ctx?: Context3D): Context3D {
         if (ctx) { bindCtx(this, ctx); return ctx; }
         if (this._boundCtx) return this._boundCtx;
-        throw new Error(`Texture(${this.constructor.name}) used before bindCtx — thread a Context3D from the owning Engine3D.`);
+        const fallback = resolveDefaultCtx();
+        if (fallback) { bindCtx(this, fallback); return fallback; }
+        throw new Error(`Texture(${this.constructor.name}) used before bindCtx — with zero or multiple engines alive, thread a Context3D from the owning Engine3D.`);
     }
 
     /**

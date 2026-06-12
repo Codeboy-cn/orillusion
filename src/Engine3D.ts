@@ -6,7 +6,7 @@ import { InputSystem } from './io/InputSystem';
 import { View3D } from './core/View3D';
 import { version } from '../package.json';
 
-import { Context3D } from './gfx/graphics/webGpu/Context3D';
+import { Context3D, _registerDefaultCtxResolver } from './gfx/graphics/webGpu/Context3D';
 
 import { GlobalBindGroup } from './gfx/graphics/webGpu/core/bindGroups/GlobalBindGroup';
 import { Interpolator } from './math/TimeInterpolator';
@@ -260,6 +260,15 @@ export class Engine3D {
         throw new Error(
             `Engine3D.resFor: ${Engine3D._instances.size} engines exist — pass ctx explicitly so resources bind to the intended device.`
         );
+    }
+
+    /** @internal Non-throwing variant of `_defaultContext` — the sole
+     *  engine's ctx, or null when zero / multiple engines exist. Fed to
+     *  Context3D's default-ctx resolver for gfx-layer fallbacks. */
+    public static _soleContext(): Context3D | null {
+        return Engine3D._instances.size === 1
+            ? Engine3D._instances.values().next().value!.context3D
+            : null;
     }
 
     /** All registered engine instances (for the shared render loop). */
@@ -625,3 +634,7 @@ export class Engine3D {
         if (this._lateRender) await this._lateRender();
     }
 }
+
+// Installed at module load so gfx-layer code (Texture._ensureBound) can
+// fall back to the single-engine default ctx without importing Engine3D.
+_registerDefaultCtxResolver(Engine3D._soleContext);

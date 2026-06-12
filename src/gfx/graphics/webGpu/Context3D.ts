@@ -311,6 +311,21 @@ export class Context3D extends CEventDispatcher {
     }
 }
 
+/** @internal Resolver slot for single-engine ergonomics. Engine3D
+ *  registers a function returning the sole live engine's Context3D
+ *  (or null when zero / multiple engines exist) at its module load,
+ *  so gfx-layer code can fall back to the unambiguous default without
+ *  importing Engine3D (circular ESM import otherwise). */
+let _defaultCtxResolver: (() => Context3D | null) | null = null;
+export function _registerDefaultCtxResolver(f: () => Context3D | null): void {
+    _defaultCtxResolver = f;
+}
+/** @internal The sole live engine's Context3D, or null when the choice
+ *  would be ambiguous (no engine yet, or 2+ engines). */
+export function resolveDefaultCtx(): Context3D | null {
+    return _defaultCtxResolver ? _defaultCtxResolver() : null;
+}
+
 /** @internal Factory slot so GPUContext.ts can register its instance creator
  *  without Context3D.ts statically importing it (would be a circular ESM
  *  import otherwise). */
