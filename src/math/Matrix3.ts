@@ -431,7 +431,7 @@ export class Matrix3 {
     }
 
     /**
-     * @private
+     * Return the scale factor along the X axis derived from this matrix.
      */
     public getScaleX(): number {
         let m = this;
@@ -443,7 +443,7 @@ export class Matrix3 {
     }
 
     /**
-     * @private
+     * Return the scale factor along the Y axis derived from this matrix.
      */
     public getScaleY(): number {
         let m = this;
@@ -455,21 +455,25 @@ export class Matrix3 {
     }
 
     /**
-     * @private
+     * Return the skew angle along the X axis derived from this matrix.
      */
     public getSkewX(): number {
         return Math.atan2(this.d, this.c) - Math.PI / 2;
     }
 
     /**
-     * @private
+     * Return the skew angle along the Y axis derived from this matrix.
      */
     public getSkewY(): number {
         return Math.atan2(this.b, this.a);
     }
 
     /**
-     * @private
+     * Update this matrix from the given scale and skew components.
+     * @param scaleX scale factor along the X axis
+     * @param scaleY scale factor along the Y axis
+     * @param skewX skew angle along the X axis, in degrees
+     * @param skewY skew angle along the Y axis, in degrees
      */
     public updateScaleAndRotation(scaleX: number, scaleY: number, skewX: number, skewY: number): this {
         if ((skewX == 0 || skewX == TwoPI) && (skewY == 0 || skewY == TwoPI)) {
@@ -517,8 +521,9 @@ export class Matrix3 {
     }
 
     /**
-     * @private
-     * target = other * this
+     * Pre-multiply this matrix by another and store the result: target = other * this.
+     * @param other the matrix to pre-multiply by
+     * @param target receives the resulting matrix
      */
     public preMultiplyInto(other: Matrix3, target: Matrix3): void {
         let a = other.a * this.a;

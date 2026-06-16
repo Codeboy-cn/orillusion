@@ -90,7 +90,7 @@ export class SSGIPost extends PostBase {
     }
     /**
      * @internal
-     */Render
+     */
     onDetach(view: View3D,) {
     }
 

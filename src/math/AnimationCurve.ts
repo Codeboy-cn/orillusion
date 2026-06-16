@@ -4,7 +4,7 @@ import { WrapTimeMode } from './enum/WrapTimeMode';
 import { Keyframe } from './enum/Keyframe';
 
 /**
- * Animation Cureve 
+ * Animation Curve 
  * has frame list data 
  * @group Math
  */
@@ -20,16 +20,24 @@ export class AnimationCurve {
 
     private _InvalidateCache: boolean = false;
 
+    /** Ordered list of keyframes defining this curve. */
     public curve: Keyframe[] = [];
 
+    /** Serialized format version of this curve. */
     public serializedVersion: number;
 
+    /** Wrap mode applied for times before the first keyframe. */
     public preWarpMode: number;
 
+    /** Wrap mode applied for times after the last keyframe. */
     public postWarpMode: number;
 
+    /** Euler rotation order associated with this curve. */
     public rotationOrder: number;
 
+    /**
+     * Last computed left/right keyframe indices from the most recent lookup.
+     */
     public get cacheOut(): { lhsIndex: number; rhsIndex: number } {
         return this._cacheOut;
     }
@@ -171,6 +179,11 @@ export class AnimationCurve {
         return this.curve[index];
     }
 
+    /**
+     * Deserialize this curve from raw asset data (Unity-style field names).
+     * @param data source object containing wrap modes and keyframes
+     * @returns this curve
+     */
     public unSerialized(data: any): this {
         this.preWarpMode = data['m_PreInfinity'];
         this.postWarpMode = data['m_PostInfinity'];
@@ -185,6 +198,11 @@ export class AnimationCurve {
         return this;
     }
 
+    /**
+     * Deserialize this curve from an alternate data layout (preWrapMode/keys fields).
+     * @param data source object containing wrap modes and keyframes
+     * @returns this curve
+     */
     public unSerialized2(data: Object): this {
         this.preWarpMode = data['preWrapMode'];
         this.postWarpMode = data['postWrapMode'];
@@ -199,6 +217,11 @@ export class AnimationCurve {
         return this;
     }
 
+    /**
+     * Wrap a time value into the curve range according to the pre/post wrap modes.
+     * @param curveT input time
+     * @returns wrapped time within the curve bounds
+     */
     public wrapTime(curveT: number) {
         let m_Curve = this.curve;
         let begTime = m_Curve[0].time;
@@ -288,6 +311,11 @@ export class AnimationCurve {
         this._totalTime = maxTime;
     }
 
+    /**
+     * Scale the value and tangents of every keyframe in the curve, then invalidate its cache.
+     * @param curve curve to scale
+     * @param scale multiplier applied to each keyframe value and slope
+     */
     public static scaleCurveValue(curve: AnimationCurve, scale: number) {
         if (!curve._InvalidateCache) {
             for (let i = 0; i < curve.curve.length; i++) {

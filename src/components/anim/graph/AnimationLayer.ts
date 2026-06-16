@@ -1,3 +1,19 @@
+import { BoneMask } from "../BoneMask";
+
+export enum LayerBlendMode {
+    /**
+     * Replace the underlying pose with this layer's pose, blended by weight.
+     * Out = lerp(base, layer, weight)
+     */
+    Override = 0,
+    /**
+     * Add this layer's delta-from-rest on top of the base pose.
+     * Out = base + (layer - rest) * weight
+     * Useful for facial expressions, breathing, aim offsets.
+     */
+    Additive = 1,
+}
+
 /**
  * AnimationLayer — one layer in a stacked animation pipeline.
  *
@@ -15,22 +31,6 @@
  *
  * @group Animation
  */
-import { BoneMask } from "../BoneMask";
-
-export enum LayerBlendMode {
-    /**
-     * Replace the underlying pose with this layer's pose, blended by weight.
-     * Out = lerp(base, layer, weight)
-     */
-    Override = 0,
-    /**
-     * Add this layer's delta-from-rest on top of the base pose.
-     * Out = base + (layer - rest) * weight
-     * Useful for facial expressions, breathing, aim offsets.
-     */
-    Additive = 1,
-}
-
 export class AnimationLayer {
     public name: string;
     public weight: number;

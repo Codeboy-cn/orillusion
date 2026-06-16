@@ -145,6 +145,10 @@ export class PointerEvent3D extends CEvent {
      */
     public deltaY: number;
 
+    /**
+     * Pick result carried by PICK_* events: hit mesh id, world position/normal,
+     * and optional screen UV and distance.
+     */
     declare public data: pickResult
 
     /**

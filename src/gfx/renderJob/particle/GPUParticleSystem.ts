@@ -21,7 +21,7 @@ import { ComputeShader } from "../../graphics/webGpu/shader/ComputeShader";
  *   - position (vec3) + life (f32)
  *   - velocity (vec3) + maxLife (f32)
  *
- * @group Particle
+ * @group GFX
  */
 export class GPUParticleSystem {
     private readonly _ctx: Context3D;

@@ -7,6 +7,12 @@ import { TileSet } from "../../../loader/parser/tileRenderer/TileSet";
 import { Engine3D } from "../../../Engine3D";
 import { Context3D } from "../../../gfx/graphics/webGpu/Context3D";
 
+/**
+ * Loads and assembles a 3D Tiles tileset into a scene graph.
+ * Reads a tileset.json, applies the root/up-axis transforms, and recursively
+ * loads each referenced tile (glb, b3dm, i3dm, or nested tileset) into `group`.
+ * @group Loader
+ */
 export class TilesRenderer {
     public readonly group: Object3D;
     private _modelList: Object3D[];
@@ -19,6 +25,11 @@ export class TilesRenderer {
         this._ctx = ctx;
     }
 
+    /**
+     * Load a tileset and add all of its tiles as children of `group`.
+     * @param rootPath Base directory used to resolve tile content URIs.
+     * @param file Tileset descriptor file name (e.g. `tileset.json`).
+     */
     public async loadTileSet(rootPath: string, file: string) {
         this._modelList = [];
         this._rootPath = rootPath;

@@ -4,6 +4,16 @@ import { View3D } from "../../../core/View3D";
 import { Object3D } from "../../../core/entities/Object3D";
 import { VisibleLayer } from "../config/VisibleLayer";
 
+/**
+ * Static registry of live components, keyed by {@link View3D}. Holds the
+ * per-view lifecycle callback lists (update / lateUpdate / beforeUpdate /
+ * compute / pick / graphic) that the engine drives each frame, plus a
+ * type-keyed index used by render passes and other systems to enumerate
+ * every instance of a component class in a view. View entries are evicted
+ * on engine dispose to avoid leaking scene trees and callbacks.
+ *
+ * @group GFX
+ */
 export class ComponentCollect {
 
     /**

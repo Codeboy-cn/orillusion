@@ -1,17 +1,3 @@
-/**
- * Cyclic Coordinate Descent IK (CCDIK).
- *
- * Iteratively rotates each bone in the chain (end-effector toward root) so
- * the chain tip approaches the target. Unlike TwoBoneIK, CCDIK handles
- * arbitrary chain lengths — useful for spines, tails, hair tentacles, or any
- * "look-at" animation that needs to bend through multiple joints.
- *
- * Textbook CCD: for each iteration, walk the chain from tip-1 toward root and
- * at each joint rotate to align the (joint→tip) vector with (joint→target).
- * Convergence is fast for short chains (≤8 bones).
- *
- * @group Animation
- */
 import { Quaternion } from "../../../math/Quaternion";
 import { Vector3 } from "../../../math/Vector3";
 import { Matrix4 } from "../../../math/Matrix4";
@@ -107,6 +93,20 @@ export interface CCDIKConfig {
     weight: number;
 }
 
+/**
+ * Cyclic Coordinate Descent IK (CCDIK).
+ *
+ * Iteratively rotates each bone in the chain (end-effector toward root) so
+ * the chain tip approaches the target. Unlike TwoBoneIK, CCDIK handles
+ * arbitrary chain lengths — useful for spines, tails, hair tentacles, or any
+ * "look-at" animation that needs to bend through multiple joints.
+ *
+ * Textbook CCD: for each iteration, walk the chain from tip-1 toward root and
+ * at each joint rotate to align the (joint→tip) vector with (joint→target).
+ * Convergence is fast for short chains (≤8 bones).
+ *
+ * @group Animation
+ */
 export class CCDIK {
     public name: string;
     public effector: string;

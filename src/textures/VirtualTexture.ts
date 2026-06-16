@@ -9,12 +9,18 @@ import { UUID } from '../util/Global';
  * @group Texture
  */
 export class VirtualTexture extends Texture {
+    /** Resolve target view used when this texture is multisampled. */
     public resolveTarget: GPUTextureView;
+    /** Number of MSAA samples; 0 means no multisampling. */
     sampleCount: number;
     // storeOp: string = 'store';
     // loadOp: GPULoadOp = `load`;
     // clearValue: GPUColor = [0, 0, 0, 0];
 
+    /**
+     * Create a copy of this texture with the same configuration.
+     * @returns the cloned virtual texture
+     */
     public clone() {
         let texture = new VirtualTexture(this.width, this.height, this.format, this.useMipmap, this.usage, this.numberLayer, this.sampleCount);
         texture.name = "clone_" + texture.name;
@@ -49,6 +55,11 @@ export class VirtualTexture extends Texture {
         this.resize(width, height);
     }
 
+    /**
+     * Recreate the GPU texture and sampler for the new size and current format.
+     * @param width new texture width
+     * @param height new texture height
+     */
     public resize(width, height) {
         let device = this._boundCtx!.device;
         if (this.gpuTexture) {
@@ -150,6 +161,10 @@ export class VirtualTexture extends Texture {
         this._boundCtx!.gpuContext.endCommandEncoder(commandEncoder);
     }
 
+    /**
+     * Copy this texture's contents back into a CPU buffer.
+     * @returns the mapped array buffer of the texture data
+     */
     public readTextureToImage() {
         const ctx = this._boundCtx!;
         let device = ctx.device;

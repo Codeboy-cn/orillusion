@@ -33,6 +33,7 @@ export type SpriteChangeListener = (flags: SpriteModifyFlags) => void;
  * @group Assets
  */
 export class Sprite {
+    /** Optional name, typically the atlas region id this sprite came from. */
     public name: string = '';
 
     private _texture: Texture | null = null;
@@ -57,7 +58,9 @@ export class Sprite {
         }
     }
 
+    /** Source texture for this sprite. */
     public get texture(): Texture | null { return this._texture; }
+    /** Set the source texture, notifying listeners on change. */
     public set texture(value: Texture | null) {
         if (this._texture !== value) {
             this._texture = value;
@@ -65,13 +68,17 @@ export class Sprite {
         }
     }
 
+    /** Normalized sub-rect of the texture in UV space — (offsetX, offsetY, scaleX, scaleY). */
     public get region(): Vector4 { return this._region; }
+    /** Set the UV region (copied), notifying listeners. */
     public set region(v: Vector4) {
         this._region.copy(v);
         this._dispatch(SpriteModifyFlags.region);
     }
 
+    /** Default anchor point in [0,1]² — (0.5, 0.5) = centered. */
     public get pivot(): Vector2 { return this._pivot; }
+    /** Set the pivot (copied), notifying listeners. */
     public set pivot(v: Vector2) {
         this._pivot.copy(v);
         this._dispatch(SpriteModifyFlags.pivot);
@@ -82,6 +89,7 @@ export class Sprite {
         if (this._listeners.indexOf(fn) < 0) this._listeners.push(fn);
     }
 
+    /** Unsubscribe a previously registered change listener. */
     public offChange(fn: SpriteChangeListener): void {
         const i = this._listeners.indexOf(fn);
         if (i >= 0) this._listeners.splice(i, 1);

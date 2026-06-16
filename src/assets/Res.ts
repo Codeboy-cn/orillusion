@@ -59,6 +59,11 @@ export class Res {
         // this.initDefault();
     }
 
+    /**
+     * get a parsed glTF info object by url
+     * @param url file path
+     * @returns the cached GLTF_Info, or undefined if not loaded
+     */
     public getGltf(url: string): GLTF_Info {
         return this._gltfPool.get(url);
     }
@@ -144,6 +149,13 @@ export class Res {
     }
 
 
+    /**
+     * load a file with a custom parser and return its parsed data
+     * @param url the url of file
+     * @param c the parser class to use
+     * @param loaderFunctions optional load callbacks
+     * @returns the parser's data
+     */
     public async load<T extends ParserBase>(url: string, c: Parser<T>, loaderFunctions?: LoaderFunctions) {
         let loader = new FileLoader(this._ctx);
         let parser = await loader.load(url, c, loaderFunctions);
@@ -415,21 +427,29 @@ export class Res {
         return parser.data as any as TextureAtlas;
     }
 
-    /**
-     * normal texture
-     */
+    /** Default flat normal-map texture. */
     public normalTexture: Uint8ArrayTexture;
+    /** Default mask texture. */
     public maskTexture: Uint8ArrayTexture;
+    /** Default solid white texture. */
     public whiteTexture: Uint8ArrayTexture;
+    /** Default solid black texture. */
     public blackTexture: Uint8ArrayTexture;
+    /** Default solid red texture. */
     public redTexture: Uint8ArrayTexture;
+    /** Default solid blue texture. */
     public blueTexture: Uint8ArrayTexture;
+    /** Default solid green texture. */
     public greenTexture: Uint8ArrayTexture;
+    /** Default solid yellow texture. */
     public yellowTexture: Uint8ArrayTexture;
+    /** Default solid gray texture. */
     public grayTexture: Uint8ArrayTexture;
 
+    /** Default sky cube texture. */
     public defaultSky: HDRTextureCube;
 
+    /** Default lit material. */
     public defaultMaterial: LitMaterial;
 
     /**

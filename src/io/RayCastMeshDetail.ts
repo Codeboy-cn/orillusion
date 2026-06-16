@@ -6,7 +6,6 @@ import { Vector3 } from '../math/Vector3';
 import { PickResult } from './PickResult';
 /**
  * @internal
- * @group IO
  */
 export class RayCastMeshDetail {
     /**

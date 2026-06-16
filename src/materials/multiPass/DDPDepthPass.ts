@@ -19,7 +19,6 @@ import { PassType } from '../../gfx/renderJob/passRenderer/state/PassType';
  * branch.
  *
  * @internal
- * @group Material
  */
 export class DDPDepthPass extends RenderShaderPass {
     constructor(vs: string = `PBRLItShader`, fs: string = `PBRLItShader`) {

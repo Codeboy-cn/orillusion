@@ -6,7 +6,6 @@ import { ComputeShader } from '../../graphics/webGpu/shader/ComputeShader';
 import { GPUTextureFormat } from '../../graphics/webGpu/WebGPUConst';
 /**
  * @internal
- * @group GFX
  */
 export class MergeRGBACreator {
     public static merge(textureR: Texture, textureG: Texture, textureB: Texture, textureA: Texture, ctx?: Context3D) {

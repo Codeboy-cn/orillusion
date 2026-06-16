@@ -1,5 +1,9 @@
 import { Vector3 } from "../../../math/Vector3";
 
+/**
+ * Axis-aligned bounding box used by the quad-tree to describe cell bounds.
+ * @group Core
+ */
 export class QuadAABB {
 
     public minPosX: number = 0;

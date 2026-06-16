@@ -25,6 +25,10 @@ type ShaderUtilState = {
     renderShader: Map<string, RenderShaderPass>;
 };
 
+/**
+ * Holds the per-context caches of compiled GPU shader modules and render shader passes.
+ * @group GFX
+ */
 export class ShaderUtil {
     /**
      * Per-Context3D shader state accessors. Device-bound GPU shader modules
@@ -34,6 +38,10 @@ export class ShaderUtil {
     public static renderShaderModulePool(ctx: Context3D): Map<string, GPUShaderModule> {
         return this._state(ctx).renderShaderModulePool;
     }
+    /**
+     * Get the per-context cache of render shader passes.
+     * @param ctx the rendering context
+     */
     public static renderShader(ctx: Context3D): Map<string, RenderShaderPass> {
         return this._state(ctx).renderShader;
     }
@@ -45,6 +53,10 @@ export class ShaderUtil {
         }));
     }
 
+    /**
+     * Initialize the per-context shader state caches.
+     * @param ctx the rendering context
+     */
     public static init(ctx: Context3D) {
         this._state(ctx);
     }

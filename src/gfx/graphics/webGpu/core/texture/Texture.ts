@@ -11,7 +11,7 @@ import { Context3D, bindCtx, resolveDefaultCtx } from '../../Context3D';
  * subsequent use from a different engine throws. To share the CPU
  * descriptor across engines, clone the Texture.
  *
- * @group Texture
+ * @group GFX
  */
 export class Texture implements GPUSamplerDescriptor {
 
@@ -50,6 +50,7 @@ export class Texture implements GPUSamplerDescriptor {
      * Context3D for the lifetime of the texture.
      */
     private _gpuTexture: GPUTexture | null = null;
+    /** Latch guarding against re-entrant auto-mipmap generation on the 2D path. */
     private _mipmapMaterialized: boolean = false;
     protected get gpuTexture(): GPUTexture {
         if (!this._gpuTexture && this.textureDescriptor) {
@@ -223,20 +224,22 @@ export class Texture implements GPUSamplerDescriptor {
      *  whether is video texture
      */
     public isVideoTexture?: boolean;
+    /**
+     * whether this texture holds HDR (high dynamic range) image data
+     */
     public isHDRTexture?: boolean;
 
+    /** Backing field for {@link useMipmap}. */
     private _useMipmap: boolean = false;
 
+    /** Cached CPU source image, replayed onto the GPU texture when it is (re)materialized. */
     private _sourceImageData: HTMLCanvasElement | ImageBitmap | OffscreenCanvas;
 
     //****************************************/
-    /**
-    */
+    /** Backing field for the U-coordinate address mode (see {@link addressModeU}). */
     private _addressModeU?: GPUAddressMode;
 
-    /**
-     * 
-     */
+    /** Backing field for the V-coordinate address mode (see {@link addressModeV}). */
     private _addressModeV?: GPUAddressMode;
 
     /**
@@ -262,7 +265,8 @@ export class Texture implements GPUSamplerDescriptor {
     private _mipmapFilter?: GPUMipmapFilterMode;
 
     /**
-    */
+     * Specifies the minimum level of detail used internally when sampling a texture.
+     */
     private _lodMinClamp?: number;
 
     /**
@@ -292,6 +296,7 @@ export class Texture implements GPUSamplerDescriptor {
      */
     public mipmapCount: number = 1;
 
+    /** Flag set when the mipmap state changes, signalling the texture needs rebuilding. */
     protected _textureChange: boolean = false;
 
     /**
@@ -314,6 +319,11 @@ export class Texture implements GPUSamplerDescriptor {
         // this.visibility = GPUShaderStage.FRAGMENT;
     }
 
+    /**
+     * Run the optional internal create hooks (binding layout, texture, view,
+     * sampler) if a subclass provides them.
+     * @returns this texture, for chaining
+     */
     public init(): this {
         let self = this;
         if (self[`internalCreateBindingLayoutDesc`]) {
@@ -386,6 +396,11 @@ export class Texture implements GPUSamplerDescriptor {
         }
     }
 
+    /**
+     * Derive the texture size from the given source image and (re)create the
+     * GPU texture from it.
+     * @param imageBitmap source image to upload into the texture
+     */
     protected generate(imageBitmap: HTMLCanvasElement | ImageBitmap | OffscreenCanvas) {
         let width = 32;
         let height = 32;
@@ -407,6 +422,11 @@ export class Texture implements GPUSamplerDescriptor {
         this.createTexture(imageBitmap);
     }
 
+    /**
+     * Cache the source image and rebuild the texture descriptor, then
+     * invalidate the materialized GPU resources so consumers rebind.
+     * @param imageBitmap source image to cache for later GPU upload
+     */
     private createTexture(imageBitmap: HTMLCanvasElement | ImageBitmap | OffscreenCanvas) {
         this._sourceImageData = imageBitmap;
         this.updateTextureDescription();
@@ -481,10 +501,17 @@ export class Texture implements GPUSamplerDescriptor {
         this.noticeChange();
     }
 
+    /**
+     * the cached CPU source image used to (re)upload the GPU texture
+     */
     public get sourceImageData() {
         return this._sourceImageData;
     }
 
+    /**
+     * Compute the full mipmap chain length for the current texture size.
+     * @returns number of mip levels
+     */
     public getMipmapCount() {
         let w = this.width;
         let h = this.height;
@@ -492,12 +519,19 @@ export class Texture implements GPUSamplerDescriptor {
         return 1 + Math.log2(maxSize) | 0;
     }
 
+    /**
+     * Recompute the mip level count and rebuild the texture descriptor.
+     */
     protected updateTextureDescription() {
         // let mipmapCount = this.useMipmap ? Math.floor(Math.log2(this.width)) : 1;
         this.mipmapCount = Math.floor(this.useMipmap ? this.getMipmapCount() : 1);
         this.createTextureDescriptor(this.width, this.height, this.mipmapCount, this.format);
     }
 
+    /**
+     * Destroy the materialized GPU texture and invalidate the cached view and
+     * samplers so they re-materialize lazily from the current descriptor.
+     */
     protected updateGPUTexture() {
         // Descriptor changed: destroy the materialized GPU texture and
         // invalidate the view/samplers. Next access re-materializes lazily
@@ -528,16 +562,30 @@ export class Texture implements GPUSamplerDescriptor {
         return this.view;
     }
 
+    /** Registered state-change callbacks, keyed by their owner reference. */
     protected _stateChangeRef: Map<any, Function> = new Map();
 
+    /**
+     * Register a callback invoked when this texture's GPU resources change.
+     * @param fun callback to invoke on change
+     * @param ref owner reference used as the key for later unbinding
+     */
     public bindStateChange(fun: Function, ref: any) {
         this._stateChangeRef.set(ref, fun);
     }
 
+    /**
+     * Remove a previously registered state-change callback.
+     * @param ref owner reference used when binding the callback
+     */
     public unBindStateChange(ref: any) {
         this._stateChangeRef.delete(ref);
     }
 
+    /**
+     * Drop the cached samplers and notify all registered listeners that this
+     * texture's descriptor changed.
+     */
     protected noticeChange() {
         // Descriptor-affecting change: drop cached samplers so the next
         // access rebuilds from the updated GPUSamplerDescriptor.
@@ -567,6 +615,9 @@ export class Texture implements GPUSamplerDescriptor {
         this._stateChangeRef.clear();
     }
 
+    /**
+     * Sampler address mode for the U (width) texture coordinate.
+     */
     public get addressModeU(): GPUAddressMode {
         return this._addressModeU;
     }
@@ -578,6 +629,9 @@ export class Texture implements GPUSamplerDescriptor {
         }
     }
 
+    /**
+     * Sampler address mode for the V (height) texture coordinate.
+     */
     public get addressModeV(): GPUAddressMode {
         return this._addressModeV;
     }
@@ -589,6 +643,9 @@ export class Texture implements GPUSamplerDescriptor {
         }
     }
 
+    /**
+     * Sampler address mode for the W (depth) texture coordinate.
+     */
     public get addressModeW(): GPUAddressMode {
         return this._addressModeW;
     }
@@ -600,6 +657,10 @@ export class Texture implements GPUSamplerDescriptor {
         }
     }
 
+    /**
+     * Sampling filter used when the sample footprint is smaller than or equal
+     * to one texel (magnification).
+     */
     public get magFilter(): GPUFilterMode {
         return this._magFilter;
     }
@@ -611,6 +672,10 @@ export class Texture implements GPUSamplerDescriptor {
         }
     }
 
+    /**
+     * Sampling filter used when the sample footprint is larger than one texel
+     * (minification).
+     */
     public get minFilter(): GPUFilterMode {
         return this._minFilter;
     }
@@ -622,6 +687,9 @@ export class Texture implements GPUSamplerDescriptor {
         }
     }
 
+    /**
+     * Filter used when sampling between mipmap levels.
+     */
     public get mipmapFilter(): GPUMipmapFilterMode {
         return this._mipmapFilter;
     }
@@ -633,6 +701,9 @@ export class Texture implements GPUSamplerDescriptor {
         }
     }
 
+    /**
+     * Minimum level-of-detail clamp used internally when sampling.
+     */
     public get lodMinClamp(): number {
         return this._lodMinClamp;
     }
@@ -644,6 +715,9 @@ export class Texture implements GPUSamplerDescriptor {
         }
     }
 
+    /**
+     * Maximum level-of-detail clamp used internally when sampling.
+     */
     public get lodMaxClamp(): number {
         return this._lodMaxClamp;
     }
@@ -655,6 +729,9 @@ export class Texture implements GPUSamplerDescriptor {
         }
     }
 
+    /**
+     * Comparison function; when set the sampler becomes a comparison sampler.
+     */
     public get compare(): GPUCompareFunction {
         return this._compare;
     }
@@ -666,6 +743,9 @@ export class Texture implements GPUSamplerDescriptor {
         }
     }
 
+    /**
+     * Maximum anisotropy clamp used by the sampler.
+     */
     public get maxAnisotropy(): number {
         return this._maxAnisotropy;
     }
@@ -677,9 +757,19 @@ export class Texture implements GPUSamplerDescriptor {
         }
     }
 
+    /**
+     * Per-context list of GPU textures queued for deferred destruction.
+     * @param ctx the context whose pending-destroy list is returned
+     * @returns the context-scoped list of textures awaiting destruction
+     */
     private static _texs(ctx: Context3D): GPUTexture[] {
         return ctx.cache(Texture, () => [] as GPUTexture[]);
     }
+    /**
+     * Queue a GPU texture for deferred destruction on the given context.
+     * @param ctx the owning context
+     * @param tex the GPU texture to destroy later
+     */
     public static delayDestroyTexture(ctx: Context3D, tex: GPUTexture) {
         let list = this._texs(ctx);
         if (!list.includes(tex)) {
@@ -687,6 +777,10 @@ export class Texture implements GPUSamplerDescriptor {
         }
     }
 
+    /**
+     * Destroy all GPU textures queued for deferred destruction on the context.
+     * @param ctx the context whose queued textures are destroyed
+     */
     public static destroyTexture(ctx: Context3D) {
         let list = this._texs(ctx);
         if (list.length > 0) {

@@ -19,19 +19,28 @@ import { Texture } from './core/texture/Texture';
  * @group GFX
  */
 export class Context3D extends CEventDispatcher {
+    /** Canvas aspect ratio (`windowWidth / windowHeight`), recomputed on resize. */
     public aspect: number;
+    /** Drawable surface size in physical pixels as `[width, height]`. */
     public presentationSize: number[] = [0, 0];
+    /** The HTML canvas element this context renders into. */
     public canvas: HTMLCanvasElement;
+    /** The WebGPU canvas context obtained from `canvas.getContext('webgpu')`. */
     public context: GPUCanvasContext;
+    /** Canvas backing-store width in physical pixels (clientWidth * pixelRatio). */
     public windowWidth: number;
+    /** Canvas backing-store height in physical pixels (clientHeight * pixelRatio). */
     public windowHeight: number;
+    /** The canvas/configuration options supplied to `init()`. */
     public canvasConfig: CanvasConfig;
     private _pixelRatio: number = 1.0;
     private _resizeEvent: CEvent;
     private _resizeObserver: ResizeObserver | null = null;
     private _ownsCanvas: boolean = false;
 
+    /** The GPUAdapter this context requested during `init()`. */
     public adapter: GPUAdapter;
+    /** The GPUDevice owned by this context; the root handle for all GPU work. */
     public device: GPUDevice;
     /** The format pipelines target — the sRGB view variant, so the
      *  GPU does the linear→sRGB encode at write time. Must match the
@@ -55,6 +64,7 @@ export class Context3D extends CEventDispatcher {
      *  scheduling render frames. App code should listen for
      *  `Context3D.DEVICE_LOST` and call `Engine3D.init()` again to recover. */
     public lost: boolean = false;
+    /** The `GPUDeviceLostInfo` captured when the device was lost, else null. */
     public lostInfo: GPUDeviceLostInfo | null = null;
 
     /** Event type dispatched on this Context3D when `device.lost` fires.
@@ -65,6 +75,13 @@ export class Context3D extends CEventDispatcher {
      *  Factory is installed by GPUContext.ts at its module load to avoid a
      *  circular ESM import at Context3D load time. */
     private _gpuContext: import('../../renderJob/GPUContext').GPUContextInstance | null = null;
+    /**
+     * The per-Context3D GPU command/pipeline state, created lazily on first
+     * access. Requires GPUContext.ts to have been imported so its factory is
+     * registered; throws otherwise.
+     *
+     * @returns the GPUContextInstance bound to this Context3D.
+     */
     public get gpuContext(): import('../../renderJob/GPUContext').GPUContextInstance {
         if (!this._gpuContext) {
             if (!_gpuContextFactory) throw new Error('gpuContext factory not registered — import GPUContext before using gpuContext.');
@@ -73,8 +90,19 @@ export class Context3D extends CEventDispatcher {
         return this._gpuContext;
     }
 
+    /** Device pixel ratio used to scale the canvas backing store (clamped to 2.0). */
     public get pixelRatio() { return this._pixelRatio; }
 
+    /**
+     * Initialize the WebGPU adapter, device, canvas and swapchain for this
+     * context, wire up uncaptured-error and device-lost handlers, and start
+     * observing the canvas for resize.
+     *
+     * @param canvasConfig optional canvas/configuration; when omitted (or
+     *        without a `canvas`), a full-screen canvas is created and owned
+     *        by this context.
+     * @returns a promise resolving to true once initialization completes.
+     */
     async init(canvasConfig?: CanvasConfig): Promise<boolean> {
         if (navigator.gpu === undefined) throw new Error('Your browser does not support WebGPU!');
         this.adapter = await navigator.gpu.requestAdapter({ powerPreference: 'high-performance' });
@@ -274,6 +302,11 @@ export class Context3D extends CEventDispatcher {
         this.removeAllEventListener();
     }
 
+    /**
+     * Recompute the pixel ratio and canvas backing-store size from the
+     * current client size. When the size changes, updates `windowWidth`,
+     * `windowHeight`, `presentationSize`, `aspect` and dispatches a RESIZE event.
+     */
     public updateSize() {
         this._pixelRatio = this.canvasConfig?.devicePixelRatio || window.devicePixelRatio || 1;
         this._pixelRatio = Math.min(this._pixelRatio, 2.0);

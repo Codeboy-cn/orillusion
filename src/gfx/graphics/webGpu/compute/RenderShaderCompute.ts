@@ -2,6 +2,10 @@ import { Shader } from "../../../..";
 import { View3D } from "../../../../core/View3D";
 import { ComputeShader } from "../shader/ComputeShader";
 
+/**
+ * Drives a compute shader derived from a source render shader, running once and/or per frame.
+ * @group GFX
+ */
 export class RenderShaderCompute {
 
     protected sourceShader: Shader;

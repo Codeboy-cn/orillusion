@@ -1,3 +1,20 @@
+import { Quaternion } from "../../../math/Quaternion";
+import { Vector3 } from "../../../math/Vector3";
+import type { AnimatorComponent } from "../AnimatorComponent";
+import type { Object3D } from "../../../core/entities/Object3D";
+
+export interface TwoBoneIKConfig {
+    name: string;
+    /** Bone names: [root (hip), middle (knee), end (ankle)]. */
+    chain: [string, string, string];
+    /** IK target (Vector3 or Object3D whose worldPosition is read each frame). */
+    target: Vector3 | Object3D;
+    /** Optional pole hint to fix the bend plane. */
+    pole?: Vector3 | Object3D;
+    /** [0,1] blend between the original pose and the IK-solved pose. */
+    weight: number;
+}
+
 /**
  * Analytic Two-Bone IK solver.
  *
@@ -19,23 +36,6 @@
  *
  * @group Animation
  */
-import { Quaternion } from "../../../math/Quaternion";
-import { Vector3 } from "../../../math/Vector3";
-import type { AnimatorComponent } from "../AnimatorComponent";
-import type { Object3D } from "../../../core/entities/Object3D";
-
-export interface TwoBoneIKConfig {
-    name: string;
-    /** Bone names: [root (hip), middle (knee), end (ankle)]. */
-    chain: [string, string, string];
-    /** IK target (Vector3 or Object3D whose worldPosition is read each frame). */
-    target: Vector3 | Object3D;
-    /** Optional pole hint to fix the bend plane. */
-    pole?: Vector3 | Object3D;
-    /** [0,1] blend between the original pose and the IK-solved pose. */
-    weight: number;
-}
-
 export class TwoBoneIK {
     public name: string;
     public chain: [string, string, string];

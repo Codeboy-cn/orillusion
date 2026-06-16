@@ -8,7 +8,6 @@ import { GlobalBindGroup } from '../../graphics/webGpu/core/bindGroups/GlobalBin
 import { GlobalUniformGroup } from '../../graphics/webGpu/core/bindGroups/GlobalUniformGroup';
 /**
  * @internal
- * @group Lights
  */
 export class ShadowLightsCollect {
 

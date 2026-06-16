@@ -124,6 +124,7 @@ export class Transform extends ComponentBase {
     public static: boolean = false;
     public depthOrder: number = 0;
 
+    /** Whether the local transform is dirty and the world matrix needs recomputing. */
     public get localChange(): boolean {
         return WasmMatrix.matrixStateBuffer[this.index2] != 0;
     }
@@ -133,6 +134,7 @@ export class Transform extends ComponentBase {
         WasmMatrix.matrixStateBuffer[this.index2] = value ? 1 : 0;
     }
 
+    /** Optional look-at target position used by orientation helpers. */
     public get targetPos(): Vector3 {
         return this._targetPos;
     }
@@ -140,6 +142,7 @@ export class Transform extends ComponentBase {
         this._targetPos = value;
     }
 
+    /** Parent transform in the hierarchy, or null for a root. */
     public get parent(): Transform {
         return this._parent;
     }
@@ -176,6 +179,7 @@ export class Transform extends ComponentBase {
         this.notifyLocalChange();
     }
 
+    /** Enable state; propagates to all child transforms. */
     public set enable(value: boolean) {
         if (this.transform._scene3d && value) {
             super.enable = true;
@@ -190,6 +194,7 @@ export class Transform extends ComponentBase {
         return this._enable;
     }
 
+    /** The scene this transform belongs to. */
     public get scene3D(): Scene3D {
         return this._scene3d;
     }
@@ -198,6 +203,7 @@ export class Transform extends ComponentBase {
         this._scene3d = value;
     }
 
+    /** The view associated with this transform's scene, or null. */
     public get view3D(): View3D {
         if (this._scene3d && this._scene3d.view) {
             return this._scene3d.view;
@@ -220,10 +226,13 @@ export class Transform extends ComponentBase {
         WasmMatrix.setTranslate(this.index, this._localPos.x, this._localPos.y, this._localPos.z);
     }
 
+    /** Lifecycle hook called once when the transform is created. */
     awake() { }
 
+    /** Lifecycle hook called when the transform starts. */
     start() { }
 
+    /** Lifecycle hook called when the transform stops. */
     stop() { }
 
 
@@ -243,6 +252,7 @@ export class Transform extends ComponentBase {
         this.eventDispatcher.dispatchEvent(this.eventLocalChange);
     }
 
+    /** World-space up direction; setting it rotates the object to face that up. */
     public get up(): Vector3 {
         Matrix4.transformVector(this.worldMatrix, Vector3.UP, this._up);
         return this._up;
@@ -255,6 +265,7 @@ export class Transform extends ComponentBase {
         this.transform.localRotQuat = Quaternion.HELP_0;
     }
 
+    /** World-space down direction; setting it reorients the object. */
     public get down(): Vector3 {
         Matrix4.transformVector(this.worldMatrix, Vector3.DOWN, this._down);
         return this._down;
@@ -274,6 +285,7 @@ export class Transform extends ComponentBase {
         }
     }
 
+    /** World-space forward direction; setting it reorients the object. */
     public get forward(): Vector3 {
         Matrix4.transformVector(this.worldMatrix, Vector3.FORWARD, this._forward);
         return this._forward;
@@ -293,6 +305,7 @@ export class Transform extends ComponentBase {
         }
     }
 
+    /** World-space back direction; setting it reorients the object. */
     public get back(): Vector3 {
         Matrix4.transformVector(this.worldMatrix, Vector3.BACK, this._back);
         return this._back;
@@ -305,6 +318,7 @@ export class Transform extends ComponentBase {
         this.transform.localRotQuat = Quaternion.HELP_0;
     }
 
+    /** World-space left direction; setting it reorients the object. */
     public get left(): Vector3 {
         Matrix4.transformVector(this.worldMatrix, Vector3.neg_X_AXIS, this._left);
         return this._left;
@@ -317,6 +331,7 @@ export class Transform extends ComponentBase {
         this.transform.localRotQuat = Quaternion.HELP_0;
     }
 
+    /** World-space right direction; setting it reorients the object. */
     public get right(): Vector3 {
         Matrix4.transformVector(this.worldMatrix, Vector3.X_AXIS, this._right);
         return this._right;
@@ -409,6 +424,7 @@ export class Transform extends ComponentBase {
         }
     }
 
+    /** Recursively update this transform and all descendants' world matrices. */
     public updateChildTransform() {
         let self = this;
         if (self.localChange) {
@@ -425,6 +441,11 @@ export class Transform extends ComponentBase {
         }
     }
 
+    /**
+     * Rotate the object to look at a world-space target from its current position.
+     * @param target world-space point to look at
+     * @param up up direction
+     */
     public lookTarget(target: Vector3, up: Vector3 = Vector3.UP) {
         this.lookAt(this.transform.worldPosition, target, up);
     }
@@ -451,6 +472,11 @@ export class Transform extends ComponentBase {
         this.localRotQuat = Quaternion.CALCULATION_QUATERNION.copy(prs[1]);
     }
 
+    /**
+     * Set this transform's local position/rotation/scale by decomposing a matrix.
+     * @param matrix the matrix to decompose
+     * @param orientationStyle decomposition style (defaults to euler angles)
+     */
     public decomposeFromMatrix(matrix: Matrix4, orientationStyle: string = 'eulerAngles'): this {
         let prs = matrix.decompose(orientationStyle);
         let transform = this.transform;
@@ -747,6 +773,7 @@ export class Transform extends ComponentBase {
     }
 
 
+    /** Per-frame continuous scale delta auto-applied by the matrix solver. */
     public get localDetailScale(): Vector3 {
         return this._localDetailScale;
     }
@@ -756,6 +783,7 @@ export class Transform extends ComponentBase {
         WasmMatrix.setContinueScale(this.index, value.x, value.y, value.z);
     }
 
+    /** Per-frame continuous rotation delta auto-applied by the matrix solver. */
     public get localDetailRot(): Vector3 {
         return this._localDetailRot;
     }
@@ -765,6 +793,7 @@ export class Transform extends ComponentBase {
         WasmMatrix.setContinueRotation(this.index, value.x, value.y, value.z);
     }
 
+    /** Per-frame continuous translation delta auto-applied by the matrix solver. */
     public get localDetailPos(): Vector3 {
         return this._localDetailPos;
     }
@@ -774,6 +803,7 @@ export class Transform extends ComponentBase {
     }
 
 
+    /** Detach from the parent before the component is destroyed. */
     public beforeDestroy(force?: boolean) {
         if (this.parent && this.parent.object3D) {
             this.parent.object3D.removeChild(this.object3D);
@@ -781,6 +811,7 @@ export class Transform extends ComponentBase {
         super.beforeDestroy(force);
     }
 
+    /** Destroy the transform and free its matrix-table slot. */
     destroy(): void {
         super.destroy();
 

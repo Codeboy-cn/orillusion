@@ -17,7 +17,6 @@ import { bindCtx, Context3D } from '../graphics/webGpu/Context3D';
 
 /**
  * @internal
- * @group GFX
  */
 export class PassGenerate {
 

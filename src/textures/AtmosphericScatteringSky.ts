@@ -12,17 +12,29 @@ import { VirtualTexture } from './VirtualTexture';
  * @group Texture
  */
 export class AtmosphericScatteringSkySetting {
+    /** Angular size of the sun disc. */
     public sunRadius: number = 500.0;
+    /** Radiance (brightness) of the sun. */
     public sunRadiance: number = 11.0;
+    /** Mie scattering anisotropy factor (forward-scattering bias). */
     public mieG: number = 0.76;
+    /** Scale height of the Mie (aerosol) layer. */
     public mieHeight: number = 1200;
+    /** Height of the viewer's eye above the planet surface. */
     public eyePos: number = 1500;
+    /** Sun direction's horizontal (azimuth) parameter, in [0, 1]. */
     public sunX: number = 0.71;
+    /** Sun direction's vertical (elevation) parameter, in [0, 1]. */
     public sunY: number = 0.56;
+    /** Overall brightness multiplier applied to the sun. */
     public sunBrightness: number = 1.0;
+    /** Whether the sun disc is drawn in the sky. */
     public displaySun: boolean = true;
+    /** Default edge size of the generated sky cube texture. */
     public defaultTextureCubeSize: number = 512;
+    /** Default width of the generated panorama 2D texture. */
     public defaultTexture2DSize: number = 1024;
+    /** Tint color applied to the sky. */
     public skyColor: Color = new Color(1, 1, 1, 1);
 }
 
@@ -33,6 +45,7 @@ export class AtmosphericScatteringSkySetting {
 export class AtmosphericScatteringSky extends LDRTextureCube {
     private _internalTexture: AtmosphericTexture2D;
     private _cubeSize: number;
+    /** The scattering parameters driving this sky's appearance. */
     public readonly setting: AtmosphericScatteringSkySetting;
 
     /**
@@ -51,6 +64,7 @@ export class AtmosphericScatteringSky extends LDRTextureCube {
         return this;
     }
 
+    /** Get the underlying panorama 2D texture used to build the sky cube. */
     public get texture2D(): Texture {
         return this._internalTexture;
     }

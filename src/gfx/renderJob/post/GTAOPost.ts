@@ -65,7 +65,7 @@ export class GTAOPost extends PostBase {
     }
     /**
      * @internal
-     */Render
+     */
     onDetach(view: View3D,) {
         this.setting.render.postProcessing.gtao.enable = false;
     }

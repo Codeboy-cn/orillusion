@@ -5,7 +5,6 @@ import { ErpImage2CubeMapCreateCube_cs } from '../../../assets/shader/compute/Er
 import { ErpImage2CubeMapRgbe2rgba_cs } from '../../../assets/shader/compute/ErpImage2CubeMapRgbe2rgba_cs';
 /**
  * @internal
- * @group GFX
  */
 export class ErpImage2CubeMap {
     public static convertRGBE2RGBA(image: VirtualTexture, data: Float32Array): void {

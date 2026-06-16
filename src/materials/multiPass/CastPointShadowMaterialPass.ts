@@ -6,7 +6,6 @@ import { Vector3 } from "../../math/Vector3";
 /**
  * @internal
  * CastPointShadowMaterialPass
- * @group Material
  */
 export class CastPointShadowMaterialPass extends RenderShaderPass {
     constructor() {

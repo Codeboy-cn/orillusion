@@ -20,7 +20,6 @@ import { PassType } from '../../gfx/renderJob/passRenderer/state/PassType';
  * only fragments at the current peel layer contribute.
  *
  * @internal
- * @group Material
  */
 export class DDPFrontPass extends RenderShaderPass {
     constructor(vs: string = `PBRLItShader`, fs: string = `PBRLItShader`) {

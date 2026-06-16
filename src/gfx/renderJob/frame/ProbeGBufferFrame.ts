@@ -4,6 +4,14 @@ import { GPUTextureFormat } from "../../graphics/webGpu/WebGPUConst";
 import { RTDescriptor } from "../../graphics/webGpu/descriptor/RTDescriptor";
 import { RTFrame } from "./RTFrame";
 
+/**
+ * G-buffer {@link RTFrame} used when rendering reflection / GI probes.
+ * Allocates position, normal and color attachments (all rgba16float)
+ * plus a depth texture, with `load` op so probe faces accumulate rather
+ * than clear.
+ *
+ * @group GFX
+ */
 export class ProbeGBufferFrame extends RTFrame {
 
     constructor(rtWidth: number, rtHeight: number, autoResize: boolean = true, ctx?: Context3D) {
@@ -11,6 +19,7 @@ export class ProbeGBufferFrame extends RTFrame {
         this.crateGBuffer(rtWidth, rtHeight, autoResize, ctx);
     }
 
+    /** Allocate the probe G-buffer's position/normal/color attachments and depth texture. */
     crateGBuffer(rtWidth: number, rtHeight: number, autoResize: boolean, ctx?: Context3D) {
         let attachments = this.renderTargets;
         let rtDescriptors = this.rtDescriptors;

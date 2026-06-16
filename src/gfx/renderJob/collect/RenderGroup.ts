@@ -22,7 +22,6 @@ import { PassType } from '../passRenderer/state/PassType';
  * bundle's depth format is depth32float, but the pass's is depth24plus`).
  *
  * @internal
- * @group Post
  */
 export type RenderGroup = {
     key: string;

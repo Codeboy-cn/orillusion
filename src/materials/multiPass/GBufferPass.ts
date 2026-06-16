@@ -8,7 +8,6 @@ import { PassType } from '../../gfx/renderJob/passRenderer/state/PassType';
 /**
  * @internal
  * GBufferPass
- * @group Material
  */
 export class GBufferPass extends RenderShaderPass {
     transparency: number;

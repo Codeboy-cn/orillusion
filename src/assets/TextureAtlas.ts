@@ -14,8 +14,11 @@ import { Sprite } from "./Sprite";
  * @group Assets
  */
 export class TextureAtlas {
+    /** The shared base texture that all sprites in this atlas reference. */
     public texture: Texture;
+    /** Named sprites parsed from the atlas, keyed by region id. */
     public readonly sprites: Map<string, Sprite>;
+    /** Optional atlas name. */
     public name: string = '';
 
     constructor(texture: Texture) {

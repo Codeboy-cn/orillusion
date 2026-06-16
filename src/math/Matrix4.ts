@@ -56,8 +56,10 @@ export class Matrix4 {
      * matrix do use share bytesArray
      */
     public static dynamicMatrixBytes: FloatArray;
+    /** 32-bit float view of the shared matrix byte array. */
     public static dynamicMatrixBytes_32bit: Float32Array;
 
+    /** Shared buffer holding high-precision (split-float) world position data. */
     public static matrixWorldPositionHLDatas: Float32Array;
 
     /**
@@ -297,30 +299,33 @@ export class Matrix4 {
     }
 
     /**
-     * The Y-axis is rotated between the world matrix, and the parameters and results are specified according to the index
-     * @param aMat Matrix to be multiplied (please specify index)
-     * @param bMat Matrix to be multiplied (please specify index)
-     * @param target_Mat Result matrix (get results based on index)
+     * Rotate a matrix around the Y axis by the given angle, writing the result into the target matrix.
+     * @param rad rotation angle, in radians
+     * @param target_Mat result matrix (referenced by index)
      */
     public static matrixRotateY(rad: number, target_Mat: Matrix4): void {
         Matrix4.wasm.Matrix_Append(rad, target_Mat.index);
     }
 
     /**
-     * Rotate the world matrix, specifying parameters and results according to the index
-     * @param aMat Matrix to be multiplied (please specify index)
-     * @param bMat Matrix to be multiplied (please specify index)
-     * @param target_Mat Result matrix (get results based on index)
+     * Rotate a matrix around an arbitrary axis by the given angle, writing the result into the target matrix.
+     * @param rad rotation angle, in radians
+     * @param axis rotation axis
+     * @param target_Mat result matrix (referenced by index)
      */
     public static matrixRotate(rad: number, axis: Vector3, target_Mat: Matrix4): void {
         Matrix4.wasm.Matrix_Rotate(rad, axis, target_Mat.index);
     }
 
+    /** Stack of matrix indices that have been freed and are available for reuse. */
     protected static freeIndexs: Uint32Array = new Uint32Array(Matrix4.allocCount);
+    /** Current top of the freed-index stack. */
     protected static freeIndexOffset: number = 0;
+    /** Allocate a matrix index, reusing a freed index when available. */
     public static allocIndex(): number {
         return this.freeIndexOffset <= 0 ? Matrix4.useCount++ : this.freeIndexs[--this.freeIndexOffset]; 
     }
+    /** Return a matrix's index to the free list for later reuse. */
     public static freeIndex(matrix: Matrix4) {
         if (this.freeIndexOffset >= this.freeIndexs.length) {
             let buff = new Uint32Array(this.freeIndexs.length + Matrix4.allocOnceCount);
@@ -331,8 +336,8 @@ export class Matrix4 {
     }
 
     /**
-     * 
-     * @param local -- 
+     * Create a Matrix4.
+     * @param doMatrix reserved flag; when set, requests an explicit matrix allocation
      */
     constructor(doMatrix: boolean = false) {
         // if (doMatrix) {
@@ -538,6 +543,7 @@ export class Matrix4 {
         return Matrix4.multiplyPoint3(this, v, v);
     }
 
+    /** Transform point v (w=1) by matrix m into result. Allocates a new Vector3 if result is omitted. */
     public static multiplyPoint3(m: Matrix4, v: Vector3, result?: Vector3): Vector3 {
         result ||= new Vector3();
         const rawData = m.rawData;
@@ -556,6 +562,7 @@ export class Matrix4 {
         return Matrix4.multiplyVector4(this, a, a);
     }
 
+    /** Transform homogeneous vector a by matrix m (w computed and divided out) into result. */
     public static multiplyVector4(m: Matrix4, a: Vector3, result?: Vector3): Vector3 {
         result ||= new Vector3();
         const d = m.rawData;
@@ -576,6 +583,7 @@ export class Matrix4 {
         return Matrix4.transformVector4(this, v, v);
     }
 
+    /** Transform 4D vector v (v.w used directly) by matrix m into result. */
     public static transformVector4(m: Matrix4, v: Vector3, result?: Vector3): Vector3 {
         result ||= new Vector3();
         const data = m.rawData;
@@ -649,12 +657,28 @@ export class Matrix4 {
         data[15] = 0;
     }
 
+    /**
+     * Set this matrix to a perspective projection defined by field of view.
+     * @param fov vertical field of view, in degrees
+     * @param aspect aspect ratio (width / height)
+     * @param near near plane distance
+     * @param far far plane distance
+     */
     public perspective3(fov: number, aspect: number, near: number, far: number) {
         var y = Math.tan(fov * Math.PI / 360) * near;
         var x = y * aspect;
         this.frustum(-x, x, -y, y, near, far);
     }
 
+    /**
+     * Set this matrix to a perspective projection defined by frustum bounds.
+     * @param l left plane
+     * @param r right plane
+     * @param b bottom plane
+     * @param t top plane
+     * @param n near plane
+     * @param f far plane
+     */
     public frustum(l: number, r: number, b: number, t: number, n: number, f: number) {
         var m = this.rawData;
 
@@ -1428,6 +1452,11 @@ export class Matrix4 {
      * @param col column
      * @param Vector3 Target of copy
      */
+    /**
+     * Copy a column of the current matrix into a Vector3.
+     * @param col column index (0-3)
+     * @param Vector3 target of copy
+     */
     public copyColTo(col: number, Vector3: Vector3) {
         let data: FloatArray = this.rawData;
         switch (col) {
@@ -1837,6 +1866,7 @@ export class Matrix4 {
         return Matrix4.transformPoint(this, v, v);
     }
 
+    /** Transform point v (with translation) by matrix m into result. Allocates a new Vector3 if result is omitted. */
     public static transformPoint(m: Matrix4, v: Vector3, result?: Vector3): Vector3 {
         result ||= new Vector3();
         const data = m.rawData;
@@ -1855,6 +1885,7 @@ export class Matrix4 {
         return Matrix4.transformVector(this, v, v);
     }
 
+    /** Transform direction v (no translation) by matrix m into result. Allocates a new Vector3 if result is omitted. */
     public static transformVector(m: Matrix4, v: Vector3, result?: Vector3): Vector3 {
         result ||= new Vector3();
         const data = m.rawData;
@@ -2070,6 +2101,11 @@ export class Matrix4 {
         return this;
     }
 
+    /**
+     * Set this matrix to the inverse of the translation-rotation transform built from pos and q.
+     * @param pos translation
+     * @param q rotation quaternion
+     */
     public setTRInverse(pos: Vector3, q: Quaternion) {
         q = q.clone().invert();
         Quaternion.quaternionToMatrix(q, this);
@@ -2117,6 +2153,11 @@ export class Matrix4 {
         return this;
     }
 
+    /**
+     * Set this matrix to a rotation about the given axis by the given angle (in radians).
+     * @param axis rotation axis (should be unit length)
+     * @param angle rotation angle, in radians
+     */
     public makeRotationAxis(axis: Vector3, angle: number) {
 
         const c = Math.cos(angle);

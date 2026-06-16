@@ -14,7 +14,6 @@ export enum CubeMapFaceEnum {
 }
 /**
  * @internal
- * @group GFX
  */
 export class TextureCubeUtils {
     public static getRotationToFace(face: number): Quaternion {

@@ -8,7 +8,7 @@ import { Vector4 } from '../math/Vector4';
 import { Material } from './Material';
 
 /**
- * Unlit Mateiral
+ * Unlit Material
  * A non glossy surface material without specular highlights.
  * @group Material
  */
@@ -23,10 +23,12 @@ export class UnLitTexArrayMaterial extends Material {
         this.baseMap = Engine3D.resFor(ctx).whiteTexture;
     }
 
+    /** Sets the base color map texture array. */
     public set baseMap(texture: Texture) {
         this.shader.setTexture(`baseMap`, texture);
     }
 
+    /** Gets the base color map texture array. */
     public get baseMap() {
         return this.shader.getTexture(`baseMap`);
     }

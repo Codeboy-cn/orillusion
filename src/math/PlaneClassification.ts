@@ -1,3 +1,7 @@
+/**
+ * Constants describing how a point or geometry is classified relative to a plane.
+ * @group Math
+ */
 export class PlaneClassification {
     /**
     * @language en_US

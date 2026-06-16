@@ -12,6 +12,7 @@ import { Shader } from "./Shader";
  * Default shader backing `SpriteMaterial`. One COLOR pass, no shadow /
  * reflection / GI / lighting — sprites are a flat textured quad in
  * world space.
+ * @group GFX
  */
 @RegisterShader
 export class SpriteShader extends Shader {
@@ -35,6 +36,9 @@ export class SpriteShader extends Shader {
         this.setDefault();
     }
 
+    /**
+     * Apply the default uniform values for the sprite shader.
+     */
     public setDefault() {
         this.setUniformColor(`color`, new Color(1, 1, 1, 1));
         this.setUniformVector4(`uvRect`, new Vector4(0, 0, 1, 1));
@@ -46,6 +50,9 @@ export class SpriteShader extends Shader {
         this.setUniformFloat(`spritePad1`, 0.0);
     }
 
+    /**
+     * The base color texture of the sprite.
+     */
     public set baseMap(value: Texture) {
         this.setTexture(`baseMap`, value);
     }

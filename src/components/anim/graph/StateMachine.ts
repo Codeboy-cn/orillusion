@@ -1,16 +1,3 @@
-/**
- * Lightweight, data-driven animation state machine.
- *
- * Plug into an AnimatorComponent via `animator.setStateMachine(fsm)`. On every
- * onUpdate the FSM advances time, evaluates transitions, and may issue a
- * crossFade on the underlying animator.
- *
- * Why no visual graph editor: shipping a graph UX is a multi-year investment.
- * A JSON/TS DSL covers 90% of use cases at <5% the cost; DCC tooling
- * (Blender / Maya) is the right home for authoring.
- *
- * @group Animation
- */
 import type { AnimatorComponent } from "../AnimatorComponent";
 
 export interface AnimatorParams {
@@ -62,6 +49,19 @@ export interface StateDef {
     transitions: TransitionDef[];
 }
 
+/**
+ * Lightweight, data-driven animation state machine.
+ *
+ * Plug into an AnimatorComponent via `animator.setStateMachine(fsm)`. On every
+ * onUpdate the FSM advances time, evaluates transitions, and may issue a
+ * crossFade on the underlying animator.
+ *
+ * Why no visual graph editor: shipping a graph UX is a multi-year investment.
+ * A JSON/TS DSL covers 90% of use cases at <5% the cost; DCC tooling
+ * (Blender / Maya) is the right home for authoring.
+ *
+ * @group Animation
+ */
 export class StateMachine {
     private _states: Map<string, StateDef> = new Map();
     private _current: StateDef;

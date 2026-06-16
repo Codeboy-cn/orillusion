@@ -17,6 +17,13 @@ import { TransformAxisEnum } from "./TransformAxisEnum";
 import { Object3DTransformTools } from "./Object3DTransformTools";
 import { TransformSpaceMode } from "./TransformSpaceMode";
 
+/**
+ * Base component for the transform gizmo controllers (translation, rotation,
+ * scale). Manages the per-axis handle objects, materials and colliders, and
+ * drives the shared pick/drag interaction loop, delegating the actual
+ * transform math to subclass overrides.
+ * @group Util
+ */
 export class TransformControllerBaseComponent extends ComponentBase {
     protected mAxis: Object3D[];
     protected mAxisColor: Color[];
@@ -36,26 +43,32 @@ export class TransformControllerBaseComponent extends ComponentBase {
 
     }
 
+    /** The object currently controlled by the owning gizmo. */
     public get target(): Object3D {
         return (this.object3D as Object3DTransformTools).target;
     }
 
+    /** The gizmo's X-axis root object. */
     public get mX(): Object3D {
         return (this.object3D as Object3DTransformTools).mXObj;
     }
 
+    /** The gizmo's Y-axis object. */
     public get mY(): Object3D {
         return (this.object3D as Object3DTransformTools).mYObj;
     }
 
+    /** The gizmo's Z-axis object. */
     public get mZ(): Object3D {
         return (this.object3D as Object3DTransformTools).mZObj;
     }
 
+    /** The active transform space (local or global) from the owning gizmo. */
     public get transformSpaceMode(): TransformSpaceMode {
         return (this.object3D as Object3DTransformTools).transformSpaceMode;
     }
 
+    /** Build the per-axis handle objects, materials and colliders. */
     public init(param?: any): void {
         this.mContainer = new Object3D();
 
@@ -90,19 +103,23 @@ export class TransformControllerBaseComponent extends ComponentBase {
         this.mAxisCollider[TransformAxisEnum.Z] = axisZ.getComponent(ColliderComponent);
     }
 
+    /** Component lifecycle start hook. */
     public start(): void {
         // this.object3D.addChild(this.mContainer);
     }
 
+    /** Attach the handle container and align the gizmo when enabled. */
     public onEnable(view?: View3D) {
         this.object3D.addChild(this.mContainer);
         this.reset();
     }
 
+    /** Detach the handle container when disabled. */
     public onDisable(view?: View3D) {
         this.object3D.removeChild(this.mContainer);
     }
 
+    /** Re-align the gizmo to the target according to the current transform space. */
     public reset() {
         // if (!this.target) {
         //     return;
@@ -156,6 +173,7 @@ export class TransformControllerBaseComponent extends ComponentBase {
         return owner?.inputSystem;
     }
 
+    /** Ray-pick the axis handles under the pointer, returning the closest hit. */
     protected pickAxis(): { intersectPoint?: Vector3; distance: number; obj: Object3D; axis: TransformAxisEnum } {
         const scene3D = this.object3D.transform.scene3D;
         const camera = scene3D.view.camera;
@@ -193,6 +211,7 @@ export class TransformControllerBaseComponent extends ComponentBase {
     protected beginPoint: Vector3 = new Vector3();
     protected beginMousePos: Vector3 = new Vector3();
     protected currentPoint: Vector3 = new Vector3();
+    /** Begin a drag: pick an axis and record the start point. */
     public onMouseDown(e: PointerEvent3D): void {
         if (e.mouseCode != MouseCode.MOUSE_LEFT) {
             return;
@@ -216,6 +235,7 @@ export class TransformControllerBaseComponent extends ComponentBase {
 
     protected lastMoveObj: Object3D;
     protected lastMoveAxis: TransformAxisEnum;
+    /** Highlight handles on hover, or apply the transform while dragging. */
     public onMouseMove(e: PointerEvent3D): void {
         if (this.currentAxis == TransformAxisEnum.NONE) {
             let mat = this.lastMoveObj.getComponent(MeshRenderer).material;
@@ -271,6 +291,7 @@ export class TransformControllerBaseComponent extends ComponentBase {
         }
     }
 
+    /** End a drag and clear the active axis. */
     public onMouseUp(e: PointerEvent3D): void {
         if (e.mouseCode != MouseCode.MOUSE_LEFT) {
             return;
@@ -279,6 +300,7 @@ export class TransformControllerBaseComponent extends ComponentBase {
         this.reset();
     }
 
+    /** Keep the gizmo at a constant screen size and pinned to the target each frame. */
     public onUpdate(view?: View3D) {
         let distance = Vector3.distance(view.camera.transform.worldPosition, this.object3D.transform.worldPosition);
         let scale = distance / 100.0;
@@ -291,14 +313,17 @@ export class TransformControllerBaseComponent extends ComponentBase {
         }
     }
 
+    /** Apply the transform in local space for the active axis. Overridden by subclasses. */
     protected applyLocalTransform(currentAxis: TransformAxisEnum, offset: Vector3, distance: number) {
         console.warn("not imp");
     }
 
+    /** Apply the transform in world space for the active axis. Overridden by subclasses. */
     protected applyGlobalTransform(currentAxis: TransformAxisEnum, offset: Vector3, distance: number) {
         console.warn("not imp");
     }
 
+    /** Build the visual handle for one axis. Overridden by subclasses to add caps/arrows. */
     protected createCustomAxis(axis: TransformAxisEnum): Object3D {
         let axisObj = this.createAxis(axis);
 
@@ -308,6 +333,7 @@ export class TransformControllerBaseComponent extends ComponentBase {
         return axisObj;
     }
 
+    /** Create the base axis shaft mesh and its box collider. */
     protected createAxis(axis: TransformAxisEnum): Object3D {
         let r = 0, g = 0, b = 0;
 

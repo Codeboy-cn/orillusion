@@ -1,3 +1,12 @@
+import type { AnimatorComponent, PropertyAnimationClipState } from "../AnimatorComponent";
+
+export interface MotionPoint {
+    /** Clip name to play at this threshold. */
+    clipName: string;
+    /** Parameter value at which this motion fully dominates the mix. */
+    threshold: number;
+}
+
 /**
  * BlendTree1D — linear blend across N motion thresholds based on one parameter.
  *
@@ -8,15 +17,6 @@
  *
  * @group Animation
  */
-import type { AnimatorComponent, PropertyAnimationClipState } from "../AnimatorComponent";
-
-export interface MotionPoint {
-    /** Clip name to play at this threshold. */
-    clipName: string;
-    /** Parameter value at which this motion fully dominates the mix. */
-    threshold: number;
-}
-
 export class BlendTree1D {
     private _points: MotionPoint[];
     private _value: number = 0;

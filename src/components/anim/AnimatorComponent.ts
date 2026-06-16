@@ -5,10 +5,20 @@ import { RegisterComponent } from "../../util/SerializeDecoration";
 import { ComponentBase } from "../ComponentBase";
 import { AnimationLayer, LayerBlendMode } from "./graph/AnimationLayer";
 
+/**
+ * Skeletal + blend-shape animation driver. Samples property-animation
+ * clips to pose an avatar's joints, supports clip cross-fading, stacked
+ * override/additive layers, a pluggable state machine, IK solvers and
+ * cross-rig retargeting, and dispatches blend-shape (morph) influences.
+ * @group Animation
+ */
 @RegisterComponent(AnimatorComponent, 'AnimatorComponent')
 export class AnimatorComponent extends ComponentBase {
+    /** Global playback speed multiplier applied to all clips and layers. */
     public timeScale: number = 1.0;
+    /** GPU buffer mapping joints to their world-matrix indices. */
     public jointMatrixIndexTableBuffer: StorageGPUBuffer;
+    /** Whether the blend-shape (morph) animation loops. */
     public playBlendShapeLoop: boolean = false;
     protected inverseBindMatrices: FloatArray[];
     protected _avatar: PrefabAvatarData;
@@ -50,6 +60,7 @@ export class AnimatorComponent extends ComponentBase {
 
     private _retargeter: Retargeter;
 
+    /** Collect skinned/morph renderers in the hierarchy and prepare caches. */
     public init(param?: any): void {
         this.propertyCache = new Map<RenderNode, Map<string, (value: number) => void>>();
         this._clipsMap = new Map<string, PropertyAnimationClip>();
@@ -71,6 +82,7 @@ export class AnimatorComponent extends ComponentBase {
         }
     }
 
+    /** Re-parent the skeleton root once the (possibly cloned) hierarchy is wired. */
     public start(): void {
         // Re-parent the skeleton's root joint now that we are attached to
         // a scene. Why this is needed: in the clone path, buildSkeletonPose
@@ -100,6 +112,12 @@ export class AnimatorComponent extends ComponentBase {
     private debug() {
     }
 
+    /**
+     * Play a skeleton animation clip immediately.
+     * @param anim clip name
+     * @param time start time in seconds
+     * @param speed playback speed multiplier
+     */
     public playAnim(anim: string, time: number = 0, speed: number = 1) {
         let clipState = this.getAnimationClipState(anim);
         if (clipState) {
@@ -116,6 +134,11 @@ export class AnimatorComponent extends ComponentBase {
         }
     }
 
+    /**
+     * Cross-fade from the current clip to another over `crossTime` seconds.
+     * @param anim destination clip name
+     * @param crossTime fade duration in seconds
+     */
     public crossFade(anim: string, crossTime: number) {
         let clipState = this.getAnimationClipState(anim);
         if (!clipState) {
@@ -150,6 +173,12 @@ export class AnimatorComponent extends ComponentBase {
         this._currentSkeletonClip = inClip;
     }
 
+    /**
+     * Play a blend-shape (morph) animation clip.
+     * @param shapeName blend-shape clip name
+     * @param time start time in seconds
+     * @param speed playback speed multiplier
+     */
     public playBlendShape(shapeName: string, time: number = 0, speed: number = 1) {
         if (this._clipsMap.has(shapeName)) {
             this._currentBlendAnimClip = this._clipsMap.get(shapeName);
@@ -161,6 +190,12 @@ export class AnimatorComponent extends ComponentBase {
         }
     }
 
+    /**
+     * Drive another animator's skeleton from this one via retargeting.
+     * Pass `null` to stop retargeting.
+     * @param target the animator to drive, or null to clear
+     * @param cfg optional retargeting configuration
+     */
     public retargetTo(target: AnimatorComponent, cfg?: RetargeterConfig ) {
         if (target) {
             // Silence the target's own animator so the retargeter is the
@@ -180,6 +215,7 @@ export class AnimatorComponent extends ComponentBase {
         }
     }
 
+    /** Assign the avatar (skeleton) by registered resource name and build its pose. */
     public set avatar(name: string) {
         this._avatarName = name;
         this.inverseBindMatrices = [];
@@ -192,10 +228,15 @@ export class AnimatorComponent extends ComponentBase {
         this.jointMatrixIndexTableBuffer = new StorageGPUBuffer(this._avatar.count, 0, jointMatrixIndexTable);
     }
 
+    /** Number of joints in the current avatar. */
     public get numJoint(): number {
-        return this._avatar.count;   
+        return this._avatar.count;
     }
 
+    /**
+     * Map a list of skin joint names to their avatar bone IDs (-1 if absent).
+     * @param skinJointsName joint names in skin order
+     */
     public getJointIndexTable(skinJointsName: Array<string>) {
         let result = new Array<number>();
         for (let i = 0; i < skinJointsName.length; i++) {
@@ -313,6 +354,7 @@ export class AnimatorComponent extends ComponentBase {
         return list;
     }
 
+    /** Assign the animation clips, building per-clip state and auto-playing the first. */
     public set clips(clips: PropertyAnimationClip[]) {
         this._clips = clips;
         for (const clip of clips) {
@@ -331,14 +373,17 @@ export class AnimatorComponent extends ComponentBase {
         }
     }
 
+    /** The animation clips assigned to this animator. */
     public get clips(): PropertyAnimationClip[] {
         return this._clips;
     }
 
+    /** Per-clip playback state (weights, etc.). */
     public get clipsState(): PropertyAnimationClipState[] {
         return this._clipsState;
     }
 
+    /** Clone this animator (avatar + clips) onto another object. */
     public cloneTo(obj: Object3D): void {
         let animatorComponent = obj.addComponent(AnimatorComponent);
         animatorComponent.avatar = this._avatarName;
@@ -371,6 +416,7 @@ export class AnimatorComponent extends ComponentBase {
         }
     }
 
+    /** Per-frame update: advance time, sample clips, apply layers, IK and morphs. */
     public onUpdate(view?: View3D) {
         const delta = Time.delta * 0.001;
 
@@ -470,6 +516,13 @@ export class AnimatorComponent extends ComponentBase {
         }
     }
 
+    /**
+     * Apply a blend-shape influence to all renderers, caching the resolved
+     * setter per renderer to avoid per-frame property reflection.
+     * @param attributes property path to the setter
+     * @param key morph target name (cache key)
+     * @param value influence value in [0,1]
+     */
     public updateBlendShape(attributes: string[], key: string, value: number) {
         for (const renderer of this._rendererList) {
             if (!renderer.blendShape) continue;
@@ -599,6 +652,7 @@ export class AnimatorComponent extends ComponentBase {
         return null;
     }
 
+    /** Group the morph renderers by morph-target key. */
     public cloneMorphRenderers(): { [key: string]: SkinnedMeshRenderer2[] } {
         let dst: { [key: string]: SkinnedMeshRenderer2[] } = {};
         for (const renderer of this._rendererList) {
@@ -615,11 +669,14 @@ export class AnimatorComponent extends ComponentBase {
     //  Layer / Mask API (P1)
     // ------------------------------------------------------------------
 
+    /** Get a stacked animation layer by name, or null if absent. */
     public getLayer(name: string): AnimationLayer | null {
         return this._layers.find(l => l.name === name) || null;
     }
+    /** All stacked layers (excluding the implicit base layer). */
     public get layers(): ReadonlyArray<AnimationLayer> { return this._layers; }
 
+    /** Add a stacked animation layer (ignored if a layer with that name exists). */
     public addLayer(layer: AnimationLayer): AnimationLayer {
         if (this._layers.find(l => l.name === layer.name)) {
             console.warn(`AnimatorComponent: layer '${layer.name}' already exists`);
@@ -629,16 +686,25 @@ export class AnimatorComponent extends ComponentBase {
         return layer;
     }
 
+    /** Remove a stacked animation layer by name. */
     public removeLayer(name: string): void {
         const idx = this._layers.findIndex(l => l.name === name);
         if (idx >= 0) this._layers.splice(idx, 1);
     }
 
+    /** Set the blend weight of a named layer. */
     public setLayerWeight(name: string, weight: number): void {
         const l = this.getLayer(name);
         if (l) l.weight = weight;
     }
 
+    /**
+     * Set (and start) the clip playing on a named layer.
+     * @param name layer name
+     * @param clipName clip to play on the layer
+     * @param time start time in seconds
+     * @param timeScale layer-local time scale
+     */
     public setLayerClip(name: string, clipName: string, time: number = 0, timeScale: number = 1.0): void {
         const l = this.getLayer(name);
         if (!l) return;
@@ -826,9 +892,11 @@ export class AnimatorComponent extends ComponentBase {
     //  StateMachine plug-in (P1)
     // ------------------------------------------------------------------
 
+    /** Attach (or clear) a state machine evaluated each frame before sampling. */
     public setStateMachine(fsm: { evaluate(animator: AnimatorComponent, dt: number): void } | null) {
         this._stateMachine = fsm;
     }
+    /** The currently attached state machine, or null. */
     public getStateMachine(): { evaluate(animator: AnimatorComponent, dt: number): void } | null {
         return this._stateMachine;
     }
@@ -837,9 +905,11 @@ export class AnimatorComponent extends ComponentBase {
     //  IK API (P1)
     // ------------------------------------------------------------------
 
+    /** Register an IK solver, run after layer mixing each frame. */
     public addIK(solver: { solve(animator: AnimatorComponent): void }) {
         this._ikSolvers.push(solver);
     }
+    /** Unregister a previously added IK solver. */
     public removeIK(solver: { solve(animator: AnimatorComponent): void }) {
         const i = this._ikSolvers.indexOf(solver);
         if (i >= 0) this._ikSolvers.splice(i, 1);
@@ -849,16 +919,26 @@ export class AnimatorComponent extends ComponentBase {
     public getJointObject(boneName: string): Object3D | null {
         return this.skeltonPoseObject3D ? (this.skeltonPoseObject3D[boneName] || null) : null;
     }
+    /** Rest-pose (T-pose) joint Object3D by bone path. */
     public getRestJointObject(bonePath: string): Object3D | null {
         return this.skeltonTPoseObject3D ? (this.skeltonTPoseObject3D[bonePath] || null) : null;
     }
+    /** The current avatar (skeleton) data, or null. */
     public getAvatar(): PrefabAvatarData | null { return this._avatar || null; }
 }
 
+/**
+ * Per-clip playback state tracked by {@link AnimatorComponent}: holds the
+ * clip plus its current blend weight in the mix.
+ * @group Animation
+ */
 export class PropertyAnimationClipState {
+    /** The animation clip this state wraps. */
     public clip: PropertyAnimationClip;
+    /** Current blend weight of the clip in the mix. */
     public weight: number = 0.0;
 
+    /** Total duration of the clip in seconds. */
     public get totalTime(): number {
         return this.clip.stopTime - this.clip.startTime;
     }
@@ -868,6 +948,11 @@ export class PropertyAnimationClipState {
     }
 }
 
+/**
+ * @internal
+ * Tracks an in-progress cross-fade between two clips, ramping their
+ * weights over the fade duration.
+ */
 class SkeletonAnimCrossFadeState {
     public inClip: PropertyAnimationClipState;
     public outClip: PropertyAnimationClipState;

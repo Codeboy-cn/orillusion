@@ -8,7 +8,7 @@ import { Object3D } from './entities/Object3D';
 
 /**
  * It represents an independent 3D scene where 3D objects can be created and manipulated.
- * @group Entity
+ * @group Core
  */
 export class Scene3D extends Object3D {
     private _envMap: Texture;

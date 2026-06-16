@@ -3,7 +3,6 @@ import { RenderTexture } from '../../../textures/RenderTexture';
 
 /**
  * @internal
- * @group GFX
  */
 export class TextureCubeStdCreator {
 

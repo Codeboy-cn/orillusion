@@ -5,6 +5,11 @@ import { Shader } from "../../../../../gfx/graphics/webGpu/shader/Shader";
 import { Matrix4 } from "../../../../../math/Matrix4";
 
 
+/**
+ * Internal sky shader used by the prefab material pipeline. Renders the
+ * environment skybox and manages a private orthographic-projection fix matrix.
+ * @internal
+ */
 @RegisterShader
 export class SkyShader extends Shader {
     private _fixOrthMatrix: Matrix4;

@@ -7,6 +7,11 @@ import { Vector4 } from "../math/Vector4";
 import { Camera3D } from "./Camera3D";
 import { Scene3D } from "./Scene3D";
 
+/**
+ * A render view that pairs a {@link Camera3D} with a {@link Scene3D} and a
+ * viewport, and drives the rendering of that scene through the camera.
+ * @group Core
+ */
 export class View3D extends CEventListener {
     private _camera: Camera3D;
     private _scene: Scene3D;

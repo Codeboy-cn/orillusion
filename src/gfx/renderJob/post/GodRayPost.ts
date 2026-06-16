@@ -16,6 +16,14 @@ import { GodRay_cs } from '../../../assets/shader/compute/GodRay_cs';
 import { clamp } from '../../../math/MathUtil';
 
 
+/**
+ * God-ray (light-shaft) post-processing effect. A compute pass marches
+ * the scene depth/G-buffer to accumulate volumetric light scattering
+ * along view rays toward the light, with temporal history reuse, then
+ * blends the result over the scene color.
+ *
+ * @group Post Effects
+ */
 export class GodRayPost extends PostBase {
     /**
      * @internal
@@ -49,7 +57,7 @@ export class GodRayPost extends PostBase {
     }
     /**
      * @internal
-     */Render
+     */
     onDetach(view: View3D,) {
         this.setting.render.postProcessing.godRay.enable = false;
         this.removeGUI();

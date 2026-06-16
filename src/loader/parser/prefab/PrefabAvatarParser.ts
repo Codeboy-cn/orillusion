@@ -9,8 +9,20 @@ import { PrefabParser } from "./PrefabParser";
 import { PrefabAvatarData } from "./prefabData/PrefabAvatarData";
 
 
+/**
+ * Parses avatar (skeleton) blocks from an Orillusion prefab binary stream.
+ * Each decoded {@link PrefabAvatarData} is registered with the engine's
+ * resource host so meshes and animations can later bind to the skeleton.
+ * @group Loader
+ */
 export class PrefabAvatarParser extends ParserBase {
     static format: ParserFormat = ParserFormat.BIN;
+    /**
+     * Read every avatar block from the stream and register the resulting
+     * {@link PrefabAvatarData} instances on the resource host.
+     * @param bytesStream the prefab binary stream positioned at the avatar section.
+     * @param prefabParser the owning prefab parser, used for context lookup.
+     */
     public static parser(bytesStream: BytesArray, prefabParser: PrefabParser) {
         let avatarCount = bytesStream.readInt32();
         for (let j = 0; j < avatarCount; j++) {
@@ -21,9 +33,8 @@ export class PrefabAvatarParser extends ParserBase {
     }
 
     /**
-     * Verify parsing validity
-     * @param ret
-     * @returns
+     * Verify that parsing produced valid data.
+     * @returns true when data is present; throws otherwise.
      */
     public verification(): boolean {
         if (this.data) {

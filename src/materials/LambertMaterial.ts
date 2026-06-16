@@ -11,7 +11,7 @@ import { AlphaMode } from './LitMaterial';
 
 
 /**
- * Lambert Mateiral
+ * Lambert Material
  * A non glossy surface material without specular highlights.
  * @group Material
  */
@@ -57,6 +57,7 @@ export class LambertMaterial extends Material {
         return this._alphaMode;
     }
 
+    /** Sets the glTF alpha mode and reconfigures blend/depth/define state. */
     public set alphaMode(mode: AlphaMode) {
         // Idempotent guard: setting the same mode twice in a row was
         // running the full state-mutation switch + firing

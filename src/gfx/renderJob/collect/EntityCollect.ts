@@ -23,7 +23,6 @@ import { RenderShaderCollect } from './RenderShaderCollect';
 
 /**
  * @internal
- * @group Post
  */
 export class EntityCollect {
     private static _instance: EntityCollect;

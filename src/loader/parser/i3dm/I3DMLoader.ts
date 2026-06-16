@@ -8,6 +8,10 @@ import { Object3D } from '../../../core/entities/Object3D';
 import { Quaternion } from '../../../math/Quaternion';
 import { Vector3 } from '../../../math/Vector3';
 
+/**
+ * Decodes an i3dm buffer into instanced meshes, applying per-instance transforms.
+ * @internal
+ */
 export class I3DMLoader extends I3DMLoaderBase {
     public static tempFwd: Vector3;
     public static tempUp: Vector3;

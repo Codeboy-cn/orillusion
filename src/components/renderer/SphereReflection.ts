@@ -16,11 +16,13 @@ import { BoundingSphere } from '../../core/bound/BoundingSphere';
 
 
 /**
- *
- * Sky Box Renderer Component
+ * Spherical reflection probe — a {@link Reflection} variant that uses a
+ * bounding sphere for its influence volume, suited to localized reflective
+ * objects.
  * @group Components
  */
 export class SphereReflection extends Reflection {
+    /** Initialize the probe with a spherical bound and reflection mask. */
     public init(): void {
         super.init();
         this.castShadow = false;
@@ -31,6 +33,13 @@ export class SphereReflection extends Reflection {
         this.object3D.bound = new BoundingSphere(Vector3.ZERO.clone(), this.radius);
     }
 
+    /**
+     * Spawn a debug sphere mesh that visualizes the captured reflection
+     * at the given probe index.
+     * @param index reflection probe index to visualize
+     * @param view the view providing reflection settings and resources
+     * @param scale uniform scale applied to the debug sphere
+     */
     public debug(index: number, view: View3D, scale: number = 1): void {
         let obj = new Object3D();
         let mr = obj.addComponent(MeshRenderer);
@@ -51,10 +60,12 @@ export class SphereReflection extends Reflection {
         obj.scaleZ = scale;
     }
 
+    /** Register this probe as a render node when enabled. */
     public onEnable(): void {
         super.onEnable();
     }
 
+    /** Unregister this probe from the render node list when disabled. */
     public onDisable(): void {
         super.onDisable();
     }

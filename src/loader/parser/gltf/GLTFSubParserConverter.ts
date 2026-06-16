@@ -22,6 +22,14 @@ import { KHR_materials_transmission } from "./extends/KHR_materials_transmission
 import { KHR_materials_unlit } from "./extends/KHR_materials_unlit";
 import { KHR_materials_volume } from "./extends/KHR_materials_volume";
 
+/**
+ * Internal glTF sub-parser stage that converts parsed glTF nodes into
+ * engine `Object3D` hierarchies: it builds lights, mesh/skinned-mesh
+ * renderers, geometry and materials (applying the KHR material
+ * extensions) and wires skinned meshes to their `AnimatorComponent`.
+ *
+ * @internal
+ */
 export class GLTFSubParserConverter {
     protected gltf: GLTF_Info;
     protected subParser: GLTFSubParser;

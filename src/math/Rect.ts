@@ -45,6 +45,9 @@ export class Rect {
         return this.w;
     }
 
+    /**
+     * Set the width of the rectangle
+     */
     public set width(v) {
         this.w = v;
     }
@@ -56,6 +59,9 @@ export class Rect {
         return this.h;
     }
 
+    /**
+     * Set the height of the rectangle
+     */
     public set height(v) {
         this.h = v;
     }

@@ -18,7 +18,6 @@ import { PassType } from '../../gfx/renderJob/passRenderer/state/PassType';
  * `PassType.OIT_ACCUM` branch.
  *
  * @internal
- * @group Material
  */
 export class OITAccumPass extends RenderShaderPass {
     /**

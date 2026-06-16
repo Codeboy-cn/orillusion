@@ -90,6 +90,11 @@ class FrustumChild {
     }
 }
 
+/**
+ * Splits a camera frustum into cascaded sub-frustums for Cascaded Shadow Maps,
+ * each with its own bounding volume and shadow camera.
+ * @group Core
+ */
 export class FrustumCSM {
     public sections: FrustumSection[];
     public children: FrustumChild[];

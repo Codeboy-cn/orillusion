@@ -7,6 +7,10 @@ import { Vector3 } from "../../../math/Vector3";
 import { Object3D } from "../../../core/entities/Object3D";
 
 
+/**
+ * Decodes a b3dm buffer into an Object3D, applying RTC center and adjustment transforms.
+ * @internal
+ */
 export class B3DMLoader extends B3DMLoaderBase {
     public adjustmentTransform: Matrix4;
     private gltfBuffer: ArrayBufferLike;

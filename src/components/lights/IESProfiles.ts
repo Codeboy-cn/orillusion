@@ -10,6 +10,7 @@ import { BitmapTexture2DArray } from "../../textures/BitmapTexture2DArray";
  * registered into the owning engine's IESProfilesPool when that
  * engine's light data is first uploaded (LightEntries.update), which
  * assigns `index` — the layer in the pool's texture array.
+ * @group Lights
  */
 export class IESProfiles {
     private _iesTexture: Texture;
@@ -17,6 +18,10 @@ export class IESProfiles {
     /** Layer index inside the owning pool's texture array. -1 until registered. */
     public index: number = -1;
 
+    /**
+     * Set the IES photometric texture. Can only be assigned before the
+     * profile is registered into a pool; later assignments are ignored.
+     */
     public set IESTexture(texture: Texture) {
         if (this._iesTexture === texture) return;
         if (this.index !== -1) {
@@ -29,6 +34,7 @@ export class IESProfiles {
         texture.addressModeW = GPUAddressMode.repeat;
     }
 
+    /** The assigned IES photometric texture, or undefined if none. */
     public get IESTexture(): Texture {
         return this._iesTexture;
     }
@@ -41,6 +47,7 @@ export class IESProfiles {
  * sibling engines never share GPU textures or the USE_IES_PROFILE
  * shader define. The pool dies with the Context3D cache, so engine
  * teardown / device loss cannot leak a texture from a dead device.
+ * @group Lights
  */
 export class IESProfilesPool {
     /** Layer capacity of the texture array. */

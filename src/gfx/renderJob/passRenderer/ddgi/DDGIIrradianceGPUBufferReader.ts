@@ -5,6 +5,15 @@ import { bindCtx, Context3D } from "../../../graphics/webGpu/Context3D";
 import { GIPass, GIRenderCompleteEvent } from "../../graph/passes/GIPass";
 
 export let IrradianceDataReaderCompleteEvent: CEvent = new CEvent('IrradianceDataReaderCompleteEvent');
+/**
+ * Reads the DDGI probe irradiance/depth octahedral maps back from the GPU
+ * into CPU Float32Arrays. Listens for the {@link GIPass} render-complete
+ * event, copies the color and depth textures into mappable buffers, and
+ * dispatches {@link IrradianceDataReaderCompleteEvent} once both arrays
+ * are populated.
+ *
+ * @group GFX
+ */
 export class DDGIIrradianceGPUBufferReader extends CEventDispatcher {
     private readFlag = false;
     private probeRenderer: GIPass;
@@ -13,10 +22,14 @@ export class DDGIIrradianceGPUBufferReader extends CEventDispatcher {
     private srcColorMap: RenderTexture;
     private srcDepthMap: RenderTexture;
 
+    /** CPU copy of the probe depth octahedral map. */
     public opDepthArray: Float32Array;
+    /** CPU copy of the probe irradiance (color) octahedral map. */
     public opColorArray: Float32Array;
+    /** Context3D this reader's GPU buffers are bound to. */
     public _boundCtx: Context3D | null = null;
 
+    /** Allocate the readback buffers and subscribe to the GI pass's render-complete event. */
     public initReader(ctx: Context3D, probeRender: GIPass, colorMap: RenderTexture, depthMap: RenderTexture) {
         this.probeRenderer = probeRender;
         this.srcColorMap = colorMap;

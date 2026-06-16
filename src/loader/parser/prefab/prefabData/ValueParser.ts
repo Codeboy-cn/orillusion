@@ -13,12 +13,26 @@ import { ValueEnumType } from "./ValueType";
 
 export type CurveValueType = string | number | Vector2 | Vector3 | Vector4 | Quaternion | Color | boolean | Texture | Material | string[] | number[] | Float32Array | GeometryBase | Skeleton | PropertyAnimationClip[];
 
+/**
+ * Decodes a typed value from a prefab byte stream. Reads the leading type tag
+ * and returns the decoded value together with its {@link ValueEnumType}. Used
+ * by {@link KV} and component property decoding throughout prefab parsing.
+ * @group Loader
+ */
 export class ValueParser {
-    // Scoped static: set by PrefabParser at parse start, consumed by lookups
-    // below. Prefab parsing is not re-entrant in practice (single parser drives
-    // the whole buffer synchronously per call), so a shared slot is adequate.
+    /**
+     * Scoped rendering context for resource lookups (mesh/texture/material).
+     * Set by PrefabParser at parse start and consumed by the lookups below.
+     * Prefab parsing is not re-entrant in practice (a single parser drives
+     * the whole buffer synchronously per call), so a shared slot is adequate.
+     */
     public static _currentCtx: Context3D | undefined;
 
+    /**
+     * Decode a single typed value from the stream.
+     * @param bytes the prefab byte stream positioned at a value's type tag.
+     * @returns the decoded value `v` and its type tag `t`.
+     */
     public static parser(bytes: BytesArray): { t: ValueEnumType, v: CurveValueType } {
         let type = bytes.readInt32();
         switch (type) {

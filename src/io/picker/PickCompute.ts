@@ -9,7 +9,6 @@ import { Vector2 } from '../../math/Vector2';
 import { Vector3 } from '../../math/Vector3';
 /**
  * @internal
- * @group IO
  */
 export class PickCompute {
     private _computeShader: ComputeShader;

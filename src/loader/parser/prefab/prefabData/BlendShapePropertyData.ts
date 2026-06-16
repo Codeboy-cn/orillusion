@@ -1,6 +1,11 @@
 import { BytesArray } from "../../../..";
 import { BlendShapeFrameData } from "./BlendShapeFrameData";
 
+/**
+ * Internal data carrier for a single blend-shape (morph target), holding its
+ * name, index and the position/normal delta lists decoded from the stream.
+ * @internal
+ */
 export class BlendShapePropertyData {
     public shapeName: string;
     public shapeIndex: number;

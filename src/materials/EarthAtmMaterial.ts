@@ -14,6 +14,7 @@ export class EarthAtmMaterial extends Material {
 
     private _earthAtmShader: EarthAtmShader;
 
+    /** Creates the material and binds a placeholder cube texture to satisfy bindings. */
     constructor() {
         super();
         this.shader = this._earthAtmShader = new EarthAtmShader();
@@ -224,10 +225,12 @@ export class EarthAtmMaterial extends Material {
         defaultShader.uniforms[`earthCenterZ`].value = value.z;
     }
 
+    /** No-op; atmospheric scattering does not use an environment texture. */
     public set envMap(texture: Texture) {
         // not need env texture for atmospheric scattering
     }
 
+    /** No-op; this material does not use a shadow map. */
     public set shadowMap(texture: Texture) {
         // not need shadowMap texture
     }

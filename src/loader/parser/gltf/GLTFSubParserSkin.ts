@@ -3,6 +3,13 @@ import { GLTFParser } from "./GLTFParser";
 import { GLTFSubParser } from "./GLTFSubParser";
 import { GLTFType } from "./GLTFType";
 
+/**
+ * Internal glTF sub-parser stage that resolves a glTF skin: it reads the
+ * joint list and inverse bind matrices, and derives the skeleton root
+ * node (the joints' common root when `skin.skeleton` is omitted).
+ *
+ * @internal
+ */
 export class GLTFSubParserSkin {
     protected gltf: GLTF_Info;
     protected subParser: GLTFSubParser;

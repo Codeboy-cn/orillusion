@@ -9,7 +9,6 @@ import { DDGIIrradianceVolume } from './DDGIIrradianceVolume';
 
 /**
  * @internal
- * @group Post
  */
 export class DDGIMultiBouncePass {
     public blendTexture: RenderTexture;

@@ -17,8 +17,14 @@ import { TorusGeometry } from "../../shape/TorusGeometry";
 import { TransformAxisEnum } from "./TransformAxisEnum";
 import { TransformControllerBaseComponent } from "./TransformControllerBaseComponent";
 
+/**
+ * Rotation gizmo controller. Builds the torus-shaped rotation handles and
+ * applies rotation to the target in local or global space.
+ * @group Util
+ */
 export class RotationControlComponents extends TransformControllerBaseComponent {
 
+    /** Apply a rotation in the target's local space for the active axis. */
     protected applyLocalTransform(currentAxis: TransformAxisEnum, offset: Vector3, distance: number) {
         if (this.currentAxis == TransformAxisEnum.X || this.currentAxis == TransformAxisEnum.XY || this.currentAxis == TransformAxisEnum.XZ) {
             // this.target.rotationX += 1;
@@ -46,6 +52,7 @@ export class RotationControlComponents extends TransformControllerBaseComponent 
         }
     }
 
+    /** Compute the current pointer angle around the active rotation axis, in degrees. */
     protected getAngle(): number {
         const scene3D = this.object3D.transform.scene3D;
         const camera = scene3D.view.camera;
@@ -102,6 +109,7 @@ export class RotationControlComponents extends TransformControllerBaseComponent 
     }
 
     protected mLastAngle = 0;
+    /** Apply a rotation in world space for the active axis. */
     protected applyGlobalTransform(currentAxis: TransformAxisEnum, offset: Vector3, distance: number) {
         if (this.currentAxis == TransformAxisEnum.X || this.currentAxis == TransformAxisEnum.Y || this.currentAxis == TransformAxisEnum.Z) {
             let angle = this.getAngle();
@@ -137,6 +145,7 @@ export class RotationControlComponents extends TransformControllerBaseComponent 
         }
     }
 
+    /** Begin a rotation drag, isolating the picked axis handle. */
     public onMouseDown(e: PointerEvent3D): void {
         super.onMouseDown(e);
         if (this.currentAxis != TransformAxisEnum.NONE) {
@@ -148,6 +157,7 @@ export class RotationControlComponents extends TransformControllerBaseComponent 
         }
     }
 
+    /** End a rotation drag and restore all axis handles. */
     public onMouseUp(e: PointerEvent3D): void {
         super.onMouseUp(e);
         if (this.currentAxis == TransformAxisEnum.NONE) {
@@ -157,6 +167,7 @@ export class RotationControlComponents extends TransformControllerBaseComponent 
         }
     }
 
+    /** Build the visual handle for one rotation axis. */
     protected createCustomAxis(axis: TransformAxisEnum): Object3D {
         let axisObj = this.createAxis(axis);
 
@@ -166,6 +177,7 @@ export class RotationControlComponents extends TransformControllerBaseComponent 
         return axisObj;
     }
 
+    /** Create the torus mesh and collider for one rotation axis. */
     protected createAxis(axis: TransformAxisEnum): Object3D {
         let r = 0, g = 0, b = 0;
 
@@ -197,6 +209,7 @@ export class RotationControlComponents extends TransformControllerBaseComponent 
         return obj;
     }
 
+    /** Ray-pick the rotation handles under the pointer, returning the closest hit on a ring. */
     protected pickAxis(): { intersectPoint?: Vector3; distance: number; obj: Object3D; axis: TransformAxisEnum } {
         const scene3D = this.object3D.transform.scene3D;
         const camera = scene3D.view.camera;

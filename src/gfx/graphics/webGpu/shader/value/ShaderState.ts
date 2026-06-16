@@ -4,7 +4,6 @@ import { defaultStencilFaceState, GPUCompareFunction, GPUCullMode, GPUPrimitiveT
 /**
  * @internal
  * ShaderState
- * @group GFX
  */
 export class ShaderState {
     public blendMode?: BlendMode = BlendMode.NONE;

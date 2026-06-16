@@ -3,6 +3,11 @@ import { IQuadNode } from "./IQuadNode";
 import { QuadAABB } from "./QuadAABB";
 import { QuadTreeCell } from "./QuadTreeCell";
 
+/**
+ * 2D spatial partitioning structure that recursively subdivides a region
+ * into four quadrant cells for fast spatial queries.
+ * @group Core
+ */
 export class QuadTree {
 
     private _cells: Array<QuadTreeCell>;

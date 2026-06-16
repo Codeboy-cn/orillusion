@@ -12,26 +12,47 @@ import { RendererPassState } from "./passRenderer/state/RendererPassState";
  * Per-Context3D GPU command/pipeline state. Owned by exactly one Context3D
  * via `Context3D.gpuContext`. Multi-engine isolation: no mutable state is
  * shared across engines. Access via `ctx.gpuContext.foo()`.
+ *
+ * @group GFX
  */
 export class GPUContextInstance {
+    /** The Context3D (one engine) this instance is bound to. */
     public readonly ctx: Context3D;
 
+    /** Last geometry bound by {@link bindGeometryBuffer}; used to skip redundant vertex/index buffer rebinds. */
     public lastGeometry: GeometryBase = null;
+    /** Last render pipeline set on the encoder; used to skip redundant setPipeline calls. */
     public lastPipeline: GPURenderPipeline = null;
+    /** Last shader pass bound by {@link bindPipeline}; used to detect material switches. */
     public lastShader: RenderShaderPass = null;
+    /** Number of draw calls submitted since the last reset (profiling counter). */
     public drawCount: number = 0;
+    /** Number of render passes begun since the last reset (profiling counter). */
     public renderPassCount: number = 0;
+    /** Number of geometries processed since the last reset (profiling counter). */
     public geometryCount: number = 0;
+    /** Number of pipelines created since the last reset (profiling counter). */
     public pipelineCount: number = 0;
+    /** Number of matrix uploads since the last reset (profiling counter). */
     public matrixCount: number = 0;
+    /** Render-pass state of the most recently begun render pass. */
     public lastRenderPassState: RendererPassState = null;
+    /** Command encoder currently open via {@link beginCommandEncoder}, or null. */
     public LastCommand: GPUCommandEncoder = null;
+    /** Device that owns {@link LastCommand}; used to submit on the matching queue. */
     public LastCommandDevice: GPUDevice = null;
 
     constructor(ctx: Context3D) {
         this.ctx = ctx;
     }
 
+    /**
+     * Bind a shader pass's pipeline and bind groups onto the encoder.
+     * Skips the work and returns `false` when `renderShader` matches the
+     * last bound shader; otherwise binds and returns `true`. Re-issues the
+     * stencil reference on every material switch since it is render-pass
+     * (not pipeline) state.
+     */
     public bindPipeline(encoder: GPURenderPassEncoder | GPURenderBundleEncoder, renderShader: RenderShaderPass) {
         if (this.lastShader != renderShader) {
             this.lastShader = renderShader;
@@ -65,11 +86,17 @@ export class GPUContextInstance {
         return true;
     }
 
+    /** Bind the camera's global bind group at slot 0. */
     public bindCamera(encoder: GPURenderPassEncoder | GPURenderBundleEncoder, camera: Camera3D) {
         let cameraBindGroup = GlobalBindGroup.getCameraGroup(camera);
         encoder.setBindGroup(0, cameraBindGroup.globalBindGroup);
     }
 
+    /**
+     * Bind a geometry's index and vertex buffers onto the encoder.
+     * Skips the rebind when `geometry` matches the last bound geometry.
+     * Lazily binds each GPU buffer to this context on first use.
+     */
     public bindGeometryBuffer(encoder: GPURenderPassEncoder | GPURenderBundleEncoder, geometry: GeometryBase) {
         if (this.lastGeometry != geometry) {
             this.lastGeometry = geometry;
@@ -90,17 +117,23 @@ export class GPUContextInstance {
         }
     }
 
+    /** Reset the cached geometry/pipeline/shader so the next bind always issues. */
     public cleanCache() {
         this.lastGeometry = null;
         this.lastPipeline = null;
         this.lastShader = null;
     }
 
+    /** Create a render pipeline on this context's device. */
     public createPipeline(gpuRenderPipeline: GPURenderPipelineDescriptor) {
         ProfilerUtil.countStart("GPUContext", "pipeline");
         return this.ctx.device.createRenderPipeline(gpuRenderPipeline);
     }
 
+    /**
+     * Open a new command encoder. Submits any previously open encoder
+     * first, so only one encoder is in flight at a time per context.
+     */
     public beginCommandEncoder(): GPUCommandEncoder {
         ProfilerUtil.countStart("GPUContext", "beginCommandEncoder");
         if (this.LastCommand) {
@@ -111,6 +144,7 @@ export class GPUContextInstance {
         return this.LastCommand;
     }
 
+    /** Finish and submit `command` if it is the currently open encoder. */
     public endCommandEncoder(command: GPUCommandEncoder) {
         if (this.LastCommand == command) {
             this.LastCommandDevice.queue.submit([this.LastCommand.finish()]);
@@ -120,10 +154,16 @@ export class GPUContextInstance {
         }
     }
 
+    /** Create a render bundle encoder on this context's device. */
     public recordBundleEncoder(des: GPURenderBundleEncoderDescriptor): GPURenderBundleEncoder {
         return this.ctx.device.createRenderBundleEncoder(des);
     }
 
+    /**
+     * Begin a render pass from `renderPassState`. Resolves the attachment
+     * views (depth, color RTs, MSAA side-bands + resolve targets, or the
+     * swapchain present view when no RTs are set) before opening the pass.
+     */
     public beginRenderPass(command: GPUCommandEncoder, renderPassState: RendererPassState): GPURenderPassEncoder {
         this.cleanCache();
         this.renderPassCount++;
@@ -217,6 +257,11 @@ export class GPUContextInstance {
         this.drawCount++;
     }
 
+    /**
+     * Indexed draw with CPU-provided counts. No-ops when `indexCount` or
+     * `instanceCount` is zero — WebGPU flags empty indexed draws as
+     * unusual, and dynamic geometry starts with empty buffers.
+     */
     public drawIndexed(encoder: GPURenderPassEncoder, indexCount: GPUSize32,
         instanceCount?: GPUSize32,
         firstIndex?: GPUSize32,
@@ -231,6 +276,7 @@ export class GPUContextInstance {
         this.drawCount++;
     }
 
+    /** Non-indexed draw. No-ops when `vertexCount` or `instanceCount` is zero. */
     public draw(encoder: GPURenderPassEncoder, vertexCount: GPUSize32,
         instanceCount?: GPUSize32,
         firstVertex?: GPUSize32,
@@ -240,11 +286,13 @@ export class GPUContextInstance {
         this.drawCount++;
     }
 
+    /** End the given render pass. */
     public endPass(encoder: GPURenderPassEncoder) {
         encoder.insertDebugMarker("end")
         encoder.end();
     }
 
+    /** Run a list of compute shaders inside a single compute pass on `command`. */
     public computeCommand(command: GPUCommandEncoder, computes: ComputeShader[]) {
         let computePass = command.beginComputePass();
         for (let i = 0; i < computes.length; i++) {
@@ -254,6 +302,7 @@ export class GPUContextInstance {
         computePass.end();
     }
 
+    /** Copy mip 0 of `source` into mip 0 of `dest`, sized to `dest`. */
     public copyTexture(command: GPUCommandEncoder, source: Texture, dest: Texture) {
         command.copyTextureToTexture(
             {
