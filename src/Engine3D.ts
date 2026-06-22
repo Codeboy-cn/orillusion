@@ -71,7 +71,7 @@ function _deepMerge<T extends object>(target: T, source: any): T {
  * render jobs, and configuration (`engine.setting`). Instances share a
  * single WebGPU device pool and a shared RAF render loop.
  *
- * @group engine3D
+ * @group Engine3D
  */
 export class Engine3D {
 

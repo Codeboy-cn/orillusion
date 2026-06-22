@@ -11,7 +11,6 @@ import { OcclusionSystem } from '../../occlusion/OcclusionSystem';
 
 /**
  * @internal
- * @group Post
  */
 export class ZCullingCompute {
     computeShader: ComputeShader;

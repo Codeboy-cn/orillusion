@@ -16,12 +16,19 @@ import { VisibleLayer } from '../gfx/renderJob/config/VisibleLayer';
 
 /**
  * Camera components
- * @group Components
+ * @group Core
  */
 export class Camera3D extends ComponentBase {
 
+    /**
+     * The primary camera used for rendering the main view.
+     */
     public static mainCamera: Camera3D;
 
+    /**
+     * The graphics context this camera is bound to. Used for multi-engine
+     * setups; `null` until the camera is bound to a {@link Context3D}.
+     */
     public _boundCtx: Context3D | null = null;
 
     /**
@@ -73,6 +80,10 @@ export class Camera3D extends ComponentBase {
      * orth view size
      */
     public frustumSize: number = 0;
+
+    /**
+     * orth view depth range
+     */
     public frustumDepth: number = 0;
 
     /**
@@ -97,6 +108,9 @@ export class Camera3D extends ComponentBase {
     //     -0.1039777, -0.09676537, -0.07681116, -0.0004372867,
     // ]);
 
+    /**
+     * Spherical-harmonics coefficients of the ambient/diffuse environment lighting.
+     */
     public sh: Float32Array = new Float32Array(36);
 
     /**
@@ -104,6 +118,9 @@ export class Camera3D extends ComponentBase {
      */
     public isShadowCamera: boolean = false;
 
+    /**
+     * The light this camera renders the shadow map for, when it is a shadow camera.
+     */
     public shadowLight?: ILight;
 
     /**
@@ -208,14 +225,24 @@ export class Camera3D extends ComponentBase {
         }  
     }
 
+    /**
+     * Compute a legacy auto shadow-bias baseline for the given depth texture size.
+     *
+     * Legacy auto baseline used by DDGI / GodRay compute paths.
+     * Real-time shadow now derives bias per-light via ShadowBiasCalculator.
+     * @param depthTexSize the side length of the shadow depth texture
+     * @returns the computed shadow bias
+     */
     public getShadowBias(depthTexSize: number): number {
-        // Legacy auto baseline used by DDGI / GodRay compute paths.
-        // Real-time shadow now derives bias per-light via ShadowBiasCalculator.
         let sizeOnePixel = 2.0 * this.getShadowWorldExtents() / depthTexSize;
         let depth = Math.max(this.far - this.near, 1e-6);
         return (sizeOnePixel * 1.5) / depth;
     }
 
+    /**
+     * Get the rounded world-space extent of the camera frustum, used to scale shadow bias.
+     * @returns the world-space extent value
+     */
     public getShadowWorldExtents(): number {
         return Math.round(0.05 * this.frustum.boundingBox.extents.length);
     }
@@ -371,6 +398,9 @@ export class Camera3D extends ComponentBase {
         return this._pvMatrix;
     }
 
+    /**
+     * get the inverse of (projection * world) matrix
+     */
     public get pvMatrix2(): Matrix4 {
         matrixMultiply(this._projectionMatrix, this.transform.worldMatrix, this._pvMatrix);
         let matrix = this._pvMatrixInv.copy(this.pvMatrix);
@@ -387,12 +417,18 @@ export class Camera3D extends ComponentBase {
         return matrix;
     }
 
+    /**
+     * get the inverse of the view matrix
+     */
     public get vMatrixInv(): Matrix4 {
         let matrix = this._viewMatrixInv.copy(this.viewMatrix);
         matrix.invert();
         return matrix;
     }
 
+    /**
+     * get the matrix transforming camera/clip space back to world space
+     */
     public get cameraToWorld(): Matrix4 {
         let cameraToWorld = Matrix4.helpMatrix;
         cameraToWorld.identity();
@@ -401,6 +437,9 @@ export class Camera3D extends ComponentBase {
         return cameraToWorld;
     }
 
+    /**
+     * get the matrix transforming NDC space to view space (inverse projection)
+     */
     public get ndcToView(): Matrix4 {
         let cameraToWorld = Matrix4.helpMatrix;
         cameraToWorld.identity();
@@ -536,18 +575,31 @@ export class Camera3D extends ComponentBase {
     private _jitterOffsetX: number;
     private _jitterOffsetY: number;
 
+    /**
+     * get the current TAA jitter frame index
+     */
     public get jitterFrameIndex() {
         return this._jitterFrameIndex;
     }
 
+    /**
+     * get the current frame's TAA jitter offset on the X axis (in NDC)
+     */
     public get jitterX(): number {
         return this._jitterX;
     }
 
+    /**
+     * get the current frame's TAA jitter offset on the Y axis (in NDC)
+     */
     public get jitterY(): number {
         return this._jitterY;
     }
 
+    /**
+     * Enable or disable TAA jitter on the projection matrix.
+     * @param value whether jitter projection should be applied each frame
+     */
     public enableJitterProjection(value: boolean) {
         this._jitterFrameIndex = 0;
         this._useJitterProjection = value;
@@ -623,6 +675,11 @@ export class Camera3D extends ComponentBase {
         this._jitterFrameIndex++;
     }
 
+    /**
+     * Get the camera's forward direction in world space.
+     * @param target optional vector to store the result
+     * @returns the normalized world-space forward direction
+     */
     public getWorldDirection(target?: Vector3) {
         target ||= new Vector3();
         // this.transform.updateWorldMatrix();
@@ -630,6 +687,10 @@ export class Camera3D extends ComponentBase {
         return target.set(-e[8], -e[9], -e[10]).normalize();
     }
 
+    /**
+     * Release the matrix slots held by this camera and destroy the component.
+     * @param force whether to force-destroy
+     */
     public destroy(force?: boolean): void {
         // Release the 7 Matrix4 slots this camera holds in the static matrix table;
         // ComponentBase.destroy() wouldn't know about these private fields.

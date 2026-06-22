@@ -9,6 +9,13 @@ import { PassType } from "../../gfx/renderJob/passRenderer/state/PassType";
 import { ClusterLightingBuffer } from "../../gfx/renderJob/passRenderer/cluster/ClusterLightingBuffer";
 import { ComponentCollect } from "../../gfx/renderJob/collect/ComponentCollect";
 
+/**
+ * Batches child {@link MeshRenderer}s that share the same geometry and
+ * materials into GPU instanced draw calls. On start it groups the renderers
+ * by a geometry+material key, uploads their world-matrix indices into a
+ * storage buffer, and issues one instanced draw per group.
+ * @group Components
+ */
 export class InstanceDrawComponent extends RenderNode {
 
     private _keyRenderGroup: Map<string, MeshRenderer[]>;
@@ -19,12 +26,18 @@ export class InstanceDrawComponent extends RenderNode {
         super();
     }
 
+    /** Initialize the internal grouping maps. */
     public init(param?: any): void {
         this._keyRenderGroup = new Map<string, MeshRenderer[]>();
         this._keyBufferGroup = new Map<string, StorageGPUBuffer>();
         this._keyIdsGroup = new Map<string, number[]>();
     }
 
+    /**
+     * Collect child mesh renderers, group them by geometry+material key,
+     * disable their individual rendering, and upload per-instance matrix
+     * index buffers.
+     */
     public start(): void {
 
         let meshRenders: MeshRenderer[] = [];
@@ -63,6 +76,7 @@ export class InstanceDrawComponent extends RenderNode {
         })
     }
 
+    /** Clear the current grouping and rebuild it from the child renderers. */
     public reset(){
         if(this._keyRenderGroup.size > 0){
             this._keyRenderGroup.clear()
@@ -71,6 +85,10 @@ export class InstanceDrawComponent extends RenderNode {
             this.start()
         }
     }
+    /**
+     * Per-pass update: enables the USE_INSTANCEDRAW shader define and binds
+     * the per-group instance matrix buffer for each material pass.
+     */
     public nodeUpdate(view: View3D, passType: PassType, renderPassState: RendererPassState, clusterLightingBuffer?: ClusterLightingBuffer): void {
         this._keyRenderGroup.forEach((v, k) => {
             let instanceMatrixBuffer = this._keyBufferGroup.get(k);
@@ -91,6 +109,7 @@ export class InstanceDrawComponent extends RenderNode {
     }
 
 
+    /** Issue one instanced draw per group, with instance count = group size. */
     public renderPass(view: View3D, passType: PassType, renderContext: RenderContext) {
         this._keyRenderGroup.forEach((v, k) => {
             let renderNode = v[0];
@@ -99,6 +118,7 @@ export class InstanceDrawComponent extends RenderNode {
         })
     }
 
+    /** Bind geometry/pipeline and emit the indexed (optionally instanced) draw for a render node. */
     public renderItem(view: View3D, passType: PassType, renderNode: RenderNode, renderContext: RenderContext) {
         const gpu = view.engine3D.context3D.gpuContext;
         let worldMatrix = renderNode.transform._worldMatrix;
@@ -139,6 +159,7 @@ export class InstanceDrawComponent extends RenderNode {
         }
     }
 
+    /** Release the grouping maps and unregister from pending-start collection. */
     public beforeDestroy(force?: boolean): void {
         this._keyRenderGroup.clear();
         this._keyBufferGroup.clear();

@@ -5,7 +5,6 @@ import { IBLEnvMapCreator_cs } from '../../../assets/shader/compute/IBLEnvMapCre
 
 /**
  * @internal
- * @group GFX
  */
 export class IBLEnvMapCreator {
     static importantSample(image: { width: number; height: number; erpTexture: Texture }, dstSize: number, roughness: number, dstView: GPUTextureView): void {

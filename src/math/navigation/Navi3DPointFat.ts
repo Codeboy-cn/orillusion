@@ -1,6 +1,9 @@
 ﻿import { Navi3DEdge } from "./Navi3DEdge";
 import { Navi3DPoint } from "./Navi3DPoint";
 
+/**
+ * @internal
+ */
 export class Navi3DPointFat extends Navi3DPoint {
 
     private _ownerPoint: Navi3DPoint;

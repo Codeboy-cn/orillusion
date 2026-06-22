@@ -10,10 +10,14 @@ import { CResizeEvent } from '..';
  * @group Texture
  */
 export class RenderTexture extends Texture {
+    /** Resolve target view used when this render texture is multisampled. */
     public resolveTarget: GPUTextureView;
 
+    /** Number of MSAA samples; 0 means no multisampling. */
     sampleCount: number;
+    /** Whether the texture resizes automatically with the context. */
     autoResize?: boolean;
+    /** Whether the texture is cleared at the start of a render pass. */
     clear?: boolean;
     /**
      * create virtual texture
@@ -57,6 +61,12 @@ export class RenderTexture extends Texture {
         }
     }
 
+    /**
+     * Recreate the GPU texture and sampler for the new size and current format.
+     * @param width new texture width
+     * @param height new texture height
+     * @param ctx optional graphics context to bind to
+     */
     public resize(width, height, ctx?: Context3D) {
         this._ensureBound(ctx);
         let device = this._boundCtx!.device;
@@ -164,12 +174,20 @@ export class RenderTexture extends Texture {
         this._boundCtx!.gpuContext.endCommandEncoder(commandEncoder);
     }
 
+    /**
+     * Create a copy of this render texture with the same configuration.
+     * @returns the cloned render texture
+     */
     public clone() {
         let texture = new RenderTexture(this.width, this.height, this.format, this.useMipmap, this.usage, this.numberLayer, this.sampleCount, this.clear, this.autoResize);
         texture.name = "clone_" + texture.name;
         return texture;
     }
 
+    /**
+     * Copy this texture's contents back into a CPU buffer.
+     * @returns the mapped array buffer of the texture data
+     */
     public readTextureToImage() {
         const ctx = this._boundCtx!;
         let device = ctx.device;

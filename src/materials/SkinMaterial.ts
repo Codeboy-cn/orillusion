@@ -33,6 +33,7 @@ import { LitMaterial } from "./LitMaterial";
  * @group Material
  */
 export class SkinMaterial extends LitMaterial {
+    /** Creates the material, enables the subsurface path, and applies default skin uniforms. */
     constructor(ctx?: Context3D) {
         super(ctx);
         this.shader.setDefine('USE_SUBSURFACE', true);
@@ -41,17 +42,21 @@ export class SkinMaterial extends LitMaterial {
         this.shader.setUniformColor('subsurfaceColor', { r: 1.0, g: 0.4, b: 0.3, a: 1 } as any);
     }
 
+    /** Sets the subsurface scattering radius uniform. */
     public set subsurfaceRadius(value: number) {
         this.shader.setUniformFloat('subsurfaceRadius', value);
     }
+    /** Gets the subsurface scattering radius uniform. */
     public get subsurfaceRadius(): number {
         return this.shader.getUniformFloat('subsurfaceRadius');
     }
 
+    /** Sets the thickness map texture and enables the thickness-map shader path. */
     public set thicknessMap(texture: Texture) {
         this.shader.setTexture('thicknessMap', texture);
         this.shader.setDefine('USE_THICKNESS_MAP', true);
     }
+    /** Gets the thickness map texture. */
     public get thicknessMap(): Texture {
         return this.shader.getTexture('thicknessMap');
     }

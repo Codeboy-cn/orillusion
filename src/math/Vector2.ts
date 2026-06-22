@@ -20,10 +20,13 @@ export class Vector2 {
      */
     public static HELP_2: Vector2 = new Vector2();
 
+    /** A zero vector (0, 0). */
     public static readonly ZERO: Vector2 = new Vector2(0, 0);
 
+    /** A vector whose components are the maximum safe integer. */
     public static readonly SAFE_MAX: Vector2 = new Vector2(Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER);
 
+    /** A vector whose components are the minimum safe integer. */
     public static readonly SAFE_MIN: Vector2 = new Vector2(Number.MIN_SAFE_INTEGER, Number.MIN_SAFE_INTEGER);
 
     /**
@@ -222,6 +225,7 @@ export class Vector2 {
         return Vector2.negate(this, this) as this;
     }
 
+    /** Returns the Euclidean length of this vector. */
     public abs() {
         return Math.sqrt(this.x * this.x + this.y * this.y);
     }
@@ -253,6 +257,7 @@ export class Vector2 {
         return this;
     }
 
+    /** Returns the angle, in radians, from this vector to v. */
     public angleTo(v: Vector2): number {
         let dx = v.x - this.x;
         let dy = v.y - this.y;
@@ -269,6 +274,7 @@ export class Vector2 {
         return false;
     }
 
+    /** Tests parallelism with a: 1 if same direction, -1 if opposite, 0 otherwise. */
     public pal(a: Vector2): number {
         let u1 = this.clone().unt();
         let u2 = a.clone().unt();
@@ -412,48 +418,56 @@ export class Vector2 {
         return this;
     }
 
+    /** Component-wise maximum with v. Mutates and returns this. */
     public max(v: Vector2): this {
         this.x = Math.max(this.x, v.x);
         this.y = Math.max(this.y, v.y);
         return this;
     }
 
+    /** Component-wise clamp into [min, max]. Mutates and returns this. */
     public clamp(min: Vector2, max: Vector2): this {
         this.x = Math.max(min.x, Math.min(max.x, this.x));
         this.y = Math.max(min.y, Math.min(max.y, this.y));
         return this;
     }
 
+    /** Floors each component. Mutates and returns this. */
     public floor(): this {
         this.x = Math.floor(this.x);
         this.y = Math.floor(this.y);
         return this;
     }
 
+    /** Ceils each component. Mutates and returns this. */
     public ceil(): this {
         this.x = Math.ceil(this.x);
         this.y = Math.ceil(this.y);
         return this;
     }
 
+    /** Rounds each component to the nearest integer. Mutates and returns this. */
     public round(): this {
         this.x = Math.round(this.x);
         this.y = Math.round(this.y);
         return this;
     }
 
+    /** Rounds each component toward zero. Mutates and returns this. */
     public roundToZero(): this {
         this.x = this.x < 0 ? Math.ceil(this.x) : Math.floor(this.x);
         this.y = this.y < 0 ? Math.ceil(this.y) : Math.floor(this.y);
         return this;
     }
 
+    /** Set x/y from array starting at offset. Mutates and returns this. */
     public fromArray(array: ArrayLike<number>, offset: number = 0): this {
         this.x = array[offset];
         this.y = array[offset + 1];
         return this;
     }
 
+    /** Write x/y into array starting at offset and return the array. */
     public toArray(array: number[] = [], offset: number = 0): number[] {
         array[offset] = this.x;
         array[offset + 1] = this.y;
@@ -470,6 +484,7 @@ export class Vector2 {
         return this;
     }
 
+    /** Fill this with components in [0, 1). Mutates and returns this. */
     public random(): this {
         this.x = Math.random();
         this.y = Math.random();

@@ -16,6 +16,11 @@ import { Material } from "./Material";
  *  - BLEND:  transparent queue, hardware straight-alpha blending. */
 export type AlphaMode = 'OPAQUE' | 'MASK' | 'BLEND' | 'HASH';
 
+/**
+ * Physically based lit material supporting albedo, normal, ARM, emissive and
+ * other PBR texture/parameter inputs. Serves as the standard surface material.
+ * @group Material
+ */
 export class LitMaterial extends Material {
 
     private _alphaMode: AlphaMode = 'OPAQUE';
@@ -28,6 +33,7 @@ export class LitMaterial extends Material {
         this.shader = shader;
     }
 
+    /** Clone this material into a new LitMaterial, copying PBR uniforms and textures. */
     public clone(): Material {
         let litMaterial = new LitMaterial();
 
@@ -74,108 +80,132 @@ export class LitMaterial extends Material {
         return litMaterial;
     }
 
+    /** Set the albedo/base color texture. */
     public set baseMap(texture: Texture) {
         this.shader.setTexture(`baseMap`, texture);
     }
 
+    /** Get the albedo/base color texture. */
     public get baseMap() {
         return this.shader.getTexture(`baseMap`);
     }
 
+    /** Set the mask texture. */
     public set maskMap(texture: Texture) {
         this.shader.setTexture(`maskMap`, texture);
     }
 
+    /** Get the mask texture. */
     public get maskMap() {
         return this.shader.getTexture(`maskMap`);
     }
 
 
+    /** Set the normal map texture. */
     public set normalMap(texture: Texture) {
         this.shader.setTexture(`normalMap`, texture);
     }
 
+    /** Get the normal map texture. */
     public get normalMap() {
         return this.shader.getTexture(`normalMap`);
     }
 
+    /** Set the emissive texture. */
     public set emissiveMap(texture: Texture) {
         this.shader.setTexture(`emissiveMap`, texture);
     }
 
+    /** Get the emissive texture. */
     public get emissiveMap() {
         return this.shader.getTexture(`emissiveMap`);
     }
 
+    /** Set the ambient occlusion texture. */
     public set aoMap(texture: Texture) {
         this.shader.setTexture(`aoMap`, texture);
     }
 
+    /** Get the ambient occlusion texture. */
     public get aoMap() {
         return this.shader.getTexture(`aoMap`);
     }
 
+    /** Set the clearcoat roughness texture and enable the clearcoat shader path. */
     public set clearCoatRoughnessMap(texture: Texture) {
         this.shader.setTexture(`clearCoatRoughnessMap`, texture);
         this.shader.setDefine(`USE_CLEARCOAT`, true);
         this.shader.setDefine(`USE_CLEARCOAT_ROUGHNESS`, true);
     }
 
+    /** Get the clearcoat roughness texture. */
     public get clearCoatRoughnessMap() {
         return this.shader.getTexture(`clearCoatRoughnessMap`);
     }
 
+    /** Set the clearcoat tint color and enable the clearcoat shader path. */
     public set clearcoatColor(value: Color) {
         this.shader.setUniformColor(`clearcoatColor`, value);
         this.shader.setDefine(`USE_CLEARCOAT`, true);
     }
 
+    /** Get the clearcoat tint color. */
     public get clearcoatColor() {
         return this.shader.getUniformColor(`clearcoatColor`);
     }
 
+    /** Set the clearcoat weight and enable the clearcoat shader path. */
     public set clearcoatWeight(value: number) {
         this.shader.setUniformFloat(`clearcoatWeight`, value);
         this.shader.setDefine(`USE_CLEARCOAT`, true);
     }
 
+    /** Get the clearcoat weight. */
     public get clearcoatWeight() {
         return this.shader.getUniformFloat(`clearcoatWeight`);
     }
 
+    /** Set the clearcoat factor and enable the clearcoat shader path. */
     public set clearcoatFactor(value: number) {
         this.shader.setUniformFloat(`clearcoatFactor`, value);
         this.shader.setDefine(`USE_CLEARCOAT`, true);
     }
 
+    /** Get the clearcoat factor. */
     public get clearcoatFactor() {
         return this.shader.getUniformFloat(`clearcoatFactor`);
     }
 
 
+    /** Set the clearcoat roughness factor and enable the clearcoat shader path. */
     public set clearcoatRoughnessFactor(value: number) {
         this.shader.setUniformFloat(`clearcoatRoughnessFactor`, value);
         this.shader.setDefine(`USE_CLEARCOAT`, true);
     }
 
+    /** Get the clearcoat roughness factor. */
     public get clearcoatRoughnessFactor() {
         return this.shader.getUniformFloat(`clearcoatRoughnessFactor`);
     }
 
+    /** Set the index of refraction. */
     public set ior(value: number) {
         this.shader.setUniformFloat(`ior`, value);
     }
 
+    /** Get the index of refraction. */
     public get ior() {
         return this.shader.getUniformFloat(`ior`);
     }
 
 
+    /** Set the alpha cutoff threshold and enable the alpha-cut shader path. */
     public set alphaCutoff(value: number) {
         this.shader.setUniform(`alphaCutoff`, value);
         this.shader.setDefine('USE_ALPHACUT', true);
     }
 
+    /** Get the alpha cutoff threshold. */
     public get alphaCutoff() {
         return this.shader.getUniform(`alphaCutoff`);
     }
@@ -199,10 +229,12 @@ export class LitMaterial extends Material {
         this.shader.setDefine(`USE_TRANSMISSION`, true);
     }
 
+    /** Get the transmission texture. */
     public get transmissionMap(): Texture {
         return this.shader.getTexture(`transmissionMap`);
     }
 
+    /** Set the transmission factor, toggling the transmission shader path and resolving the scene color pyramid. */
     public set transmissionFactor(value: number) {
         this.shader.setUniformFloat(`transmissionFactor`, value);
         this.shader.setDefine(`USE_TRANSMISSION`, value > 0.0);
@@ -228,14 +260,17 @@ export class LitMaterial extends Material {
         }
     }
 
+    /** Get the transmission factor. */
     public get transmissionFactor(): number {
         return this.shader.getUniformFloat(`transmissionFactor`);
     }
 
+    /** Set the volume thickness factor used for transmission attenuation. */
     public set thicknessFactor(value: number) {
         this.shader.setUniformFloat(`thicknessFactor`, value);
     }
 
+    /** Get the volume thickness factor. */
     public get thicknessFactor(): number {
         return this.shader.getUniformFloat(`thicknessFactor`);
     }
@@ -252,15 +287,18 @@ export class LitMaterial extends Material {
         this.shader.setUniformFloat(`attenuationDistance`, clamped);
     }
 
+    /** Get the attenuation distance, returning Infinity when attenuation is effectively disabled. */
     public get attenuationDistance(): number {
         const v = this.shader.getUniformFloat(`attenuationDistance`);
         return v >= 1.0e18 ? Number.POSITIVE_INFINITY : v;
     }
 
+    /** Set the attenuation (transmission absorption) color. */
     public set attenuationColor(value: Color) {
         this.shader.setUniformColor(`attenuationColor`, value);
     }
 
+    /** Get the attenuation (transmission absorption) color. */
     public get attenuationColor(): Color {
         return this.shader.getUniformColor(`attenuationColor`);
     }
@@ -276,6 +314,7 @@ export class LitMaterial extends Material {
         this.shader.setUniformFloat(`transmissionAlphaMode`, value ? 1.0 : 0.0);
     }
 
+    /** Whether transmission also attenuates the output alpha for see-through compositing. */
     public get transmissionAlphaMode(): boolean {
         return this.shader.getUniformFloat(`transmissionAlphaMode`) > 0.5;
     }
@@ -285,6 +324,7 @@ export class LitMaterial extends Material {
         return this._alphaMode;
     }
 
+    /** Set the glTF-aligned alpha mode, configuring blend/discard state and render queue accordingly. */
     public set alphaMode(mode: AlphaMode) {
         // Idempotent guard — see LambertMaterial.alphaMode for rationale.
         if (this._alphaMode === mode) return;
@@ -368,42 +408,52 @@ export class LitMaterial extends Material {
         return this.shader.getUniformColor("baseColor");
     }
 
+    /** Get the surface roughness. */
     public get roughness(): number {
         return this.shader.getUniformFloat("roughness");
     }
 
+    /** Set the surface roughness. */
     public set roughness(value: number) {
         this.shader.setUniformFloat("roughness", value);
     }
 
+    /** Get the metallic factor. */
     public get metallic(): number {
         return this.shader.getUniformFloat("metallic");
     }
 
+    /** Set the metallic factor. */
     public set metallic(value: number) {
         this.shader.setUniformFloat("metallic", value);
     }
 
+    /** Get the emissive color. */
     public get emissiveColor(): Color {
         return this.shader.getUniformColor("emissiveColor");
     }
 
+    /** Set the emissive color. */
     public set emissiveColor(value: Color) {
         this.shader.setUniformColor("emissiveColor", value);
     }
 
+    /** Get the emissive intensity. */
     public get emissiveIntensity(): number {
         return this.shader.getUniformFloat("emissiveIntensity");
     }
 
+    /** Set the emissive intensity. */
     public set emissiveIntensity(value: number) {
         this.shader.setUniformFloat("emissiveIntensity", value);
     }
 
+    /** Get the ambient occlusion factor. */
     public get ao(): number {
         return this.shader.getUniform(`ao`);
     }
 
+    /** Set the ambient occlusion factor. */
     public set ao(value: number) {
         this.shader.setUniform(`ao`, value);
     }

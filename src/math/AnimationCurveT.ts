@@ -6,17 +6,24 @@ import { AnimationCurve, BytesArray, KeyframeT, Quaternion, Vector2, Vector3, Ve
 
 export type CurveValueT = number | Vector2 | Vector3 | Vector4 | Quaternion;
 /**
- * Animation Cureve 
+ * Animation Curve 
  * has frame list data 
  * @group Math
  */
 export class AnimationCurveT {
+    /** Target node path this curve animates. */
     public path: string;
+    /** Animated attribute name. */
     public attribute: string;
+    /** Attribute split into its component property names. */
     public propertys: string[];
+    /** Wrap mode applied for times before the first keyframe. */
     public preInfinity: number;
+    /** Wrap mode applied for times after the last keyframe. */
     public postInfinity: number;
+    /** Euler rotation order associated with this curve. */
     public rotationOrder: number;
+    /** Per-channel scalar animation curves. */
     public m_curves: AnimationCurve[];
     private k: number = 0;
 
@@ -183,6 +190,10 @@ export class AnimationCurveT {
         return list;
     }
 
+    /**
+     * Read this multi-channel curve from a binary byte stream.
+     * @param bytes source byte array
+     */
     public formBytes(bytes: BytesArray) {
         this.path = bytes.readUTF();
         this.k = bytes.readInt32();

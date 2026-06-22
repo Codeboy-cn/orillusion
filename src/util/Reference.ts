@@ -7,12 +7,14 @@
  * otherwise pin the owning Context3D forever across engine reinits.
  * Inner map retains parents strongly (that's the whole point of the
  * tracker), but it evaporates with the ref once nothing else holds it.
+ * @group Util
  */
 export class Reference {
     protected reference: WeakMap<any, Map<any, any>>;
 
     private static _ins: Reference;
 
+    /** Get the shared Reference singleton, creating it on first use. */
     public static getInstance(): Reference {
         this._ins ||= new Reference();
         return this._ins;

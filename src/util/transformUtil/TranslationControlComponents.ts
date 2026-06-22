@@ -13,8 +13,14 @@ import { PlaneGeometry } from "../../shape/PlaneGeometry";
 import { TransformAxisEnum } from "./TransformAxisEnum";
 import { TransformControllerBaseComponent } from "./TransformControllerBaseComponent";
 
+/**
+ * Translation gizmo controller. Builds the axis arrows and the planar
+ * (XY/XZ/YZ) drag handles and moves the target in local or global space.
+ * @group Util
+ */
 export class TranslationControlComponents extends TransformControllerBaseComponent {
 
+    /** Build the translation handles, including the three drag planes. */
     public init(param?: any): void {
         super.init(param);
 
@@ -52,6 +58,7 @@ export class TranslationControlComponents extends TransformControllerBaseCompone
         this.mAxisCollider[TransformAxisEnum.YZ] = planeYZ.getComponent(ColliderComponent);
     }
 
+    /** Apply a translation in the target's local space for the active axis. */
     protected applyLocalTransform(currentAxis: TransformAxisEnum, offset: Vector3, distance: number) {
         Matrix4.help_matrix_0.copy(this.mX.transform.worldMatrix).invert();
         Matrix4.transformVector(Matrix4.help_matrix_0, offset, Vector3.HELP_0);
@@ -75,6 +82,7 @@ export class TranslationControlComponents extends TransformControllerBaseCompone
         // this.target.localPosition = this.mX.transform.worldPosition.clone();
     }
 
+    /** Apply a translation in world space for the active axis. */
     protected applyGlobalTransform(currentAxis: TransformAxisEnum, offset: Vector3, distance: number) {
         Matrix4.help_matrix_0.identity();
 
@@ -104,6 +112,7 @@ export class TranslationControlComponents extends TransformControllerBaseCompone
         // this.target.localPosition = this.mX.transform.worldPosition.clone();
     }
 
+    /** Build the visual handle for one translation axis (shaft plus arrowhead). */
     protected createCustomAxis(axis: TransformAxisEnum): Object3D {
         let axisObj = super.createAxis(axis);
 
@@ -113,6 +122,7 @@ export class TranslationControlComponents extends TransformControllerBaseCompone
         return axisObj;
     }
 
+    /** Create the cone arrowhead mesh at the end of one translation axis. */
     protected createArrows(axis: TransformAxisEnum): Object3D {
         let r = 0, g = 0, b = 0;
 
@@ -147,6 +157,7 @@ export class TranslationControlComponents extends TransformControllerBaseCompone
         return obj;
     }
 
+    /** Create a planar drag handle (and its collider) for a two-axis combination. */
     protected createPlane(axis: TransformAxisEnum): Object3D {
         let obj = new Object3D();
 

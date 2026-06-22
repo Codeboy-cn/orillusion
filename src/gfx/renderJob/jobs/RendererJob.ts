@@ -24,7 +24,7 @@ import { PostBase } from '../post/PostBase';
  * extending `RendererJob` directly. This keeps the base class
  * pipeline-agnostic so deferred / VR / custom flows can share it.
  *
- * @group Post
+ * @group GFX
  */
 export class RendererJob {
     public readonly graph: RenderGraph;

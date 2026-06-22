@@ -354,6 +354,7 @@ export class Vector3 {
         return a.x * b.x + a.y * b.y + a.z * b.z;
     }
 
+    /** Generate `total` random Vector3 points within a cube of side `randSeed` centered at origin. */
     public static getPoints(total: number, randSeed: number) {
         let points = [];
         for (let index = 0; index < total; index++) {
@@ -363,6 +364,7 @@ export class Vector3 {
         return points;
     }
 
+    /** Generate `total` random points as a flat number array (x, y, z, ...) within a cube of side `randSeed`. */
     public static getPointNumbers(total: number, randSeed: number) {
         let points = [];
         for (let index = 0; index < total; index++) {
@@ -382,10 +384,12 @@ export class Vector3 {
         return (Math.acos(t) * 180) / Math.PI;
     }
 
+    /** Returns the squared magnitude (x^2 + y^2 + z^2) of the given vector. */
     public static sqrMagnitude(arg0: Vector3): number {
         return arg0.x * arg0.x + arg0.y * arg0.y + arg0.z * arg0.z;
     }
 
+    /** Returns the angle, in degrees, between two vectors projected onto the ZY plane. */
     public static getZYAngle(zd: Vector3, yd: Vector3) {
         return this.calAngle(zd.y, zd.z, yd.y, yd.z);
     }
@@ -606,6 +610,7 @@ export class Vector3 {
         return Vector3.add(a, b, this) as this;
     }
 
+    /** Set this = a - b. Mutates and returns this. */
     public subVectors(a: Vector3, b: Vector3): this {
         return Vector3.sub(a, b, this) as this;
     }
@@ -615,6 +620,7 @@ export class Vector3 {
         return Vector3.multiply(a, b, this) as this;
     }
 
+    /** Add scalar to x, y, and z. Mutates and returns this. */
     public addScalar(scalar: number): Vector3{
         this.x += scalar;
         this.y += scalar;
@@ -622,6 +628,7 @@ export class Vector3 {
         return this;
     }
 
+    /** Subtract scalar from x, y, and z. Mutates and returns this. */
     public subScalar(scalar: number): Vector3{
         this.x -= scalar;
         this.y -= scalar;
@@ -643,6 +650,7 @@ export class Vector3 {
         return Vector3.max(this, v, this) as this;
     }
 
+    /** Squared Euclidean distance from this vector to v. */
     public distanceToSquared(v: Vector3): number {
         let dx = this.x - v.x;
         let dy = this.y - v.y;
@@ -812,6 +820,7 @@ export class Vector3 {
         return this;
     }
 
+    /** Transform this vector as a point by Matrix4 m. Mutates and returns this. */
     public applyMatrix4(m): this {
         return m.transformPoint(this) as this;
     }
@@ -976,6 +985,7 @@ export class Vector3 {
     //   }
     // }
 
+    /** Snap this vector to the nearest 2D axis direction (LEFT/RIGHT/UP/DOWN) based on x and y. */
     public normalizeToWay2D_XY() {
         let tx = Math.abs(this.x);
         let ty = Math.abs(this.y);
@@ -994,10 +1004,12 @@ export class Vector3 {
         }
     }
 
+    /** Returns the x, y, and z components as a new array. */
     public toArray() {
         return [this.x, this.y, this.z];
     }
 
+    /** Write x, y, and z as little-endian float32 values into the DataView. */
     public copyToBytes(byte: DataView) {
         byte.setFloat32(0 * Float32Array.BYTES_PER_ELEMENT, this.x, true);
         byte.setFloat32(1 * Float32Array.BYTES_PER_ELEMENT, this.y, true);
@@ -1017,11 +1029,13 @@ export class Vector3 {
         return Vector3.cross(this, a, this) as this;
     }
 
+    /** Set this = cross product of a and b. Mutates and returns this. */
     public crossVectors(a: Vector3, b: Vector3): this {
         Vector3.cross(a, b, this);
         return this;
     }
 
+    /** Multiply x, y, and z by scalar. Mutates and returns this. */
     public multiplyScalar(scalar: number) {
         this.x *= scalar;
         this.y *= scalar;
@@ -1030,6 +1044,7 @@ export class Vector3 {
         return this;
     }
 
+    /** Set x/y/z from array starting at firstElementPos. */
     public setFromArray(array: number[], firstElementPos: number = 0) {
         this.x = array[firstElementPos];
         this.y = array[firstElementPos + 1];
@@ -1051,6 +1066,7 @@ export class Vector3 {
         return this.divideScalar(length || 1).multiplyScalar(Math.max(min, Math.min(max, length))) as this;
     }
 
+    /** Set x, y, and z all to value. Mutates and returns this. */
     public setScalar(value: number) {
         this.x = value;
         this.y = value;
@@ -1058,6 +1074,7 @@ export class Vector3 {
         return this;
     }
 
+    /** Add v * scale to this vector. Mutates and returns this. */
     public addScaledVector(v: Vector3, scale: number): Vector3 {
         this.x += v.x * scale;
         this.y += v.y * scale;
@@ -1192,6 +1209,7 @@ export class Vector3 {
         return this;
     }
 
+    /** Floors each component. Mutates and returns this. */
     public floor(): this {
         this.x = Math.floor(this.x);
         this.y = Math.floor(this.y);
@@ -1199,6 +1217,7 @@ export class Vector3 {
         return this;
     }
 
+    /** Ceils each component. Mutates and returns this. */
     public ceil(): this {
         this.x = Math.ceil(this.x);
         this.y = Math.ceil(this.y);
@@ -1206,6 +1225,7 @@ export class Vector3 {
         return this;
     }
 
+    /** Rounds each component to the nearest integer. Mutates and returns this. */
     public round(): this {
         this.x = Math.round(this.x);
         this.y = Math.round(this.y);
@@ -1213,6 +1233,7 @@ export class Vector3 {
         return this;
     }
 
+    /** Rounds each component toward zero. Mutates and returns this. */
     public roundToZero(): this {
         this.x = this.x < 0 ? Math.ceil(this.x) : Math.floor(this.x);
         this.y = this.y < 0 ? Math.ceil(this.y) : Math.floor(this.y);
@@ -1252,6 +1273,7 @@ export class Vector3 {
         }
     }
 
+    /** Tests whether point `pt` lies inside the triangle (pt0, pt1, pt2), using their x/z coordinates. */
     public static pointInsideTriangle(pt: Vector3, pt0: Vector3, pt1: Vector3, pt2: Vector3): boolean {
         Vector3.HELP_0.setTo(pt.x, pt.z, 0);
         Vector3.HELP_1.setTo(pt0.x, pt0.z, 0);
@@ -1281,6 +1303,7 @@ export class Vector3 {
         return val;
     }
 
+    /** Returns a new Vector3 copy of the given vector, used for serialization. */
     static serialize(position: Vector3): Vector3 {
         let v = new Vector3(position.x, position.y, position.z, position.w);
         return v;

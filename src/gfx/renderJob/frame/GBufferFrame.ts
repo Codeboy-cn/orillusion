@@ -7,9 +7,21 @@ import { RTResourceConfig } from "../config/RTResourceConfig";
 import { RTFrame } from "./RTFrame";
 import { RTResourceMap } from "./RTResourceMap";
 
+/**
+ * A G-buffer {@link RTFrame}: a color attachment plus a packed/compressed
+ * G-buffer attachment and a matching depth (or depth+stencil) texture.
+ * Instances are cached per Context3D and per string key via
+ * {@link getGBufferFrame}, so passes that name the same key share one
+ * G-buffer within an engine without leaking across engines.
+ *
+ * @group GFX
+ */
 export class GBufferFrame extends RTFrame {
+    /** Shared key for the main color-pass G-buffer. */
     public static colorPass_GBuffer: string = "ColorPassGBuffer";
+    /** Shared key for the reflection-probe G-buffer. */
     public static reflections_GBuffer: string = "reflections_GBuffer";
+    /** Cache of G-buffers for the most recently queried context (see {@link getGBufferFrame}). */
     public static gBufferMap: Map<string, GBufferFrame> = new Map<string, GBufferFrame>();
     private static _perContext: WeakMap<Context3D, Map<string, GBufferFrame>> = new WeakMap();
 
@@ -30,9 +42,14 @@ export class GBufferFrame extends RTFrame {
         super([], []);
     }
 
-    /** MSAA sample count of the attachments this GBuffer was created with.
-     *  Captured at creation time so the render pass state can pick it up
-     *  without a second lookup into the engine setting. */
+    /**
+     * Allocate this G-buffer's attachments and depth texture. Optionally
+     * creates the color attachment (`outColor`), always creates the
+     * compressed G-buffer attachment, and creates a depth (or
+     * depth+stencil) texture unless `depthTexture` is supplied. `sampleCount`
+     * is captured on the frame so the render pass state can pick up the MSAA
+     * sample count without re-reading the engine setting.
+     */
     createGBuffer(ctx: Context3D, key: string, rtWidth: number, rtHeight: number, _autoResize: boolean = true, outColor: boolean = true, depthTexture?: RenderTexture, sampleCount: number = 0) {
         let attachments = this.renderTargets;
         let reDescriptors = this.rtDescriptors;
@@ -74,18 +91,22 @@ export class GBufferFrame extends RTFrame {
         reDescriptors.push(compressGBufferRTDes);
     }
 
+    /** The world-position attachment (render target index 1). */
     public getPositionMap() {
         return this.renderTargets[1];
     }
 
+    /** The world-normal attachment (render target index 2). */
     public getNormalMap() {
         return this.renderTargets[2];
     }
 
+    /** The scene color attachment, or undefined when created with `outColor=false`. */
     public getColorTexture() {
         return this._colorBufferTex;
     }
 
+    /** The packed/compressed G-buffer attachment. */
     public getCompressGBufferTexture() {
         return this._compressGBufferTex;
     }
@@ -118,6 +139,7 @@ export class GBufferFrame extends RTFrame {
     }
 
 
+    /** Create a new GBufferFrame sharing this frame's attachment/descriptor setup. */
     public clone() {
         let gBufferFrame = new GBufferFrame();
         this.clone2Frame(gBufferFrame);

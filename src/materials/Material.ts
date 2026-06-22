@@ -12,6 +12,11 @@ import { BlendMode } from "./BlendMode";
 import { UUID } from "../util/Global";
 import { Reference } from "../util/Reference";
 
+/**
+ * Base class for all materials. A material owns a set of render shader passes
+ * and exposes shared rendering state such as blend mode, cull mode and texture bindings.
+ * @group Material
+ */
 export class Material {
 
     /**
@@ -26,6 +31,7 @@ export class Material {
       */
     public name: string;
 
+    /** Whether this material is enabled for rendering. */
     public enable: boolean = true;
 
     private _oitMode: 'sorted' | 'weighted' | 'depth-peel' = 'sorted';
@@ -64,6 +70,7 @@ export class Material {
         return this._oitMode;
     }
 
+    /** Set the order-independent transparency mode, notifying renderers to re-classify the affected passes. */
     public set oitMode(value: 'sorted' | 'weighted' | 'depth-peel') {
         if (this._oitMode === value) return;
         this._oitMode = value;
@@ -72,33 +79,40 @@ export class Material {
 
     private _defaultSubShader: RenderShaderPass;
 
+    /** The shader instance backing this material. */
     protected _shader: Shader;
 
     constructor() {
         this.instanceID = UUID();
     }
 
+    /** Set the shader for this material and cache its default sub-shader. */
     public set shader(shader: Shader) {
         this._shader = shader;
         this._defaultSubShader = shader.getDefaultShaders()[0];
     }
 
+    /** Get the shader bound to this material. */
     public get shader(): Shader {
         return this._shader;
     }
 
+    /** Whether the default sub-shader renders both faces (no back-face culling). */
     public get doubleSide(): boolean {
         return this._defaultSubShader.doubleSide;
     }
 
+    /** Enable or disable double-sided rendering on the default sub-shader. */
     public set doubleSide(value: boolean) {
         this._defaultSubShader.doubleSide = value;
     }
 
+    /** Whether this material casts shadows. */
     public get castShadow(): boolean {
         return this._defaultSubShader.shaderState.castShadow;
     }
 
+    /** Enable or disable shadow casting for this material. */
     public set castShadow(value: boolean) {
         let shaderState = this._defaultSubShader.shaderState;
         if (value != shaderState.castShadow) {
@@ -106,10 +120,12 @@ export class Material {
         }
     }
 
+    /** Whether this material receives shadows from other casters. */
     public get acceptShadow(): boolean {
         return this._defaultSubShader.shaderState.acceptShadow;
     }
 
+    /** Enable or disable shadow receiving for this material. */
     public set acceptShadow(value: boolean) {
         let shaderState = this._defaultSubShader.shaderState;
         if (shaderState.acceptShadow != value) {
@@ -119,26 +135,32 @@ export class Material {
         }
     }
 
+    /** Whether this material contributes to reflection probes. */
     public get castReflection(): boolean {
         return this._defaultSubShader.shaderState.castReflection;
     }
 
+    /** Enable or disable reflection casting for this material. */
     public set castReflection(value: boolean) {
         this._defaultSubShader.shaderState.castReflection = value;
     }
 
+    /** The blend mode of the default sub-shader. */
     public get blendMode(): BlendMode {
         return this._defaultSubShader.blendMode;
     }
 
+    /** Set the blend mode of the default sub-shader. */
     public set blendMode(value: BlendMode) {
         this._defaultSubShader.blendMode = value;
     }
 
+    /** The depth comparison function of the default sub-shader. */
     public get depthCompare(): GPUCompareFunction {
         return this._defaultSubShader.depthCompare;
     }
 
+    /** Set the depth comparison function across all passes of this material. */
     public set depthCompare(value: GPUCompareFunction) {
         this._defaultSubShader.depthCompare = value;
         for (let item of this._shader.passShader.values()) {
@@ -149,10 +171,12 @@ export class Material {
     }
 
 
+    /** Whether this material is rendered as transparent. */
     public get transparent(): boolean {
         return this._defaultSubShader.shaderState.transparent;
     }
 
+    /** Enable or disable transparency, moving the pass to the transparent queue when enabled. */
     public set transparent(value: boolean) {
         this._defaultSubShader.shaderState.transparent = value;
         if (value) {
@@ -160,10 +184,12 @@ export class Material {
         }
     }
 
+    /** The face culling mode of the default sub-shader. */
     public get cullMode(): GPUCullMode {
         return this._defaultSubShader.cullMode;
     }
 
+    /** Set the face culling mode across all passes of this material. */
     public set cullMode(value: GPUCullMode) {
         if (this._defaultSubShader.cullMode != value) {
             for (let list of this._shader.passShader.values()) {
@@ -175,10 +201,12 @@ export class Material {
         }
     }
 
+    /** Whether depth writing is enabled for the default sub-shader. */
     public get depthWriteEnabled(): boolean {
         return this._defaultSubShader.depthWriteEnabled;
     }
 
+    /** Enable or disable depth writing for the default sub-shader. */
     public set depthWriteEnabled(value: boolean) {
         this._defaultSubShader.depthWriteEnabled = value;
     }
@@ -190,6 +218,7 @@ export class Material {
         return this._defaultSubShader.stencilFront;
     }
 
+    /** Set the stencil front face state. */
     public set stencilFront(value: GPUStencilFaceState) {
         this._defaultSubShader.stencilFront = value;
     }
@@ -201,6 +230,7 @@ export class Material {
         return this._defaultSubShader.stencilBack;
     }
 
+    /** Set the stencil back face state. */
     public set stencilBack(value: GPUStencilFaceState) {
         this._defaultSubShader.stencilBack = value;
     }
@@ -212,6 +242,7 @@ export class Material {
         return this._defaultSubShader.stencilReadMask;
     }
 
+    /** Set the stencil read mask. */
     public set stencilReadMask(value: number) {
         this._defaultSubShader.stencilReadMask = value;
     }
@@ -223,6 +254,7 @@ export class Material {
         return this._defaultSubShader.stencilWriteMask;
     }
 
+    /** Set the stencil write mask. */
     public set stencilWriteMask(value: number) {
         this._defaultSubShader.stencilWriteMask = value;
     }
@@ -234,26 +266,32 @@ export class Material {
         return this._defaultSubShader.stencilRef;
     }
 
+    /** Set the stencil reference value. */
     public set stencilRef(value: number) {
         this._defaultSubShader.stencilRef = value;
     }
 
+    /** Enable or disable billboard orientation via the USE_BILLBOARD shader define. */
     public set useBillboard(value: boolean) {
         this._defaultSubShader.setDefine("USE_BILLBOARD", value);
     }
 
+    /** The primitive topology of the default sub-shader. */
     public get topology() {
         return this._defaultSubShader.topology;
     }
 
+    /** Set the primitive topology of the default sub-shader. */
     public set topology(value: GPUPrimitiveTopology) {
         this._defaultSubShader.topology = value;
     }
 
+    /** Set the base color uniform. */
     public set baseColor(color: Color) {
         this.shader.setUniformColor(`baseColor`, color);
     }
 
+    /** Get the base color uniform. */
     public get baseColor() {
         return this.shader.getUniformColor("baseColor");
     }
@@ -286,6 +324,7 @@ export class Material {
     }
 
 
+    /** Release this material's shader and clear its identifying fields. */
     destroy(force: boolean) {
         this.name = null;
         this.instanceID = null;
@@ -294,91 +333,113 @@ export class Material {
     }
 
 
+    /** Set a shader define flag on this material's shader. */
     public setDefine(define: string, value: boolean) {
         this.shader.setDefine(define, value);
     }
 
+    /** Get the value of a shader define flag. */
     public getDefine(define: string): boolean {
         return this.shader.getDefine(define);
     }
 
+    /** Bind a texture to the named shader property. */
     public setTexture(propertyName: string, texture: Texture) {
         this._shader.setTexture(propertyName, texture);
     }
 
+    /** Bind a storage GPU buffer to the named shader property. */
     public setStorageBuffer(propertyName: string, buffer: StorageGPUBuffer) {
         this._shader.setStorageBuffer(propertyName, buffer);
     }
 
+    /** Bind a uniform GPU buffer to the named shader property. */
     public setUniformBuffer(propertyName: string, buffer: UniformGPUBuffer) {
         this._shader.setStorageBuffer(propertyName, buffer);
     }
 
 
+    /** Set a float uniform on the named shader property. */
     public setUniformFloat(propertyName: string, value: number) {
         this._shader.setUniformFloat(propertyName, value);
     }
 
+    /** Set a 32-bit integer uniform on the named shader property. */
     public setUniformInt32(propertyName: string, value: number) {
         this._shader.setUniformInt32(propertyName, value);
     }
 
+    /** Set a Vector2 uniform on the named shader property. */
     public setUniformVector2(propertyName: string, value: Vector2) {
         this._shader.setUniformVector2(propertyName, value);
     }
 
+    /** Set a Vector3 uniform on the named shader property. */
     public setUniformVector3(propertyName: string, value: Vector3) {
         this._shader.setUniformVector3(propertyName, value);
     }
 
+    /** Set a Vector4 uniform on the named shader property. */
     public setUniformVector4(propertyName: string, value: Vector4) {
         this._shader.setUniformVector4(propertyName, value);
     }
 
+    /** Set a color uniform on the named shader property. */
     public setUniformColor(propertyName: string, value: Color) {
         this._shader.setUniformColor(propertyName, value);
     }
 
+    /** Get the float value of the named uniform. */
     public getUniformFloat(str: string) {
         return this._shader.getUniform(str).data;
     }
 
+    /** Get the 32-bit integer value of the named uniform. */
     public getUniformInt32(str: string) {
         return this._shader.getUniform(str).data;
     }
 
+    /** Get the Vector2 value of the named uniform. */
     public getUniformV2(str: string): Vector2 {
         return this._shader.getUniformVector2(str);
     }
 
+    /** Get the Vector3 value of the named uniform. */
     public getUniformV3(str: string): Vector3 {
         return this._shader.getUniformVector3(str);
     }
 
+    /** Get the Vector4 value of the named uniform. */
     public getUniformV4(str: string): Vector4 {
         return this._shader.getUniformVector4(str);
     }
 
+    /** Get the color value of the named uniform. */
     public getUniformColor(str: string) {
         return this._shader.getUniformColor(str);
     }
 
+    /** Get the texture bound to the named shader property. */
     public getTexture(str: string) {
         return this._shader.getTexture(str);
     }
 
+    /** Get the storage buffer bound to the named shader property. */
     public getStorageBuffer(str: string) {
         return this._shader.getStorageBuffer(str);
     }
 
+    /** Get the struct storage buffer bound to the named shader property. */
     public getStructStorageBuffer(str: string) {
         return this._shader.getStructStorageBuffer(str);
     }
 
+    /** Get the uniform buffer bound to the named shader property. */
     public getUniformBuffer(str: string) {
         return this._shader.getUniformBuffer(str);
     }
 
+    /** Upload pending uniform changes to the GPU. */
     public applyUniform() {
         this._shader.applyUniform();
     }

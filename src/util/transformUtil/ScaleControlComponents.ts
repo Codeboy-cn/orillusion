@@ -11,8 +11,14 @@ import { BoxGeometry } from "../../shape/BoxGeometry";
 import { TransformAxisEnum } from "./TransformAxisEnum";
 import { TransformControllerBaseComponent } from "./TransformControllerBaseComponent";
 
+/**
+ * Scale gizmo controller. Builds the axis and uniform (XYZ) scale handles
+ * and applies scaling to the target in local or global space.
+ * @group Util
+ */
 export class ScaleControlComponents extends TransformControllerBaseComponent {
 
+    /** Build the scale handles, including the central uniform-scale box. */
     public init(param?: any): void {
         super.init(param);
 
@@ -38,6 +44,7 @@ export class ScaleControlComponents extends TransformControllerBaseComponent {
         this.mAxisCollider[TransformAxisEnum.XYZ] = boxXYZ.getComponent(ColliderComponent);
     }
 
+    /** Apply scaling in the target's local space for the active axis. */
     protected applyLocalTransform(currentAxis: TransformAxisEnum, offset: Vector3, distance: number) {
         switch (this.currentAxis) {
             case TransformAxisEnum.XYZ:
@@ -75,6 +82,7 @@ export class ScaleControlComponents extends TransformControllerBaseComponent {
         }
     }
 
+    /** Apply scaling in world space for the active axis. */
     protected applyGlobalTransform(currentAxis: TransformAxisEnum, offset: Vector3, distance: number) {
         let value = Vector3.HELP_0;
         value.set(0, 0, 0);
@@ -95,6 +103,7 @@ export class ScaleControlComponents extends TransformControllerBaseComponent {
         this.mX.scaleZ += Vector3.HELP_1.z;
     }
 
+    /** Build the visual handle for one scale axis (shaft plus end box). */
     protected createCustomAxis(axis: TransformAxisEnum): Object3D {
         let axisObj = super.createAxis(axis);
 
@@ -104,6 +113,7 @@ export class ScaleControlComponents extends TransformControllerBaseComponent {
         return axisObj;
     }
 
+    /** Create the box cap mesh at the end of one scale axis. */
     protected createBox(axis: TransformAxisEnum): Object3D {
         let r = 0, g = 0, b = 0;
 

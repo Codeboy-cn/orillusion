@@ -2,7 +2,6 @@ import { RenderNode } from '../../../components/renderer/RenderNode';
 import { RenderGroup } from './RenderGroup';
 /**
  * @internal
- * @group Post
  */
 export class EntityBatchCollect {
     public renderGroup: Map<string, RenderGroup>;

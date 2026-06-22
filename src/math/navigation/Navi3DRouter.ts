@@ -2,6 +2,9 @@
 import { Navi3DEdge } from "./Navi3DEdge";
 import { Navi3DPoint } from "./Navi3DPoint";
 
+/**
+ * @internal
+ */
 export class Navi3DRouter {
 
     public endPoint: Vector3;

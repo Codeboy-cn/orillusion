@@ -5,7 +5,6 @@ import { View3D } from '../../../core/View3D';
 import { CollectInfo } from '../collect/CollectInfo';
 /**
  * @internal
- * @group Post
  */
 export class OcclusionSystem {
     public frustumCullingList: Float32Array;

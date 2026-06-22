@@ -30,10 +30,23 @@ import { Vector2 } from "../../../../math/Vector2";
 import { Vector3 } from "../../../../math/Vector3";
 import { PipelinePool } from "../PipelinePool";
 
+/**
+ * A single render pass of a shader: pairs a vertex and fragment shader,
+ * owns the shader state, textures, uniforms, bind group layouts and the
+ * GPURenderPipeline built from them. Each pass is bound to a single
+ * Context3D and rebuilds its pipeline lazily when its state changes.
+ * @group GFX
+ */
 export class RenderShaderPass extends ShaderPassBase {
 
+    /**
+     * The type of pass (color, shadow, OIT accumulation, depth peel, …).
+     */
     public passType: PassType = PassType.COLOR;
 
+    /**
+     * Whether this pass participates in the reverse-Z depth pipeline.
+     */
     public useRz: boolean = false;
 
     /**
@@ -70,9 +83,18 @@ export class RenderShaderPass extends ShaderPassBase {
 
 
 
+    /**
+     * Environment cube map used for image-based lighting.
+     */
     public envMap: Texture;
 
+    /**
+     * Pre-filtered environment map used for specular IBL.
+     */
     public prefilterMap: Texture;
+    /**
+     * Reflection cube map used for environment reflections.
+     */
     public reflectionMap: Texture;
 
     protected _sourceVS: string;
@@ -84,8 +106,15 @@ export class RenderShaderPass extends ShaderPassBase {
     protected _textureGroup: number = -1;
     protected _textureChange: boolean = false;
     protected _groupsShaderReflectionVarInfos: ShaderReflectionVarInfo[][];
+    /**
+     * Per-channel write mask applied to the pass's output buffer.
+     */
     outBufferMask: Vector4;
 
+    /**
+     * @param vs Vertex shader name (must be registered in ShaderLib).
+     * @param fs Fragment shader name (must be registered in ShaderLib).
+     */
     constructor(vs: string, fs: string) {
         super();
 
@@ -382,6 +411,9 @@ export class RenderShaderPass extends ShaderPassBase {
         }
     }
 
+    /**
+     * Base color tint, backed by the `baseColor` uniform.
+     */
     public get baseColor(): Color {
         return this.getUniform(`baseColor`);
     }
@@ -576,10 +608,22 @@ export class RenderShaderPass extends ShaderPassBase {
         this.bindGroups[groupIndex] = group;
     }
 
+    /**
+     * Hook for subclasses to validate a bound buffer; no-op by default.
+     * @param _bufferName Name of the buffer binding.
+     * @param _buffer The buffer instance.
+     */
     protected checkBuffer(_bufferName: string, _buffer: GPUBufferBase) {
         return;
     }
 
+    /**
+     * Pre-process shader source: convert GLSL to WGSL when needed and
+     * substitute const placeholders, storing the result as the stage's
+     * destination source.
+     * @param stage Vertex or fragment stage.
+     * @param code Raw shader source code.
+     */
     protected preCompileShader(stage: ShaderStage, code: string) {
         let shader: string = code;
         // Detect a GLSL `#version XXX core` directive. The previous
@@ -611,6 +655,13 @@ export class RenderShaderPass extends ShaderPassBase {
         }
     }
 
+    /**
+     * Apply post-defines and compile the shader stage into a (cached)
+     * GPUShaderModule, storing it on the matching stage field.
+     * @param stage Vertex or fragment stage.
+     * @param code Pre-processed shader source code.
+     * @param renderPassState Render pass state driving the post-defines.
+     */
     protected compileShader(stage: ShaderStage, code: string, renderPassState: RendererPassState) {
         let shader: string = code;
 
@@ -655,6 +706,14 @@ export class RenderShaderPass extends ShaderPassBase {
         // this._sourceFS = "" ;
     }
 
+    /**
+     * Build the bind group layout entries for a single group from its
+     * reflection info, resolving uniforms, storage buffers, samplers and
+     * textures (falling back to default textures when unset).
+     * @param index Bind group index.
+     * @param infos Reflection variable infos for the group.
+     * @returns The layout entries for the group.
+     */
     protected getGroupLayout(index: number, infos: ShaderReflectionVarInfo[]): GPUBindGroupLayoutEntry[] {
         let entries: GPUBindGroupLayoutEntry[] = [];
         for (let i = 0; i < infos.length; i++) {
@@ -774,6 +833,13 @@ export class RenderShaderPass extends ShaderPassBase {
         return entries;
     }
 
+    /**
+     * Create the GPUBindGroup for a group from its reflection info,
+     * binding the resolved buffers, samplers and texture views.
+     * @param groupIndex Bind group index to (re)build.
+     * @param infos Per-group reflection variable infos.
+     * @param force Rebuild even if the bind group already exists.
+     */
     protected genGroups(groupIndex: number, infos: ShaderReflectionVarInfo[][], force: boolean = false) {
         if (!this.bindGroups[groupIndex] || force) {
             const shaderRefs: ShaderReflectionVarInfo[] = infos[groupIndex];

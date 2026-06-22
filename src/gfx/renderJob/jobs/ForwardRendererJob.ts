@@ -37,7 +37,7 @@ import { RendererJob } from './RendererJob';
  * Bracketed passes are gated on engine settings (`zPrePass`,
  * `gpuCull`, `gi.enable`, `useOIT`).
  *
- * @group Post
+ * @group GFX
  */
 export class ForwardRendererJob extends RendererJob {
     constructor(view: View3D) {

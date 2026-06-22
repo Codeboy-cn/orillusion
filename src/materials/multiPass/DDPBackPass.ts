@@ -16,7 +16,6 @@ import { PassType } from '../../gfx/renderJob/passRenderer/state/PassType';
  * iteration's furthest depth contribute.
  *
  * @internal
- * @group Material
  */
 export class DDPBackPass extends RenderShaderPass {
     constructor(vs: string = `PBRLItShader`, fs: string = `PBRLItShader`) {

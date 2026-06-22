@@ -1,6 +1,14 @@
 import { Context3D } from "../../Context3D";
 
+/**
+ * Provides the shared bind group layout for global render data, cached per context.
+ * @group GFX
+ */
 export class GlobalBindGroupLayout {
+    /**
+     * Get the cached global data bind group layout for the given context.
+     * @param ctx the rendering context
+     */
     public static getGlobalDataBindGroupLayout(ctx: Context3D): GPUBindGroupLayout {
         return ctx.cache(GlobalBindGroupLayout, () => {
             let entries: GPUBindGroupLayoutEntry[] = [];

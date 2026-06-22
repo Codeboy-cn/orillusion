@@ -78,6 +78,7 @@ class MirrorRenderShader extends Shader {
  * @group Material
  */
 export class MirrorMaterial extends Material {
+    /** Creates the material and binds a white placeholder until a capture RT is wired in. */
     constructor(_ctx?: Context3D) {
         super();
         this.shader = new MirrorRenderShader();
@@ -98,6 +99,7 @@ export class MirrorMaterial extends Material {
         this.shader.setTexture('mirrorMap', texture);
     }
 
+    /** Gets the capture render target sampled in screen space. */
     public get mirrorMap(): Texture {
         return this.shader.getTexture('mirrorMap');
     }
@@ -110,6 +112,7 @@ export class MirrorMaterial extends Material {
         this.shader.setUniformColor('baseColor', color);
     }
 
+    /** Gets the tint multiplied into the sampled reflection color. */
     public get baseColor(): Color {
         return this.shader.getUniformColor('baseColor');
     }

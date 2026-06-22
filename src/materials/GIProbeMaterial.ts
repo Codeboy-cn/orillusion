@@ -18,6 +18,10 @@ export enum GIProbeMaterialType {
     Other = 3,
 }
 
+/**
+ * Material used when rendering geometry into global illumination probes.
+ * @group Material
+ */
 export class GIProbeMaterial extends Material {
     static count = 0;
 

@@ -10,7 +10,7 @@ import { RendererJob } from './RendererJob';
  * extend `RendererJob` directly and compose your own pipeline via
  * `this.graph.add(...)` if you need a custom flow.
  *
- * @group Post
+ * @group GFX
  */
 export class DeferredRendererJob extends RendererJob {
     constructor(_view: View3D) {

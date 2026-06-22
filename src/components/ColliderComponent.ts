@@ -7,7 +7,7 @@ import { ColliderShape, HitInfo } from "./shape/ColliderShape";
 
 /**
  * collider component
- * @group Components
+ * @group Collider
  */
 export class ColliderComponent extends ComponentBase {
     private _shape: ColliderShape;

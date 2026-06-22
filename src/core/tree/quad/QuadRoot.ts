@@ -3,6 +3,11 @@ import { IQuadNode } from "./IQuadNode";
 import { QuadAABB } from "./QuadAABB";
 import { QuadTree } from "./QuadTree";
 
+/**
+ * Root container of a quad-tree that owns the cells and manages node
+ * insertion against a maximum-nodes-per-cell budget.
+ * @group Core
+ */
 export class QuadRoot {
 
     private _maxNodesPerCell: number;

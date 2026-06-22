@@ -44,6 +44,9 @@ export class Ray {
         return this._dir;
     }
 
+    /**
+     * Set the ray direction (normalized internally)
+     */
     public set direction(dir: Vector3) {
         this._dir.copy(dir);
         this._dir.normalize();
@@ -66,6 +69,12 @@ export class Ray {
     //     return this.intersectBox(box, this._vector) !== null;
     // }
 
+    /**
+     * Compute the intersection point of this ray with a bounding box
+     * @param box bounding box
+     * @param target optional output point
+     * @returns the intersection point, or null if there is none
+     */
     public intersectBox(box: IBound, target?: Vector3): Vector3 {
         let direction = this.direction;
         let origin = this.origin;

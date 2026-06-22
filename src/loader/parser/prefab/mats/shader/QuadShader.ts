@@ -10,6 +10,11 @@ import { RegisterShader } from "../../../../../util/SerializeDecoration";
 import { Shader } from "../../../../../gfx/graphics/webGpu/shader/Shader";
 
 
+/**
+ * Internal full-screen quad shader used by the prefab material pipeline for
+ * simple textured-rect blits.
+ * @internal
+ */
 @RegisterShader
 export class QuadShader extends Shader {
 

@@ -33,18 +33,22 @@ export class SpriteMaterial extends Material {
         this.baseMap = Engine3D.resFor(ctx).whiteTexture;
     }
 
+    /** Set the base (albedo) texture sampled by the sprite. */
     public set baseMap(texture: Texture) {
         this.shader.setTexture(`baseMap`, texture);
     }
 
+    /** Get the base (albedo) texture sampled by the sprite. */
     public get baseMap(): Texture {
         return this.shader.getTexture(`baseMap`);
     }
 
+    /** Set the tint color multiplied with the base texture. */
     public set color(value: Color) {
         this.shader.setUniformColor(`color`, value);
     }
 
+    /** Get the tint color multiplied with the base texture. */
     public get color(): Color {
         return this.shader.getUniformColor(`color`);
     }
@@ -54,6 +58,7 @@ export class SpriteMaterial extends Material {
         this.shader.setUniformVector4(`uvRect`, value);
     }
 
+    /** Get the UV sub-region as (offsetX, offsetY, scaleX, scaleY) in [0,1] texture space. */
     public get uvRect(): Vector4 {
         return this.shader.getUniformVector4(`uvRect`);
     }
@@ -63,14 +68,17 @@ export class SpriteMaterial extends Material {
         this.shader.setUniformVector2(`size`, value);
     }
 
+    /** Get the quad size in world units (meters). */
     public get size(): Vector2 {
         return this.shader.getUniformVector2(`size`);
     }
 
+    /** Set the pivot point (anchor) of the quad in normalized [0,1] space. */
     public set pivot(value: Vector2) {
         this.shader.setUniformVector2(`pivot`, value);
     }
 
+    /** Get the pivot point (anchor) of the quad in normalized [0,1] space. */
     public get pivot(): Vector2 {
         return this.shader.getUniformVector2(`pivot`);
     }
@@ -86,6 +94,7 @@ export class SpriteMaterial extends Material {
         this.shader.setUniformFloat(`distanceInvariant`, value ? 1.0 : 0.0);
     }
 
+    /** Get whether the sprite keeps a constant on-screen size regardless of camera distance. */
     public get distanceInvariantSize(): boolean {
         return this.shader.getUniformFloat(`distanceInvariant`) > 0.5;
     }
@@ -95,6 +104,7 @@ export class SpriteMaterial extends Material {
         this.shader.setUniformFloat(`cornerRadius`, value);
     }
 
+    /** Get the rounded-corner radius in world units. */
     public get cornerRadius(): number {
         return this.shader.getUniformFloat(`cornerRadius`);
     }
@@ -104,14 +114,17 @@ export class SpriteMaterial extends Material {
         this.shader.setDefine(`USE_VIDEO_TEXTURE`, value);
     }
 
+    /** Get whether the video-texture code path is enabled. */
     public get useVideoTexture(): boolean {
         return this.shader.getDefine(`USE_VIDEO_TEXTURE`);
     }
 
+    /** No-op setter; sprites do not sample an environment map. */
     public set envMap(_texture: Texture) {
         // sprites don't sample environment
     }
 
+    /** No-op setter; sprites do not receive shadows. */
     public set shadowMap(_texture: Texture) {
         // sprites don't receive shadow
     }

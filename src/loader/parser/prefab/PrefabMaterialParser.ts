@@ -11,9 +11,21 @@ import { KV } from "./prefabData/KVData";
 import { PrefabTextureData } from "./prefabData/PrefabTextureData";
 
 
+/**
+ * Parses material blocks from an Orillusion prefab binary stream. For each
+ * material it resolves the shader, applies textures and uniform properties,
+ * and registers the resulting {@link Material} with the engine resource host.
+ * @group Loader
+ */
 export class PrefabMaterialParser extends ParserBase {
     static format: ParserFormat = ParserFormat.TEXT;
 
+    /**
+     * Read every material block from the stream, build the corresponding
+     * materials, and register them on the resource host keyed by id.
+     * @param bytesStream the prefab binary stream positioned at the material section.
+     * @param prefabParser the owning prefab parser, used for context lookup.
+     */
     public static parserMaterial(bytesStream: BytesArray, prefabParser: PrefabParser) {
         let matCount = bytesStream.readInt32();
         for (let i = 0; i < matCount; i++) {
@@ -86,9 +98,8 @@ export class PrefabMaterialParser extends ParserBase {
 
 
     /**
-     * Verify parsing validity
-     * @param ret
-     * @returns
+     * Verify that parsing produced valid data.
+     * @returns true when data is present; throws otherwise.
      */
     public verification(): boolean {
         if (this.data) {

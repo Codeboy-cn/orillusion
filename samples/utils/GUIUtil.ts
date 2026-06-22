@@ -868,16 +868,6 @@ export class GUIUtil {
         let f = GUIHelp.addFolder('RenderPerformance');
         let renderJob = view.engine3D.getRenderJob(view);
         let engine = view.engine3D;
-        const postPass = view.renderGraph?.getPass<any>('PostPass');
-        if (postPass) {
-            let debugTextures = postPass.debugTextures;
-            let debugTextureObj = { normalRender: -1 };
-            for (let i = 0; i < debugTextures.length; i++) {
-                const tex = debugTextures[i];
-                debugTextureObj[tex.name] = i;
-            }
-            GUIHelp.add(engine.setting.render, 'debugQuad', debugTextureObj);
-        }
         let debugChanel = {
             PositionView: 0,
             ColorView: 1,

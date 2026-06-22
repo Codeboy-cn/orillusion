@@ -8,6 +8,9 @@ import { Navi3DMaskType } from "./Navi3DMaskType";
 import { Navi3DPoint } from "./Navi3DPoint";
 import { Navi3DPoint2D } from "./Navi3DPoint2D";
 
+/**
+ * @internal
+ */
 export class Navi3DTriangle extends Vector3 implements IQuadNode {
 
     private _id: number = 0;

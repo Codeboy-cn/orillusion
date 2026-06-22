@@ -13,6 +13,7 @@ export class EarthSkyMaterial extends Material {
 
     private _earthSkyShader: EarthSkyShader;
 
+    /** Creates the material and binds a default cube texture to avoid dimension mismatch. */
     constructor() {
         super();
         this.shader = this._earthSkyShader = new EarthSkyShader();
@@ -45,10 +46,12 @@ export class EarthSkyMaterial extends Material {
         return defaultShader.getTexture(`baseMap`);
     }
 
+    /** No-op; this material does not use an environment texture. */
     public set envMap(texture: Texture) {
         // not need env texture
     }
 
+    /** No-op; this material does not use a shadow map. */
     public set shadowMap(texture: Texture) {
         // not need shadowMap texture
     }

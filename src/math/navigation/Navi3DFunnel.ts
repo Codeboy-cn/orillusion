@@ -8,6 +8,9 @@ import { Navi3DPointFat } from "./Navi3DPointFat";
 import { Navi3DRouter } from "./Navi3DRouter";
 import { Navi3DTriangle } from "./Navi3DTriangle";
 
+/**
+ * @internal
+ */
 export class Navi3DFunnel {
 
     private _aiRadius: number = 0;

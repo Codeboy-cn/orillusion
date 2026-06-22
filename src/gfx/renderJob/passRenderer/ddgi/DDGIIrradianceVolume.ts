@@ -6,7 +6,6 @@ import { StorageGPUBuffer } from "../../../graphics/webGpu/core/buffer/StorageGP
 import { UniformGPUBuffer } from "../../../..";
 /**
  * @internal
- * @group Post
  */
 export class DDGIIrradianceVolume {
     public setting: GlobalIlluminationSetting;

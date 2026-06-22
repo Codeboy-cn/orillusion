@@ -5,6 +5,11 @@ import { BoundingBox } from "../../bound/BoundingBox";
 import { Frustum } from "../../bound/Frustum";
 import { OctreeEntity } from "./OctreeEntity";
 
+/**
+ * Spatial partitioning structure that recursively subdivides 3D space into
+ * eight octants, used for accelerating frustum culling and ray queries.
+ * @group Core
+ */
 export class Octree {
   private static _v1 = new Vector3();
   private static _v2 = new Vector3();

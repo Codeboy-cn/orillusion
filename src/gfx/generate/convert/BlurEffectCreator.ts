@@ -2,7 +2,6 @@ import { BlurEffectCreatorBlur_cs, BlurEffectCreatorSample_cs } from '../../../a
 import { Context3D } from '../../graphics/webGpu/Context3D';
 /**
  * @internal
- * @group GFX
  */
 export class BlurTexture2DBufferCreator {
     //Image is the texture of converting from rgba8unorm to rgba8unorm

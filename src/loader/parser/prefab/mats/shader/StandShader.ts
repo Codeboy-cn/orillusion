@@ -8,6 +8,11 @@ import { Vector4 } from "../../../../../math/Vector4";
 import { Shader } from "../../../../../gfx/graphics/webGpu/shader/Shader";
 
 
+/**
+ * Internal PBR shader used by the prefab material pipeline. Wraps a single
+ * PBR color pass and exposes typed getters/setters for its uniforms and maps.
+ * @internal
+ */
 export class StandShader extends Shader {
 
     private _ctx: Context3D | undefined;
@@ -97,58 +102,101 @@ export class StandShader extends Shader {
         this.setTexture('sceneColorPyramid', pyramid ?? res.whiteTexture);
     }
 
+    /**
+     * The base (albedo) color map.
+     */
     public get baseMap(): Texture {
         return this.getDefaultColorShader().getTexture(`baseMap`);
     }
 
+    /**
+     * The base (albedo) color map.
+     */
     public set baseMap(value: Texture) {
         this.getDefaultColorShader().setTexture(`baseMap`, value);
     }
 
+    /**
+     * The base (albedo) color tint.
+     */
     public get baseColor(): Color {
         return this.getDefaultColorShader().getUniform(`baseColor`);
     }
 
+    /**
+     * The base (albedo) color tint.
+     */
     public set baseColor(value: Color) {
         this.getDefaultColorShader().setUniformColor(`baseColor`, value);
     }
 
+    /**
+     * The tangent-space normal map.
+     */
     public get normalMap(): Texture {
         return this.getDefaultColorShader().getTexture(`normalMap`);
     }
 
+    /**
+     * The tangent-space normal map.
+     */
     public set normalMap(value: Texture) {
         this.getDefaultColorShader().setTexture(`normalMap`, value);
     }
 
+    /**
+     * Whether the surface is rendered double-sided.
+     */
     public get doubleSide(): boolean {
         return this.getDefaultColorShader().doubleSide;
     }
+    /**
+     * Whether the surface is rendered double-sided.
+     */
     public set doubleSide(value: boolean) {
         this.getDefaultColorShader().doubleSide = value;
     }
 
+    /**
+     * The alpha cutoff threshold used for alpha-clip rendering.
+     */
     public get alphaCutoff(): any {
         return this.getDefaultColorShader().shaderState.alphaCutoff;
     }
+    /**
+     * The alpha cutoff threshold used for alpha-clip rendering. Setting this
+     * also enables the `USE_ALPHACUT` shader define.
+     */
     public set alphaCutoff(value: any) {
         this.getDefaultColorShader().setDefine("USE_ALPHACUT", true);
         this.getDefaultColorShader().shaderState.alphaCutoff = value;
         this.getDefaultColorShader().setUniform(`alphaCutoff`, value);
     }
 
+    /**
+     * The emissive color.
+     */
     public get emissiveColor(): Color {
         return this.getDefaultColorShader().getUniform(`emissiveColor`);
     }
 
+    /**
+     * The emissive color.
+     */
     public set emissiveColor(value: Color) {
         this.getDefaultColorShader().setUniform(`emissiveColor`, value);
     }
 
+    /**
+     * The emissive intensity multiplier.
+     */
     public get emissiveIntensity(): number {
         return this.getDefaultColorShader().getUniform(`emissiveIntensity`);
     }
 
+    /**
+     * The emissive intensity multiplier.
+     */
     public set emissiveIntensity(value: number) {
         this.getDefaultColorShader().setUniform(`emissiveIntensity`, value);
     }
@@ -183,9 +231,15 @@ export class StandShader extends Shader {
         this.getDefaultColorShader().setUniform(`transformUV2`, value);
     }
 
+    /**
+     * Whether depth writes are enabled for the color pass.
+     */
     public get depthWriteEnabled(): boolean {
         return this.getDefaultColorShader().shaderState.depthWriteEnabled;
     }
+    /**
+     * Whether depth writes are enabled for the color pass.
+     */
     public set depthWriteEnabled(value: boolean) {
         this.getDefaultColorShader().shaderState.depthWriteEnabled = value;
     }
@@ -205,14 +259,14 @@ export class StandShader extends Shader {
     }
 
     /**
- * get specularColor
- */
+     * The specular color / reflectivity tint.
+     */
     public get specularColor(): Color {
         return this.getDefaultColorShader().uniforms[`specularColor`].color;
     }
 
-    /**specularColor
-     * set reflectivity
+    /**
+     * The specular color / reflectivity tint.
      */
     public set specularColor(value: Color) {
         this.getDefaultColorShader().setUniform(`specularColor`, value);

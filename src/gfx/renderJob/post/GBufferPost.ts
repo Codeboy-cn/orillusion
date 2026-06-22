@@ -59,7 +59,7 @@ export class GBufferPost extends PostBase {
 
     /**
      * @internal
-     */Render
+     */
     onDetach(view: View3D,) {
         // this.setting.render.useCompressGBuffer = false;
     }

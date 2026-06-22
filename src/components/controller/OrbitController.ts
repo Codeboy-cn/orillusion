@@ -72,13 +72,13 @@ export class OrbitController extends ComponentBase {
     }
 
     /**
-     * Set smoothing coefficient of controller
+     * Get smoothing coefficient of controller
      */
     public get smooth(): number {
         return this._smooth;
     }
     /**
-     * Get smoothing coefficient of controller
+     * Set smoothing coefficient of controller
      */
     public set smooth(v: number) {
         this._smooth = Math.max(v, 1)

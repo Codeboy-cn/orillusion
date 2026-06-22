@@ -14,14 +14,21 @@ import { FrustumCSM } from '../..';
  */
 @RegisterComponent(DirectLight, 'DirectLight')
 export class DirectLight extends LightBase {
+    /** Orthographic camera used to render the (non-CSM) shadow map. */
     public shadowCamera: Camera3D;
     // Debug visualization toggles (wired from GUIUtil). Split so CSM cascade draw
     // and non-CSM orthographic shadow-bound draw can be toggled independently.
+    /** Draw the CSM cascade frustums for debugging. */
     public debugCSM: boolean = false;
+    /** Draw the non-CSM orthographic shadow bounds for debugging. */
     public debugShadowBound: boolean = false;
+    /** Per-cascade shadow cameras when CSM is enabled. */
     public csmShadowCamera: Camera3D[] = [];
+    /** Cascaded shadow map frustum splitter. */
     public frustumCSM: FrustumCSM;
+    /** When true, the CSM cascades are recomputed every frame. */
     public csmAutoUpdate: boolean = true;
+    /** Optional custom cascade split distribution function. */
     public csmSplitFunction: (near: number, far: number, index: number, max: number) => number;
     protected _enableCSM: boolean = false;
 
@@ -32,6 +39,7 @@ export class DirectLight extends LightBase {
         this.shadowCamera.isShadowCamera = true;
     }
 
+    /** Initialize the shadow camera frustum to a usable default cube. */
     public start(): void {
         super.start();
         this.castGI = true;
@@ -52,6 +60,12 @@ export class DirectLight extends LightBase {
         this.shadowCamera.far = bound;
     }
 
+    /**
+     * Recompute the per-cascade shadow cameras from the render camera's
+     * frustum, using a rotation-invariant sphere fit plus texel snapping
+     * to keep cascade shadows stable as the camera moves.
+     * @param renderCamera the main rendering camera
+     */
     public updateShadowCameraCSM(renderCamera: Camera3D) {
         if (!this.csmAutoUpdate) return;
 
@@ -147,10 +161,12 @@ export class DirectLight extends LightBase {
     private _shadowBias: 'auto' | number = 'auto';
     private _normalBias: 'auto' | number = 'auto';
 
+    /** Whether cascaded shadow maps (CSM) are enabled for this light. */
     public get enableCSM(): boolean{
         return this._enableCSM;
     }
 
+    /** Enable or disable cascaded shadow maps (defaults to 4 cascades). */
     public set enableCSM(value: boolean) {
         if (this._enableCSM != value) {
             if (value) {
@@ -165,10 +181,12 @@ export class DirectLight extends LightBase {
         }
     }
 
+    /** Number of CSM cascades. */
     public get cascadeNum(): number{
         return this.lightData.csmShadowMapNum;
     }
 
+    /** Set the number of CSM cascades (min 1), rebuilding the cascade cameras. */
     public set cascadeNum(value: number){
         value = Math.max(value, 1);
         if (this.lightData.csmShadowMapNum != value) {
@@ -184,10 +202,12 @@ export class DirectLight extends LightBase {
         }
     }
 
+    /** Shadow depth bias; 'auto' derives a texel-size-based value. */
     public get shadowBias(): 'auto' | number {
         return this._shadowBias;
     }
 
+    /** Set the shadow depth bias (NDC depth units), or 'auto'. */
     public set shadowBias(value: 'auto' | number) {
         if (this._shadowBias != value) {
             this._shadowBias = value;
@@ -195,10 +215,12 @@ export class DirectLight extends LightBase {
         }
     }
 
+    /** Shadow normal bias; 'auto' derives a texel-size-based value. */
     public get normalBias(): 'auto' | number {
         return this._normalBias;
     }
 
+    /** Set the shadow normal bias (world units), or 'auto'. */
     public set normalBias(value: 'auto' | number) {
         if (this._normalBias != value) {
             this._normalBias = value;
@@ -206,10 +228,12 @@ export class DirectLight extends LightBase {
         }
     }
 
+    /** Width of the orthographic shadow bound (ignored when CSM is on). */
     public get shadowBoundWidth(): number {
         return this._shadowBoundWidth;
     }
 
+    /** Set the orthographic shadow bound width (ignored when CSM is on). */
     public set shadowBoundWidth(value: number) {
         if (this._shadowBoundWidth != value && !this.enableCSM) {
             this._shadowBoundWidth = value;
@@ -220,10 +244,12 @@ export class DirectLight extends LightBase {
         }
     }
 
+    /** Height of the orthographic shadow bound (ignored when CSM is on). */
     public get shadowBoundHeight(): number {
         return this._shadowBoundHeight;
     }
 
+    /** Set the orthographic shadow bound height (ignored when CSM is on). */
     public set shadowBoundHeight(value: number) {
         if (this._shadowBoundHeight != value && !this.enableCSM) {
             this._shadowBoundHeight = value;
@@ -234,10 +260,12 @@ export class DirectLight extends LightBase {
         }
     }
 
+    /** Near plane of the orthographic shadow bound (ignored when CSM is on). */
     public get shadowBoundNear(): number {
         return this.shadowCamera.near;
     }
 
+    /** Set the orthographic shadow bound near plane (ignored when CSM is on). */
     public set shadowBoundNear(value: number) {
         if (this.shadowCamera.near != value && !this.enableCSM) {
             this.shadowCamera.near = value;
@@ -245,10 +273,12 @@ export class DirectLight extends LightBase {
         }
     }
 
+    /** Far plane of the orthographic shadow bound (ignored when CSM is on). */
     public get shadowBoundFar(): number {
         return this.shadowCamera.far;
     }
 
+    /** Set the orthographic shadow bound far plane (ignored when CSM is on). */
     public set shadowBoundFar(value: number) {
         if (this.shadowCamera.far != value && !this.enableCSM) {
             this.shadowCamera.far = value;
@@ -256,6 +286,7 @@ export class DirectLight extends LightBase {
         }
     }
 
+    /** Initialize as a directional light and assign a default name. */
     public init(): void {
         super.init();
         if (this.object3D.name == "") {
@@ -284,15 +315,16 @@ export class DirectLight extends LightBase {
     }
 
     /**
-     *
-     * Get the radius of a directional light source
+     * Get the indirect (global illumination) contribution factor of this
+     * directional light.
      */
     public get indirect(): number {
         return this.lightData.quadratic as number;
     }
 
     /**
-     * Set the radius of a directional light source
+     * Set the indirect (global illumination) contribution factor of this
+     * directional light.
      */
     public set indirect(value: number) {
         this.lightData.quadratic = value;
@@ -324,6 +356,7 @@ export class DirectLight extends LightBase {
         // via ShadowBiasCalculator; no per-light cache needed here.
     }
 
+    /** Destroy the light and its (parentless) shadow/CSM cameras. */
     public destroy(force?: boolean): void {
         // super.destroy() flips `enable=false`, which fires onDisable → onChange,
         // and onChange reads shadowBoundFar (i.e. shadowCamera.far). Let the base

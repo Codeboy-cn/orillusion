@@ -20,6 +20,12 @@ type Object3DUtilHeap = {
     materialMap: Map<Texture, LitMaterial> | null;
 };
 
+/**
+ * Helper factory for quickly creating common debug/sample Object3D
+ * primitives (cubes, spheres, planes, point lights), backed by a
+ * per-Context3D cache of shared geometries and materials.
+ * @group Util
+ */
 export class Object3DUtil {
     // Cached geometries/materials are GPU-bearing; keep one heap per Context3D
     // so samples that run under multiple engines don't cross-bind resources.
@@ -39,14 +45,17 @@ export class Object3DUtil {
         return h;
     }
 
+    /** Shared unit box geometry for the given context. */
     public static CubeMesh(ctx: Context3D) {
         return this._getHeap(ctx).boxGeo;
     }
 
+    /** Shared unit sphere geometry for the given context. */
     public static SphereMesh(ctx: Context3D) {
         return this._getHeap(ctx).sphere;
     }
 
+    /** Create a cube Object3D using the shared box geometry and a cloned default material. */
     public static GetCube(ctx: Context3D) {
         const h = this._getHeap(ctx);
         let obj = new Object3D();
@@ -57,6 +66,7 @@ export class Object3DUtil {
         return obj;
     }
 
+    /** Get (and cache per texture) a clone of a LitMaterial whose base map is the given texture. */
     public static GetMaterial(ctx: Context3D, tex: Texture) {
         const h = this._getHeap(ctx);
         let mat = h.materialMap.get(tex);
@@ -68,6 +78,7 @@ export class Object3DUtil {
         return mat.clone();
     }
 
+    /** Create a textured, additively-blended plane Object3D (no shadow/GI/reflection). */
     public static GetPlane(ctx: Context3D, tex: Texture) {
         const h = this._getHeap(ctx);
         let obj = new Object3D();
@@ -82,6 +93,7 @@ export class Object3DUtil {
         return obj;
     }
 
+    /** Create a standalone cube with its own box geometry and a colored LitMaterial. */
     public static GetSingleCube(sizeX: number, sizeY: number, sizeZ: number, r: number, g: number, b: number) {
         let mat = new LitMaterial();
         mat.roughness = 0.5;
@@ -96,6 +108,7 @@ export class Object3DUtil {
         return obj;
     }
 
+    /** Create a standalone sphere with its own geometry and a colored LitMaterial. */
     public static GetSingleSphere(radius: number, r: number, g: number, b: number) {
         let mat = new LitMaterial();
         mat.baseColor = new Color(r, g, b, 1);
@@ -108,6 +121,7 @@ export class Object3DUtil {
         return obj;
     }
 
+    /** Create a standalone cube with the given material and uniform size (no shadow). */
     public static GetSingleCube2(mat: Material, size: number = 10) {
         let obj = new Object3D();
         let renderer = obj.addComponent(MeshRenderer);
@@ -117,6 +131,7 @@ export class Object3DUtil {
         return obj;
     }
 
+    /** Create a point light Object3D with a small visualizer sphere child. */
     public static GetPointLight(pos: Vector3, rotation: Vector3, radius: number, r: number, g: number, b: number, intensity: number = 1, castShadow: boolean = true) {
         let lightObj = new Object3D();
         let light = lightObj.addComponent(PointLight);

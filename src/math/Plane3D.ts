@@ -2,14 +2,10 @@ import { Vector3 } from "..";
 import { PlaneClassification } from "./PlaneClassification";
 
 /**
-* @language en_US
-* @class Plane3D
-* @classdesc
-* Plane3D represents a plane in 3D space.
-* It is composed of four coefficients (a, b, c, d) defining the plane equation Ax + By + Cz + D = 0.
-* @includeExample geom/Plane3D.ts
-* @platform Web,Native
-*/
+ * Plane3D represents a plane in 3D space.
+ * It is composed of four coefficients (a, b, c, d) defining the plane equation Ax + By + Cz + D = 0.
+ * @group Math
+ */
 export class Plane3D {
     /**
      * @language en_US
@@ -41,22 +37,22 @@ export class Plane3D {
 
     // indicates the alignment of the plane
     /**
-     * @private
+     * Plane alignment: not aligned to any principal axis plane.
      */
     public static ALIGN_ANY: number = 0;
 
     /**
-     * @private
+     * Plane alignment: aligned to the XY axis plane.
      */
     public static ALIGN_XY_AXIS: number = 1;
 
     /**
-     * @private
+     * Plane alignment: aligned to the YZ axis plane.
      */
     public static ALIGN_YZ_AXIS: number = 2;
 
     /**
-     * @private
+     * Plane alignment: aligned to the XZ axis plane.
      */
     public static ALIGN_XZ_AXIS: number = 3;
 

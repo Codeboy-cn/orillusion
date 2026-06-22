@@ -27,10 +27,12 @@ export class CubicBezierPath {
         this.setControlVertices(controlVertices, t);
     }
 
+    /** Return the path type (open or closed). */
     public getPathType() {
         return this.type;
     }
 
+    /** Return true if the path is closed. */
     public isClosed() {
         return this.type == CubicBezierType.Closed ? true : false;
     }
@@ -42,6 +44,7 @@ export class CubicBezierPath {
         return this.numCurveSegments > 0 ? true : false;
     }
 
+    /** Reset the path to empty, open state with no control vertices or segments. */
     public clear() {
         this.controlVertices.length = 0;
         this.type = CubicBezierType.Open;
@@ -49,6 +52,7 @@ export class CubicBezierPath {
         this.numControlVertices = 0;
     }
 
+    /** Compute an approximate path length by summing squared distances between interpolated points. */
     public computeApproxLength(): number {
         if (!this.isValid()) return 0.0;
 
@@ -70,16 +74,19 @@ export class CubicBezierPath {
         return totalDist;
     }
 
+    /** Return the approximate change in the raw parameter t per unit of path length. */
     public computeApproxParamPerUnitLength(): number {
         let length = this.computeApproxLength();
         return this.numCurveSegments / length;
     }
 
+    /** Return the approximate change in the normalized parameter t per unit of path length. */
     public computeApproxNormParamPerUnitLength(): number {
         let length = this.computeApproxLength();
         return 1.0 / length;
     }
 
+    /** Build the path from interpolated knots, generating interior control vertices automatically (knots.length must be >= 2). */
     public interpolatePoints(knots: Vector3[], t: CubicBezierType) {
         let numKnots = knots.length;
         if (numKnots < 2) console.error('point count must great 1');
@@ -176,6 +183,7 @@ export class CubicBezierPath {
     }
 
     // For a closed path the last CV must match the first.
+    /** Set the path directly from explicit control vertices; for a closed path the last CV must match the first. */
     public setControlVertices(cvs: Vector3[], t: CubicBezierType) {
         let numCVs = cvs.length;
         if (numCVs <= 0) return;
@@ -191,6 +199,7 @@ export class CubicBezierPath {
     }
 
     // t E [0, numSegments]. If the type is closed, the number of segments is one more than the equivalent open path.
+    /** Return the point on the path at parameter t in [0, numSegments]; closed paths wrap out-of-range t. */
     public getPoint(t: number): Vector3 {
         // Only closed paths accept t values out of range.
         if (this.type == CubicBezierType.Closed) {
@@ -221,12 +230,14 @@ export class CubicBezierPath {
 
     // Does the same as GetPoint except that t is normalized to be E [0, 1] over all segments. The beginning of the curve
     // is at t = 0 and the end at t = 1. Closed paths allow a value bigger than 1 in which case they loop.
+    /** Return the point on the path at normalized parameter t in [0, 1] over all segments. */
     public getPointNorm(t: number): Vector3 {
         return this.getPoint(t * this.numCurveSegments);
     }
 
     // Similar to GetPoint but returns the tangent at the specified point on the path. The tangent is not normalized.
     // The longer the tangent the 'more influence' it has pulling the path in that direction.
+    /** Return the (un-normalized) tangent on the path at parameter t in [0, numSegments]. */
     public getTangent(t: number): Vector3 {
         // Only closed paths accept t values out of range.
         if (this.type == CubicBezierType.Closed) {
@@ -255,6 +266,7 @@ export class CubicBezierPath {
         return bc.getTangent(t - segment);
     }
 
+    /** Return the (un-normalized) tangent at normalized parameter t in [0, 1] over all segments. */
     public getTangentNorm(t: number): Vector3 {
         return this.getTangent(t * this.numCurveSegments);
     }
@@ -262,6 +274,7 @@ export class CubicBezierPath {
     // This function returns a single closest point. There may be more than one point on the path at the same distance.
     // Use ComputeApproxParamPerUnitLength to determine a good paramThreshold. eg. Say you want a 15cm threshold,
     // use: paramThreshold = ComputeApproxParamPerUnitLength() * 0.15f.
+    /** Find the parameter t of the closest point on the path to pos, searching with the given param threshold. */
     public computeClosestParam(pos: Vector3, paramThreshold: number): number {
         let minDistSq = Number.MAX_SAFE_INTEGER;
         let closestParam = 0.0;
@@ -287,6 +300,7 @@ export class CubicBezierPath {
 
     // Same as above but returns a t value E [0, 1]. You'll need to use a paramThreshold like
     // ComputeApproxParamPerUnitLength() * 0.15f if you want a 15cm tolerance.
+    /** Like computeClosestParam but returns the closest point as a normalized parameter t in [0, 1]. */
     public computeClosestNormParam(pos: Vector3, paramThreshold: number) {
         return this.computeClosestParam(pos, paramThreshold * this.numCurveSegments);
     }

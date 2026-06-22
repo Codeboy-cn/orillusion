@@ -80,6 +80,7 @@ export class InputSystem extends CEventDispatcher {
     protected _keyEvent3d: KeyEvent;
     protected _pointerEvent3D: PointerEvent3D;
     protected _windowsEvent3d: CEvent;
+    /** Whether pointer lock is currently active. */
     mouseLock: boolean = false;
 
     private _wheelHandler: ((e: WheelEvent) => void) | null = null;
@@ -186,6 +187,7 @@ export class InputSystem extends CEventDispatcher {
         this.canvas = null;
     }
 
+    /** Request pointer lock on the canvas and start tracking locked mouse movement. */
     public useMouseLock() {
         if (this.mouseLock) return;
         this.canvas.requestPointerLock();
@@ -198,6 +200,7 @@ export class InputSystem extends CEventDispatcher {
         document.addEventListener("mousemove", this._mouseLockHandler, false);
     }
 
+    /** Exit pointer lock and stop tracking locked mouse movement. */
     public releaseMouseLock() {
         this.mouseLock = false;
         document.exitPointerLock();

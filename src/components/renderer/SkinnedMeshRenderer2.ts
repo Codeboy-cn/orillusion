@@ -17,6 +17,7 @@ import { AnimatorComponent, GeometryBase, LitMaterial, Material, Matrix4, Regist
  */
 @RegisterComponent(SkinnedMeshRenderer2, 'SkinnedMeshRenderer2')
 export class SkinnedMeshRenderer2 extends MeshRenderer {
+    /** Ordered names of the joints this skin is bound to. */
     public skinJointsName: Array<string>;
     protected mInverseBindMatrixData: Array<Float32Array>;
     protected mInverseBindMatrixBuffer: StorageGPUBuffer;
@@ -28,6 +29,7 @@ export class SkinnedMeshRenderer2 extends MeshRenderer {
         this.addRendererMask(RendererMask.SkinnedMesh);
     }
 
+    /** The skinned geometry; setting it extracts skin joint names and bind poses. */
     public get geometry(): GeometryBase {
         return this._geometry;
     }
@@ -45,6 +47,7 @@ export class SkinnedMeshRenderer2 extends MeshRenderer {
         this._forceSkeletonDefine();
     }
 
+    /** The materials applied to this skinned mesh. */
     public get materials(): Material[] {
         return super.materials;
     }
@@ -94,6 +97,7 @@ export class SkinnedMeshRenderer2 extends MeshRenderer {
         }
     }
 
+    /** Resolve the driving AnimatorComponent from the hierarchy if not already set. */
     public start() {
         super.start();
         // If GLTFSubParserConverter has already wired our skeletonAnimation
@@ -140,15 +144,18 @@ export class SkinnedMeshRenderer2 extends MeshRenderer {
         }
     }
 
+    /** Blend-shape (morph) data, mapping target name to influence value. */
     public get blendShape() {
         // key: string, value: number
         return this.morphData
     }
 
+    /** Register the renderer when enabled. */
     public onEnable(): void {
         super.onEnable();
     }
 
+    /** The AnimatorComponent driving this skin. */
     public get skeletonAnimation(): AnimatorComponent {
         return this.mSkeletonAnimation;
     }
@@ -166,6 +173,7 @@ export class SkinnedMeshRenderer2 extends MeshRenderer {
         }
     }
 
+    /** Per-joint inverse bind matrices used to skin the mesh. */
     public get skinInverseBindMatrices(): Array<Float32Array> {
         return this.mInverseBindMatrixData;
     }
@@ -182,14 +190,17 @@ export class SkinnedMeshRenderer2 extends MeshRenderer {
         this.mInverseBindMatrixBuffer.visibility = GPUShaderStage.VERTEX | GPUShaderStage.COMPUTE;
     }
 
+    /** GPU buffer holding the inverse bind matrices. */
     public get inverseBindMatrixBuffer(): StorageGPUBuffer {
         return this.mInverseBindMatrixBuffer;
     }
 
+    /** GPU buffer mapping skin joints to skeleton joint indices. */
     public get jointIndexTableBuffer(): GPUBuffer {
         return this.mJointIndexTableBuffer.buffer;
     }
 
+    /** Clone this skinned mesh renderer (with cloned materials) onto another object. */
     public cloneTo(obj: Object3D) {
         let skinnedMesh = obj.addComponent(SkinnedMeshRenderer2);
         let newMats = [];

@@ -9,10 +9,15 @@ import { Vector3 } from './Vector3';
  */
 export class Quaternion {
 
+    /** Shared scratch quaternion for intermediate calculations. */
     public static HELP_0: Quaternion = new Quaternion(0, 0, 0, 1);
+    /** Shared scratch quaternion for intermediate calculations. */
     public static HELP_1: Quaternion = new Quaternion(0, 0, 0, 1);
+    /** Shared scratch quaternion for intermediate calculations. */
     public static HELP_2: Quaternion = new Quaternion(0, 0, 0, 1);
+    /** Shared identity quaternion (0, 0, 0, 1). */
     public static _zero: Quaternion = new Quaternion(0, 0, 0, 1);
+    /** Shared scratch quaternion used for rotation calculations. */
     public static CALCULATION_QUATERNION: Quaternion = new Quaternion();
     /**
      * @internal
@@ -100,6 +105,7 @@ export class Quaternion {
         m.rawData[15] = 1.0;
     }
 
+    /** The magnitude (norm) of this quaternion. */
     public get magnitude(): number {
         return Math.sqrt(this.w * this.w + this.x * this.x + this.y * this.y + this.z * this.z);
     }
@@ -119,6 +125,7 @@ export class Quaternion {
         return this;
     }
 
+    /** Divide this quaternion by another quaternion (component-wise, new instance) or by a scalar (in place). */
     public divide(v): Quaternion {
         if (v instanceof Quaternion) {
             return new Quaternion(this.x / v.x, this.y / v.y, this.z / v.z);
@@ -558,6 +565,7 @@ export class Quaternion {
         return value < minInclusive ? minInclusive : value < maxInclusive ? value : maxInclusive;
     }
 
+    /** Returns a new Quaternion copy of the given quaternion, used for serialization. */
     static serialize(value: Quaternion): Quaternion {
         let v = new Quaternion(value.x, value.y, value.z, value.w);
         return v;
@@ -583,22 +591,27 @@ export class Quaternion {
         return this;
     }
 
+    /** Dot product of this quaternion and q. */
     public dot(q: Quaternion): number {
         return this.x * q.x + this.y * q.y + this.z * q.z + this.w * q.w;
     }
 
+    /** Squared length (norm) of this quaternion. */
     public lengthSq(): number {
         return this.dot(this);
     }
 
+    /** Length (norm) of this quaternion. */
     public length(): number {
         return Math.sqrt(this.lengthSq());
     }
 
+    /** Returns true if every component of q exactly equals this quaternion. */
     public equals(q: Quaternion): boolean {
         return q.x === this.x && q.y === this.y && q.z === this.z && q.w === this.w;
     }
 
+    /** Set x/y/z/w from array starting at offset. Mutates and returns this. */
     public fromArray(array: ArrayLike<number>, offset: number = 0): this {
         this.x = array[offset];
         this.y = array[offset + 1];
@@ -607,6 +620,7 @@ export class Quaternion {
         return this;
     }
 
+    /** Write x/y/z/w into array starting at offset and return the array. */
     public toArray(array: number[] = [], offset: number = 0): number[] {
         array[offset] = this.x;
         array[offset + 1] = this.y;

@@ -28,6 +28,7 @@ import { UnLitMaterial } from "./UnLitMaterial";
 export class SoftParticleMaterial extends UnLitMaterial {
     private _fadeDistance: number = 0.5;
 
+    /** Creates a soft particle material and enables the soft-fade shader path. */
     constructor(ctx?: Context3D) {
         super(ctx);
         this.shader.setDefine('USE_SOFT_PARTICLES', true);
@@ -39,6 +40,7 @@ export class SoftParticleMaterial extends UnLitMaterial {
     /** Distance (world units) over which the particle fades to alpha=0
      *  as it approaches an opaque surface. */
     public get fadeDistance(): number { return this._fadeDistance; }
+    /** Sets the world-space distance over which the particle fades near opaque surfaces. */
     public set fadeDistance(value: number) {
         this._fadeDistance = value;
         this.shader.setUniformFloat('softParticleFadeDistance', value);

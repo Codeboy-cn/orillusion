@@ -23,11 +23,32 @@ import { ValueParser } from "./prefabData/ValueParser";
 
 LitShader;
 LitSSSShader;
+/**
+ * Top-level parser for the Orillusion prefab (`.prefab`) binary format. It
+ * drives the sub-parsers in order (textures, avatars, meshes, materials, node
+ * tree) and reconstructs the prefab as a hierarchy of {@link Object3D} nodes
+ * with their attached components.
+ * @group Loader
+ */
 export class PrefabParser extends ParserBase {
+    /**
+     * When true, texture URLs are rewritten to the `webp` variant before loading.
+     */
     public static useWebp: boolean = true;
     static format: ParserFormat = ParserFormat.BIN;
+    /**
+     * Map of decoded avatar (skeleton) data keyed by avatar name.
+     */
     public avatarDic: { [name: string]: PrefabAvatarData };
+    /**
+     * Root node of the decoded prefab hierarchy.
+     */
     public nodeData: PrefabNode;
+    /**
+     * Decode the prefab buffer: parse textures, avatars, meshes, materials and
+     * the node tree, then build the resulting {@link Object3D} hierarchy into `data`.
+     * @param buffer the raw prefab binary buffer.
+     */
     public async parseBuffer(buffer: ArrayBuffer) {
         this.avatarDic = {};
 
@@ -94,9 +115,8 @@ export class PrefabParser extends ParserBase {
     }
 
     /**
-     * Verify parsing validity
-     * @param ret
-     * @returns
+     * Verify that parsing produced valid data.
+     * @returns true when data is present; throws otherwise.
      */
     public verification(): boolean {
         if (this.data) {

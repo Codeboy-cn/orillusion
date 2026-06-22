@@ -65,7 +65,7 @@ export class BloomPost extends PostBase {
     }
     /**
      * @internal
-     */Render
+     */
     onDetach(view: View3D,) {
         this.setting.render.postProcessing.bloom.enable = false;
         this.removeGUI();

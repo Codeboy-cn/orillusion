@@ -10,7 +10,6 @@ import { GPUTextureFormat } from '../../../graphics/webGpu/WebGPUConst';
 import { RendererPassState } from '../state/RendererPassState';
 /**
  * @internal
- * @group Post
  */
 export class DDGILightingPass {
     private computeShader: ComputeShader;

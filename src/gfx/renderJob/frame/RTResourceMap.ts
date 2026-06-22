@@ -6,7 +6,6 @@ import { Context3D } from '../../graphics/webGpu/Context3D';
  * Per-instance render-target registry. Each Engine3D/Context3D owns its
  * own registry; static methods require the owning Context3D explicitly.
  * @internal
- * @group Post
  */
 export class RTResourceMap {
 

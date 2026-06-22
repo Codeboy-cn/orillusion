@@ -8,7 +8,7 @@ import { Material } from './Material';
 import { UnLitShader } from '..';
 
 /**
- * Unlit Mateiral
+ * Unlit Material
  * A non glossy surface material without specular highlights.
  * @group Material
  */
@@ -31,6 +31,7 @@ export class UnLitMaterial extends Material {
         return this._alphaMode;
     }
 
+    /** Sets the glTF alpha mode and reconfigures blend/depth/define state. */
     public set alphaMode(mode: AlphaMode) {
         // Idempotent guard — see LambertMaterial.alphaMode for rationale.
         if (this._alphaMode === mode) return;
@@ -86,10 +87,12 @@ export class UnLitMaterial extends Material {
         this._notifyRenderClassificationDirty();
     }
 
+    /** Sets the base color map texture. */
     public set baseMap(texture: Texture) {
         this.shader.setTexture(`baseMap`, texture);
     }
 
+    /** Gets the base color map texture. */
     public get baseMap() {
         return this.shader.getTexture(`baseMap`);
     }

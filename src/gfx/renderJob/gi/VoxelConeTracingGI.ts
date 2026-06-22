@@ -23,7 +23,7 @@ import { Context3D } from "../../graphics/webGpu/Context3D";
  *   - Higher memory cost
  *   - Needs voxelization pass (DDGI uses ray-marched probes)
  *
- * @group GI
+ * @group GFX
  */
 export class VoxelConeTracingGI {
     private readonly _ctx: Context3D;

@@ -55,42 +55,50 @@ export class AtmosphericComponent extends SkyRenderer {
         return this._atmosphericScatteringSky?.setting ?? this._pendingSetting;
     }
 
+    /** Horizontal sun position in normalized [0,1] sky coordinates. */
     public get sunX() { return this._setting.sunX; }
     public set sunX(value) {
         if (this._setting.sunX != value) { this._setting.sunX = value; this._onChange = true; }
     }
 
+    /** Vertical sun position in normalized [0,1] sky coordinates. */
     public get sunY() { return this._setting.sunY; }
     public set sunY(value) {
         if (this._setting.sunY != value) { this._setting.sunY = value; this._onChange = true; }
     }
 
+    /** Eye (viewer) altitude used by the atmospheric scattering model. */
     public get eyePos() { return this._setting.eyePos; }
     public set eyePos(value) {
         if (this._setting.eyePos != value) { this._setting.eyePos = value; this._onChange = true; }
     }
 
+    /** Angular radius of the sun disc. */
     public get sunRadius() { return this._setting.sunRadius; }
     public set sunRadius(value) {
         if (this._setting.sunRadius != value) { this._setting.sunRadius = value; this._onChange = true; }
     }
 
+    /** Radiance (intensity) of the sun. */
     public get sunRadiance() { return this._setting.sunRadiance; }
     public set sunRadiance(value) {
         if (this._setting.sunRadiance != value) { this._setting.sunRadiance = value; this._onChange = true; }
     }
 
+    /** Overall brightness of the sun. */
     public get sunBrightness() { return this._setting.sunBrightness; }
     public set sunBrightness(value) {
         if (this._setting.sunBrightness != value) { this._setting.sunBrightness = value; this._onChange = true; }
     }
 
+    /** Whether the sun disc is drawn in the sky. */
     public get displaySun() { return this._setting.displaySun; }
     public set displaySun(value) {
         if (this._setting.displaySun != value) { this._setting.displaySun = value; this._onChange = true; }
     }
 
 
+    /** Initialize history tracking and the pending sky setting. */
     public init(): void {
         super.init();
         this._historyData = new HistoryData();
@@ -105,12 +113,14 @@ export class AtmosphericComponent extends SkyRenderer {
         scene.envMap = this._atmosphericScatteringSky;
     }
 
+    /** Ensure the GPU sky exists, then run base startup. */
     public start(view?: any): void {
         const ctx = view?.engine3D?.context3D ?? this.transform?.view3D?.engine3D?.context3D;
         this._ensureSky(ctx);
         super.start();
     }
 
+    /** Transform whose rotation is kept in sync with the sun direction. */
     public get relativeTransform() {
         return this._relatedTransform;
     }
@@ -120,6 +130,7 @@ export class AtmosphericComponent extends SkyRenderer {
         this._historyData.reset();
     }
 
+    /** Per-frame update: sync sun/transform rotation and re-bake the sky on change. */
     public onUpdate(view?: any) {
         const ctx = view?.engine3D?.context3D ?? this.transform?.view3D?.engine3D?.context3D;
         this._ensureSky(ctx);
@@ -143,6 +154,7 @@ export class AtmosphericComponent extends SkyRenderer {
 
     }
 
+    /** Destroy the component and release the GPU sky resources. */
     public destroy(force?: boolean): void {
         super.destroy(force);
         this._atmosphericScatteringSky?.destroy();
