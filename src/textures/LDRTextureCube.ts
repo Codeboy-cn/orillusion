@@ -36,7 +36,9 @@ export class LDRTextureCube extends TextureCube {
     */
     public async load(url: string, loaderFunctions?: LoaderFunctions, ctx?: Context3D): Promise<LDRTextureCube> {
         this._url = url;
-        let bitmapTexture: BitmapTexture2D = new BitmapTexture2D(false, ctx);
+        // Panorama LDR images are sRGB-encoded; decode to linear on sample so the
+        // linear rgba16float cube holds correct values (CubeSky emits linear).
+        let bitmapTexture: BitmapTexture2D = new BitmapTexture2D(false, ctx, 'srgb');
         await bitmapTexture.load(url, loaderFunctions);
         this.createFromLDRTexture(bitmapTexture, ctx);
         return this;
