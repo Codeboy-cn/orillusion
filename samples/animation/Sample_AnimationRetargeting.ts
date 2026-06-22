@@ -128,7 +128,22 @@ class Sample_AnimationRetargeting {
         return true;
     }
 
+    /** Top-centered overlay crediting the character model source. */
+    private _addCredit(text: string) {
+        const credit = document.createElement('div');
+        credit.style.cssText = [
+            'position:fixed', 'top:8px', 'left:50%', 'transform:translateX(-50%)',
+            'padding:6px 14px', 'background:rgba(0,0,0,0.65)', 'color:#fff',
+            'font:13px/1.4 monospace', 'border-radius:4px', 'pointer-events:none',
+            'z-index:99999', 'user-select:none',
+        ].join(';');
+        credit.textContent = text;
+        document.body.appendChild(credit);
+    }
+
     private _buildGUI() {
+        this._addCredit('Character models from mixamo.com');
+
         // one toggle, "show helpers".
         GUIHelp.add(this.helpers, 'visible').name('show helpers').onChange((v: boolean) => {
             // Toggle the source mesh visibility — gives the same "isolate the

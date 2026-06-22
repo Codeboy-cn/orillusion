@@ -125,7 +125,22 @@ class Sample_AnimationAdditiveBlending {
         return true;
     }
 
+    /** Top-centered overlay crediting the character model source. */
+    private _addCredit(text: string) {
+        const credit = document.createElement('div');
+        credit.style.cssText = [
+            'position:fixed', 'top:8px', 'left:50%', 'transform:translateX(-50%)',
+            'padding:6px 14px', 'background:rgba(0,0,0,0.65)', 'color:#fff',
+            'font:13px/1.4 monospace', 'border-radius:4px', 'pointer-events:none',
+            'z-index:99999', 'user-select:none',
+        ].join(';');
+        credit.textContent = text;
+        document.body.appendChild(credit);
+    }
+
     private _buildGUI() {
+        this._addCredit('Character model from mixamo.com');
+
         // ---- Base Actions ----
         GUIHelp.addFolder('Base Actions').open();
         for (const name of BASE_ACTIONS) {
