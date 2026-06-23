@@ -456,6 +456,13 @@ export class Engine3D {
         // don't have to walk the transform→view3D chain.
         if (view.camera) {
             (view.camera as any)._boundCtx ||= this.context3D;
+            // Setting `_boundCtx` directly (above) is enough for render-time
+            // lookups but bypasses Camera3D._bindToCtx — the only place the
+            // CResizeEvent.RESIZE listener is registered. updateProjection()
+            // lazily attaches that listener and syncs `aspect` to the current
+            // backbuffer; without it the projection aspect never tracks canvas
+            // resizes and the rendered scene stretches after a window resize.
+            view.camera.updateProjection();
             // Propagate to CSM shadow cameras (created when enableCSM is set
             // before startRenderView, so they miss the _bindToCtx path).
             const csm = (view.camera as any).csm;
