@@ -54,10 +54,10 @@ class Sample_Transmission {
         // HDR cube — both visible background (SkyRenderer) AND IBL
         // (scene.envMap). Royal Esplanade (Poly Haven CC0 / public
         // domain) — chosen for its strong reflection cues.
-        const hdr = await this.engine.res.loadHDRTextureCube('/hdri/royal_esplanade_1k.hdr');
         const sky = this.scene.addComponent(SkyRenderer);
-        sky.map = hdr;
-        this.scene.envMap = hdr;
+        // sky.map = await this.engine.res.loadHDRTextureCube('/hdri/royal_esplanade_1k.hdr');
+        sky.map = await this.engine.res.loadLDRTextureCube('sky/LDR_sky.jpg')
+        this.scene.envMap = sky.map;
 
         const camera = CameraUtil.createCamera3DObject(this.scene);
         camera.perspective(40, this.engine.aspect, 1, 2000);
