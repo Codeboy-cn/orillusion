@@ -55,7 +55,6 @@ class Sample_Transmission {
         // (scene.envMap). Royal Esplanade (Poly Haven CC0 / public
         // domain) — chosen for its strong reflection cues.
         const sky = this.scene.addComponent(SkyRenderer);
-        // sky.map = await this.engine.res.loadHDRTextureCube('/hdri/royal_esplanade_1k.hdr');
         sky.map = await this.engine.res.loadLDRTextureCube('sky/LDR_sky.jpg')
         this.scene.envMap = sky.map;
 
