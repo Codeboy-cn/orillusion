@@ -138,7 +138,31 @@ export class TransientTexturePool {
                 const existing = this._dedicatedByName.get(lt.name);
                 if (existing && existing.bucketKey === bucketKey) {
                     slot = existing;
+                } else if (existing && inPlaceResizable(existing.bucketKey, bucketKey)) {
+                    // Only the resolution changed (canvas resize). Resize
+                    // the wrapper IN PLACE rather than allocating a new
+                    // RenderTexture. Dedicated slots exist precisely so
+                    // consumers (e.g. LitMaterial's transmission pass)
+                    // can cache a bind group against a fixed RenderTexture
+                    // identity; replacing the wrapper on resize would
+                    // strand those bind groups on the destroyed old-size
+                    // GPUTexture, producing "Destroyed texture [...] used
+                    // in a submit" every frame after a resize. resize()
+                    // delay-destroys the old GPU texture, rebuilds the
+                    // descriptor and fires noticeChange() so consumers
+                    // rebind to the new texture next frame.
+                    this._currentBytes -= existing.estimatedBytes;
+                    existing.rt.resize(w, h);
+                    this._patchMipLevels(existing.rt, desc);
+                    existing.bucketKey = bucketKey;
+                    existing.estimatedBytes = estimateTextureBytes(desc, w, h);
+                    this._currentBytes += existing.estimatedBytes;
+                    if (this._currentBytes > this._peakBytes) this._peakBytes = this._currentBytes;
+                    slot = existing;
                 } else {
+                    // No existing slot, or a non-size attribute (format,
+                    // usage, layers, samples, mips) changed — the GPU
+                    // texture is fundamentally different, so allocate fresh.
                     if (existing) this._destroySlot(existing);
                     slot = this._allocateSlot(lt, desc, w, h, finalUsage, bucketKey);
                     this._dedicatedByName.set(lt.name, slot);
@@ -172,6 +196,24 @@ export class TransientTexturePool {
             if (!liveDedicated.has(name)) {
                 this._destroySlot(slot);
                 this._dedicatedByName.delete(name);
+            }
+        }
+
+        // Sweep stale aliasable buckets. A bucket key encodes WxH (see
+        // computeBucketKey), so a canvas resize routes every transient to
+        // a freshly-keyed bucket and leaves the previous size's bucket
+        // behind. Markers were reset to null at the top of this pass and
+        // only re-set for slots claimed this window, so a bucket with no
+        // claimed slot is a shape the live graph no longer references —
+        // most commonly an old resolution. Without this, the pool retains
+        // a full set of transient RenderTextures per distinct size ever
+        // seen, leaking GPU memory on every resize until allocation fails.
+        // Live-size buckets keep all their slots (including idle aliasing
+        // headroom) because at least one slot is in use.
+        for (const [key, list] of this._buckets) {
+            if (!list.some(slot => slot.inUseByName !== null)) {
+                for (const slot of list) this._destroySlot(slot);
+                this._buckets.delete(key);
             }
         }
 
@@ -255,34 +297,7 @@ export class TransientTexturePool {
             this._ctx,
         );
         rt.name = desc.label ?? lt.name;
-        // Force the GPUTextureDescriptor's actual mip count — the
-        // RenderTexture ctor + resize() path forces useMipmap=false
-        // and rebuilds the descriptor with mipLevelCount=1. Phase 4
-        // removes this workaround at the RenderTexture level.
-        //
-        // Patch only `textureDescriptor.mipLevelCount` + null the
-        // cached gpuTexture/view so the next materialize uses the new
-        // mip count. Do NOT also touch `mipmapCount` / `viewDescriptor`
-        // / `useMipmap` on the wrapper — those propagate into
-        // `textureBindingLayout.sampleType` rebuilds that flip r32float
-        // from `unfilterable-float` (correct) to filterable `float`
-        // (rejected by validation). HiZ + downstream r32float consumers
-        // bind via their own explicit views + bind-group layouts so the
-        // wrapper-level sample-type defaults don't matter for them; for
-        // rgba16float pyramids the defaults already match (filterable).
-        const mips = desc.mipLevelCount ?? 1;
-        if (mips > 1) {
-            const rtAny = rt as unknown as {
-                textureDescriptor?: GPUTextureDescriptor;
-                gpuTexture: GPUTexture | null;
-                view: GPUTextureView | null;
-            };
-            if (rtAny.textureDescriptor) {
-                rtAny.textureDescriptor.mipLevelCount = mips;
-            }
-            rtAny.gpuTexture = null;
-            rtAny.view = null;
-        }
+        this._patchMipLevels(rt, desc);
         const estimatedBytes = estimateTextureBytes(desc, w, h);
         this._currentBytes += estimatedBytes;
         if (this._currentBytes > this._peakBytes) this._peakBytes = this._currentBytes;
@@ -293,6 +308,52 @@ export class TransientTexturePool {
             inUseByName: lt.name,
             estimatedBytes,
         };
+    }
+
+    /**
+     * Force the GPUTextureDescriptor's actual mip count — the
+     * RenderTexture ctor + resize() path forces useMipmap=false and
+     * rebuilds the descriptor with mipLevelCount=1. Phase 4 removes this
+     * workaround at the RenderTexture level.
+     *
+     * Patch only `textureDescriptor.mipLevelCount` + null the cached
+     * gpuTexture/view so the next materialize uses the new mip count. Do
+     * NOT also touch `mipmapCount` / `viewDescriptor` / `useMipmap` on the
+     * wrapper — those propagate into `textureBindingLayout.sampleType`
+     * rebuilds that flip r32float from `unfilterable-float` (correct) to
+     * filterable `float` (rejected by validation). HiZ + downstream
+     * r32float consumers bind via their own explicit views + bind-group
+     * layouts so the wrapper-level sample-type defaults don't matter for
+     * them; for rgba16float pyramids the defaults already match
+     * (filterable). Re-applied after an in-place resize because resize()
+     * rebuilds the descriptor back to mipLevelCount=1.
+     *
+     * The requested count is clamped to the maximum a full mip chain
+     * supports at the texture's current size (`1 + floor(log2(max(w,h)))`).
+     * Passes that bake their mip count once at setup time from the initial
+     * presentation size (e.g. HiZPass) would otherwise keep requesting that
+     * fixed count after the canvas shrinks below the next power of two,
+     * tripping WebGPU's "mip level count exceeds the maximum for its size"
+     * validation and aborting the frame — a resize crash distinct from the
+     * stale-bind-group one. Consumers that need the real count read it back
+     * from `textureDescriptor.mipLevelCount` (HiZPass.execute), so clamping
+     * here keeps their generation loops in range too.
+     */
+    private _patchMipLevels(rt: RenderTexture, desc: TextureDesc): void {
+        const requested = desc.mipLevelCount ?? 1;
+        if (requested <= 1) return;
+        const maxForSize = 1 + Math.floor(Math.log2(Math.max(rt.width, rt.height)));
+        const mips = Math.min(requested, maxForSize);
+        const rtAny = rt as unknown as {
+            textureDescriptor?: GPUTextureDescriptor;
+            gpuTexture: GPUTexture | null;
+            view: GPUTextureView | null;
+        };
+        if (rtAny.textureDescriptor) {
+            rtAny.textureDescriptor.mipLevelCount = mips;
+        }
+        rtAny.gpuTexture = null;
+        rtAny.view = null;
     }
 
     private _destroySlot(slot: PooledTexture): void {
@@ -317,6 +378,26 @@ export function computeBucketKey(desc: TextureDesc, w: number, h: number, usage:
     const sample = desc.sampleCount ?? 0;
     const layers = desc.numberLayer ?? 1;
     return `${desc.format}|${w}x${h}|s${sample}|l${layers}|m${mip}|u${usage}`;
+}
+
+/**
+ * Whether bucket key `b` describes the same texture that key `a` does after
+ * an in-place resize — i.e. it differs only in attributes that
+ * {@link RenderTexture.resize} + {@link TransientTexturePool._patchMipLevels}
+ * can rebuild without constructing a new wrapper: the `WxH` size token (index
+ * 1) and the `m<mip>` mip-count token (index 4, which for pyramids is a
+ * function of size). Format, sample count, layer count and usage are fixed at
+ * construction and resize() reuses them, so any difference there is a genuine
+ * shape change that requires a fresh allocation. Keeping the wrapper identity
+ * stable for size/mip-only changes is what lets dedicated-slot consumers
+ * (cached material bind groups) survive a canvas resize.
+ *
+ * @internal
+ */
+export function inPlaceResizable(a: string, b: string): boolean {
+    if (a === b) return false;
+    const strip = (k: string) => { const p = k.split('|'); p.splice(4, 1); p.splice(1, 1); return p.join('|'); };
+    return strip(a) === strip(b);
 }
 
 /**

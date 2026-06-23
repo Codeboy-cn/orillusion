@@ -134,6 +134,17 @@ export class RenderTexture extends Texture {
         }
 
         this._textureChange = true;
+        // resize() delay-destroys the old GPU texture and nulls the cached
+        // view, so every consumer that cached a bind group built from the
+        // previous view must rebind. Fire the state-change callbacks (the
+        // same path setTexture()/useMipmap use) so RenderShaderPass marks
+        // itself dirty and rebuilds its bind group from the new view next
+        // frame. Without this a material that bound this texture keeps
+        // submitting the destroyed old-size view — the "Destroyed texture
+        // [...] used in a submit" validation error seen after a window
+        // resize. During construction _stateChangeRef is empty, so the
+        // call is a no-op on the first resize from the ctor.
+        this.noticeChange();
     }
 
     /**

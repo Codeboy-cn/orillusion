@@ -131,6 +131,18 @@ export class TransientBufferPool {
             }
         }
 
+        // Sweep stale aliasable buckets, mirroring TransientTexturePool.
+        // A bucket whose slots all went unclaimed this window (markers
+        // were reset to null at the top of assign) is a size/usage shape
+        // the live graph no longer references, so retaining it leaks GPU
+        // memory across resolution-dependent recompiles.
+        for (const [key, list] of this._buckets) {
+            if (!list.some(slot => slot.inUseByName !== null)) {
+                for (const slot of list) this._destroySlot(slot);
+                this._buckets.delete(key);
+            }
+        }
+
         return { bindings, debug };
     }
 
