@@ -96,7 +96,7 @@ class Sample_AnimationAdditiveBlending {
         this.scene.addChild(this.light);
 
         // Xbot — Mixamo's "Y Bot" rig as the workhorse for additive blending.
-        const xbotRoot = await this.engine.res.loadGltf('gltfs/three/Xbot.glb');
+        const xbotRoot = await this.engine.res.loadGltf('gltfs/glb/Xbot.glb');
         this.scene.addChild(xbotRoot);
         this.animator = xbotRoot.getComponentsInChild(AnimatorComponent)[0];
 

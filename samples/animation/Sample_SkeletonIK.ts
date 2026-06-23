@@ -159,6 +159,9 @@ class Sample_SkeletonIK {
         const target = this.makeMarker(ankleP, new Color(1.0, 0.4, 0.1, 1), 2.0);
         const pole = this.makeMarker(poleP, new Color(0.1, 0.7, 1.0, 1), 1.4);
 
+        this.scene.addChild(target);
+        // this.scene.addChild(pole);
+
         const solver = new TwoBoneIK({
             name: `foot_${side}`,
             chain: [hipName, kneeName, ankleName],
@@ -199,7 +202,6 @@ class Sample_SkeletonIK {
         o.x = pos.x;
         o.y = pos.y;
         o.z = pos.z;
-        this.scene.addChild(o);
         return o;
     }
 

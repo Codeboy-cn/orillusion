@@ -113,7 +113,7 @@ class Sample_AnimationIK {
     async initScene() {
         GUIHelp.init();
 
-        const kiraRoot = await this.engine.res.loadGltf('gltfs/three/kira.glb');
+        const kiraRoot = await this.engine.res.loadGltf('gltfs/glb/kira.glb');
         this.scene.addChild(kiraRoot);
 
         // // Hide every top-level child of kiraRoot except the "Kira" node —

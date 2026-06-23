@@ -10,7 +10,7 @@ app.commandLine.appendSwitch('enable-unsafe-webgpu');
 app.commandLine.appendSwitch('enable-features', 'Vulkan,UseSkiaRenderer');
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const URL_ = process.argv[2] || 'gltfs/three/Xbot.glb';
+const URL_ = process.argv[2] || 'gltfs/glb/Xbot.glb';
 
 const captured = [];
 

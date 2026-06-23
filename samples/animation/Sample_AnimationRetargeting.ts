@@ -108,7 +108,7 @@ class Sample_AnimationRetargeting {
         // node so his bind hip world matches Michelle's, then runs
         // naive world-copy retargeting so Soldier's bones overlay
         // Michelle's at every frame.
-        this.sourceRoot = await this.engine.res.loadGltf('gltfs/three/Michelle.glb');
+        this.sourceRoot = await this.engine.res.loadGltf('gltfs/glb/Michelle.glb');
         this.scene.addChild(this.sourceRoot);
         this.sourceRoot.x = -1.0;
         this.sourceRoot.rotationY = 90;
@@ -116,7 +116,7 @@ class Sample_AnimationRetargeting {
         this.sourceAnimator.playAnim('SambaDance');
 
         // ---------- Target: Soldier (no own animation; driven by retargeter) ----------
-        const targetRoot = await this.engine.res.loadGltf('gltfs/three/Soldier.glb');
+        const targetRoot = await this.engine.res.loadGltf('gltfs/glb/Soldier.glb');
         this.scene.addChild(targetRoot);
         targetRoot.x = 1.0;
         targetRoot.rotationY = -90;
