@@ -181,6 +181,12 @@ export class Transform extends ComponentBase {
 
     /** Enable state; propagates to all child transforms. */
     public set enable(value: boolean) {
+        if (value && !this.transform._scene3d) {
+            // Intentional semantics: detached objects never enable (they are
+            // excluded from render collection). Warn because the silent
+            // rewrite to false repeatedly surprises downstream users.
+            console.warn('[Transform] enable=true on detached Object3D is ignored; addChild to a scene first.', this.object3D?.name);
+        }
         if (this.transform._scene3d && value) {
             super.enable = true;
         } else {

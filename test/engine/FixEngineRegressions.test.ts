@@ -92,6 +92,28 @@ await test('Cone emitter produces a cone distribution, not a single point [fix-e
     expect(Math.max(...tilts) > emitter.angle * 0.8).toEqual(true);
 })
 
+await test('enable=true on detached Object3D warns but keeps semantics [fix-engine E5]', async () => {
+    let warned = false;
+    const orig = console.warn;
+    console.warn = (...args: any[]) => { if (String(args[0]).includes('[Transform]')) warned = true; };
+    let obj = new Object3D();
+    obj.transform.enable = true;
+    console.warn = orig;
+    expect(warned).toEqual(true);
+    // Behavior is unchanged: still silently rewritten to false.
+    expect(obj.transform.enable).toEqual(false);
+
+    // Attached objects do not warn.
+    warned = false;
+    console.warn = (...args: any[]) => { if (String(args[0]).includes('[Transform]')) warned = true; };
+    view.scene.addChild(obj);
+    obj.transform.enable = true;
+    console.warn = orig;
+    expect(warned).toEqual(false);
+    expect(obj.transform.enable).toEqual(true);
+    obj.destroy();
+})
+
 await test('waitStartComponent drops dead keys on destroy-before-start [fix-engine E6]', async () => {
     for (let i = 0; i < 8; i++) {
         let obj = new Object3D();
