@@ -67,10 +67,10 @@ export class PlaneGeometry extends GeometryBase {
 
         let indices_arr: any;
         let totalIndexCount = this.segmentW * this.segmentH * 2 * 3;
-        if (totalIndexCount >= Uint16Array.length) {
-            indices_arr = new Uint32Array(this.segmentW * this.segmentH * 2 * 3);
+        if (vertexCount > 65535) {
+            indices_arr = new Uint32Array(totalIndexCount);
         } else {
-            indices_arr = new Uint16Array(this.segmentW * this.segmentH * 2 * 3);
+            indices_arr = new Uint16Array(totalIndexCount);
         }
 
         numIndices = 0;
