@@ -415,7 +415,14 @@ export class Matrix4 {
     private static floatArray: FloatArray = new Float64Array(16).fill(0);
 
     /**
-     * matrix multiply
+     * matrix multiply.
+     *
+     * NOTE: despite the name, this computes `this = mat4 · this`
+     * (a PREMULTIPLY — identical to {@link premultiply}), which is the
+     * opposite operand order of the static
+     * `Matrix4.multiplyMatrices(a, b) = a · b`. Prefer the static form
+     * or {@link multiplyMatrices} when operand order matters.
+     * See docs/engine-conventions.md.
      * @param mat4 multiply target
      */
     public multiply(mat4: Matrix4): this {
@@ -462,7 +469,8 @@ export class Matrix4 {
         return this;
     }
 
-    /** Set this = m * this. */
+    /** Set this = m * this. (The instance {@link multiply} performs the
+     *  SAME operation despite its name — see docs/engine-conventions.md.) */
     public premultiply(m: Matrix4): this {
         return this.multiplyMatrices(m, this) as this;
     }
@@ -1641,7 +1649,11 @@ export class Matrix4 {
      * @param target Vector of results
      * @param quaternion Rotate the quaternion
      * @param isDegree Whether to convert to Angle
-     * @param order convert order
+     * @param order convert order. DEFAULTS TO 'XYZ', but the engine's own
+     *        euler convention (Transform.rotationX/Y/Z,
+     *        Quaternion.setFromEuler/getEulerAngles) is 'ZYX' — pass
+     *        'ZYX' explicitly for values that round-trip with those APIs.
+     *        See docs/engine-conventions.md.
      * @returns
      */
     static getEuler(target: Vector3, quaternion: Quaternion, isDegree: boolean = true, order?: string) {
