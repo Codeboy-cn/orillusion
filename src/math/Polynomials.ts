@@ -77,9 +77,16 @@ export function cubicPolynomialRootsGeneric(roots: number[], a: number, b: numbe
         let la = a;
         let lb = b + a * roots[0];
         let lc = c + b * roots[0] + a * roots[0] * roots[0];
-        numRoots += quadraticPolynomialRootsGeneric(la, lb, lc, { r0: roots[1], r1: roots[2] });
+        // Use a persistent out object and copy the results back into roots
+        let out = { r0: roots[1], r1: roots[2] };
+        numRoots += quadraticPolynomialRootsGeneric(la, lb, lc, out);
+        roots[1] = out.r0;
+        roots[2] = out.r1;
     } else {
-        numRoots += quadraticPolynomialRootsGeneric(b, c, d, { r0: roots[1], r1: roots[2] });
+        let out = { r0: roots[1], r1: roots[2] };
+        numRoots += quadraticPolynomialRootsGeneric(b, c, d, out);
+        roots[1] = out.r0;
+        roots[2] = out.r1;
     }
 
     return numRoots;

@@ -2,7 +2,7 @@
  * @internal
  */
 export function uniform_real_distribution(min, max) {
-    return Math.random() * max + Math.random() * min + (max - min) * Math.random();
+    return min + (max - min) * Math.random();
 }
 
 /**

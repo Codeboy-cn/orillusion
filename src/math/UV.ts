@@ -24,8 +24,8 @@ export class UV extends Vector2 {
 
     public static getUVSheet(frame: number, countX: number, countY: number) {
         let f = Math.floor(frame % (countX * countY));
-        let fx = Math.floor(f / countX);
-        let fy = f % countX;
+        let fx = f % countX;
+        let fy = Math.floor(f / countX);
         return new Vector4((fx / countX), (fy / countY), 1 / countX, 1 / countY);
     }
 }

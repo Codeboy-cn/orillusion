@@ -345,13 +345,9 @@ export function lerpByte(u0, u1, scale) {
  */
 export let PingPong = function (t: number, start: number, end: number): number {
     let len = end - start;
-    let tt = Math.floor(t / len);
-    let sd = tt % 2;
-    if (sd == 0) {
-        return (t % len) + start;
-    } else {
-        return end - (t % len) + start;
-    }
+    // Wrap into [0, 2*len) handling negative values, then mirror the return leg
+    const p2 = (((t - start) % (2 * len)) + 2 * len) % (2 * len);
+    return start + (p2 <= len ? p2 : 2 * len - p2);
 };
 
 /**
@@ -359,7 +355,9 @@ export let PingPong = function (t: number, start: number, end: number): number {
  */
 export let RepeatSE = function (t: number, start: number, end: number): number {
     let len = end - start;
-    return (t % len) + start;
+    // Wrap into [0, len) handling negative values
+    const p = (((t - start) % len) + len) % len;
+    return start + p;
 };
 
 /**
@@ -368,7 +366,7 @@ export let RepeatSE = function (t: number, start: number, end: number): number {
 export let GetRepeat = function (datas: any[], element: any): number {
     let count = 0;
     for (let i in datas) {
-        if (i == element) {
+        if (datas[i] == element) {
             count++;
         }
     }
@@ -411,7 +409,7 @@ export function dot(lhs: Vector2 | Quaternion | Vector3, rhs: Vector2 | Quaterni
         return lhs.x * rhs.x + lhs.y * rhs.y + lhs.z * rhs.z;
     }
     else if (lhs instanceof Quaternion && rhs instanceof Quaternion) {
-        return lhs.x * rhs.x + lhs.y * rhs.y + lhs.z * rhs.z;
+        return lhs.x * rhs.x + lhs.y * rhs.y + lhs.z * rhs.z + lhs.w * rhs.w;
 
     } else {
         return lhs.x * rhs.x + lhs.y * rhs.y;
@@ -447,6 +445,7 @@ export function normalizeSafe(inV: Vector2 | Vector3 | Quaternion, defaultV?: Ve
     if (mag > Vector3.EPSILON) {
         if (inV instanceof Vector2) return inV.clone().divide(mag);
         if (inV instanceof Vector3) return inV.clone().divideScalar(mag);
+        if (inV instanceof Quaternion) return new Quaternion(inV.x / mag, inV.y / mag, inV.z / mag, inV.w / mag);
     }
     else {
         if (inV instanceof Vector2) {
@@ -497,14 +496,14 @@ export function rangedRandomInt(r: Rand, min: number, max: number) {
     let dif;
     if (min < max) {
         dif = max - min;
-        // let t = r.Get () % dif;
-        let t = r.get() % dif;
+        // Force unsigned before modulo; r.get() may return a signed value
+        let t = (r.get() >>> 0) % dif;
         t += min;
         return t;
     } else if (min > max) {
         dif = min - max;
-        // let t = r.Get () % dif;
-        let t = r.get() % dif;
+        // Force unsigned before modulo; r.get() may return a signed value
+        let t = (r.get() >>> 0) % dif;
         t = min - t;
         return t;
     } else {
@@ -550,7 +549,8 @@ export function randomQuaternion(rand: Rand) {
     q.w = rangedRandomFloat(rand, -1.0, 1.0);
     q = normalizeSafe(q) as Quaternion;
     if (dot(q, Quaternion.identity()) < 0.0) {
-        return -q;
+        // Negate component-wise; unary minus on an object yields NaN
+        return new Quaternion(-q.x, -q.y, -q.z, -q.w);
     }
     else {
         return q;
@@ -576,7 +576,8 @@ export function randomQuaternionUniformDistribution(rand: Rand) {
     let q = new Quaternion(i * Math.sin(theta), i * Math.cos(theta), j * Math.sin(rho), j * Math.cos(rho));
 
     if (dot(q, Quaternion.identity()) < 0.0) {
-        return -q;
+        // Negate component-wise; unary minus on an object yields NaN
+        return new Quaternion(-q.x, -q.y, -q.z, -q.w);
     }
     else {
         return q;

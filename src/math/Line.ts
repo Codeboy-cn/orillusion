@@ -136,7 +136,7 @@ export class Line {
      */
     public getDirection(): Vector3 {
         var pt: Vector3 = this.end.clone().sub(this.start);
-        var direction: Vector3 = new Vector3(pt.x, pt.y);
+        var direction: Vector3 = new Vector3(pt.x, pt.y, pt.z);
         return direction.normalize();
     }
 
@@ -275,7 +275,8 @@ export class Line {
         }
 
         let dis = Line.squreDistanceSegmentToSegment(Line.cacluteLine0, Line.cacluteLine1, mat);
-        if (dis + 1e-4 <= maxDistance) {
+        // dis is a squared distance; compare against squared maxDistance (with epsilon)
+        if (dis <= maxDistance * maxDistance + 1e-4) {
             ray.length = dis;
             return true;
         }

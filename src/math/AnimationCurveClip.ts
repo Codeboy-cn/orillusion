@@ -36,7 +36,7 @@ export class PropertyAnimationClip {
     /** Deserialize the clip and all its curves from the given byte stream. */
     public formBytes(bytes: BytesArray) {
         this.clipName = bytes.readUTF();
-        this.loopTime = bytes.readInt32() ? false : true;
+        this.loopTime = bytes.readInt32() > 0;
         this.startTime = bytes.readFloat32();
         this.stopTime = bytes.readFloat32();
         this.sampleRate = bytes.readInt32();

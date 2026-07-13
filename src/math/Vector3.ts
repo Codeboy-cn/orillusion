@@ -999,9 +999,9 @@ export class Vector3 {
             }
         } else {
             if (this.y > 0) {
-                this.copy(Vector3.DOWN);
-            } else {
                 this.copy(Vector3.UP);
+            } else {
+                this.copy(Vector3.DOWN);
             }
         }
     }

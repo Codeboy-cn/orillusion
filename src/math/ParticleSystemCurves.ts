@@ -118,7 +118,7 @@ export class MinMaxCurve {
             return lerp(curve._minScalar, curve._scalar, randomValue);
         }
         if (curve.minMaxState == MinMaxCurveState.kMMCTwoCurves) {
-            return lerp(curve.minCurve.getValue(t) * curve.getScalar(), v, 1 * Math.random());
+            return lerp(curve.minCurve.getValue(t) * curve.getScalar(), v, randomValue);
         }
         return this.evaluateSlow(curve, t, 1);
     }
@@ -212,7 +212,11 @@ export function calculateCurveRangesValue(minMaxValue: Vector2, curve: Animation
             let end = curve.getKey(i + 1).time;
 
             let roots = [];
-            let numRoots = quadraticPolynomialRootsGeneric(a, b, c, { r0: roots[0], r1: roots[1] });
+            // Use a persistent out object and copy the results back into roots
+            let out = { r0: roots[0], r1: roots[1] };
+            let numRoots = quadraticPolynomialRootsGeneric(a, b, c, out);
+            roots[0] = out.r0;
+            roots[1] = out.r1;
             for (let r = 0; r < numRoots; r++) {
                 if (roots[r] >= 0.0 && roots[r] + start < end) {
                     calculateMinMax(minMaxValue, Polynomial.EvalSegment(roots[r], cache.coeff));

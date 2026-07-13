@@ -69,8 +69,8 @@ export class Vector2 {
         let v = new Vector2();
         let dot = from.dot(to);
         if (dot < 0) {
-            to.x = -to.x;
-            to.y = -to.y;
+            // Use a local negated copy so the caller's vector is not mutated
+            to = new Vector2(-to.x, -to.y);
             dot = -dot;
         }
         if (dot > 0.9995) {
@@ -97,8 +97,8 @@ export class Vector2 {
     public static lerp(from: Vector2, to: Vector2, t: number) {
         Vector2.HELP_0.copy(from);
         Vector2.HELP_1.copy(to);
-        Vector2.HELP_0.multiplyScalar(t);
-        Vector2.HELP_1.multiplyScalar(1.0 - t);
+        Vector2.HELP_0.multiplyScalar(1.0 - t);
+        Vector2.HELP_1.multiplyScalar(t);
         return new Vector2(Vector2.HELP_0.x + Vector2.HELP_1.x, Vector2.HELP_0.y + Vector2.HELP_1.y);
     }
 

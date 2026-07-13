@@ -16,7 +16,7 @@ export class HaltonSeq {
         while (index > 0) {
             result += (index % radix) * fraction;
 
-            index /= radix;
+            index = Math.floor(index / radix);
             fraction /= radix;
         }
 
@@ -29,7 +29,7 @@ export class HaltonSeq {
 
         while (index > 0) {
             this.value += f * (index % base);
-            index /= base;
+            index = Math.floor(index / base);
             f *= this.inv_base;
         }
     }
