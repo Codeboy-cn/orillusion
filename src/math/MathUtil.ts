@@ -156,12 +156,14 @@ export class MathUtil {
      * @returns The Vector3 vector formed by the generated x, y, and z coordinate values
      */
     public static getRandDirXYZ(r: number) {
+        // Uniform direction from spherical angles — the old tan(ra)
+        // y-component exploded near +-90 deg (|v| up to ~12000*r for a
+        // "within the sphere" API).
         let rr = r * Math.random();
-        let ra = 360 * Math.random() * DEGREES_TO_RADIANS;
-        let x = Math.cos(ra) * rr;
-        let y = Math.tan(ra) * rr;
-        let z = Math.sin(ra) * rr;
-        return new Vector3(x, y, z);
+        let theta = Math.acos(2 * Math.random() - 1);
+        let phi = 2 * Math.PI * Math.random();
+        let sinT = Math.sin(theta);
+        return new Vector3(rr * sinT * Math.cos(phi), rr * Math.cos(theta), rr * sinT * Math.sin(phi));
     }
 
     /**
@@ -179,10 +181,10 @@ export class MathUtil {
     }
 
     /**
-     * Calculate the Angle between two vectors
+     * Calculate the Angle between two vectors (projected onto the XZ plane)
      * @param p1 Vector 1
      * @param p2 Vector 2
-     * @returns Return the calculation result
+     * @returns the angle in RADIANS
      */
     public static angle(p1: Vector3, p2: Vector3): number {
         let v1 = Vector2.HELP_0;
@@ -203,12 +205,15 @@ export class MathUtil {
     public static angle_360(from: Vector3, to: Vector3) {
         let v3 = Vector3.HELP_0;
         Vector3.cross(from, to, v3);
-        if (v3.z > 0) {
-            return MathUtil.angle(from, to);
+        // angle() works in the XZ plane, so the orientation sign lives in
+        // the cross product's Y component (Z was compared before — always
+        // ~0 for XZ-plane pairs). angle() returns radians; convert before
+        // mixing with the 360-degree complement.
+        const deg = MathUtil.angle(from, to) * RADIANS_TO_DEGREES;
+        if (v3.y > 0) {
+            return deg;
         }
-        else {
-            return 360 - MathUtil.angle(from, to);
-        }
+        return 360 - deg;
     }
 
     /**
