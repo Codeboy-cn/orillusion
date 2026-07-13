@@ -536,41 +536,80 @@ export class Engine3D {
         }
     }
 
+    /**
+     * Called when a frame of an engine instance throws. Override to route
+     * render errors to your own reporting. Default: throttled
+     * console.error (first error with full stack, then every 10th error,
+     * then one per 300 frames).
+     */
+    public static onRenderError: (error: any, instance: Engine3D) => void = (error, _instance) => {
+        const n = ++Engine3D._renderErrorCount;
+        if (n === 1) {
+            console.error('[Engine3D] render frame failed (continuing):', error?.stack ?? error);
+        } else if (n % 10 === 0 || Time.frame - Engine3D._lastErrorLogFrame >= 300) {
+            console.error(`[Engine3D] render frame failed (${n} consecutive):`, error?.message ?? error);
+        } else {
+            return;
+        }
+        Engine3D._lastErrorLogFrame = Time.frame;
+    };
+    private static _renderErrorCount: number = 0;
+    private static _lastErrorLogFrame: number = 0;
+
     private static async _tick(time: number) {
-        // Gate on the smallest desired frame interval across instances.
-        let minGate = 0;
-        for (let inst of this._instances) {
-            if (inst._frameRateValue > 0 && (minGate === 0 || inst._frameRateValue < minGate)) {
-                minGate = inst._frameRateValue;
+        // The finally clause guarantees the loop re-arms even if a frame
+        // throws — a single bad pass must not permanently stall rendering
+        // (pause()/resume() semantics are preserved: pause cancels the RAF).
+        try {
+            // Gate on the smallest desired frame interval across instances.
+            let minGate = 0;
+            for (let inst of this._instances) {
+                if (inst._frameRateValue > 0 && (minGate === 0 || inst._frameRateValue < minGate)) {
+                    minGate = inst._frameRateValue;
+                }
             }
-        }
-        if (minGate > 0) {
-            let delta = time - this._time;
-            if (delta < minGate) {
-                let t = performance.now();
-                await new Promise(res => setTimeout(() => {
-                    time += (performance.now() - t);
-                    res(true);
-                }, minGate - delta));
+            if (minGate > 0) {
+                let delta = time - this._time;
+                if (delta < minGate) {
+                    let t = performance.now();
+                    await new Promise(res => setTimeout(() => {
+                        time += (performance.now() - t);
+                        res(true);
+                    }, minGate - delta));
+                }
+                this._time = time;
             }
-            this._time = time;
+
+            // Advance global time once per composite frame. The first frame has
+            // no meaningful previous timestamp (Time.time === 0 would make delta
+            // the whole page-load time), and a tab coming back from hidden would
+            // otherwise report the entire hidden span — clamp to Time.maxDelta.
+            Time.delta = Time.time === 0 ? 0 : Math.min(time - Time.time, Time.maxDelta);
+            Time.time = time;
+            Time.frame += 1;
+            Interpolator.tick(Time.delta);
+
+            for (let inst of this._instances) {
+                // Isolate instances from each other: one throwing instance
+                // must not take down the frames of its siblings.
+                try {
+                    await inst._renderOnce(time);
+                    Engine3D._renderErrorCount = 0;
+                } catch (e) {
+                    // A pass may have died between begin/endPass, leaving an
+                    // open encoder that would poison the next frame — drop it.
+                    try {
+                        inst.context3D?.gpuContext?.discardOpenEncoder();
+                    } catch (_) { /* the context itself may be gone */ }
+                    try {
+                        Engine3D.onRenderError?.(e, inst);
+                    } catch (_) { /* never let the hook kill the loop */ }
+                }
+            }
+        } finally {
+            this._rafId = 0;
+            this._ensureLoop();
         }
-
-        // Advance global time once per composite frame. The first frame has
-        // no meaningful previous timestamp (Time.time === 0 would make delta
-        // the whole page-load time), and a tab coming back from hidden would
-        // otherwise report the entire hidden span — clamp to Time.maxDelta.
-        Time.delta = Time.time === 0 ? 0 : Math.min(time - Time.time, Time.maxDelta);
-        Time.time = time;
-        Time.frame += 1;
-        Interpolator.tick(Time.delta);
-
-        for (let inst of this._instances) {
-            await inst._renderOnce(time);
-        }
-
-        this._rafId = 0;
-        this._ensureLoop();
     }
 
     private async _renderOnce(_time: number) {

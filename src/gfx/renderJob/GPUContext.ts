@@ -124,6 +124,20 @@ export class GPUContextInstance {
         this.lastShader = null;
     }
 
+    /**
+     * Drop the currently open encoder and cached pass state WITHOUT
+     * finishing it. Used when a render pass threw mid-frame: finish() on
+     * an encoder with an unclosed pass raises a validation error and
+     * poisons the queue, while dropping the JS reference is safe — the
+     * encoder is simply never submitted.
+     */
+    public discardOpenEncoder() {
+        this.LastCommand = null;
+        this.LastCommandDevice = null;
+        this.lastRenderPassState = null;
+        this.cleanCache();
+    }
+
     /** Create a render pipeline on this context's device. */
     public createPipeline(gpuRenderPipeline: GPURenderPipelineDescriptor) {
         ProfilerUtil.countStart("GPUContext", "pipeline");
