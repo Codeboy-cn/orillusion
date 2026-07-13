@@ -197,7 +197,7 @@ export class ComponentCollect {
         if (arr) {
             let index = arr.indexOf(component);
             if (index != -1) {
-                arr.splice(index);
+                arr.splice(index, 1);
             }
         }
     }
