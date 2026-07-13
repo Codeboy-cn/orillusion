@@ -556,8 +556,11 @@ export class Engine3D {
             this._time = time;
         }
 
-        // Advance global time once per composite frame.
-        Time.delta = time - Time.time;
+        // Advance global time once per composite frame. The first frame has
+        // no meaningful previous timestamp (Time.time === 0 would make delta
+        // the whole page-load time), and a tab coming back from hidden would
+        // otherwise report the entire hidden span — clamp to Time.maxDelta.
+        Time.delta = Time.time === 0 ? 0 : Math.min(time - Time.time, Time.maxDelta);
         Time.time = time;
         Time.frame += 1;
         Interpolator.tick(Time.delta);
