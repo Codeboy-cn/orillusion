@@ -35,6 +35,7 @@ const TARGETS = [
     './graph/ColorPass.test.ts',
     './graph/PostPass.test.ts',
     './graph/GUIPass.test.ts',
+    './graph/TransientResource.test.ts',
 ];
 
 async function runOne(win, target) {

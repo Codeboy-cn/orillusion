@@ -156,6 +156,12 @@ export class RenderGraph {
      *  compile; missing entries imply "no transient lifetime known
      *  → must store" (safe default). */
     private _lastUseByName: Map<string, number> = new Map();
+    /** Usage flags used by eager (pre-compile) dedicated allocations,
+     *  per resource name. OR-ed into the analyzer-resolved usage at
+     *  compile so the dedicated slot's bucketKey (which encodes usage)
+     *  stays identical and the wrapper identity doesn't flip on the
+     *  first compile after an eager publish. */
+    private _eagerUsageByName: Map<string, number> = new Map();
     /** Index into `_compiled` of the pass currently in `execute()`.
      *  Set per-pass during {@link execute} so
      *  {@link RenderGraphRenderTarget.beginPass} can compare against
@@ -405,6 +411,17 @@ export class RenderGraph {
             this._transient,
             this._ctx.presentationSize as [number, number],
         );
+        // Resources that were eagerly allocated via
+        // _eagerAllocateAndPublish carry the broad eager usage flags in
+        // their dedicated slot's bucketKey. OR that usage into the
+        // analyzer-resolved usage so the keys stay equal and the
+        // dedicated wrapper identity survives the compile.
+        if (this._eagerUsageByName.size > 0) {
+            for (const lt of this._lifetimes) {
+                const eager = this._eagerUsageByName.get(lt.name);
+                if (eager !== undefined) lt.resolvedUsage |= eager;
+            }
+        }
         const texAssign = this._texturePool.assign(this._lifetimes);
         const bufAssign = this._bufferPool.assign(this._lifetimes);
         this._textureBindings = texAssign.bindings;
@@ -705,13 +722,17 @@ export class RenderGraph {
             resolvedWidth: w, resolvedHeight: h,
             persistent: false,
         };
-        const single = this._texturePool.assign([lt]);
-        const rt = single.bindings.get(name);
-        if (!rt) {
-            // Defensive: should be unreachable because pool always
-            // allocates dedicated slots for aliasable:false.
-            return;
-        }
+        // Register ONLY this slot. Routing through assign([lt]) treated
+        // the single entry as the whole live set — it reset every bucket
+        // marker and swept away all other dedicated slots (HiZ /
+        // SceneColorPyramid), breaking the "dedicated identity is stable
+        // across compiles" promise on runtime hot-plug.
+        const rt = this._texturePool.assignDedicated(lt);
+        // Remember the eager usage so the next compile can OR it into
+        // the analyzer-resolved usage — otherwise the narrower resolved
+        // usage produces a different bucketKey and the dedicated slot is
+        // reallocated (identity flip) one compile later.
+        this._eagerUsageByName.set(name, usage);
         this._pool.register(name, () => rt, 'texture');
         const legacyMap = RTResourceMap.forContext(this._ctx);
         legacyMap.rtTextureMap.set(name, rt);

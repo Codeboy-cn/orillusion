@@ -133,40 +133,7 @@ export class TransientTexturePool {
             let dedicated = false;
 
             if (!aliasable) {
-                // Stable identity across compile windows. The slot lives
-                // outside the bucket reuse map.
-                const existing = this._dedicatedByName.get(lt.name);
-                if (existing && existing.bucketKey === bucketKey) {
-                    slot = existing;
-                } else if (existing && inPlaceResizable(existing.bucketKey, bucketKey)) {
-                    // Only the resolution changed (canvas resize). Resize
-                    // the wrapper IN PLACE rather than allocating a new
-                    // RenderTexture. Dedicated slots exist precisely so
-                    // consumers (e.g. LitMaterial's transmission pass)
-                    // can cache a bind group against a fixed RenderTexture
-                    // identity; replacing the wrapper on resize would
-                    // strand those bind groups on the destroyed old-size
-                    // GPUTexture, producing "Destroyed texture [...] used
-                    // in a submit" every frame after a resize. resize()
-                    // delay-destroys the old GPU texture, rebuilds the
-                    // descriptor and fires noticeChange() so consumers
-                    // rebind to the new texture next frame.
-                    this._currentBytes -= existing.estimatedBytes;
-                    existing.rt.resize(w, h);
-                    this._patchMipLevels(existing.rt, desc);
-                    existing.bucketKey = bucketKey;
-                    existing.estimatedBytes = estimateTextureBytes(desc, w, h);
-                    this._currentBytes += existing.estimatedBytes;
-                    if (this._currentBytes > this._peakBytes) this._peakBytes = this._currentBytes;
-                    slot = existing;
-                } else {
-                    // No existing slot, or a non-size attribute (format,
-                    // usage, layers, samples, mips) changed — the GPU
-                    // texture is fundamentally different, so allocate fresh.
-                    if (existing) this._destroySlot(existing);
-                    slot = this._allocateSlot(lt, desc, w, h, finalUsage, bucketKey);
-                    this._dedicatedByName.set(lt.name, slot);
-                }
+                slot = this._assignDedicated(lt, desc, w, h, finalUsage, bucketKey);
                 dedicated = true;
             } else {
                 // Try to reuse a same-bucket entry whose previous
@@ -218,6 +185,61 @@ export class TransientTexturePool {
         }
 
         return { bindings, debug };
+    }
+
+    /**
+     * Get-or-create the per-name dedicated slot for an `aliasable:false`
+     * lifetime. Stable identity across compile windows — the slot lives
+     * outside the bucket reuse map. On a pure resolution change the
+     * wrapper is resized IN PLACE rather than replaced: dedicated slots
+     * exist precisely so consumers (e.g. LitMaterial's transmission
+     * pass) can cache bind groups against a fixed RenderTexture
+     * identity; replacing the wrapper on resize would strand those bind
+     * groups on the destroyed old-size GPUTexture ("Destroyed texture
+     * [...] used in a submit" every frame). resize() delay-destroys the
+     * old GPU texture, rebuilds the descriptor and fires noticeChange()
+     * so consumers rebind next frame.
+     */
+    private _assignDedicated(lt: ResourceLifetime, desc: TextureDesc, w: number, h: number, finalUsage: number, bucketKey: string): PooledTexture {
+        const existing = this._dedicatedByName.get(lt.name);
+        if (existing && existing.bucketKey === bucketKey) {
+            return existing;
+        } else if (existing && inPlaceResizable(existing.bucketKey, bucketKey)) {
+            this._currentBytes -= existing.estimatedBytes;
+            existing.rt.resize(w, h);
+            this._patchMipLevels(existing.rt, desc);
+            existing.bucketKey = bucketKey;
+            existing.estimatedBytes = estimateTextureBytes(desc, w, h);
+            this._currentBytes += existing.estimatedBytes;
+            if (this._currentBytes > this._peakBytes) this._peakBytes = this._currentBytes;
+            return existing;
+        } else {
+            // No existing slot, or a non-size attribute (format, usage,
+            // layers, samples, mips) changed — the GPU texture is
+            // fundamentally different, so allocate fresh.
+            if (existing) this._destroySlot(existing);
+            const slot = this._allocateSlot(lt, desc, w, h, finalUsage, bucketKey);
+            this._dedicatedByName.set(lt.name, slot);
+            return slot;
+        }
+    }
+
+    /**
+     * Register (or fetch) a single dedicated slot OUTSIDE a full
+     * assign() window: no bucket-marker reset, no dedicated sweep, no
+     * idle-bucket sweep. Used by RenderGraph's eager
+     * `publishToLegacyMap` path — routing that through assign([one])
+     * treated the single entry as the entire live declaration set and
+     * destroyed every other dedicated slot (HiZ, SceneColorPyramid)
+     * plus all idle buckets.
+     */
+    public assignDedicated(lt: ResourceLifetime): RenderTexture {
+        const desc = lt.desc as TextureDesc;
+        const w = lt.resolvedWidth!;
+        const h = lt.resolvedHeight!;
+        const finalUsage = lt.resolvedUsage || GPUTextureUsage.TEXTURE_BINDING;
+        const bucketKey = computeBucketKey(desc, w, h, finalUsage);
+        return this._assignDedicated(lt, desc, w, h, finalUsage, bucketKey).rt;
     }
 
     /** Destroy every pooled wrapper. Called on graph destroy and
