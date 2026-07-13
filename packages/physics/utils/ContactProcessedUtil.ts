@@ -42,18 +42,21 @@ export class ContactProcessedUtil {
      */
     private static registerContactProcessedCallback(): void {
         if (ContactProcessedUtil.contactProcessedCallbackPointer === null) {
+            // Allocate the wasm function-table slot ONCE and keep it for the
+            // process lifetime: emscripten's table is finite and repeated
+            // register/unregister cycles would exhaust it.
             ContactProcessedUtil.contactProcessedCallbackPointer = Ammo.addFunction(ContactProcessedUtil.contactProcessedCallback);
-            Physics.world.setContactProcessedCallback(ContactProcessedUtil.contactProcessedCallbackPointer);
         }
+        Physics.world.setContactProcessedCallback(ContactProcessedUtil.contactProcessedCallbackPointer);
     }
 
     /**
-     * Unregister the global contact-processed callback.
+     * Unregister the global contact-processed callback. Keeps the wasm
+     * function pointer for reuse by the next register call.
      */
     private static unregisterContactProcessedCallback(): void {
         if (ContactProcessedUtil.contactProcessedCallbackPointer !== null) {
             Physics.world.setContactProcessedCallback(null); // Disable the callback
-            ContactProcessedUtil.contactProcessedCallbackPointer = null;
         }
     }
 

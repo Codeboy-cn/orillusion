@@ -116,35 +116,51 @@ class _Physics {
                     if (rb1.isSensor) rb1.onTriggerEnter?.(rb2);
                     if (rb2.isSensor) rb2.onTriggerEnter?.(rb1);
                 } else {
-                    rb1._activeContacts.add(rb2);
-                    rb2._activeContacts.add(rb1);
-                    rb1.onContactBegin?.(rb2);
-                    rb2.onContactBegin?.(rb1);
+                    // Events arrive per collider pair; compound bodies get
+                    // several per body pair. Refcount so begin/end fire once
+                    // per body pair, and end only when the LAST pair parts.
+                    const c1 = (rb1._activeContacts.get(rb2) ?? 0) + 1;
+                    const c2 = (rb2._activeContacts.get(rb1) ?? 0) + 1;
+                    rb1._activeContacts.set(rb2, c1);
+                    rb2._activeContacts.set(rb1, c2);
+                    if (c1 === 1) rb1.onContactBegin?.(rb2);
+                    if (c2 === 1) rb2.onContactBegin?.(rb1);
                 }
             } else {
                 if (isSensor) {
                     if (rb1.isSensor) rb1.onTriggerExit?.(rb2);
                     if (rb2.isSensor) rb2.onTriggerExit?.(rb1);
                 } else {
-                    rb1._activeContacts.delete(rb2);
-                    rb2._activeContacts.delete(rb1);
-                    rb1.onContactEnd?.(rb2);
-                    rb2.onContactEnd?.(rb1);
+                    const c1 = (rb1._activeContacts.get(rb2) ?? 0) - 1;
+                    const c2 = (rb2._activeContacts.get(rb1) ?? 0) - 1;
+                    if (c1 <= 0) {
+                        if (rb1._activeContacts.delete(rb2)) rb1.onContactEnd?.(rb2);
+                    } else rb1._activeContacts.set(rb2, c1);
+                    if (c2 <= 0) {
+                        if (rb2._activeContacts.delete(rb1)) rb2.onContactEnd?.(rb1);
+                    } else rb2._activeContacts.set(rb1, c2);
                 }
             }
         });
 
-        // Emit per-frame "stay" for active contacts.
+        // Emit per-frame "stay" for active contacts. The handle map has one
+        // entry per collider — dedupe so compound bodies fire once per peer.
+        const seenStay = new Set<Rigidbody>();
         for (const rb of this._handleToRigidbody.values()) {
+            if (seenStay.has(rb)) continue;
+            seenStay.add(rb);
             if (!rb.onContactStay || rb._activeContacts.size === 0) continue;
-            for (const other of rb._activeContacts) rb.onContactStay(other);
+            for (const other of rb._activeContacts.keys()) rb.onContactStay(other);
         }
 
         // Push post-step poses into Object3D transforms BEFORE the engine
         // finalises matrices for this frame. Doing it here (rather than in
         // `Rigidbody.onUpdate`, which runs before the renderLoop) ensures
         // the render shows the up-to-date body pose without a one-frame lag.
+        const seenSync = new Set<Rigidbody>();
         for (const rb of this._handleToRigidbody.values()) {
+            if (seenSync.has(rb)) continue;
+            seenSync.add(rb);
             rb._syncTransformFromBody();
         }
 
@@ -265,7 +281,7 @@ class _Physics {
     /** @internal */
     public _unregisterRigidbody(rb: Rigidbody): void {
         for (const c of rb.colliders) this._handleToRigidbody.delete(c.handle);
-        for (const peer of rb._activeContacts) peer._activeContacts.delete(rb);
+        for (const peer of rb._activeContacts.keys()) peer._activeContacts.delete(rb);
     }
 
     /** @internal Lookup the Rigidbody component owning a Rapier collider handle. */

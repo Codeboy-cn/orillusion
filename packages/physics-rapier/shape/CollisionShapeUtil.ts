@@ -261,9 +261,12 @@ export class CollisionShapeUtil {
         const rows = segmentH + 1;
         const heights = new Float32Array(cols * rows);
 
-        // PlaneGeometry vertex order is row-major in (segmentW+1) × (segmentH+1).
-        for (let i = 0; i < cols * rows; i++) {
-            heights[i] = posAttr.data[i * 3 + 1];
+        // PlaneGeometry vertices are row-major (x fastest), but Rapier wants
+        // the heights matrix in column-major order — transpose while copying.
+        for (let zi = 0; zi < rows; zi++) {
+            for (let xi = 0; xi < cols; xi++) {
+                heights[xi * rows + zi] = posAttr.data[(zi * cols + xi) * 3 + 1];
+            }
         }
 
         const scale = { x: width, y: 1, z: height };

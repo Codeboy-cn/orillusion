@@ -32,7 +32,9 @@ export abstract class ConstraintBase<T extends RAPIER.ImpulseJoint = RAPIER.Impu
 
         const data = this.buildJointData();
         this._joint = Physics.world.createImpulseJoint(data, body1, body2, this.wakeUpOnCreate) as T;
-        if (this.collisionsEnabled) this._joint.setContactsEnabled(true);
+        // Rapier joints default to contacts ENABLED, so the false case must
+        // be pushed through explicitly or collisionsEnabled=false is a no-op.
+        this._joint.setContactsEnabled(this.collisionsEnabled);
 
         this.afterStart();
     }
