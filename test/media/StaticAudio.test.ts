@@ -1,4 +1,4 @@
-import { test, expect, delay } from '../util'
+import { test, expect, end, delay } from '../util'
 import { Engine3D, Object3D, Scene3D } from '@orillusion/core';
 import { AudioListener, StaticAudio } from '@orillusion/media-extention';
 
@@ -61,3 +61,5 @@ await test('pause/play resumes from the paused buffer offset [fix-engine E15]', 
     audio.destroy();
     listener.destroy();
 })
+
+setTimeout(end, 500)

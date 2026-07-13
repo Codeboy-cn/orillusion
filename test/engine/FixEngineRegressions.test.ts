@@ -1,4 +1,4 @@
-import { test, expect, delay } from '../util'
+import { test, expect, end, delay, waitUntil } from '../util'
 import { CameraUtil, ComponentBase, ComponentCollect, Engine3D, LitMaterial, Object3D, PlaneGeometry, Scene3D, View3D } from '@orillusion/core';
 
 // Regression tests for docs/fix-engine.md items (E4 / E6 / ...).
@@ -11,14 +11,20 @@ view.scene = new Scene3D();
 view.camera = CameraUtil.createCamera3DObject(view.scene, 'camera');
 engine.startRenderViews([view]);
 
+// Independent classes: the components map is keyed by the concrete
+// constructor, and this fork's start-lifecycle hook is `start()`.
 class StartProbe extends ComponentBase {
     public started = false;
-    public onStart() {
-        this.started = true;
-    }
+    public start() { this.started = true; }
 }
-class StartProbeB extends StartProbe { }
-class StartProbeC extends StartProbe { }
+class StartProbeB extends ComponentBase {
+    public started = false;
+    public start() { this.started = true; }
+}
+class StartProbeC extends ComponentBase {
+    public started = false;
+    public start() { this.started = true; }
+}
 
 await test('Material.destroy is idempotent [fix-engine E4]', async () => {
     let mat = new LitMaterial();
@@ -42,7 +48,7 @@ await test('removing one pending component keeps siblings onStart [fix-engine E6
     view.scene.addChild(obj);
     // Remove the first component before its __start ran.
     obj.removeComponent(StartProbe);
-    await delay(200);
+    await waitUntil(() => b.started && c.started, 5000);
     expect(a.started).toEqual(false);
     expect(b.started).toEqual(true);
     expect(c.started).toEqual(true);
@@ -52,6 +58,8 @@ await test('removing one pending component keeps siblings onStart [fix-engine E6
 await test('Cone emitter produces a cone distribution, not a single point [fix-engine E14]', async () => {
     const { ParticleEmitterModule, ShapeType } = await import('@orillusion/particle');
     let emitter: any = new ParticleEmitterModule();
+    // Standalone module: property setters touch _simulator.needReset.
+    emitter.setSimulator({ needReset: false });
     emitter.shapeType = ShapeType.Cone;
     emitter.radius = 5;
     emitter.angle = 30;
@@ -124,3 +132,5 @@ await test('waitStartComponent drops dead keys on destroy-before-start [fix-engi
         expect(ComponentCollect.waitStartComponent.has(obj)).toEqual(false);
     }
 })
+
+setTimeout(end, 500)
