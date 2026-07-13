@@ -43,6 +43,10 @@ export class ComputeShader extends ShaderPassBase {
     private _sampleTextureDic: Map<string, Texture>;
     private _groupsShaderReflectionVarInfos: ShaderReflectionVarInfo[][];
     private _groupCache: { [name: string]: { groupIndex: number, infos: any } } = {};
+    /** Per bind-group snapshots of buffer GPU-identity revisions taken at
+     *  bind-group build time. compute() pull-compares them each dispatch
+     *  and rebuilds groups whose buffer was retired by resizeBuffer(). */
+    private _bufferSnapshots: Array<Array<{ buf: import('../core/buffer/GPUBufferBase').GPUBufferBase, rev: number }>> = [];
 
     /**
      *
@@ -108,6 +112,21 @@ export class ComputeShader extends ShaderPassBase {
             this.genComputePipeline();
         }
 
+        // Pull-check buffer GPU identity: a resizeBuffer() since the last
+        // dispatch retired the GPUBuffer a bind group references — submit
+        // would fail with "destroyed buffer used in a submit". Invalidate
+        // the affected groups so the rebuild loop below recreates them.
+        for (let i = 0; i < this._bufferSnapshots.length; ++i) {
+            const snaps = this._bufferSnapshots[i];
+            if (!snaps || !this.bindGroups[i]) continue;
+            for (const s of snaps) {
+                if (s.buf._gpuRevision !== s.rev) {
+                    this.bindGroups[i] = null;
+                    break;
+                }
+            }
+        }
+
         // Rebuild any bind groups that were invalidated since the last dispatch.
         // Callers (e.g. PostBase.bindUpstream) signal "re-bind needed" by
         // setting `this.bindGroups[i] = null` after updating the sampler /
@@ -161,6 +180,10 @@ export class ComputeShader extends ShaderPassBase {
                 },
             }
             entries.push(entry);
+            // Snapshot the buffer's GPU-identity revision: compute()
+            // pull-compares it each dispatch and lazily rebuilds this
+            // group when a resize retired the underlying GPUBuffer.
+            this._bufferSnapshots[groupIndex].push({ buf: buffer, rev: buffer._gpuRevision });
         } else {
             console.error(`ComputeShader(${this.instanceID})`, `buffer ${varName} is missing!`);
         }
@@ -176,6 +199,7 @@ export class ComputeShader extends ShaderPassBase {
     protected genGroups(groupIndex: number, infos: ShaderReflectionVarInfo[][], force: boolean = false) {
         if (!this.bindGroups[groupIndex] || force) {
             const shaderRefs: ShaderReflectionVarInfo[] = infos[groupIndex];
+            this._bufferSnapshots[groupIndex] = [];
 
             let entries: GPUBindGroupEntry[] = [];
             for (let j = 0; j < shaderRefs.length; ++j) {

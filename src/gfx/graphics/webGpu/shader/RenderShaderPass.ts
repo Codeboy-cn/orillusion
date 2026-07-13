@@ -840,9 +840,47 @@ export class RenderShaderPass extends ShaderPassBase {
      * @param infos Per-group reflection variable infos.
      * @param force Rebuild even if the bind group already exists.
      */
+    /** Per bind-group snapshots of buffer GPU-identity revisions taken at
+     *  bind-group build time. Pull-compared from GPUContext.bindPipeline
+     *  on material switch so a resizeBuffer() cannot leave a bind group
+     *  pointing at a retired GPUBuffer. */
+    private _bufferSnapshots: Array<Array<{ buf: GPUBufferBase, rev: number }>> = [];
+
+    /**
+     * Rebuild any bind group whose snapshot no longer matches its
+     * buffers' GPU-identity revision (i.e. resizeBuffer retired the
+     * underlying GPUBuffer since the group was built). Checked once per
+     * material switch, not per draw.
+     */
+    public rebuildInvalidBufferGroups() {
+        let dirty: number[] = null;
+        for (let i = 0; i < this._bufferSnapshots.length; ++i) {
+            const snaps = this._bufferSnapshots[i];
+            if (!snaps || !this.bindGroups[i]) continue;
+            for (const s of snaps) {
+                if (s.buf._gpuRevision !== s.rev) {
+                    this.bindGroups[i] = null;
+                    (dirty ||= []).push(i);
+                    break;
+                }
+            }
+        }
+        if (dirty && this.shaderReflection) {
+            for (const i of dirty) {
+                if (this.shaderReflection.groups[i]) {
+                    this.genGroups(i, this.shaderReflection.groups, true);
+                }
+            }
+        }
+    }
+
     protected genGroups(groupIndex: number, infos: ShaderReflectionVarInfo[][], force: boolean = false) {
         if (!this.bindGroups[groupIndex] || force) {
             const shaderRefs: ShaderReflectionVarInfo[] = infos[groupIndex];
+            this._bufferSnapshots[groupIndex] = [];
+            const snapshot = (buffer: GPUBufferBase) => {
+                this._bufferSnapshots[groupIndex].push({ buf: buffer, rev: buffer._gpuRevision });
+            };
             let entries = [];
             for (let j = 0; j < shaderRefs.length; j++) {
                 const refs = shaderRefs[j];
@@ -872,6 +910,7 @@ export class RenderShaderPass extends ShaderPassBase {
                             },
                         }
                         entries.push(entry);
+                        snapshot(buffer);
 
                         this.checkBuffer(refs.varName, buffer);
 
@@ -891,6 +930,7 @@ export class RenderShaderPass extends ShaderPassBase {
                             },
                         }
                         entries.push(entry);
+                        snapshot(buffer);
                         this.checkBuffer(refs.varName, buffer);
                     } else {
                         console.error(`buffer ${refs.varName} is missing!`);

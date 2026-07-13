@@ -93,12 +93,36 @@ export class GPUBufferBase {
         }
     }
 
-    /** Destroy the materialized GPU buffer, forcing re-materialization on next access. */
+    /**
+     * Monotonic GPU-identity revision. Bumped whenever the materialized
+     * GPUBuffer is retired, so bind-group holders (ComputeShader /
+     * RenderShaderPass) can pull-compare a snapshot and rebuild lazily
+     * instead of submitting a bind group that references a destroyed
+     * buffer.
+     */
+    public _gpuRevision: number = 0;
+
+    /** Retire the materialized GPU buffer, forcing re-materialization on
+     *  next access. The old buffer may still be referenced by commands
+     *  already encoded this frame — mirror the texture-side pattern and
+     *  destroy it only after the queue drains (synchronously when the
+     *  context is lost or was never bound). Multiple same-frame resizes
+     *  each retire their own buffer independently. */
     private _invalidateGpu() {
         if (this._buffer) {
-            try { this._buffer.destroy(); } catch { /* ignore */ }
+            const old = this._buffer;
             this._buffer = null;
+            const ctx = this._boundCtx;
+            if (ctx && !ctx.lost) {
+                ctx.device.queue.onSubmittedWorkDone().then(
+                    () => { try { old.destroy(); } catch { /* ignore */ } },
+                    () => { try { old.destroy(); } catch { /* ignore */ } },
+                );
+            } else {
+                try { old.destroy(); } catch { /* ignore */ }
+            }
         }
+        this._gpuRevision++;
     }
 
     public debug() {

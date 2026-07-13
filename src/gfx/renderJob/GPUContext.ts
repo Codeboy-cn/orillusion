@@ -77,6 +77,12 @@ export class GPUContextInstance {
             (encoder as GPURenderPassEncoder).setStencilReference(renderShader.shaderState.stencilRef ?? 0);
         }
 
+        // Once per material switch (not per draw): rebuild bind groups
+        // whose buffers were retired by resizeBuffer() since they were
+        // built — submitting them would fail with a destroyed-buffer
+        // validation error.
+        renderShader.rebuildInvalidBufferGroups();
+
         for (let i = 1; i < renderShader.bindGroups.length; i++) {
             const bindGroup = renderShader.bindGroups[i];
             if (bindGroup) {
