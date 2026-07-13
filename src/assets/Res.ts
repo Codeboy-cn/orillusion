@@ -163,31 +163,53 @@ export class Res {
         return ret;
     }
 
+    /** In-flight load promises keyed by a type-prefixed cache key.
+     *  Concurrent loads of the same asset share one promise instead of
+     *  double-fetching and creating orphan GPU resources; entries
+     *  self-delete on settle, so a failed load can be retried. */
+    private _loadingPool: Map<string, Promise<any>> = new Map();
+
+    private _dedupe<T>(key: string, run: () => Promise<T>): Promise<T> {
+        let inflight = this._loadingPool.get(key);
+        if (!inflight) {
+            inflight = run().finally(() => { this._loadingPool.delete(key); });
+            this._loadingPool.set(key, inflight);
+        }
+        return inflight as Promise<T>;
+    }
+
     /**
      * load a gltf file
      * @param url the url of file
      * @param loaderFunctions callback
-     * @returns
+     * @returns the SHARED cached root Object3D for this url — a second
+     *          caller receives the same instance, so addChild()ing it
+     *          again MOVES the model out of the first parent. Use
+     *          `.instantiate()` / `getPrefab()` when you need an
+     *          independent copy.
      */
     public async loadGltf(url: string, loaderFunctions?: LoaderFunctions): Promise<Object3D> {
         if (this._prefabPool.has(url)) {
             return this._prefabPool.get(url) as Object3D;
         }
+        return this._dedupe('gltf:' + url, async () => {
+            if (this._prefabPool.has(url)) {
+                return this._prefabPool.get(url) as Object3D;
+            }
+            let parser;
+            let ext = url.substring(url.lastIndexOf('.')).toLowerCase();
+            let loader = new FileLoader(this._ctx);
+            if (ext == '.gltf') {
+                parser = await loader.load(url, GLTFParser, loaderFunctions);
 
-        let parser;
-        let ext = url.substring(url.lastIndexOf('.')).toLowerCase();
-        let loader = new FileLoader(this._ctx);
-        if (ext == '.gltf') {
-            parser = await loader.load(url, GLTFParser, loaderFunctions);
-
-        } else {
-            parser = await loader.load(url, GLBParser, loaderFunctions);
-        }
-        let obj = parser.data as Object3D;
-        this._prefabPool.set(url, obj);
-        this._gltfPool.set(url, parser.gltf);
-        return obj;
-        // return null;
+            } else {
+                parser = await loader.load(url, GLBParser, loaderFunctions);
+            }
+            let obj = parser.data as Object3D;
+            this._prefabPool.set(url, obj);
+            this._gltfPool.set(url, parser.gltf);
+            return obj;
+        });
     }
 
     /**
@@ -200,17 +222,22 @@ export class Res {
         if (this._prefabPool.has(url)) {
             return this._prefabPool.get(url) as Object3D;
         }
-
-        let parser;
         let ext = url.substring(url.lastIndexOf('.')).toLowerCase();
-        let loader = new FileLoader(this._ctx);
-        if (ext == ".obj") {
-            parser = await loader.load(url, OBJParser, loaderFunctions);
+        if (ext != '.obj') {
+            // Used to fall through with parser undefined and die on a
+            // TypeError two lines later.
+            throw new Error(`Res.loadObj: '${url}' is not a .obj file`);
         }
-        let obj = parser.data as Object3D;
-        this._prefabPool.set(url, obj);
-        return obj;
-        // return null;
+        return this._dedupe('obj:' + url, async () => {
+            if (this._prefabPool.has(url)) {
+                return this._prefabPool.get(url) as Object3D;
+            }
+            let loader = new FileLoader(this._ctx);
+            let parser = await loader.load(url, OBJParser, loaderFunctions);
+            let obj = parser.data as Object3D;
+            this._prefabPool.set(url, obj);
+            return obj;
+        });
     }
 
     /**
@@ -277,11 +304,16 @@ export class Res {
         if (this._texturePool.has(cacheKey)) {
             return this._texturePool.get(cacheKey);
         }
-        let texture = new BitmapTexture2D(true, this._ctx, colorSpace);
-        texture.flipY = flipY;
-        await texture.load(url, loaderFunctions);
-        this._texturePool.set(cacheKey, texture);
-        return texture;
+        return this._dedupe('tex:' + cacheKey, async () => {
+            if (this._texturePool.has(cacheKey)) {
+                return this._texturePool.get(cacheKey);
+            }
+            let texture = new BitmapTexture2D(true, this._ctx, colorSpace);
+            texture.flipY = flipY;
+            await texture.load(url, loaderFunctions);
+            this._texturePool.set(cacheKey, texture);
+            return texture;
+        });
     }
 
     private async loadTextureCount(urls: string[], count: number, loaderFunctions?: LoaderFunctions, flipY?: boolean) {
@@ -315,10 +347,15 @@ export class Res {
             return this._texturePool.get(url);
         }
 
-        let hdrTexture = new HDRTexture();
-        hdrTexture = await hdrTexture.load(url, loaderFunctions, this._ctx);
-        this._texturePool.set(url, hdrTexture);
-        return hdrTexture;
+        return this._dedupe('hdr:' + url, async () => {
+            if (this._texturePool.has(url)) {
+                return this._texturePool.get(url);
+            }
+            let hdrTexture = new HDRTexture();
+            hdrTexture = await hdrTexture.load(url, loaderFunctions, this._ctx);
+            this._texturePool.set(url, hdrTexture);
+            return hdrTexture;
+        });
     }
 
 
@@ -332,10 +369,15 @@ export class Res {
         if (this._texturePool.has(url)) {
             return this._texturePool.get(url);
         }
-        let hdrTexture = new HDRTextureCube();
-        hdrTexture = await hdrTexture.load(url, loaderFunctions, this._ctx);
-        this._texturePool.set(url, hdrTexture);
-        return hdrTexture;
+        return this._dedupe('hdrcube:' + url, async () => {
+            if (this._texturePool.has(url)) {
+                return this._texturePool.get(url);
+            }
+            let hdrTexture = new HDRTextureCube();
+            hdrTexture = await hdrTexture.load(url, loaderFunctions, this._ctx);
+            this._texturePool.set(url, hdrTexture);
+            return hdrTexture;
+        });
     }
 
     /**
@@ -348,10 +390,15 @@ export class Res {
         if (this._texturePool.has(url)) {
             return this._texturePool.get(url);
         }
-        let ldrTextureCube = new LDRTextureCube();
-        ldrTextureCube = await ldrTextureCube.load(url, loaderFunctions, this._ctx);
-        this._texturePool.set(url, ldrTextureCube);
-        return ldrTextureCube;
+        return this._dedupe('ldrcube:' + url, async () => {
+            if (this._texturePool.has(url)) {
+                return this._texturePool.get(url);
+            }
+            let ldrTextureCube = new LDRTextureCube();
+            ldrTextureCube = await ldrTextureCube.load(url, loaderFunctions, this._ctx);
+            this._texturePool.set(url, ldrTextureCube);
+            return ldrTextureCube;
+        });
     }
 
     /**
@@ -366,10 +413,15 @@ export class Res {
             return this._texturePool.get(url);
         }
 
-        let textureCube = new BitmapTextureCube();
-        await textureCube.load(urls, this._ctx);
-        this._texturePool.set(urls[0], textureCube);
-        return textureCube;
+        return this._dedupe('cube:' + url, async () => {
+            if (this._texturePool.has(url)) {
+                return this._texturePool.get(url);
+            }
+            let textureCube = new BitmapTextureCube();
+            await textureCube.load(urls, this._ctx);
+            this._texturePool.set(urls[0], textureCube);
+            return textureCube;
+        });
     }
 
     /**
@@ -382,9 +434,17 @@ export class Res {
             return this._texturePool.get(url);
         }
 
-        let cubeMap = new BitmapTextureCube();
-        await cubeMap.loadStd(url, this._ctx);
-        return cubeMap;
+        return this._dedupe('cube:' + url, async () => {
+            if (this._texturePool.has(url)) {
+                return this._texturePool.get(url);
+            }
+            let cubeMap = new BitmapTextureCube();
+            await cubeMap.loadStd(url, this._ctx);
+            // The pool was checked above but never written — every call
+            // reloaded and re-uploaded the cube map.
+            this._texturePool.set(url, cubeMap);
+            return cubeMap;
+        });
     }
 
     /**
