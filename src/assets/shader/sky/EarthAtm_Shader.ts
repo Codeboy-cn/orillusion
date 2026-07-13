@@ -329,19 +329,13 @@ export class EarthAtm_Shader {
 
         // Apply exposure
         color = color * global.exposure;
-        
-        // Tone mapping (ACES approximation)
-        let a = 2.51;
-        let b = 0.03;
-        let c = 2.43;
-        let d = 0.59;
-        let e = 0.14;
-        color = clamp((color * (a * color + b)) / (color * (c * color + d) + e), vec3<f32>(0.0), vec3<f32>(1.0));
-        
-        // Gamma correction
-        color = pow(color, vec3<f32>(1.0 / 2.2));
-        
-        // Sun disc composited AFTER tone mapping (always visible)
+
+        // Output LINEAR HDR — no in-shader ACES/gamma. The engine contract
+        // is that TonemapPost + the sRGB swapchain do the single encode;
+        // baking it here double/triple tone-mapped the atmosphere (same
+        // defect previously fixed in AtmosphericScatteringSky).
+
+        // Sun disc composited in linear space (always visible)
         if (sunDisc > 0.0) {
             let sunCenterColor = vec3<f32>(1.0, 1.0, 0.98);
             let sunEdgeColor = vec3<f32>(1.0, 0.85, 0.4);

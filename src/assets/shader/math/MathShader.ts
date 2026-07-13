@@ -421,7 +421,9 @@ fn dir_to_faceId(pt:vec3<f32>) -> i32 {
         var scaleMat: mat4x4<f32> = MakeScaleMatrix(scale);
         var rotationMat: mat4x4<f32> = MakeRotationMatrix(rotationQuaternion);
         var translationMat: mat4x4<f32> = MakeTranslationMatrix(translation);
-        return translationMat * scaleMat * rotationMat;
+        // Standard TRS composition (glTF joint local matrices): scale in the
+        // joint's local axes, then rotate — T*S*R sheared non-uniform scales.
+        return translationMat * rotationMat * scaleMat;
     }
 
     fn mixMatrix4x4(a: mat4x4<f32>, b: mat4x4<f32>, t:f32) -> mat4x4<f32> {

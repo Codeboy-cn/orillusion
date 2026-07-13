@@ -97,11 +97,12 @@ export let GlobalFog_shader = /* wgsl */ `
             //for ground
             var fogFactor = calcFogFactor();
             if(fogUniform.skyFactor > 0.01 || fogUniform.overrideSkyFactor > 0.01){
+                // Sky-tinted ground fog; the plain mix below must stay in the
+                // else branch or it dead-stores this result.
                 opColor = blendGroundColor(fogFactor);
             }else{
+                opColor = mix(texColor.rgb, fogUniform.fogColor.xyz, fogFactor);
             }
-            
-            opColor = mix(texColor.rgb, fogUniform.fogColor.xyz, fogFactor);
             let sunLight = lightBuffer[0] ;
             var inScatteringValue = inScatterIng(sunLight.direction, texPosition.xyz, sunLight.lightColor);
             opColor += inScatteringValue;
@@ -142,7 +143,9 @@ export let GlobalFog_shader = /* wgsl */ `
             fog = (fogUniform.end - z) / (fogUniform.end - fogUniform.start);
         }else if(fogUniform.fogType < 1.5 ){
             fog = exp2(-fogUniform.density * z);
-        }else if(fogUniform.fogType == 2.5 ){
+        }else if(fogUniform.fogType < 2.5 ){
+            // fogType is an integer selector (0/1/2); "== 2.5" never matched
+            // so exp2 squared fog silently produced fog = 0.
             fog = fogUniform.density * z;
             fog = exp2(-fog * fog);
         }

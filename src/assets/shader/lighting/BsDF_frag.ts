@@ -80,7 +80,30 @@ export let BsDF_frag: string = /*wgsl*/ `
 
    
 
-      //***********lighting-PBR part********* 
+      let sunLight = lightBuffer[0] ;
+      //***********lighting-PBR part*********
+      var F = FresnelSchlickRoughness(fragData.NoV, fragData.F0, fragData.Roughness);
+      var kS = F;
+      var kD = vec3(1.0) - kS;
+      kD = kD * (1.0 - fragData.Metallic);
+      let envIBL =  materialUniform.envIntensity * approximateSpecularIBL( F , fragData.Roughness , fragData.R , fragData.NoV ) ;
+      fragData.EnvColor = envIBL ;
+      //***********indirect-specular part*********
+
+      var surfaceReduction = 1.0/(fragData.Roughness*fragData.Roughness+1.0);
+      var oneMinusReflectivity = oneMinusReflectivity(fragData.Metallic , materialUniform.materialF0.r );
+      var grazingTerm = clamp((1.0 - fragData.Roughness ) + (1.0 - oneMinusReflectivity),0.0,1.0);
+      var t = pow5(fragData.NoV);
+      var fresnelLerp = FresnelLerp(fragData.NoV,fragData.F0.rgb,vec3<f32>(grazingTerm)) ;
+      var iblSpecularResult = surfaceReduction * fragData.EnvColor * fresnelLerp + envIBL;
+      iblSpecularResult *= max(sunLight.quadratic,0.05) ;
+      //***********indirect-specular part*********
+
+      //***********lighting-PBR part*********
+      // Light loop runs AFTER iblSpecularResult is known: the current
+      // LightingFunction point/spot signatures are (WP, light, iblSpecular)
+      // — the old 7-arg calls here predated that refactor and failed WGSL
+      // validation, so the whole SSS shading path could never compile.
       var specColor = vec3<f32>(0.0) ;
       let lightIndex = getCluster();
       let start = max(lightIndex.start, 0.0);
@@ -91,40 +114,20 @@ export let BsDF_frag: string = /*wgsl*/ `
           let light = getLight(i32(i));
           switch (light.lightType) {
             case PointLightType: {
-              specColor += pointLighting( fragData.Albedo.rgb,ORI_VertexVarying.vWorldPos.xyz,fragData.N,fragData.V,fragData.Roughness,fragData.Metallic,light) ;
+              specColor += pointLighting( ORI_VertexVarying.vWorldPos.xyz, light, iblSpecularResult ) ;
             }
             case DirectLightType: {
               specColor += directDulLighting( fragData.Albedo.rgb, fragData.N, fragData.V, fragData.Roughness, fragData.Metallic, light, light.shadowBias);
             }
             case SpotLightType: {
-              specColor += spotLighting( fragData.Albedo.rgb,ORI_VertexVarying.vWorldPos.xyz,fragData.N,fragData.V,fragData.Roughness,fragData.Metallic , light ) ;
+              specColor += spotLighting( ORI_VertexVarying.vWorldPos.xyz, light, iblSpecularResult ) ;
             }
             default: {
             }
           }
       }
 
-
       fragData.LightChannel = specColor ;
-
-      let sunLight = lightBuffer[0] ;
-      //***********lighting-PBR part********* 
-      var F = FresnelSchlickRoughness(fragData.NoV, fragData.F0, fragData.Roughness);
-      var kS = F;
-      var kD = vec3(1.0) - kS;
-      kD = kD * (1.0 - fragData.Metallic);
-      let envIBL =  materialUniform.envIntensity * approximateSpecularIBL( F , fragData.Roughness , fragData.R , fragData.NoV ) ;
-      fragData.EnvColor = envIBL ;
-      //***********indirect-specular part********* 
-      
-      var surfaceReduction = 1.0/(fragData.Roughness*fragData.Roughness+1.0);   
-      var oneMinusReflectivity = oneMinusReflectivity(fragData.Metallic , materialUniform.materialF0.r );
-      var grazingTerm = clamp((1.0 - fragData.Roughness ) + (1.0 - oneMinusReflectivity),0.0,1.0);
-      var t = pow5(fragData.NoV);
-      var fresnelLerp = FresnelLerp(fragData.NoV,fragData.F0.rgb,vec3<f32>(grazingTerm)) ;   
-      var iblSpecularResult = surfaceReduction * fragData.EnvColor * fresnelLerp + envIBL;
-      iblSpecularResult *= max(sunLight.quadratic,0.05) ;
-      //***********indirect-specular part********* 
       
       //***********indirect-ambient part********* 
       var kdLast = (1.0 - fragData.F0.r) * (1.0 - fragData.Metallic);    
@@ -158,7 +161,11 @@ export let BsDF_frag: string = /*wgsl*/ `
         let clearNormal = fragData.N ;
         let clearcoatRoughness = fragData.ClearcoatRoughness ;
         let att = sunLight.intensity ;
-        let clearCoatLayer = ClearCoat_BRDF( color , materialUniform.clearcoatColor.rgb , materialUniform.ior , clearNormal , -sunLight.direction ,-fragData.V , materialUniform.clearcoatWeight , clearcoatRoughness , att );
+        // Match the current ClearCoat_BRDF signature (..., roughness,
+        // lightColor, att) — the old call passed clearcoatWeight where
+        // roughness belongs and a scalar where lightColor (vec3f) belongs.
+        let ccLightColor = getHDRColor( sunLight.lightColor.rgb , sunLight.linear ) ;
+        let clearCoatLayer = ClearCoat_BRDF( color , materialUniform.clearcoatColor.rgb , materialUniform.ior , clearNormal , -sunLight.direction ,-fragData.V , clearcoatRoughness , ccLightColor , att );
         color = vec3<f32>(clearCoatLayer.rgb/fragData.Albedo.a) ; 
       #endif
       

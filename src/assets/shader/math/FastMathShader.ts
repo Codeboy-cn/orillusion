@@ -60,11 +60,13 @@ export let FastMathShader: string = /*wgsl*/ `
     return a * a;
   }
 
-  fn sqrtFast(  x : f32  ) -> f32 
+  fn sqrtFast(  x : f32  ) -> f32
   {
-    var i = i32(x);
-    i = 0x1FBD1DF5 + (i / 2 );
-    return f32(i);
+    // Quake-style bit trick requires IEEE-754 bit reinterpretation;
+    // numeric i32()/f32() conversions returned garbage (~5e8).
+    var i = bitcast<i32>(x);
+    i = 0x1FBD1DF5 + (i >> 1);
+    return bitcast<f32>(i);
   }
 
   fn lengthFast(  v :vec3<f32> ) -> f32

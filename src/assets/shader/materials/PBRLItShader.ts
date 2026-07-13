@@ -155,8 +155,8 @@ export let PBRLItShader: string = /*wgsl*/ `
         var aoChannel:f32 = 1.0 ;
         #if USE_AOTEX
             let aoMapOffsetSize = materialUniform.aoMapOffsetSize;
-            var aoMapOffsetSizeUV = transformUV(ORI_VertexVarying.fragUV0,aoMapOffsetSize); 
-            var aoMap = textureSample(aoMap, aoMapSampler, ORI_VertexVarying.fragUV0 );
+            var aoMapOffsetSizeUV = transformUV(ORI_VertexVarying.fragUV0,aoMapOffsetSize);
+            var aoMap = textureSample(aoMap, aoMapSampler, aoMapOffsetSizeUV );
             aoChannel = aoMap.g ;
         #else
             #if USE_AO_A

@@ -105,6 +105,11 @@ fn CsMain( @builtin(workgroup_id) workgroup_id : vec3<u32> , @builtin(local_invo
         if(!TestSphereAABB(box, li)) {
             continue;
         }
+        // Never spill past this cluster's slot range — overflowing wrote
+        // into the NEXT cluster's assignment table.
+        if(endIndex - startIndex >= i32(clustersUniform.maxNumLightsPerCluster)) {
+            break;
+        }
         lightAssignBuffer[endIndex] = f32(lightID);
         endIndex++;
     }

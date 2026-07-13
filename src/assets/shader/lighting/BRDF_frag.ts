@@ -113,7 +113,9 @@ export let BRDF_frag: string = /*wgsl*/ `
 
     fn FresnelSchlickRoughness( NoV:f32,  F0:vec3<f32>,  roughness:f32) -> vec3<f32>
     {
-        return F0 + (max(vec3(roughness), F0) - F0) * pow(1.0 - NoV, 5.0);
+        // F90 is (1 - roughness): smooth surfaces get full grazing fresnel,
+        // rough surfaces suppress it (see computeFresnelSchlickRoughness).
+        return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(1.0 - NoV, 5.0);
     }
 
     fn DistributionGGX( NdotH:f32 ,  roughness:f32 ) -> f32
