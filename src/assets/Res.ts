@@ -285,25 +285,12 @@ export class Res {
     }
 
     private async loadTextureCount(urls: string[], count: number, loaderFunctions?: LoaderFunctions, flipY?: boolean) {
-        return new Promise<BitmapTexture2D[]>(
-            async (suc, fail) => {
-                let total = 0;
-                let loadTexture = [];
-                if (count == 0) {
-                    suc(loadTexture);
-                }
-                for (let j = 0; j < count; j++) {
-                    const url = urls.shift();
-                    this.loadTexture(url, loaderFunctions, flipY).then((t) => {
-                        loadTexture.push(t);
-                        total++;
-                        if (total == count) {
-                            suc(loadTexture);
-                        }
-                    });
-                }
-            }
-        );
+        // Promise.all so a failed texture REJECTS the batch instead of
+        // hanging the counter forever (the old wrapper only counted
+        // successes) or resolving a partial array — a texture-array with
+        // silent holes is worse than a visible failure.
+        const batch = urls.splice(0, count);
+        return Promise.all(batch.map(url => this.loadTexture(url, loaderFunctions, flipY))) as Promise<BitmapTexture2D[]>;
     }
 
     public async loadBitmapTextures(urls: string[], count: number = 5, loaderFunctions?: LoaderFunctions, flipY?: boolean) {

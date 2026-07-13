@@ -134,25 +134,27 @@ export class BitmapTexture2D extends Texture {
             this.format = this._ldrFormat;
             this.generate(imageBitmap);
         } else {
-            return new Promise((succ, fial) => {
-                fetch(url, {
+            // Straight async/await: the old hand-rolled Promise wrapper
+            // never called its reject callback, so a 404 / network error /
+            // decode failure left the promise pending forever and every
+            // awaiting caller hung.
+            try {
+                const response = await fetch(url, {
                     headers: Object.assign({
                         'Accept': 'image/avif,image/webp,*/*'
                     }, loaderFunctions?.headers)
-                }).then((r) => {
-                    // const img = await r.blob();
-                    // await this.loadFromBlob(img);
-                    LoaderBase.read(url, r, loaderFunctions).then((chunks) => {
-                        let img = new Blob([chunks as BlobPart], { type: 'image/jpeg' });
-                        chunks = null;
-                        this.loadFromBlob(img).then(() => {
-                            succ(true);
-                        });
-                    });
-
-                })
-            })
-
+                });
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status} loading texture '${url}'`);
+                }
+                let chunks = await LoaderBase.read(url, response, loaderFunctions);
+                let img = new Blob([chunks as BlobPart], { type: 'image/jpeg' });
+                chunks = null;
+                await this.loadFromBlob(img);
+            } catch (e) {
+                loaderFunctions?.onError?.(e);
+                throw e;
+            }
         }
         return true;
     }
