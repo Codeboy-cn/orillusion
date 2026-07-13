@@ -104,4 +104,22 @@ export class VideoTexture extends Texture {
         video.crossOrigin = ''
         return video
     }
+
+    /**
+     * Stop background decoding and release the internally created <video>
+     * element. Elements passed in by the caller (`external`) are only
+     * dereferenced — their lifecycle belongs to the caller.
+     */
+    public destroy(force?: boolean) {
+        if (this.media && !this.external) {
+            this.media.pause();
+            this.media.src = '';
+            this.media.srcObject = null;
+            this.media.load();
+        }
+        this.media = null;
+        this._des = null;
+        this.videoTexture = null;
+        super.destroy(force);
+    }
 }
