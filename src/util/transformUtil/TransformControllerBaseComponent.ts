@@ -238,23 +238,28 @@ export class TransformControllerBaseComponent extends ComponentBase {
     /** Highlight handles on hover, or apply the transform while dragging. */
     public onMouseMove(e: PointerEvent3D): void {
         if (this.currentAxis == TransformAxisEnum.NONE) {
-            let mat = this.lastMoveObj.getComponent(MeshRenderer).material;
-            if (this.lastMoveObj && "baseColor" in mat) {
-                mat.baseColor = this.mAxisColor[this.lastMoveAxis];
-                this.lastMoveObj = null;
-                if (this.lastMoveAxis == TransformAxisEnum.XYZ) {
-                    this.mAxis[TransformAxisEnum.X].getComponent(MeshRenderer).material.setUniformColor("baseColor", this.mAxisColor[TransformAxisEnum.X]);
-                    this.mAxis[TransformAxisEnum.Y].getComponent(MeshRenderer).material.setUniformColor("baseColor", this.mAxisColor[TransformAxisEnum.Y]);
-                    this.mAxis[TransformAxisEnum.Z].getComponent(MeshRenderer).material.setUniformColor("baseColor", this.mAxisColor[TransformAxisEnum.Z]);
+            // Guard: lastMoveObj is null until the first hover, so fetch its
+            // material only when a previously highlighted object exists.
+            if (this.lastMoveObj) {
+                let mat = this.lastMoveObj.getComponent(MeshRenderer).material;
+                if ("baseColor" in mat) {
+                    mat.baseColor = this.mAxisColor[this.lastMoveAxis];
+                    this.lastMoveObj = null;
+                    if (this.lastMoveAxis == TransformAxisEnum.XYZ) {
+                        this.mAxis[TransformAxisEnum.X].getComponent(MeshRenderer).material.setUniformColor("baseColor", this.mAxisColor[TransformAxisEnum.X]);
+                        this.mAxis[TransformAxisEnum.Y].getComponent(MeshRenderer).material.setUniformColor("baseColor", this.mAxisColor[TransformAxisEnum.Y]);
+                        this.mAxis[TransformAxisEnum.Z].getComponent(MeshRenderer).material.setUniformColor("baseColor", this.mAxisColor[TransformAxisEnum.Z]);
+                    }
+                    this.lastMoveAxis = TransformAxisEnum.NONE;
                 }
-                this.lastMoveAxis = TransformAxisEnum.NONE;
             }
             let result = this.pickAxis();
             if (!result) {
                 return;
             }
 
-            mat.setUniformColor("baseColor", new Color(1, 1, 1));
+            // Highlight the newly picked object's material, not the old one.
+            result.obj.getComponent(MeshRenderer).material.setUniformColor("baseColor", new Color(1, 1, 1));
             this.lastMoveObj = result.obj;
             this.lastMoveAxis = result.axis;
             if (this.lastMoveAxis == TransformAxisEnum.XYZ) {

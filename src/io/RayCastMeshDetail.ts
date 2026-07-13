@@ -42,8 +42,9 @@ export class RayCastMeshDetail {
 
         // If point lies inside the triangle, return interpolated y-coord.
         if (u >= -RayCastMeshDetail.EPS && v >= -RayCastMeshDetail.EPS && u + v <= 1 + RayCastMeshDetail.EPS) {
-            let y = a[1] + v0[1] * u + v1[1] * v;
-            return Math.abs(y - p[1]);
+            // Vector3 has no numeric indexer; a[1] etc. were undefined -> NaN.
+            let y = a.y + v0.y * u + v1.y * v;
+            return Math.abs(y - p.y);
         }
         return RayCastMeshDetail.FLT_MAX;
     }

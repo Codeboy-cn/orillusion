@@ -138,8 +138,12 @@ export class CylinderGeometry extends GeometryBase {
                     const u = x / that.radialSegments;
                     let theta = u * that.thetaLength + that.thetaStart;
                     
-                    if (x == that.radialSegments && Math.abs(that.thetaLength - that.thetaStart) == Math.PI * 2) {
-                        theta = 0;
+                    // Weld the seam only for a full cylinder: the closing edge
+                    // must land exactly on the starting angle (thetaStart), and
+                    // "full" means thetaLength itself is 2*PI — thetaStart is an
+                    // offset, not part of the arc span.
+                    if (x == that.radialSegments && that.thetaLength === Math.PI * 2) {
+                        theta = that.thetaStart;
                     }
 
                     const sinTheta = Math.sin(theta);

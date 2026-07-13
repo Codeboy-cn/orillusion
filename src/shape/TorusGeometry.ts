@@ -55,7 +55,8 @@ export class TorusGeometry extends GeometryBase {
         const radialSegments = this.radialSegments;
         const tubularSegments = this.tubularSegments;
 
-        this.bounds = new BoundingBox(Vector3.ZERO.clone(), new Vector3(radius * 2, tube * 2, radius * 2));
+        // The torus extends to radius + tube in the XZ plane, not just radius.
+        this.bounds = new BoundingBox(Vector3.ZERO.clone(), new Vector3((radius + tube) * 2, tube * 2, (radius + tube) * 2));
 
         var vertexCount: number = (radialSegments + 1) * (tubularSegments + 1);
         let position_arr = new Float32Array(vertexCount * 3);

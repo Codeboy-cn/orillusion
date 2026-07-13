@@ -60,9 +60,11 @@ export class BytesArray extends DataView<ArrayBufferLike> {
     }
 
     public readBytes(byteLen: number) {
-        let bufferView = new DataView(this.buffer, this.byteOffset + this.position, byteLen);
+        // DataView.buffer is the WHOLE underlying ArrayBuffer, not the viewed
+        // window — return a copy of just the requested range instead.
+        const start = this.byteOffset + this.position;
         this.position += byteLen;
-        return bufferView.buffer;
+        return this.buffer.slice(start, start + byteLen);
     }
 
     public readBytesArray() {
