@@ -1902,22 +1902,13 @@ export class Matrix4 {
     public transpose() {
         let data: FloatArray = this.rawData;
 
-        for (let i: number = 0; i < Matrix4.helpMatrix.rawData.length; i++) {
-            Matrix4.helpMatrix.rawData[i] = data[i];
-        }
-
-        data[1] = Matrix4.helpMatrix.rawData[4];
-        data[2] = Matrix4.helpMatrix.rawData[8];
-        data[3] = Matrix4.helpMatrix.rawData[12];
-        data[4] = Matrix4.helpMatrix.rawData[1];
-        data[6] = Matrix4.helpMatrix.rawData[9];
-        data[7] = Matrix4.helpMatrix.rawData[13];
-        data[8] = Matrix4.helpMatrix.rawData[2];
-        data[9] = Matrix4.helpMatrix.rawData[6];
-        data[11] = Matrix4.helpMatrix.rawData[14];
-        data[12] = Matrix4.helpMatrix.rawData[3];
-        data[13] = Matrix4.helpMatrix.rawData[7];
-        data[14] = Matrix4.helpMatrix.rawData[11];
+        let t: number;
+        t = data[1]; data[1] = data[4]; data[4] = t;
+        t = data[2]; data[2] = data[8]; data[8] = t;
+        t = data[3]; data[3] = data[12]; data[12] = t;
+        t = data[6]; data[6] = data[9]; data[9] = t;
+        t = data[7]; data[7] = data[13]; data[13] = t;
+        t = data[11]; data[11] = data[14]; data[14] = t;
     }
 
     /**
