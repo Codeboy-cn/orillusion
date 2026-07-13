@@ -176,8 +176,11 @@ export class Ray {
      * @returns Returns a point at the specified location
      */
     public getPoint(t: number): Vector3 {
-        this._dir.multiplyScalar(t);
-        return this.origin.add(this._dir); // + t * m_Direction;
+        let target = new Vector3();
+        target.copy(this._dir);
+        target.multiplyScalar(t);
+        Vector3.add(target, this.origin, target);
+        return target;
     }
 
     /**
