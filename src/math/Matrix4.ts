@@ -1610,7 +1610,7 @@ export class Matrix4 {
                     q.y = (mr[1] + mr[4]) / (4 * q.x);
                     q.z = (mr[8] + mr[2]) / (4 * q.x);
                 } else if (mr[5] > mr[10]) {
-                    rot.y = Math.sqrt(1 + mr[5] - mr[0] - mr[10]) / 2;
+                    q.y = Math.sqrt(1 + mr[5] - mr[0] - mr[10]) / 2;
 
                     q.x = (mr[1] + mr[4]) / (4 * q.y);
                     q.w = (mr[8] - mr[2]) / (4 * q.y);
