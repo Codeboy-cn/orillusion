@@ -192,7 +192,11 @@ export class ComputeShader extends ShaderPassBase {
     protected noticeBufferChange(name: string) {
         let bindGroupCache = this._groupCache[name];
         if (bindGroupCache) {
-            this.genGroups(bindGroupCache.groupIndex, bindGroupCache.infos, true);
+            // Defer the rebuild to the next compute() (its null-rebuild
+            // loop recreates the group). Rebuilding here synchronously
+            // touched buffer.buffer before the swapped-in buffer had a
+            // bound context and threw 'used before bindCtx'.
+            this.bindGroups[bindGroupCache.groupIndex] = null;
         }
     }
 
