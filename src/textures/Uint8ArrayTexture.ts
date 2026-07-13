@@ -8,7 +8,23 @@ import { GPUTextureFormat } from '../gfx/graphics/webGpu/WebGPUConst';
  * @group Texture
  */
 export class Uint8ArrayTexture extends Texture {
-    private _dataBuffer: GPUBuffer;
+
+    private _upload(width: number, height: number, data: Uint8Array) {
+        if (data.length < width * height * 4) {
+            throw new Error(`Uint8ArrayTexture: data holds ${data.length} bytes but ${width}x${height} RGBA needs ${width * height * 4}`);
+        }
+        // writeTexture accepts any tightly-packed row width — the old
+        // staging copyBufferToTexture path rounded bytesPerRow up to 256
+        // while the CPU data stayed tightly packed, so any width that
+        // wasn't a multiple of 64 texels either failed validation or
+        // sampled skewed rows.
+        this._boundCtx!.device.queue.writeTexture(
+            { texture: this.getGPUTexture() },
+            data as unknown as BufferSource,
+            { bytesPerRow: width * 4, rowsPerImage: height },
+            { width: width, height: height, depthOrArrayLayers: 1 },
+        );
+    }
 
     /**
      * create texture by number array, which format is uint8
@@ -20,38 +36,16 @@ export class Uint8ArrayTexture extends Texture {
      */
     public create(width: number, height: number, data: Uint8Array, useMipmap: boolean = false, ctx?: Context3D): this {
         this._ensureBound(ctx);
-        let device = this._boundCtx!.device;
-        const bytesPerRow = Math.ceil((width * 4) / 256) * 256;
 
         this.format = GPUTextureFormat.rgba8unorm;
-        this.mipmapCount = Math.floor(useMipmap ? Math.log2(width) : 1);
+        // max(1, ...) — a 1-pixel dimension used to produce mipmapCount 0
+        // (invalid descriptor), and height was ignored entirely.
+        this.mipmapCount = useMipmap ? Math.max(1, Math.floor(Math.log2(Math.max(width, height)))) : 1;
         this.createTextureDescriptor(width, height, this.mipmapCount, this.format);
 
-        const textureDataBuffer = (this._dataBuffer = device.createBuffer({
-            size: data.byteLength,
-            usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC,
-        }));
+        this._upload(width, height, data);
 
-        device.queue.writeBuffer(textureDataBuffer, 0, data as BufferSource);
-        const commandEncoder = this._boundCtx!.gpuContext.beginCommandEncoder();
-        commandEncoder.copyBufferToTexture(
-            {
-                buffer: textureDataBuffer,
-                bytesPerRow: bytesPerRow,
-            },
-            {
-                texture: this.getGPUTexture(),
-            },
-            {
-                width: width,
-                height: height,
-                depthOrArrayLayers: 1,
-            },
-        );
-
-        this._boundCtx!.gpuContext.endCommandEncoder(commandEncoder);
-
-        if (useMipmap) {
+        if (this.mipmapCount > 1) {
             TextureMipmapGenerator.webGPUGenerateMipmap(this);
         }
         return this;
@@ -62,34 +56,9 @@ export class Uint8ArrayTexture extends Texture {
      */
     public updateTexture(width: number, height: number, data: Uint8Array) {
         let device = this._boundCtx!.device;
-        const bytesPerRow = Math.ceil((width * 4) / 256) * 256;
-        this.mipmapCount = Math.floor(true ? Math.log2(width) : 1);
+        this.mipmapCount = Math.max(1, Math.floor(Math.log2(Math.max(width, height))));
 
-        this._dataBuffer && this._dataBuffer.destroy();
-        this._dataBuffer = null;
-        const textureDataBuffer = (this._dataBuffer = device.createBuffer({
-            size: data.byteLength,
-            usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC,
-        }));
-
-        device.queue.writeBuffer(textureDataBuffer, 0, data as BufferSource);
-        const commandEncoder = this._boundCtx!.gpuContext.beginCommandEncoder();
-        commandEncoder.copyBufferToTexture(
-            {
-                buffer: textureDataBuffer,
-                bytesPerRow: bytesPerRow,
-            },
-            {
-                texture: this.getGPUTexture(),
-            },
-            {
-                width: width,
-                height: height,
-                depthOrArrayLayers: 1,
-            },
-        );
-
-        this._boundCtx!.gpuContext.endCommandEncoder(commandEncoder);
+        this._upload(width, height, data);
         this.gpuSampler = device.createSampler(this);
 
         if (this.mipmapCount > 1) {

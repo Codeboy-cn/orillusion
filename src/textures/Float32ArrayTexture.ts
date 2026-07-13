@@ -1,5 +1,4 @@
 import { Texture } from '../gfx/graphics/webGpu/core/texture/Texture';
-import { TextureMipmapGenerator } from '../gfx/graphics/webGpu/core/texture/TextureMipmapGenerator';
 import { GPUTextureFormat } from '../gfx/graphics/webGpu/WebGPUConst';
 import { Context3D } from '../gfx/graphics/webGpu/Context3D';
 /**
@@ -13,60 +12,47 @@ export class Float32ArrayTexture extends Texture {
      * @param width assign the texture width
      * @param height assign the texture height
      * @param data color of each pixel
-     * @param filtering set the sampler type to filtering, else it's non-filtering
+     * @param filtering request a filtering sampler binding. Defaults to
+     *        false: rgba32float is only filterable when the device has
+     *        the 'float32-filterable' feature, so the non-filtering
+     *        binding is the universally legal one. (The old parameter
+     *        was inverted — passing true configured NON-filtering.)
      * @returns
      */
-    public create(width: number, height: number, data: Float32Array, filtering: boolean = true, ctx?: Context3D) {
+    public create(width: number, height: number, data: Float32Array, filtering: boolean = false, ctx?: Context3D) {
         this._ensureBound(ctx);
         let device = this._boundCtx!.device;
-        const bytesPerRow = width * 4 * 4;
+        if (data.length < width * height * 4) {
+            throw new Error(`Float32ArrayTexture: data holds ${data.length} floats but ${width}x${height} RGBA needs ${width * height * 4}`);
+        }
         this.format = GPUTextureFormat.rgba32float;
 
-        let mipmapCount = 1;
-        this.createTextureDescriptor(width, height, mipmapCount, this.format);
+        this.mipmapCount = 1;
+        this.createTextureDescriptor(width, height, this.mipmapCount, this.format);
 
-        const textureDataBuffer = device.createBuffer({
-            size: data.byteLength,
-            usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC,
-        });
-
-        device.queue.writeBuffer(textureDataBuffer, 0, data as BufferSource);
-        const commandEncoder = this._boundCtx!.gpuContext.beginCommandEncoder();
-        commandEncoder.copyBufferToTexture(
-            {
-                buffer: textureDataBuffer,
-                bytesPerRow: bytesPerRow,
-            },
-            {
-                texture: this.getGPUTexture(),
-            },
-            {
-                width: width,
-                height: height,
-                depthOrArrayLayers: 1,
-            },
+        // writeTexture accepts tightly-packed rows of any width — the old
+        // staging copyBufferToTexture path required 256-byte row alignment
+        // (only widths that are multiples of 16 texels were legal) and its
+        // staging buffer was never destroyed.
+        device.queue.writeTexture(
+            { texture: this.getGPUTexture() },
+            data as unknown as BufferSource,
+            { bytesPerRow: width * 4 * 4, rowsPerImage: height },
+            { width: width, height: height, depthOrArrayLayers: 1 },
         );
 
-        this._boundCtx!.gpuContext.endCommandEncoder(commandEncoder);
-
-        // this.sampler.minFilter = `nearest`;
-        // this.sampler.magFilter = `nearest`;
-        // this.sampler.mipmapFilter = `nearest`;
-        // this.sampler.maxAnisotropy = 0.5 ;
-        // this.bindingSampler.type = `non-filtering`;
-        // this.bindingTexture.sampleType = `unfilterable-float`;
-        if (filtering) {
+        if (!filtering) {
             this.samplerBindingLayout.type = `non-filtering`;
             this.textureBindingLayout.sampleType = `unfilterable-float`;
         }
 
         this.gpuSampler = device.createSampler({});
-
-        if (mipmapCount > 1) TextureMipmapGenerator.webGPUGenerateMipmap(this);
     }
 
     /**
-     * fill this texture GPUBuffer
+     * fill this texture GPUBuffer. Kept on the copy path (the source is
+     * already a GPUBuffer); copyBufferToTexture requires 256-byte-aligned
+     * rows, so only widths that are multiples of 16 texels are legal.
      * @param width assign the texture width
      * @param height assign the texture height
      * @param textureDataBuffer GPUBuffer
@@ -76,6 +62,9 @@ export class Float32ArrayTexture extends Texture {
         this._ensureBound(ctx);
         let device = this._boundCtx!.device;
         const bytesPerRow = width * 4 * 4;
+        if (bytesPerRow % 256 !== 0) {
+            throw new Error(`Float32ArrayTexture.fromBuffer: width ${width} gives bytesPerRow ${bytesPerRow}, but copyBufferToTexture requires a multiple of 256 (width must be a multiple of 16)`);
+        }
         this.format = GPUTextureFormat.rgba32float;
 
         this.mipmapCount = 1;
@@ -99,16 +88,9 @@ export class Float32ArrayTexture extends Texture {
 
         this._boundCtx!.gpuContext.endCommandEncoder(commandEncoder);
 
-        // this.sampler.minFilter = `nearest`;
-        // this.sampler.magFilter = `nearest`;
-        // this.sampler.mipmapFilter = `nearest`;
-        // this.sampler.maxAnisotropy = 0.5 ;
-        // this.bindingSampler.type = `non-filtering`;
-        // this.bindingTexture.sampleType = `unfilterable-float`;
         this.samplerBindingLayout.type = `non-filtering`;
         this.textureBindingLayout.sampleType = `unfilterable-float`;
         this.gpuSampler = device.createSampler({});
         return this;
-        // if (mipmapCount > 1) textureMipmapGenerator.webGPUGenerateMipmap(this);
     }
 }

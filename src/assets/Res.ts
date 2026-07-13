@@ -511,13 +511,14 @@ export class Res {
      * @returns
      */
     public createTexture(width: number, height: number, r: number, g: number, b: number, a: number, name?: string) {
-        let w = 32;
-        let h = 32;
-        let textureData = new Uint8Array(w * h * 4);
+        // The width/height parameters were ignored (fixed 32x32 buffer,
+        // fixed 16x16 texture) — callers following the documentation got
+        // a mismatched texture.
+        let textureData = new Uint8Array(width * height * 4);
         this.fillColor(textureData, width, height, r, g, b, a);
         let texture = new Uint8ArrayTexture();
         texture.name = name;
-        texture.create(16, 16, textureData, true, this._ctx);
+        texture.create(width, height, textureData, true, this._ctx);
         if (name) {
             this.addTexture(name, texture);
         }

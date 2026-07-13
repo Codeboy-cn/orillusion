@@ -11,7 +11,6 @@ import { toHalfFloat } from '../util/Convert';
 export class Float16ArrayTexture extends Texture {
     public uint16Array: Uint16Array;
     public floatArray: number[];
-    private _dataBuffer: GPUBuffer;
     /**
      * fill this texture by array of numbers;the format as [red0, green0, blue0, alpha0, red1, green1, blue1, alpha1...]
      * @param width assign the texture width
@@ -36,8 +35,6 @@ export class Float16ArrayTexture extends Texture {
      */
     public updateTexture(width: number, height: number, numbers: number[], mipmap: boolean = true, ctx?: Context3D) {
         if (width != this.width || height != this.height) {
-            this._dataBuffer && this._dataBuffer.destroy();
-            this._dataBuffer = null;
             this.gpuTexture && this.gpuTexture.destroy();
             this.gpuTexture = null;
         }
@@ -45,10 +42,14 @@ export class Float16ArrayTexture extends Texture {
         this.floatArray = numbers;
         this._ensureBound(ctx);
         let device = this._boundCtx!.device;
-        const bytesPerRow = width * 4 * 2;
+        if (numbers.length < width * height * 4) {
+            throw new Error(`Float16ArrayTexture: data holds ${numbers.length} values but ${width}x${height} RGBA needs ${width * height * 4}`);
+        }
         this.format = GPUTextureFormat.rgba16float;
 
-        this.mipmapCount = Math.floor(mipmap ? Math.log2(width) : 1);
+        // max(1, ...) — a 1-pixel dimension used to produce mipmapCount 0
+        // (invalid descriptor), and height was ignored entirely.
+        this.mipmapCount = mipmap ? Math.max(1, Math.floor(Math.log2(Math.max(width, height)))) : 1;
         this.createTextureDescriptor(width, height, this.mipmapCount, this.format);
         if (!this.uint16Array || this.uint16Array.length != numbers.length) {
             this.uint16Array = new Uint16Array(numbers.length);
@@ -57,39 +58,19 @@ export class Float16ArrayTexture extends Texture {
         for (let i = 0, c = uint16Array.length; i < c; i++) {
             uint16Array[i] = toHalfFloat(numbers[i]);
         }
-        const textureDataBuffer = (this._dataBuffer = device.createBuffer({
-            size: uint16Array.byteLength,
-            usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC,
-        }));
-
-        device.queue.writeBuffer(textureDataBuffer, 0, uint16Array as BufferSource);
-        const commandEncoder = this._boundCtx!.gpuContext.beginCommandEncoder();
-        commandEncoder.copyBufferToTexture(
-            {
-                buffer: textureDataBuffer,
-                bytesPerRow: bytesPerRow,
-            },
-            {
-                texture: this.getGPUTexture(),
-            },
-            {
-                width: width,
-                height: height,
-                depthOrArrayLayers: 1,
-            },
+        // writeTexture accepts tightly-packed rows of any width — the old
+        // staging copyBufferToTexture path required 256-byte row alignment
+        // (only widths that are multiples of 32 texels were legal).
+        device.queue.writeTexture(
+            { texture: this.getGPUTexture() },
+            uint16Array as unknown as BufferSource,
+            { bytesPerRow: width * 4 * 2, rowsPerImage: height },
+            { width: width, height: height, depthOrArrayLayers: 1 },
         );
         if (!this.useMipmap) {
             this.samplerBindingLayout.type = `filtering`;
             this.textureBindingLayout.sampleType = `float`;
         }
-        this._boundCtx!.gpuContext.endCommandEncoder(commandEncoder);
-
-        // this.sampler.minFilter = `nearest`;
-        // this.sampler.magFilter = `nearest`;
-        // this.sampler.mipmapFilter = `nearest`;
-        // this.sampler.maxAnisotropy = 0.5 ;
-        // this.bindingSampler.type = `non-filtering`;
-        // this.bindingTexture.sampleType = `unfilterable-float`;
 
         this.gpuSampler = device.createSampler(this);
         this.gpuTexture = this.getGPUTexture();
