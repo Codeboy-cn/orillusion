@@ -62,6 +62,12 @@ export class TextureCube extends Texture {
         usage: number = GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.COPY_SRC | GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.RENDER_ATTACHMENT,
         sizeCount: number = 1,
     ) {
+        // Mirror the base-class rule: sRGB-encoded formats are not
+        // storage-binding-capable in WebGPU — requesting STORAGE_BINDING on
+        // them throws a validation error at GPUTexture create.
+        if (typeof format === 'string' && format.endsWith('-srgb')) {
+            usage &= ~GPUTextureUsage.STORAGE_BINDING;
+        }
         this.width = width;
         this.height = height;
         this.format = format;

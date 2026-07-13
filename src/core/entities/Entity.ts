@@ -6,6 +6,7 @@ import { CEventDispatcher } from '../../event/CEventDispatcher';
 import { BoundUtil } from '../../util/BoundUtil';
 import { GetCountInstanceID } from '../../util/Global';
 import { BoundingBox } from '../bound/BoundingBox';
+import { BoundingSphere } from '../bound/BoundingSphere';
 import { IBound } from '../bound/IBound';
 import { Object3D } from './Object3D';
 
@@ -23,7 +24,7 @@ export class Entity extends CEventDispatcher {
     public name: string = '';
 
     protected readonly _instanceID: string = '';
-    private _numChildren: number;
+    private _numChildren: number = 0;
 
     /**
      * The unique identifier of the object.
@@ -289,7 +290,23 @@ export class Entity extends CEventDispatcher {
             this._isBoundChange = true;
         }
         if (this._isBoundChange) {
-            BoundUtil.transformBound(this.transform.worldMatrix, this._bound as BoundingBox, this._boundWorld as BoundingBox);
+            if (this._bound instanceof BoundingBox) {
+                BoundUtil.transformBound(this.transform.worldMatrix, this._bound, this._boundWorld as BoundingBox);
+            } else if (this._bound instanceof BoundingSphere) {
+                // BoundUtil.transformBound reads box corners (min/max) which a
+                // sphere doesn't have — transform the sphere directly instead.
+                const worldSphere = this._boundWorld as BoundingSphere;
+                const worldMatrix = this.transform.worldMatrix;
+                worldSphere.center.copy(this._bound.center);
+                worldMatrix.transformPoint(worldSphere.center);
+                // Scale the radius by the largest axis scale of the world matrix
+                // (basis vector lengths; translation lives at rawData[12..14]).
+                const d = worldMatrix.rawData;
+                const sx = d[0] * d[0] + d[1] * d[1] + d[2] * d[2];
+                const sy = d[4] * d[4] + d[5] * d[5] + d[6] * d[6];
+                const sz = d[8] * d[8] + d[9] * d[9] + d[10] * d[10];
+                worldSphere.radius = this._bound.radius * Math.sqrt(Math.max(sx, sy, sz));
+            }
             this._isBoundChange = false;
         }
         return this._boundWorld;

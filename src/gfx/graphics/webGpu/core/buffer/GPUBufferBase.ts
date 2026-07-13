@@ -131,8 +131,15 @@ export class GPUBufferBase {
     public reset(clean: boolean = false, size: number = 0, data?: Float32Array) {
         this.seek = 0;
         this.memory.reset();
+        // The allocation cursor is back at 0: named nodes created before the
+        // reset point at now-recyclable offsets and would overlap fresh
+        // allocations — drop them so setters re-allocate cleanly.
+        this.memoryNodes?.clear();
         if (clean) {
-            this.createBuffer(this.usage, size, data);
+            // Guard against creating a zero-size buffer: keep the previous
+            // byteSize when no new size is given.
+            const floatSize = size > 0 ? size : this.byteSize / 4;
+            this.createBuffer(this.usage, floatSize, data);
         }
     }
 
@@ -523,7 +530,12 @@ export class GPUBufferBase {
         }
     }
 
+    /** Set by destroy(); keeps in-flight mapAsync callbacks from
+     *  re-enqueueing staging buffers into a destroyed object. */
+    private _destroyed: boolean = false;
+
     public mapAsyncWrite(floatArray: FloatArray, len: number) {
+        if (this._destroyed) return;
         let mapAsyncArray: Float32Array;
         if (floatArray instanceof Float64Array) {
             mapAsyncArray = new Float32Array(floatArray);
@@ -566,7 +578,16 @@ export class GPUBufferBase {
             commandEncoder.copyBufferToBuffer(tBuffer, 0, destBuffer, 0, len * 4);
             device.queue.submit([commandEncoder.finish()]);
             tBuffer.mapAsync(GPUMapMode.WRITE).then(
-                () => this.mapAsyncReady.push(tBuffer),
+                () => {
+                    if (this._destroyed) {
+                        // destroy() already drained the queue — don't
+                        // re-enqueue; release the staging buffer instead.
+                        try { tBuffer.destroy(); } catch { /* ignore */ }
+                        this.mapAsyncBuffersOutstanding--;
+                        return;
+                    }
+                    this.mapAsyncReady.push(tBuffer);
+                },
                 (err) => {
                     // device.destroy() during dispose rejects pending mapAsync with AbortError.
                     if (err?.name !== 'AbortError') throw err;
@@ -576,6 +597,15 @@ export class GPUBufferBase {
     }
 
     public destroy() {
+        this._destroyed = true;
+        // Drain the staging-buffer queue; in-flight mapAsync callbacks are
+        // guarded by _destroyed so they can't re-enqueue afterwards.
+        while (this.mapAsyncReady.length) {
+            const staging = this.mapAsyncReady.shift();
+            try { staging.destroy(); } catch { /* ignore */ }
+            this.mapAsyncBuffersOutstanding--;
+        }
+
         if (this.memoryNodes) {
             this.memoryNodes.forEach((v) => {
                 v.destroy();

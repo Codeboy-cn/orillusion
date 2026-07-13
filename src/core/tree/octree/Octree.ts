@@ -150,7 +150,9 @@ export class Octree {
   }
 
   boxCasts(box: BoundingBox, ret: OctreeEntity[]) {
-    if (box.intersectsBox(this.box)) {
+    // Root bypass mirrors getRenderNode: entities outside the root box
+    // still live on the root node and must be reachable.
+    if (this.level == 0 || box.intersectsBox(this.box)) {
       if (this.entities.size > 0) {
         ret.push(...this.entities.values());
       }

@@ -220,6 +220,20 @@ export class GeometryBase {
             this._attributeMap.set(VertexAttributeName.indices, vertexInfo);
             this._indicesBuffer = new GeometryIndicesBuffer();
             this._indicesBuffer.createIndicesBuffer(vertexInfo);
+        } else {
+            // Update existing index data instead of silently ignoring it.
+            let vertexInfo = this._attributeMap.get(VertexAttributeName.indices);
+            vertexInfo.data = data;
+            let format: GPUIndexFormat = data instanceof Uint32Array ? `uint32` : `uint16`;
+            if (data.length != this._indicesBuffer.indicesCount || format != this._indicesBuffer.indicesFormat) {
+                // Length or format changed: rebuild the GPU indices buffer the
+                // same way the first-time path does, releasing the old one.
+                this._indicesBuffer.indicesGPUBuffer?.destroy();
+                this._indicesBuffer.createIndicesBuffer(vertexInfo);
+            } else {
+                // Same length/format: copy the new data and re-upload in place.
+                this._indicesBuffer.upload(data);
+            }
         }
     }
 

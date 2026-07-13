@@ -277,6 +277,9 @@ export class Engine3D {
     private static _sharedInit: boolean = false;
 
     private static _rafId: number = 0;
+    /** True while the shared render loop is paused; keeps _tick's finally
+     *  clause from re-arming the RAF that pause() just cancelled. */
+    private static _paused: boolean = false;
     private static _time: number = 0;
 
     // -------- instance fields --------
@@ -449,7 +452,27 @@ export class Engine3D {
 
     // -------- render view setup --------
 
+    /** Stop, destroy and remove render jobs whose view is not in `keep` —
+     *  otherwise jobs for replaced views keep rendering forever. */
+    private _pruneRenderJobs(keep: View3D[]) {
+        for (const [view, job] of this.renderJobs) {
+            if (keep.indexOf(view) === -1) {
+                job.stop();
+                job.destroy();
+                this.renderJobs.delete(view);
+            }
+        }
+    }
+
     private _startRenderJob(view: View3D, JobCtor: new (view: View3D) => RendererJob = ForwardRendererJob): RendererJob {
+        // A re-call for the same view replaces the old job — tear it down
+        // cleanly instead of leaking its graph.
+        const oldJob = this.renderJobs.get(view);
+        if (oldJob) {
+            oldJob.stop();
+            oldJob.destroy();
+            this.renderJobs.delete(view);
+        }
         view.engine3D = this;
         // Bind camera to this engine's context so render-time lookups
         // (`GlobalBindGroup._ctxFromCamera`, `CameraUtil` math helpers)
@@ -486,6 +509,7 @@ export class Engine3D {
     }
 
     public startRenderView(view: View3D, JobCtor?: new (view: View3D) => RendererJob): RendererJob {
+        this._pruneRenderJobs([view]);
         this.views = [view];
         let job = this._startRenderJob(view, JobCtor);
         // Drive the render-job lifecycle synchronously here: previously
@@ -505,6 +529,7 @@ export class Engine3D {
     }
 
     public startRenderViews(views: View3D[], JobCtor?: new (view: View3D) => RendererJob) {
+        this._pruneRenderJobs(views);
         this.views = views;
         for (let v of views) {
             const job = this._startRenderJob(v, JobCtor);
@@ -518,6 +543,7 @@ export class Engine3D {
     }
 
     public static pause() {
+        this._paused = true;
         if (this._rafId !== 0) {
             cancelAnimationFrame(this._rafId);
             this._rafId = 0;
@@ -525,6 +551,7 @@ export class Engine3D {
     }
 
     public static resume() {
+        this._paused = false;
         Engine3D._ensureLoop();
     }
 
@@ -608,7 +635,8 @@ export class Engine3D {
             }
         } finally {
             this._rafId = 0;
-            this._ensureLoop();
+            // Don't undo a pause() issued while this frame was in flight.
+            if (!this._paused) this._ensureLoop();
         }
     }
 

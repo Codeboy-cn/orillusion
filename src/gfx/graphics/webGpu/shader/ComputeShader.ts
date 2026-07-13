@@ -334,6 +334,15 @@ export class ComputeShader extends ShaderPassBase {
             this._boundCtx.removeEventListener(CResizeEvent.RESIZE, this._resizeListener, this);
         }
         this._resizeListener = null;
+        // genGroups attached Reference entries for every bound texture;
+        // detach them so this shader stops pinning the textures (and their
+        // Context3D) after it is destroyed. attached() is idempotent per
+        // (texture, this) pair, so one detach per dict entry is enough.
+        const refs = Reference.getInstance();
+        this._storageTextureDic.forEach((tex) => refs.detached(tex, this));
+        this._storageTextureDic.clear();
+        this._sampleTextureDic.forEach((tex) => refs.detached(tex, this));
+        this._sampleTextureDic.clear();
         this._computePipeline = null;
         this._csShaderModule = null;
         this.bindGroups = [];

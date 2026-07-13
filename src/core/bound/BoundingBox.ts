@@ -91,10 +91,13 @@ export class BoundingBox implements IBound {
      * @returns this box for chaining
      */
     public setFromCenterAndSize(center: Vector3, size: Vector3): this {
-        this.size = size;
-        this.center = center;
+        // Copy the caller's vectors instead of aliasing them — otherwise
+        // later mutations of this box corrupt the caller's data (and vice
+        // versa).
         this.init();
-        this.extents.copy(size).multiplyScalar(0.5);
+        this.center.copy(center);
+        this.size.copy(size);
+        this.extents.copy(this.size).multiplyScalar(0.5);
         Vector3.sub(this.center, this.extents, this.min);
         Vector3.add(this.center, this.extents, this.max);
         return this;

@@ -161,6 +161,13 @@ export class Preprocessor {
 
 
     protected static parsePreprocessCommand(context: PreprocessorContext, code: string, defineValue: { [name: string]: any }): string {
+        // Invariants keeping the two stacks in sync:
+        //  - every #if pushes exactly one entry on BOTH stacks (also inside
+        //    skipped regions), and #endif pops both;
+        //  - `stack` top = "current branch is skipped";
+        //  - `stackElseif` top = "some branch of this #if chain was already
+        //    taken (or the whole region is skipped)" — #elseif/#else consult
+        //    it so at most ONE branch of a chain is ever emitted.
         let result: string = '';
         let lines = code.split('\n');
         let stack: Array<boolean> = [false];
@@ -176,43 +183,44 @@ export class Preprocessor {
             }
             let command = line.trim();
             if (command.indexOf('#if') != -1) {
-                if (skip && stack.length > 1) {
-                    stack.push(skip);
+                if (skip) {
+                    // Nested #if inside a skipped region: keep both stacks
+                    // balanced and mark the chain as "taken" so its
+                    // #elseif/#else branches stay skipped too.
+                    stack.push(true);
+                    stackElseif.push(true);
                     continue;
                 }
                 let condition = command.substring(3).trim();
-                skip = !this.parseCondition(condition, defineValue);
-                stack.push(skip);
-                stackElseif.push(!skip);
+                let taken = this.parseCondition(condition, defineValue);
+                stack.push(!taken);
+                stackElseif.push(taken);
                 continue;
             } else if ((command.indexOf('#elseif') != -1) || (command.indexOf('#else') != -1 && command.indexOf(' if') != -1)) {
-                let skipElseif = stackElseif[stackElseif.length - 1];
-                if (skipElseif) {
-                    stack.pop();
-                    skip = true;
-                    stack.push(skip);
-                    continue;
-                }
                 stack.pop();
-                skip = stack[stack.length - 1];
-                if (skip && stack.length > 1) {
-                    stack.push(skip);
+                let alreadyTaken = stackElseif[stackElseif.length - 1];
+                if (alreadyTaken) {
+                    // A previous branch matched (or the region is skipped).
+                    stack.push(true);
                     continue;
                 }
                 let condition = command.substring(command.indexOf('if') + 2).trim();
                 if (condition == '') {
                     console.error(`preprocess command error, conditions missing: ${command}`);
                 }
-                skip = !this.parseCondition(condition, defineValue);
-                stack.push(skip);
-                stackElseif.push(!skip);
+                let taken = this.parseCondition(condition, defineValue);
+                stack.push(!taken);
+                if (taken) {
+                    stackElseif[stackElseif.length - 1] = true;
+                }
                 continue;
             } else if (command.indexOf('#else') != -1) {
                 stack.pop();
-                if (skip && (stack.length > 1 && stack[stack.length - 1])) {
-                    stack.push(skip);
-                } else {
-                    stack.push(!skip);
+                let alreadyTaken = stackElseif[stackElseif.length - 1];
+                // Emit the #else body only when no earlier branch matched.
+                stack.push(alreadyTaken);
+                if (!alreadyTaken) {
+                    stackElseif[stackElseif.length - 1] = true;
                 }
                 continue;
             } else if (command.indexOf('#endif') != -1) {
