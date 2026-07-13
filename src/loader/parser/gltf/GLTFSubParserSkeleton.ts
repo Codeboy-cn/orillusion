@@ -1,4 +1,4 @@
-import { AnimationCurveT, KeyframeT, Matrix4, Object3D, PrefabAvatarData, PrefabBoneData, PropertyAnimationClip, Quaternion, ValueEnumType, Vector3 } from "../../..";
+import { AnimationCurveT, KeyframeT, Matrix4, Object3D, Orientation3D, PrefabAvatarData, PrefabBoneData, PropertyAnimationClip, Quaternion, ValueEnumType, Vector3 } from "../../..";
 import { Joint } from "../../../components/anim/skeletonAnim/Joint";
 import { Skeleton } from "../../../components/anim/skeletonAnim/Skeleton";
 import { SkeletonAnimationClip } from "../../../components/anim/skeletonAnim/SkeletonAnimationClip";
@@ -41,6 +41,10 @@ export class GLTFSubParserSkeleton {
             let sampler = animation.samplers[channel.sampler];
             const inputAccessor = this.subParser.parseAccessor(sampler.input);
             const outputAccessor = this.subParser.parseAccessor(sampler.output);
+            // CUBICSPLINE output stores (inTangent, value, outTangent)
+            // triplets per keyframe — read only the VALUE element of each
+            // triplet; tangents are ignored (minimal linear playback).
+            const cubic = sampler.interpolation === 'CUBICSPLINE';
             let nodeId = channel.target.node;
             let property = channel.target.path;
             let node = this.gltf.nodes[nodeId];
@@ -67,7 +71,7 @@ export class GLTFSubParserSkeleton {
 
                         for (let i = 0; i < inputAccessor.data.length; i++) {
                             const t = inputAccessor.data[i];
-                            const offset = i * outputAccessor.numComponents;
+                            const offset = (cubic ? i * 3 + 1 : i) * outputAccessor.numComponents;
 
                             let keyframe = new KeyframeT(0);
                             keyframe.time = t;
@@ -104,7 +108,7 @@ export class GLTFSubParserSkeleton {
 
                         for (let i = 0; i < inputAccessor.data.length; i++) {
                             const t = inputAccessor.data[i];
-                            const offset = i * outputAccessor.numComponents;
+                            const offset = (cubic ? i * 3 + 1 : i) * outputAccessor.numComponents;
 
                             let keyframe = new KeyframeT(0);
                             keyframe.time = t;
@@ -143,7 +147,7 @@ export class GLTFSubParserSkeleton {
 
                         for (let i = 0; i < inputAccessor.data.length; i++) {
                             const t = inputAccessor.data[i];
-                            const offset = i * outputAccessor.numComponents;
+                            const offset = (cubic ? i * 3 + 1 : i) * outputAccessor.numComponents;
 
                             let keyframe = new KeyframeT(0);
                             keyframe.time = t;
@@ -367,18 +371,29 @@ export class GLTFSubParserSkeleton {
         boneData.parentInstanceID = "";
 
         boneData.s = new Vector3(1, 1, 1);
-        if (node.scale) {
-            boneData.s.set(node.scale[0], node.scale[1], node.scale[2]);
-        }
-
         boneData.q = new Quaternion();
-        if (node.rotation) {
-            boneData.q.set(node.rotation[0], node.rotation[1], node.rotation[2], node.rotation[3]);
-        }
-
         boneData.t = new Vector3();
-        if (node.translation) {
-            boneData.t.set(node.translation[0], node.translation[1], node.translation[2]);
+
+        if (node.matrix) {
+            // glTF nodes may carry a column-major number[16] matrix instead
+            // of TRS — decompose it, otherwise matrix-authored bones stay
+            // at identity in the avatar bind pose.
+            let mat = new Matrix4();
+            mat.rawData.set(node.matrix);
+            let prs = mat.decompose(Orientation3D.QUATERNION, [new Vector3(), new Vector3(), new Vector3()]);
+            boneData.t.set(prs[0].x, prs[0].y, prs[0].z);
+            boneData.q.set(prs[1].x, prs[1].y, prs[1].z, prs[1].w);
+            boneData.s.set(prs[2].x, prs[2].y, prs[2].z);
+        } else {
+            if (node.scale) {
+                boneData.s.set(node.scale[0], node.scale[1], node.scale[2]);
+            }
+            if (node.rotation) {
+                boneData.q.set(node.rotation[0], node.rotation[1], node.rotation[2], node.rotation[3]);
+            }
+            if (node.translation) {
+                boneData.t.set(node.translation[0], node.translation[1], node.translation[2]);
+            }
         }
 
         avatarData.boneData.push(boneData);

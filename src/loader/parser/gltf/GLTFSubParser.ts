@@ -53,6 +53,26 @@ export class GLTFSubParser {
         return null;
     }
 
+    // Extensions this pipeline actually honors. Built from the handlers
+    // that do real work: KHR_draco_mesh_compression (GLTFSubParserMesh),
+    // KHR_lights_punctual (applyNodeExtensions), KHR_texture_transform
+    // (GLTFSubParserMaterial), and the material extensions applied in
+    // GLTFSubParserConverter.applyMaterialExtensions. The remaining
+    // classes under extends/ (sheen, specular, variants, basisu,
+    // mesh_quantization) are empty stubs — a file that REQUIRES one of
+    // those would load silently broken, so we fail fast instead.
+    private static readonly SUPPORTED_EXTENSIONS = [
+        'KHR_draco_mesh_compression',
+        'KHR_lights_punctual',
+        'KHR_texture_transform',
+        'KHR_materials_clearcoat',
+        'KHR_materials_emissive_strength',
+        'KHR_materials_ior',
+        'KHR_materials_transmission',
+        'KHR_materials_unlit',
+        'KHR_materials_volume',
+    ];
+
     public async parse(initUrl: string, gltf, sceneId) {
         this.gltf = gltf;
         this.initUrl = initUrl;
@@ -61,6 +81,13 @@ export class GLTFSubParser {
         if (version !== '2.0') {
             console.error(`GLTFParser only support glTF 2.0 for now! Received glTF version: ${this.version}`);
             return false;
+        }
+
+        if (this.gltf.extensionsRequired) {
+            const missing = this.gltf.extensionsRequired.filter(e => !GLTFSubParser.SUPPORTED_EXTENSIONS.includes(e));
+            if (missing.length > 0) {
+                throw new Error(`glTF asset requires unsupported extension(s): ${missing.join(', ')} — the file cannot be loaded correctly.`);
+            }
         }
 
         const result = {
@@ -193,8 +220,11 @@ export class GLTFSubParser {
                         textureInfo.dtexture = preloaded;
                     }
                 } else if (image.bufferView !== undefined) {
-                    const name = image?.name;
-                    let bitmapTexture: BitmapTexture2D = this.gltf.resources[name];
+                    // GLBParser.parseImages caches bufferView images under
+                    // the unique 'bufferView_<index>' key; keep the name
+                    // fallback for any legacy-keyed resources.
+                    let bitmapTexture: BitmapTexture2D = this.gltf.resources['bufferView_' + image.bufferView]
+                        ?? this.gltf.resources[image?.name];
                     if (!bitmapTexture) {
                         let buffer = this.parseBufferView(image.bufferView);
                         bitmapTexture = new BitmapTexture2D(true, this.ctx, colorSpace);

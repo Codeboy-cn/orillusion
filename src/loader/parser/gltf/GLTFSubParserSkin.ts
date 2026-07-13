@@ -1,7 +1,6 @@
 import { GLTF_Info } from "./GLTFInfo";
 import { GLTFParser } from "./GLTFParser";
 import { GLTFSubParser } from "./GLTFSubParser";
-import { GLTFType } from "./GLTFType";
 
 /**
  * Internal glTF sub-parser stage that resolves a glTF skin: it reads the
@@ -87,7 +86,13 @@ export class GLTFSubParserSkin {
             dskin.skeleton = rootNodeId;
         }
         // dskin.skeleton = skeleton === undefined ? GLTFParser.SCENE_ROOT_SKELETON : skeleton;
-        dskin.inverseBindMatrices = GLTFType.IDENTITY_INVERSE_BIND_MATRICES;
+        // glTF spec: when inverseBindMatrices is omitted, every joint's IBM
+        // defaults to identity. Build real per-joint identity matrices —
+        // the old 'IDENTITY_IBM' string sentinel leaked into
+        // GLTFSubParserConverter.createGeometryBase, which iterated it as
+        // if it were a matrix array (its only remaining consumer was a
+        // commented-out block in GLTFSubParser.convertToNode).
+        dskin.inverseBindMatrices = joints.map(() => new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]));
 
         if (inverseBindMatrices !== undefined) {
             const accessor = this.parseAccessor(inverseBindMatrices);

@@ -1,4 +1,4 @@
-import { AnimatorComponent, BlendShapeData, BlendShapePropertyData, GLTFMaterial, LitMaterial, Material, Matrix4, PropertyAnimationClip, SkinnedMeshRenderer2 } from "../../..";
+import { AnimatorComponent, BlendShapeData, BlendShapePropertyData, GLTFMaterial, LitMaterial, Material, Matrix4, Orientation3D, PropertyAnimationClip, SkinnedMeshRenderer2, Vector3 } from "../../..";
 import { Engine3D } from "../../../Engine3D";
 import { DirectLight } from "../../../components/lights/DirectLight";
 import { PointLight } from "../../../components/lights/PointLight";
@@ -49,10 +49,15 @@ export class GLTFSubParserConverter {
         nodeInfo['nodeObj'] = node;
 
         if (nodeInfo.matrix) {
-            nodeInfo.translation = [0, 0, 0]; // eslint-disable-line
-            nodeInfo.rotation = [0, 0, 0, 1]; // eslint-disable-line
-            nodeInfo.scale = [1, 1, 1]; // eslint-disable-line
-            ///Matrix4.decompose( nodeInfo.matrix, nodeInfo.translation, nodeInfo.rotation, nodeInfo.scale );
+            // glTF node matrices are column-major number[16] — the same
+            // memory layout as Matrix4.rawData. Decompose into TRS because
+            // the engine transform consumes translation/rotation/scale.
+            let mat = new Matrix4();
+            mat.rawData.set(nodeInfo.matrix);
+            let prs = mat.decompose(Orientation3D.QUATERNION, [new Vector3(), new Vector3(), new Vector3()]);
+            nodeInfo.translation = [prs[0].x, prs[0].y, prs[0].z]; // eslint-disable-line
+            nodeInfo.rotation = [prs[1].x, prs[1].y, prs[1].z, prs[1].w]; // eslint-disable-line
+            nodeInfo.scale = [prs[2].x, prs[2].y, prs[2].z]; // eslint-disable-line
         }
 
         if (nodeInfo.translation) {
@@ -206,7 +211,10 @@ export class GLTFSubParserConverter {
             }
             let mat: Material;
 
-            let materialKey = `matkey_${md.name}`;
+            // Dedupe by the glTF material index when available — material
+            // names are not required to be unique, so name-keyed caching
+            // merged distinct materials that happened to share a name.
+            let materialKey = `matkey_${md.materialId ?? md.name}`;
 
             if (md && this.gltf.resources[materialKey]) {
                 mat = this.gltf.resources[materialKey];
@@ -351,7 +359,7 @@ export class GLTFSubParserConverter {
                     numComponents: 3,
                 };
             }
-            if (attribArrays[`indices`].data && attribArrays[`indices`].data.length > 3) {
+            if (attribArrays[`indices`].data && attribArrays[`indices`].data.length >= 3) {
                 let meshName = primitive.meshName();
                 if (this.gltf.resources[meshName]) {
                     geometry = this.gltf.resources[meshName];

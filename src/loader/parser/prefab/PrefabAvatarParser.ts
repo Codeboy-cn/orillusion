@@ -53,7 +53,7 @@ let MeshVertexAttribute = {
     "TexCoord0": VertexAttributeName.uv,
     "TexCoord1": VertexAttributeName.TEXCOORD_1,
     "TexCoord2": VertexAttributeName.TEXCOORD_2,
-    "TexCoord3": VertexAttributeName.TEXCOORD_2,
+    "TexCoord3": VertexAttributeName.TEXCOORD_3,
     "TexCoord4": VertexAttributeName.TEXCOORD_4,
     "TexCoord5": VertexAttributeName.TEXCOORD_5,
     "TexCoord6": VertexAttributeName.TEXCOORD_6,

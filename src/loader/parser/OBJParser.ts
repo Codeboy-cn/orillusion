@@ -111,9 +111,17 @@ export class OBJParser extends ParserBase {
   }
 
   private applyVector3(fi: number, sourceData: number[][], destData: number[]) {
-    destData.push(sourceData[fi][0]);
-    destData.push(sourceData[fi][1]);
-    destData.push(sourceData[fi][2]);
+    // Faces without normal (or other vec3) indices produce fi = NaN —
+    // guard like applyVector2 instead of crashing on sourceData[fi].
+    if (sourceData[fi] && sourceData[fi].length > 2) {
+      destData.push(sourceData[fi][0]);
+      destData.push(sourceData[fi][1]);
+      destData.push(sourceData[fi][2]);
+    } else {
+      destData.push(0);
+      destData.push(0);
+      destData.push(0);
+    }
   }
 
   private applyVector4(fi: number, sourceData: number[][], destData: number[]) {
@@ -200,11 +208,11 @@ export class OBJParser extends ParserBase {
     var splitedLine = line.split(/\s+/);
 
     if (splitedLine[0] === 'v') {
-      var vertex = [Number(splitedLine[1]), Number(splitedLine[2]), Number(splitedLine[3]), splitedLine[4] ? 1 : Number(splitedLine[4])];
+      var vertex = [Number(splitedLine[1]), Number(splitedLine[2]), Number(splitedLine[3]), splitedLine[4] ? Number(splitedLine[4]) : 1];
       this.source_vertices.push(vertex);
     }
     else if (splitedLine[0] === 'vt') {
-      var textureCoord = [Number(splitedLine[1]), Number(splitedLine[2]), splitedLine[3] ? 1 : Number(splitedLine[3])]
+      var textureCoord = [Number(splitedLine[1]), Number(splitedLine[2]), splitedLine[3] ? Number(splitedLine[3]) : 1]
       this.source_textureCoords.push(textureCoord);
     }
     else if (splitedLine[0] === 'vn') {

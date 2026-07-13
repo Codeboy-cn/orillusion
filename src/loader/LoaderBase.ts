@@ -132,7 +132,7 @@ export class LoaderBase {
         url = _normalizeAssetUrl(url);
         this.baseUrl = StringUtil.getPath(url);
         return new Promise(async (succ, fail) => {
-            fetch(url)
+            fetch(url, { headers: loaderFunctions?.headers })
                 .then(async (response) => {
                     if (response.ok) {
                         let chunks = await LoaderBase.read(url, response, loaderFunctions);
@@ -169,10 +169,12 @@ export class LoaderBase {
         while (true) {
             const { done, value } = await reader.read();
             if (done) {
-                if (contentLength > 0) {
-                    if (loaderFunctions && loaderFunctions.onComplete) {
-                        loaderFunctions.onComplete.call(this, url);
-                    }
+                // The download IS complete here — fire onComplete
+                // unconditionally. It used to be gated on a usable
+                // Content-Length, so chunked/compressed responses
+                // never completed.
+                if (loaderFunctions && loaderFunctions.onComplete) {
+                    loaderFunctions.onComplete.call(this, url);
                 }
                 break;
             }
@@ -188,16 +190,11 @@ export class LoaderBase {
             }
         }
         if (receivedArr.length > 0) {
+            // No usable Content-Length: report per-chunk progress against
+            // the final total. onComplete already fired in the done branch.
             for (let i = 0; i < chunks.length; i++) {
-                // console.log(receivedArr[i]);
                 if (loaderFunctions && loaderFunctions.onProgress) {
                     loaderFunctions.onProgress.call(this, receivedArr[i], receivedLength, url);
-                }
-
-                if (receivedArr[i] == receivedLength) {
-                    if (loaderFunctions && loaderFunctions.onComplete) {
-                        loaderFunctions.onComplete.call(this, url);
-                    }
                 }
             }
         }

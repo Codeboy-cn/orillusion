@@ -36,6 +36,11 @@ export class GLBParser extends ParserBase {
 
     private _gltf: GLTF_Info;
 
+    /** Parsed glTF info block (populated after parseBuffer/parseJsonAndBuffer). */
+    public get gltf(): GLTF_Info {
+        return this._gltf;
+    }
+
     public async parseBuffer(buffer: ArrayBuffer) {
         let byteArray = new Uint8Array(buffer);
         byteArray['pos'] = 0;
@@ -91,8 +96,10 @@ export class GLBParser extends ParserBase {
 
         await this.parseImages();
 
-        let subParser = new GLTFSubParser();
+        let subParser = new GLTFSubParser(this.ctx);
         let nodes = await subParser.parse(this.initUrl, this._gltf, this._gltf.scene);
+        subParser.destroy();
+        subParser = null;
         if (nodes) {
             this.data = nodes.rootNode;
             return nodes.rootNode;
@@ -110,8 +117,10 @@ export class GLBParser extends ParserBase {
 
         await this.parseImages();
 
-        let subParser = new GLTFSubParser();
+        let subParser = new GLTFSubParser(this.ctx);
         let nodes = await subParser.parse(this.initUrl, this._gltf, this._gltf.scene);
+        subParser.destroy();
+        subParser = null;
         if (nodes) {
             this.data = nodes.rootNode;
             return nodes.rootNode;
@@ -136,9 +145,16 @@ export class GLBParser extends ParserBase {
                 image.name = image.name || StringUtil.getURLName(image.uri);
                 const texture = await new FileLoader(this.ctx).loadAsyncBitmapTexture(url);
                 texture.name = image.name;
-                this._gltf.resources[image.name] = texture;
+                // Key by the full uri — GLTFSubParser.parseTexture looks
+                // uri-images up by `image.uri` first. Name/basename keys
+                // collided when two images shared a (base)name.
+                this._gltf.resources[image.uri] = texture;
             } else if (image.bufferView !== undefined) {
-                image.name = image.name || 'bufferView_' + image.bufferView.toString();
+                // Key bufferView images by their unique bufferView index —
+                // GLTFSubParser.parseTexture uses the same key. Keying by a
+                // user-supplied image.name collided on duplicate names.
+                const key = 'bufferView_' + image.bufferView.toString();
+                image.name = image.name || key;
                 const bufferView = this._gltf.bufferViews[image.bufferView];
                 const buffer = this._gltf.buffers[bufferView.buffer];
                 let dataBuffer = new Uint8Array(buffer.dbuffer, bufferView.byteOffset, bufferView.byteLength);
@@ -146,7 +162,7 @@ export class GLBParser extends ParserBase {
                 let dtexture = new BitmapTexture2D(true, this.ctx);
                 await dtexture.loadFromBlob(imgData);
                 dtexture.name = image.name;
-                this._gltf.resources[image.name] = dtexture;
+                this._gltf.resources[key] = dtexture;
             } else {
                 throw new Error(`GLB image ${i} has neither 'uri' nor 'bufferView'`);
             }

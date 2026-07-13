@@ -30,8 +30,10 @@ export class PrefabTextureParser extends ParserBase {
         for (let i = 0; i < preTextureCount; i++) {
             let texName = bytesStream.readUTF();
             if (PrefabParser.useWebp) {
-                texName = texName.replace("png", "webp");
-                texName = texName.replace("jpb", "webp");
+                // Replace only the file EXTENSION (the old substring
+                // replace also hit names like "sponge.png" -> "swebpge.png"
+                // and had a "jpb" typo that never matched .jpg/.jpeg).
+                texName = texName.replace(/\.(png|jpe?g)$/i, '.webp');
                 textures.push(prefabParser.baseUrl + `webp\/` + texName);
             } else {
                 textures.push(prefabParser.baseUrl + texName);
