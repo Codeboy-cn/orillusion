@@ -124,13 +124,17 @@ export class OBJParser extends ParserBase {
   }
 
   private async loadMTL() {
+    // No mtllib directive: keep the default material instead of fetching
+    // baseUrl + undefined. parserOBJ has no awaits, so mtlUrl is already
+    // final when Promise.all invokes this.
+    if (!this.mtlUrl) return true;
     let fileLoad = new FileLoader(this.ctx);
     let sourceData = await fileLoad.loadTxt(this.baseUrl + this.mtlUrl);
     let sourceStr: string = sourceData[`data`];
 
     let mat: MatData;
 
-    let str = sourceStr.split("\r\n");
+    let str = sourceStr.split(/\r?\n/);
     for (let i = 0; i < str.length; i++) {
       let line = str[i];
       var commentStart = line.indexOf("#");
@@ -143,6 +147,9 @@ export class OBJParser extends ParserBase {
         mat = { name: splitedLine[1] };
         this.matLibs[splitedLine[1]] = mat;
       } else {
+        // Property lines before any newmtl (or after a malformed one)
+        // must not crash the whole parse.
+        if (!mat) continue;
         if (splitedLine[0].indexOf(`map_`) != -1) {
           mat[splitedLine[0]] = splitedLine[1];
           if (!mat.textures) {
@@ -182,16 +189,10 @@ export class OBJParser extends ParserBase {
     var commentStart = line.indexOf("#");
     if (commentStart != -1) {
       if (line.indexOf(`# object`) != -1) {
+        // Legacy 3ds-Max-style `# object <name>` comments keep working.
         var splitedLine = line.split(/\s+/);
-        let type = splitedLine[1];
         let geoName = splitedLine[2];
-        this.activeGeo = {
-          type: type,
-          name: geoName[1],
-          source_mat: ``,
-          source_faces: []
-        }
-        this.geometrys[geoName] = this.activeGeo;
+        this.beginGeo(geoName, splitedLine[1]);
       }
       line = line.substring(0, commentStart);
     }
@@ -245,16 +246,46 @@ export class OBJParser extends ParserBase {
         }
       }
 
-      this.activeGeo.source_faces.push(face);
+      this.ensureActiveGeo().source_faces.push(face);
     } else if (splitedLine[0] === "usemtl") {
-      this.activeGeo.source_mat = splitedLine[1];
+      this.ensureActiveGeo().source_mat = splitedLine[1];
     } else if (splitedLine[0] === `mtllib`) {
       this.mtlUrl = splitedLine[1];
+    } else if (splitedLine[0] === 'o' || splitedLine[0] === 'g') {
+      // Standard OBJ object/group directives (Blender & friends) — the
+      // parser used to create geometry ONLY from `# object` comments,
+      // so any standard export parsed into nothing or crashed.
+      this.beginGeo(splitedLine[1]);
     }
   }
 
+  /** Create (or switch to) the named geometry bucket. */
+  private beginGeo(name?: string, type: string = 'object') {
+    const geoName = name || 'default';
+    let geo = this.geometrys[geoName];
+    if (!geo) {
+      geo = {
+        type: type,
+        name: geoName,
+        source_mat: ``,
+        source_faces: []
+      };
+      this.geometrys[geoName] = geo;
+    }
+    this.activeGeo = geo;
+  }
+
+  /** Active geometry, lazily creating a default bucket for OBJ files
+   *  that declare no o/g/`# object` before their first face. */
+  private ensureActiveGeo() {
+    if (!this.activeGeo) {
+      this.beginGeo('default');
+    }
+    return this.activeGeo;
+  }
+
   private async parserOBJ() {
-    let str = this.textData.split("\r\n");
+    let str = this.textData.split(/\r?\n/);
     for (let i = 0; i < str.length; i++) {
       const element = str[i];
       this.parserLine(element);
@@ -353,7 +384,9 @@ export class OBJParser extends ParserBase {
 
       let mat = new LitMaterial(this.ctx);
       let matData = this.matLibs[geoData.source_mat];
-      mat.baseMap = Engine3D.resFor(this.ctx).getTexture(StringUtil.normalizePath(this.baseUrl + matData.map_Kd));
+      if (matData?.map_Kd) {
+        mat.baseMap = Engine3D.resFor(this.ctx).getTexture(StringUtil.normalizePath(this.baseUrl + matData.map_Kd));
+      }
 
       let obj = new Object3D();
       let mr = obj.addComponent(MeshRenderer);
