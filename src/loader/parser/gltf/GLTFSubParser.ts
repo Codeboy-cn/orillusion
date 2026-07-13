@@ -39,14 +39,14 @@ export class GLTFSubParser {
     }
 
     public get version() {
-        if (this.version) return this.version;
+        if (this._version) return this._version;
         else if (this.gltf) {
             if (!this.gltf.asset) return this.errorMiss('asset');
 
             this._version = this.gltf.asset.version;
             if (this.gltf.asset.minVersion) this._version += `\r minVersion${this.gltf.asset.minVersion}`;
 
-            return this.version;
+            return this._version;
         }
 
         console.warn('glTF not loaded.');
