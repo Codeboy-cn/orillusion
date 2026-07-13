@@ -304,7 +304,9 @@ export class Matrix4 {
      * @param target_Mat result matrix (referenced by index)
      */
     public static matrixRotateY(rad: number, target_Mat: Matrix4): void {
-        Matrix4.wasm.Matrix_Append(rad, target_Mat.index);
+        // Matrix_Append is the wasm matrix-multiply entry point, not a
+        // rotation builder — calling it here produced garbage.
+        matrixRotateY(rad, target_Mat);
     }
 
     /**
@@ -2542,10 +2544,21 @@ export function matrixRotateY(rad: number, target: Matrix4) {
     out[1] = 0;
     out[2] = -s;
     out[3] = 0;
+    // Column 1 and the translation column must be written too — leaving
+    // whatever the target held produced a corrupt matrix unless the
+    // caller pre-identity()ed it.
+    out[4] = 0;
+    out[5] = 1;
+    out[6] = 0;
+    out[7] = 0;
     out[8] = s;
     out[9] = 0;
     out[10] = c;
     out[11] = 0;
+    out[12] = 0;
+    out[13] = 0;
+    out[14] = 0;
+    out[15] = 1;
     return out;
 }
 
