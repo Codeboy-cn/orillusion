@@ -146,6 +146,12 @@ export class SphereGeometry extends GeometryBase {
         // this.indexBuffer = new IndexGeometryBuffer(indice_arr.length, indice_arr);
         // GeometryUtil.composite(this, [VertexAttributeName.position, VertexAttributeName.normal, VertexAttributeName.uv, VertexAttributeName.TEXCOORD_1]);
 
+        // The pole rings emit one triangle per quad instead of two, so the
+        // full-capacity buffer had 2*segmentsW*3 unwritten slots left as
+        // (0,0,0) degenerate triangles that raycasts and statistics still
+        // visited. Trim to what was actually written.
+        indice_arr = indice_arr.subarray(0, triIndex) as Uint16Array<ArrayBuffer>;
+
         this.setIndices(indice_arr);
         this.setAttribute(VertexAttributeName.position, position_arr);
         this.setAttribute(VertexAttributeName.normal, normal_arr);
