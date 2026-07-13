@@ -324,11 +324,11 @@ export class Material {
     }
 
 
-    /** Release this material's shader and clear its identifying fields. */
+    /** Release this material's shader and clear its identifying fields. Idempotent. */
     destroy(force: boolean) {
         this.name = null;
         this.instanceID = null;
-        this._shader.destroy(force);
+        this._shader?.destroy(force);
         this._shader = null;
     }
 
