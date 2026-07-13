@@ -184,7 +184,10 @@ export class GLTFParser extends ParserBase {
                         url = await this.loaderFunctions.onUrl(url)
                     let promise = new FileLoader(this.ctx).loadAsyncBitmapTexture(url, this.loaderFunctions).then(texture => {
                         texture.name = StringUtil.getURLName(element.uri);
-                        this._gltf.resources[texture.name] = texture;
+                        // Key by the full uri (matching the buffers map):
+                        // basename keys made a/diffuse.png and b/diffuse.png
+                        // collide, with completion order deciding the winner.
+                        this._gltf.resources[element.uri] = texture;
                     })
                     textureArray.push(promise)
                 }

@@ -169,9 +169,10 @@ export class GLTFSubParser {
             if (textureInfo && textureInfo.source != null) {
                 let image = this.gltf.images[textureInfo.source];
                 if (image.uri) {
-                    let name = image.uri;
-                    name = StringUtil.getURLName(name);
-                    let preloaded: BitmapTexture2D = this.gltf.resources[name];
+                    // Full-uri key first (see GLTFParser.load_gltf_textures);
+                    // basename fallback keeps GLB / legacy-keyed paths alive.
+                    let preloaded: BitmapTexture2D = this.gltf.resources[image.uri]
+                        ?? this.gltf.resources[StringUtil.getURLName(image.uri)];
                     // External .gltf path: GLTFParser.load_gltf_textures
                     // preloads images via FileLoader.loadAsyncBitmapTexture
                     // which always materializes `rgba8unorm`. When this
