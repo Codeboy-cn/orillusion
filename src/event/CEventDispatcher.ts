@@ -80,26 +80,26 @@ export class CEventDispatcher {
             this.listeners[type] = [];
         }
 
-        if (!this.hasEventListener(type, callback, thisObject)) {
-            var listener: CEventListener = new CEventListener(type, thisObject, callback, param, priority);
-            listener.id = ++CEventListener.event_id_count;
-            listener.current = this;
-            this.listeners[type].push(listener);
-            this.listeners[type].sort(function (listener1: CEventListener, listener2: CEventListener) {
-                return listener2.priority - listener1.priority;
-            });
-
-            return listener.id;
-        }
-
+        // Re-registering the exact same (callback, thisObject, param) tuple
+        // returns the existing id. The same callback with a different param
+        // is a distinct registration and gets its own id (it will fire once
+        // per bound param).
         for (let i = 0; i < this.listeners[type].length; i++) {
-            let listener: CEventListener = this.listeners[type][i];
-            if (listener.equalCurrentListener(type, callback, thisObject, param)) {
-                return listener.id;
+            let existing: CEventListener = this.listeners[type][i];
+            if (existing.equalCurrentListener(type, callback, thisObject, param)) {
+                return existing.id;
             }
         }
 
-        return 0;
+        var listener: CEventListener = new CEventListener(type, thisObject, callback, param, priority);
+        listener.id = ++CEventListener.event_id_count;
+        listener.current = this;
+        this.listeners[type].push(listener);
+        this.listeners[type].sort(function (listener1: CEventListener, listener2: CEventListener) {
+            return listener2.priority - listener1.priority;
+        });
+
+        return listener.id;
     }
 
     /**
