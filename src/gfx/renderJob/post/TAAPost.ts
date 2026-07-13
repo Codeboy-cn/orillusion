@@ -209,14 +209,18 @@ export class TAAPost extends PostBase {
         outDec.clearValue = [0, 0, 0, 1];
         outDec.loadOp = `clear`;
 
+        // outTexture (sharpened TAA result) must sit at index 0: the post
+        // chain consumes renderTargets[0], and with preColorTex first the
+        // screen showed the PREVIOUS frame's unsharpened history while the
+        // sharpen pass output was never read.
         this.rtFrame = new RTFrame([
+            this.outTexture,
             this.preColorTex,
-            this.taaTexture,
-            this.outTexture
+            this.taaTexture
         ], [
+            outDec,
             preColorDec,
-            taaDec,
-            outDec
+            taaDec
         ]);
     }
     /**

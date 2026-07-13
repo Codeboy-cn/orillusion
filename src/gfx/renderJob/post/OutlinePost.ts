@@ -233,7 +233,7 @@ export class OutlinePost extends PostBase {
         this.entitiesArray = new Float32Array(outlinePostData.SlotCount * outlinePostData.MaxEntities);
         this.entitiesBuffer = new StorageGPUBuffer(this.entitiesArray.length);
         this.entitiesBuffer.setFloat32Array('entitiesArray', this.entitiesArray);
-        this.slotsBuffer.apply();
+        this.entitiesBuffer.apply();
 
         this.fetchData ||= {} as any;
     }

@@ -58,6 +58,11 @@ export class GPUCullPass extends RenderGraphPass {
         for (const node of ops) this._system.registerNode(node);
         for (const node of trs) this._system.registerNode(node);
 
+        // Unregister nodes that left the collect lists — their slots kept
+        // enable=1 forever, so destroyed meshes stayed in the visibility /
+        // drawCmds output and the slot map grew without bound.
+        this._system.pruneMissing(ops, trs);
+
         // Dispatch.
         this._system.execute(ctx.view);
     }

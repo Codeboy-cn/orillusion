@@ -79,6 +79,21 @@ export class PointShadowPass extends RenderGraphPass {
         const scene = view.scene;
         const shadowLights = ShadowLightsCollect.getPointShadowLightWhichScene(scene);
 
+        // Evict cube-shadow resources of lights that left the shadow list
+        // (destroyed / disabled / moved scene): each entry pins a cube
+        // camera plus 6 depth textures (~24MB), and the Map otherwise
+        // grows without bound in dynamic-light scenes.
+        if (this._shadowCameraDic.size > 0) {
+            const live = new Set(shadowLights);
+            for (const [light, info] of this._shadowCameraDic) {
+                if (live.has(light)) continue;
+                for (const tex of info.depthTexture) tex.destroy(true);
+                // CubeCamera extends Object3D.
+                info.cubeCamera.destroy();
+                this._shadowCameraDic.delete(light);
+            }
+        }
+
         for (const light of shadowLights) {
             if (light.lightData.lightType === LightType.DirectionLight) continue;
             const shouldRender = light.lightData.castShadowIndex > -1
