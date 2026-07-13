@@ -311,13 +311,36 @@ export class ComputeShader extends ShaderPassBase {
             this.genGroups(i, this._groupsShaderReflectionVarInfos);
         }
 
-        this._boundCtx!.addEventListener(CResizeEvent.RESIZE, (e) => {
-            for (let i = 0; i < shaderReflection.groups.length; ++i) {
-                let srvs = shaderReflection.groups[i];
-                this._groupsShaderReflectionVarInfos[i] = srvs;
-                this.genGroups(i, this._groupsShaderReflectionVarInfos, true);
-            }
-        }, this);
+        // Keep a reference to the RESIZE listener so destroy() can unhook
+        // it — the anonymous closure could never be removed and kept the
+        // whole shader (and its buffers) alive after hot-swapping compute
+        // effects.
+        if (!this._resizeListener) {
+            this._resizeListener = () => {
+                for (let i = 0; i < this.shaderReflection.groups.length; ++i) {
+                    let srvs = this.shaderReflection.groups[i];
+                    this._groupsShaderReflectionVarInfos[i] = srvs;
+                    this.genGroups(i, this._groupsShaderReflectionVarInfos, true);
+                }
+            };
+            this._boundCtx!.addEventListener(CResizeEvent.RESIZE, this._resizeListener, this);
+        }
+    }
+
+    private _resizeListener: Function = null;
+
+    public destroy(force?: boolean) {
+        if (this._resizeListener && this._boundCtx) {
+            this._boundCtx.removeEventListener(CResizeEvent.RESIZE, this._resizeListener, this);
+        }
+        this._resizeListener = null;
+        this._computePipeline = null;
+        this._csShaderModule = null;
+        this.bindGroups = [];
+        this._bufferSnapshots = [];
+        this._groupsShaderReflectionVarInfos = [];
+        this._groupCache = {};
+        super.destroy(force);
     }
 
     protected preCompileShader(shader: string) {
