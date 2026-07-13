@@ -183,4 +183,17 @@ export class BitmapTexture2D extends Texture {
         return true;
     }
 
+    /**
+     * Release GPU resources (base class) and, on force, drop the CPU-side
+     * source references so the decoded image/blob can be GC'd. The source
+     * is not close()d — it may be caller-owned, and shared textures
+     * destroyed without force can still re-materialize from it.
+     */
+    public destroy(force?: boolean) {
+        super.destroy(force);
+        if (force) {
+            this._source = null;
+            this.imageData = null;
+        }
+    }
 }

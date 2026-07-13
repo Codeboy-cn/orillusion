@@ -611,6 +611,12 @@ export class Texture implements GPUSamplerDescriptor {
             this._boundCtx = null;
             this.textureBindingLayout = null;
             this.textureDescriptor = null;
+            // Drop the cached source image so the decoded pixels can be
+            // GC'd. Deliberately NOT ImageBitmap.close(): the bitmap may be
+            // caller-owned, and the gpuTexture getter re-uploads
+            // _sourceImageData when a non-force destroy left the texture
+            // shared (see RenderShaderPass reference counting).
+            this._sourceImageData = null;
         }
         this._stateChangeRef.clear();
     }
