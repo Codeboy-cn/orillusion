@@ -1114,6 +1114,10 @@ export class RenderGraph {
         this._transient.unregister(name);
         this._textureBindings.delete(name);
         this._bufferBindings.delete(name);
+        this._eagerUsageByName.delete(name);
+        // Keep the legacy name→texture map in sync: a removed/replaced
+        // pass's published wrapper must not linger for material lookups.
+        RTResourceMap.forContext(this._ctx).rtTextureMap.delete(name);
     }
 
     /** name → writers sorted by insertion order. Used by `dumpDot`

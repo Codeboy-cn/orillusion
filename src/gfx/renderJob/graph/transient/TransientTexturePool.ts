@@ -1,6 +1,7 @@
 import { RenderTexture } from '../../../../textures/RenderTexture';
 import { Texture } from '../../../graphics/webGpu/core/texture/Texture';
 import { Context3D } from '../../../graphics/webGpu/Context3D';
+import { RTResourceMap } from '../../frame/RTResourceMap';
 import { TextureDesc } from './ResourceDesc';
 import { ResourceLifetime } from './LifetimeAnalyzer';
 
@@ -163,6 +164,11 @@ export class TransientTexturePool {
             if (!liveDedicated.has(name)) {
                 this._destroySlot(slot);
                 this._dedicatedByName.delete(name);
+                // Drop the zombie wrapper from the legacy map too:
+                // materials that look textures up by name (refraction /
+                // transmission) would otherwise keep sampling a wrapper
+                // whose GPU texture was just destroyed — silently black.
+                RTResourceMap.forContext(this._ctx).rtTextureMap.delete(name);
             }
         }
 
