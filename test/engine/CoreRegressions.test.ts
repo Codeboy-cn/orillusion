@@ -1,5 +1,5 @@
 import { test, expect, end, delay, waitUntil } from '../util'
-import { BoundingBox, BoxGeometry, CameraUtil, ComponentBase, Engine3D, EntityCollect, LitMaterial, MeshRenderer, Object3D, PointerEvent3D, Scene3D, Vector3, View3D } from '@orillusion/core';
+import { BoundingBox, BoxGeometry, Camera3D, CameraUtil, ComponentBase, ComponentCollect, CEvent, CResizeEvent, Engine3D, EntityCollect, HoverCameraController, LitMaterial, MeshRenderer, Object3D, PointerEvent3D, Scene3D, Time, Vector3, View3D, WasmMatrix } from '@orillusion/core';
 
 // Regression tests for audit findings C1 / C2 / M3 / M4 / C8 / C5 (batch 1).
 
@@ -138,6 +138,103 @@ await test('enablePick toggle neither leaks listeners nor spawns new PickFire [a
     expect(count()).toEqual(baseline);
 
     view.enablePick = false;
+})
+
+await test('destroyed camera unbinds ctx RESIZE listener [audit C3]', async () => {
+    const ctx: any = engine.context3D;
+    const resizeCount = () => (ctx.listeners[CResizeEvent.RESIZE] || []).length;
+
+    let obj = new Object3D();
+    let cam = obj.addComponent(Camera3D);
+    view.scene.addChild(obj);
+    cam.updateProjection();
+
+    let before = resizeCount();
+    expect(before > 0).toEqual(true);
+
+    obj.destroy();
+    expect(resizeCount()).toEqual(before - 1);
+    // A resize after the camera is gone must not blow up.
+    ctx.dispatchEvent(new CResizeEvent(CResizeEvent.RESIZE, { width: ctx.windowWidth, height: ctx.windowHeight }));
+})
+
+await test('obj.destroy() unbinds camera controller input listeners [audit C4]', async () => {
+    const input: any = engine.inputSystem;
+    const downCount = () => (input.listeners[PointerEvent3D.POINTER_DOWN] || []).length;
+
+    let before = downCount();
+    let obj = new Object3D();
+    obj.addComponent(HoverCameraController);
+    view.scene.addChild(obj);
+    await waitUntil(() => downCount() > before, 5000);
+
+    // Direct object destroy tears down the Transform before its sibling
+    // components — the leak path (removeComponent was always fine).
+    obj.destroy();
+    expect(downCount()).toEqual(before);
+})
+
+class ComputeGraphicComp extends ComponentBase {
+    public onCompute() { }
+    public onGraphic() { }
+}
+
+await test('component destroy clears onCompute/onGraphic collect entries [audit C7]', async () => {
+    let obj = new Object3D();
+    let comp = obj.addComponent(ComputeGraphicComp);
+    view.scene.addChild(obj);
+
+    await waitUntil(() => {
+        let list = ComponentCollect.componentsComputeList.get(view);
+        return list && list.has(comp);
+    }, 5000);
+
+    // Destroy the component directly (a path that does not go through __stop).
+    comp.destroy();
+    let computeList = ComponentCollect.componentsComputeList.get(view);
+    expect(!!(computeList && computeList.has(comp))).toEqual(false);
+    let graphicList = ComponentCollect.graphicComponent.get(view);
+    expect(!!(graphicList && graphicList.has(comp))).toEqual(false);
+})
+
+await test('continuous rotation stops on zero write; recycled slot starts clean [audit C6]', async () => {
+    let obj = new Object3D();
+    obj.transform.localDetailRot = new Vector3(0, 1, 0);
+    const idx = obj.transform.index;
+    expect(WasmMatrix.matrixStateBuffer[idx * WasmMatrix.stateStruct + 1]).toEqual(1);
+
+    // Writing zero used to be silently ignored — the spin never stopped.
+    obj.transform.localDetailRot = new Vector3(0, 0, 0);
+    expect(WasmMatrix.matrixStateBuffer[idx * WasmMatrix.stateStruct + 1]).toEqual(0);
+    for (let i = 0; i < WasmMatrix.continuedSrtStride; i++) {
+        expect(WasmMatrix.matrixContinuedSRTBuffer[idx * WasmMatrix.continuedSrtStride + i]).toEqual(0);
+    }
+
+    // Slot recycling: destroy an auto-rotating object, the next Transform
+    // reuses its matrix slot (LIFO free list) and must not inherit the spin.
+    let spinner = new Object3D();
+    spinner.transform.localDetailRot = new Vector3(0, 5, 0);
+    const slot = spinner.transform.index;
+    spinner.destroy();
+
+    let reuser = new Object3D();
+    const idx2 = reuser.transform.index;
+    expect(idx2).toEqual(slot);
+    expect(WasmMatrix.matrixStateBuffer[idx2 * WasmMatrix.stateStruct + 1]).toEqual(0);
+    for (let i = 0; i < WasmMatrix.continuedSrtStride; i++) {
+        expect(WasmMatrix.matrixContinuedSRTBuffer[idx2 * WasmMatrix.continuedSrtStride + i]).toEqual(0);
+    }
+    obj.destroy();
+    reuser.destroy();
+})
+
+await test('Time.delta is clamped to Time.maxDelta [audit P5]', async () => {
+    expect(Time.maxDelta).toEqual(200);
+    // Simulate a long stall (hidden tab / late first frame): pre-fix the
+    // next frame reported the whole gap as delta.
+    Time.time = Time.time - 10000;
+    await delay(200);
+    expect(Time.delta <= Time.maxDelta).toEqual(true);
 })
 
 setTimeout(end, 500)
