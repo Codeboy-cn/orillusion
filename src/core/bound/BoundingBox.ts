@@ -122,17 +122,17 @@ export class BoundingBox implements IBound {
         if (bound.max.y > this.max.y) this.max.y = bound.max.y;
         if (bound.max.z > this.max.z) this.max.z = bound.max.z;
 
-        this.size.x = bound.max.x - bound.min.x;
-        this.size.y = bound.max.y - bound.min.y;
-        this.size.z = bound.max.z - bound.min.z;
+        this.size.x = this.max.x - this.min.x;
+        this.size.y = this.max.y - this.min.y;
+        this.size.z = this.max.z - this.min.z;
 
         this.extents.x = this.size.x * 0.5;
         this.extents.y = this.size.y * 0.5;
         this.extents.z = this.size.z * 0.5;
 
-        this.center.x = this.extents.x + bound.min.x;
-        this.center.y = this.extents.y + bound.min.y;
-        this.center.z = this.extents.z + bound.min.z;
+        this.center.x = this.extents.x + this.min.x;
+        this.center.y = this.extents.y + this.min.y;
+        this.center.z = this.extents.z + this.min.z;
     }
 
     /**
