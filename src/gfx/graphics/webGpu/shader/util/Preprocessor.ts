@@ -1,5 +1,5 @@
 import { ShaderLib } from '../../../../../assets/shader/ShaderLib';
-import { evalCondition } from './PreprocessorExpr';
+import { evalCondition, expand } from './PreprocessorExpr';
 
 /**
  * @internal
@@ -23,15 +23,19 @@ export class Preprocessor {
     }
 
     protected static parsePreprocess(context: PreprocessorContext, code: string, defineValue: { [name: string]: any }): string {
+        // Header/tail (before the first and after the last directive) skip
+        // command parsing but still need define substitution — a body line
+        // like `const LIMIT = MAX_LIGHTS;` may sit outside the directive
+        // block.
         let begIndex = code.indexOf('#');
         if (begIndex == -1) {
-            return code;
+            return expand(code, defineValue);
         }
         let header = code.substring(0, begIndex);
         let endIndex = code.indexOf('\n', code.lastIndexOf('#'));
         let codeBlock = code.substring(begIndex, endIndex);
         let tail = code.substring(endIndex);
-        return header + this.parsePreprocessCommand(context, codeBlock, defineValue) + tail;
+        return expand(header, defineValue) + this.parsePreprocessCommand(context, codeBlock, defineValue) + expand(tail, defineValue);
     }
 
     protected static parseAutoBindingForAllGroup(code: string): string {
@@ -177,7 +181,9 @@ export class Preprocessor {
             let skip = stack[stack.length - 1];
             if (line.trim().indexOf('#') != 0) {
                 if (!skip) {
-                    result += line + '\n';
+                    // C-preprocessor semantics: substitute define values into
+                    // body identifiers (e.g. `const LIMIT = MAX_LIGHTS;`).
+                    result += expand(line, defineValue) + '\n';
                 }
                 continue;
             }
@@ -267,7 +273,10 @@ export class Preprocessor {
 
     protected static parseCondition(condition: string, defineValue: { [name: string]: any }): boolean {
         try {
-            return evalCondition(condition, defineValue);
+            // One expansion pass first so chained defines (#define A B,
+            // #define B 1, `#if A == 1`) resolve: expand rewrites A -> B,
+            // evalCondition's identifier lookup then resolves B -> 1.
+            return evalCondition(expand(condition, defineValue), defineValue);
         } catch (e) {
             console.error(`preprocess condition parse error: '${condition}'`, e);
             return false;
