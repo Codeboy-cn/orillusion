@@ -10,8 +10,11 @@ export class BytesArray extends DataView<ArrayBufferLike> {
     public littleEndian?: boolean = true;
     constructor(buffer: ArrayBufferLike, byteOffset?: number, byteLength?: number) {
         super(buffer, byteOffset, byteLength);
+        // position is VIEW-relative. It used to start at byteOffset, which
+        // double-offset every DataView get* call for views with a non-zero
+        // byteOffset; the raw-buffer paths below now add byteOffset
+        // explicitly instead.
         this.position = 0;
-        this.position += this.byteOffset;
     }
 
     //TODO Improve read/write byte
@@ -23,15 +26,13 @@ export class BytesArray extends DataView<ArrayBufferLike> {
             b = 4 - b;
         }
 
-        let ret = "";
-        // let count = Math.floor(len / 65535) + 1;
-        // for (let i = 0; i < count; i++) {
-        let strBuffer = new Int8Array(this.buffer, this.position, len);
-        this.position += len * Int8Array.BYTES_PER_ELEMENT;
-        ret += String.fromCharCode.apply(null, strBuffer);
-        // }
+        // UTF-8 decode — String.fromCharCode over signed bytes mangled
+        // every non-ASCII character.
+        let strBuffer = new Uint8Array(this.buffer, this.byteOffset + this.position, len);
+        this.position += len;
+        let ret = new TextDecoder('utf-8').decode(strBuffer);
 
-        this.position += b * Int8Array.BYTES_PER_ELEMENT;
+        this.position += b;
         return ret;
     }
 
@@ -45,26 +46,29 @@ export class BytesArray extends DataView<ArrayBufferLike> {
     }
 
     public readByte(): number {
-        let ret = this.buffer[this.position];
+        // Indexing an ArrayBuffer always returned undefined.
+        let ret = this.getUint8(this.position);
         this.position += 1;
         return ret;
     }
 
     public readBoolean(): boolean {
+        // readInt32 already advances the cursor; the extra += 4 skipped
+        // the next field and misaligned the whole stream.
         let ret = this.readInt32();
-        this.position += 4;
         return ret == 1 ? true : false;
     }
 
     public readBytes(byteLen: number) {
-        let bufferView = new DataView(this.buffer, this.position, byteLen);
+        let bufferView = new DataView(this.buffer, this.byteOffset + this.position, byteLen);
         this.position += byteLen;
         return bufferView.buffer;
     }
 
     public readBytesArray() {
         let byteLen = this.readInt32();
-        let bufferView = new BytesArray(this.buffer.slice(this.position, this.position + byteLen));
+        const start = this.byteOffset + this.position;
+        let bufferView = new BytesArray(this.buffer.slice(start, start + byteLen));
         this.position += byteLen;
         return bufferView;
     }
@@ -76,13 +80,15 @@ export class BytesArray extends DataView<ArrayBufferLike> {
     }
 
     public readUnit16(): number {
-        let ret = this.getUint16(this.position);
+        // littleEndian — every other multi-byte read in this stream is LE;
+        // these two silently read big-endian.
+        let ret = this.getUint16(this.position, this.littleEndian);
         this.position += Uint16Array.BYTES_PER_ELEMENT;
         return ret;
     }
 
     public readUnit32(): number {
-        let ret = this.getUint32(this.position);
+        let ret = this.getUint32(this.position, this.littleEndian);
         this.position += Uint32Array.BYTES_PER_ELEMENT;
         return ret;
     }
@@ -120,7 +126,7 @@ export class BytesArray extends DataView<ArrayBufferLike> {
 
     public readInt32Array(): Int32Array {
         let len = this.readInt32();
-        let ret = new Int32Array(this.buffer, this.position, len);
+        let ret = new Int32Array(this.buffer, this.byteOffset + this.position, len);
         ret = ret.slice(0, len);
         this.position += ret.byteLength;
         return ret;
@@ -274,7 +280,7 @@ export class BytesArray extends DataView<ArrayBufferLike> {
     }
 
     public readFloat32Array(len: number): Float32Array {
-        let ret = new Float32Array(this.buffer, this.position, len);
+        let ret = new Float32Array(this.buffer, this.byteOffset + this.position, len);
         ret = ret.slice(0, this.byteLength);
         this.position += len * Float32Array.BYTES_PER_ELEMENT;
         return ret;
