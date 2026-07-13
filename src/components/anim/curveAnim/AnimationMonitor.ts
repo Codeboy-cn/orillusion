@@ -151,9 +151,13 @@ export class AnimationMonitor {
         for (const objName in this._currentClip.objAnimClip) {
             let objClip = this._currentClip.objAnimClip[objName];
             let curve = objClip.curve;
+            // parseAnimClip skips objects it cannot resolve in the hierarchy,
+            // leaving no cache bucket for them — skip instead of crashing.
+            const bucket = this._propertyCache[objName];
+            if (!bucket) continue;
             for (const attribute in curve) {
                 const attributeAnim = curve[attribute];
-                let target = this._propertyCache[objName][attribute];
+                let target = bucket[attribute];
                 let ret = attributeAnim.getValue(this._time);
                 if (attribute in PropertyHelp.Scale) {
                     ret *= PropertyHelp.Scale[attribute];

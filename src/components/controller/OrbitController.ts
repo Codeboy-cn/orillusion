@@ -3,7 +3,7 @@ import { Camera3D } from '../../core/Camera3D';
 import { ComponentBase } from '../ComponentBase';
 import { Vector3 } from '../../math/Vector3';
 import { Vector3Ex } from '../../util/Vector3Ex';
-import { clamp } from '../../math/MathUtil';
+import { clamp, DEGREES_TO_RADIANS } from '../../math/MathUtil';
 import { PointerEvent3D } from '../../event/eventConst/PointerEvent3D';
 import { CameraType } from '../../core/CameraType';
 
@@ -246,7 +246,10 @@ export class OrbitController extends ComponentBase {
             const rb = (mousey - this._lastMouseY) * this.rotateFactor;
             this._spherical.theta += ra * Math.PI / 180;
             this._spherical.phi -= rb * Math.PI / 180;
-            this._spherical.phi = clamp(this._spherical.phi, this.minPolarAngle, this.maxPolarAngle);
+            // phi is the polar angle in RADIANS measured from the +Y pole,
+            // while min/maxPolarAngle are elevation limits in DEGREES from
+            // the XZ plane: elevation = 90deg - phi. Convert accordingly.
+            this._spherical.phi = clamp(this._spherical.phi, (90 - this.maxPolarAngle) * DEGREES_TO_RADIANS, (90 - this.minPolarAngle) * DEGREES_TO_RADIANS);
             this.updateCamera();
         // pan
         } else if (e.mouseCode === 2) {

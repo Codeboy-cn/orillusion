@@ -3,7 +3,6 @@ import { EntityCollect } from '../../gfx/renderJob/collect/EntityCollect';
 import { Color } from '../../math/Color';
 import { Vector3 } from '../../math/Vector3';
 import { ComponentBase } from '../ComponentBase';
-import { Transform } from '../Transform';
 import { GILighting } from './GILighting';
 import { LightData } from './LightData';
 import { ShadowLightsCollect } from '../../gfx/renderJob/collect/ShadowLightsCollect';
@@ -323,8 +322,13 @@ export class LightBase extends ComponentBase implements ILight {
         this.bindOnChange = null;
         EntityCollect.instance.removeLight(this.transform.scene3D, this);
         ShadowLightsCollect.removeShadowLight(this);
-        this.transform.eventDispatcher.removeEventListener(Transform.ROTATION_ONCHANGE, this.onRotChange, this);
-        this.transform.eventDispatcher.removeEventListener(Transform.SCALE_ONCHANGE, this.onScaleChange, this);
+        // Release the transform change hooks installed in start(); the
+        // closures capture `this` and would otherwise keep the destroyed
+        // light alive and reacting to transform changes.
+        if (this.transform) {
+            this.transform.onPositionChange = null;
+            this.transform.onRotationChange = null;
+        }
         super.destroy(force);
     }
 

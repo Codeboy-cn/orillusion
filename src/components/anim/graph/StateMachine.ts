@@ -67,6 +67,8 @@ export class StateMachine {
     private _current: StateDef;
     private _transitionTime: number = 0;
     private _transitioning: boolean = false;
+    /** Duration of the transition currently in flight (seconds). */
+    private _transitionDuration: number = 0;
     private _params: AnimatorParams;
 
     constructor(states: StateDef[], initial?: string, params?: AnimatorParams) {
@@ -100,6 +102,11 @@ export class StateMachine {
             // AnimatorComponent's _crossFadeState (set up by crossFade())
             // handles weight blending. This flag just gates which transitions
             // are interruptible.
+            // Once the timed crossfade has run its course, clear the flag so
+            // non-interruptible transitions are no longer blocked forever.
+            if (this._transitionTime >= this._transitionDuration) {
+                this._transitioning = false;
+            }
         }
 
         // Look at outgoing transitions from the current state. First match wins.
@@ -120,6 +127,7 @@ export class StateMachine {
             }
             this._current = next;
             this._transitioning = t.duration > 0.001;
+            this._transitionDuration = t.duration;
             this._transitionTime = 0;
             return;
         }

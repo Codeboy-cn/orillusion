@@ -27,6 +27,12 @@ export class ThirdPersonCameraController extends ComponentBase {
         return owner?.inputSystem;
     }
 
+    // Input system captured when listeners are attached. destroy() runs
+    // after the Transform has been torn down, so resolving the input system
+    // through transform.view3D at that point returns nothing and the
+    // listeners would leak.
+    private _boundInput: any = null;
+
     public start() {
         this._camera = this.object3D.getOrAddComponent(Camera3D);
         if (!this._camera) {
@@ -40,6 +46,7 @@ export class ThirdPersonCameraController extends ComponentBase {
         }
         const input = this._input();
         if (!input) return;
+        this._boundInput = input;
         input.addEventListener(PointerEvent3D.POINTER_WHEEL, this.mouseWheel, this);
         input.addEventListener(PointerEvent3D.POINTER_UP, this.mouseUp, this);
         input.addEventListener(PointerEvent3D.POINTER_DOWN, this.mouseDown, this);
@@ -70,11 +77,15 @@ export class ThirdPersonCameraController extends ComponentBase {
     }
 
     public destroy(force?: boolean): void {
-        const input = this._input();
+        const input = this._boundInput ?? this._input();
+        this._boundInput = null;
         if (input) {
             input.removeEventListener(PointerEvent3D.POINTER_WHEEL, this.mouseWheel, this);
             input.removeEventListener(PointerEvent3D.POINTER_UP, this.mouseUp, this);
             input.removeEventListener(PointerEvent3D.POINTER_DOWN, this.mouseDown, this);
+            // POINTER_MOVE is added on mouseDown; remove it too in case the
+            // controller is destroyed while a drag is still in progress.
+            input.removeEventListener(PointerEvent3D.POINTER_MOVE, this.mouseMove, this);
         }
         super.destroy(force);
     }

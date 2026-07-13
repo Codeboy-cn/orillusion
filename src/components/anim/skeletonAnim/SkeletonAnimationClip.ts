@@ -98,9 +98,12 @@ export class SkeletonAnimationClip {
     var result = new SkeletonAnimationClip(name, this._skeleton, 0, null);
     const startFrame = Math.max(Math.floor(startTime / this.frameRate), 0);
     const endFrame = Math.min(Math.floor(endTime / this.frameRate), this._skeletonPoses.length - 1);
-    result._skeletonPoses = this._skeletonPoses.slice(startFrame, endFrame);
+    // slice end is exclusive: +1 keeps the endFrame pose in the sub clip.
+    result._skeletonPoses = this._skeletonPoses.slice(startFrame, endFrame + 1);
     const skeletonPoseByteLength = 12 * this._skeleton.numJoint * 4;
-    this._animationClipData = new Float32Array(this._animationClipData.buffer, startFrame * skeletonPoseByteLength, (endFrame - startFrame) * skeletonPoseByteLength);
+    // Assign to the RESULT clip (not this), with the Float32Array length in
+    // ELEMENTS (floats), while the view offset stays in bytes.
+    result._animationClipData = new Float32Array(this._animationClipData.buffer, startFrame * skeletonPoseByteLength, (endFrame - startFrame + 1) * 12 * this._skeleton.numJoint);
     return result;
   }
 

@@ -32,9 +32,14 @@ export class Reflection extends RenderNode {
         this.alwaysRender = true;
         this.object3D.bound = new BoundingBox(Vector3.ZERO.clone(), Vector3.MAX);
 
-        mergeFunctions(this.transform.onPositionChange, () => {
+        // mergeFunctions returns a new closure — it must be assigned back
+        // to the transform hook or the position-change tracking never runs.
+        const markDirty = () => {
             this.needUpdate = true;
-        });
+        };
+        this.transform.onPositionChange = this.transform.onPositionChange
+            ? mergeFunctions(this.transform.onPositionChange, markDirty)
+            : markDirty;
     }
 
     /** Register this probe as a render node when enabled. */

@@ -35,8 +35,10 @@ export class SkinnedMeshRenderer extends MeshRenderer {
         super.start();
         this.skeletonAnimation = this.object3D.getComponent(SkeletonAnimationComponent);
         if (!this.skeletonAnimation) {
-            let comps = this.object3D.parentObject.parentObject.getComponentsInChild(SkeletonAnimationComponent);
-            if (comps.length > 0) {
+            // Optional-chain: near the hierarchy root there may be no
+            // grandparent, which used to throw here.
+            let comps = this.object3D.parentObject?.parentObject?.getComponentsInChild(SkeletonAnimationComponent);
+            if (comps && comps.length > 0) {
                 this.skeletonAnimation = comps[0];
             }
             let parentObj = this.object3D;
@@ -44,6 +46,10 @@ export class SkinnedMeshRenderer extends MeshRenderer {
                 this.skeletonAnimation = parentObj.getComponentFromParent(SkeletonAnimationComponent);
                 if (parentObj.parent) {
                     parentObj = parentObj.parent.object3D;
+                } else {
+                    // Reached the root with nothing found — stop instead of
+                    // spinning forever on the same node.
+                    break;
                 }
             }
         }
