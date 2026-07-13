@@ -189,19 +189,20 @@ export class CEventDispatcher {
     /**
      *
      * whether the target presence of a listener with event type. it associate more registration parameters.
+     * A null callback/thisObject acts as a wildcard for that dimension, so
+     * listeners registered with thisObject = null are matchable (and thus
+     * removable) — they used to be invisible to this check.
      * @param type {string} event name.
-     * @param callback {Function} callback function of event register.
-     * @param thisObject {any} The registered object.
+     * @param callback {Function} callback function of event register, or null to match any.
+     * @param thisObject {any} The registered object, or null to match any.
      * @returns {boolean} Returns a boolean.
      */
     public hasEventListener(type: string | number, callback: Function = null, thisObject: any = null): boolean {
         if (this.listeners[type] == null) return false;
-        if (thisObject && callback) {
-            for (var i: number = 0; i < this.listeners[type].length; i++) {
-                var listener: CEventListener = this.listeners[type][i];
-                if (listener.equalCurrentListener(type, callback, thisObject, listener.param)) {
-                    return true;
-                }
+        for (var i: number = 0; i < this.listeners[type].length; i++) {
+            var listener: CEventListener = this.listeners[type][i];
+            if ((callback == null || listener.handler == callback) && (thisObject == null || listener.thisObject == thisObject)) {
+                return true;
             }
         }
         return false;
