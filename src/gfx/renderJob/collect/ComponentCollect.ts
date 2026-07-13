@@ -199,6 +199,12 @@ export class ComponentCollect {
             if (index != -1) {
                 arr.splice(index, 1);
             }
+            // Components destroyed before __start never hit the main-loop
+            // delete branch; without this the map keeps an empty array per
+            // dead Object3D and grows forever in create/destroy-heavy scenes.
+            if (arr.length == 0) {
+                ComponentCollect.waitStartComponent.delete(obj);
+            }
         }
     }
 
