@@ -75,6 +75,7 @@ class Stats extends ComponentBase {
 class Panel {
     canvas: HTMLCanvasElement
     private worker: Worker
+    private workerUrl: string
     private width = 80
     private height = 48
     constructor(parent: HTMLElement, name: string, fg: string, bg: string) {
@@ -84,7 +85,8 @@ class Panel {
         parent.appendChild(canvas)
         const offscreen = (canvas as any).transferControlToOffscreen()
         const blob = new Blob([`(${worker})()`], { type: 'application/javascript' })
-        this.worker = new Worker(URL.createObjectURL(blob))
+        this.workerUrl = URL.createObjectURL(blob)
+        this.worker = new Worker(this.workerUrl)
         this.worker.postMessage({ type: 'init', offscreen, name, fg, bg }, [offscreen])
     }
 
@@ -93,6 +95,7 @@ class Panel {
     }
     destroy() {
         this.worker.terminate()
+        URL.revokeObjectURL(this.workerUrl)
     }
 }
 
