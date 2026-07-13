@@ -17,6 +17,14 @@ class _Physics {
     /** Fixed simulation timestep used to clamp variable frame deltas. */
     public fixedTimeStep: number = 1 / 60;
 
+    private _droppedSteps: number = 0;
+    private _droppedTime: number = 0;
+    /** How many update() calls had to discard simulation time because
+     *  timeStep exceeded fixedTimeStep * maxSubSteps. */
+    public get droppedSteps(): number { return this._droppedSteps; }
+    /** Total simulation seconds discarded by that clamp. */
+    public get droppedTime(): number { return this._droppedTime; }
+
     /** @internal Collider handle → Rigidbody component. */
     private _handleToRigidbody: Map<number, Rigidbody> = new Map();
     /** @internal Vehicle controllers needing per-frame `updateVehicle()`. */
@@ -82,6 +90,12 @@ class _Physics {
 
         const cap = this.fixedTimeStep * this.maxSubSteps;
         const dt = Math.min(timeStep, cap);
+        if (timeStep > cap) {
+            // Simulation time silently discarded by the clamp — count it
+            // so long sessions can detect drift instead of guessing.
+            this._droppedSteps++;
+            this._droppedTime += timeStep - cap;
+        }
 
         // Pre-step (vehicle controllers update wheel forces/poses here).
         for (const cb of this._preStepCallbacks) cb(dt);
