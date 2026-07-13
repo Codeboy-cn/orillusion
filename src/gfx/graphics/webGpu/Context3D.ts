@@ -137,6 +137,25 @@ export class Context3D extends CEventDispatcher {
         }
         const avail = Array.from((this.adapter.features as any) || []);
         // if (import.meta.env.DEV) console.log('[Context3D] adapter.features =', avail.join(', '));
+        // Ask for the adapter's real buffer limits instead of the WebGPU
+        // defaults (256 MB): without this, creating a large storage buffer
+        // (e.g. >256 MB of SH coefficients) fails only as an
+        // uncapturederror and the scene goes silently blank. Each limit is
+        // probed before being requested so an adapter that doesn't expose
+        // it falls back to its default instead of rejecting the device.
+        const adapterLimits: any = this.adapter.limits ?? {};
+        const requiredLimits: Record<string, number> = {
+            minUniformBufferOffsetAlignment: 256,
+        };
+        if (adapterLimits.maxStorageBufferBindingSize) {
+            requiredLimits.maxStorageBufferBindingSize = adapterLimits.maxStorageBufferBindingSize;
+        }
+        if (adapterLimits.maxBufferSize) {
+            requiredLimits.maxBufferSize = adapterLimits.maxBufferSize;
+        }
+        if (adapterLimits.maxComputeWorkgroupStorageSize) {
+            requiredLimits.maxComputeWorkgroupStorageSize = Math.min(adapterLimits.maxComputeWorkgroupStorageSize, 32768);
+        }
         this.device = await this.adapter.requestDevice({
             requiredFeatures: [
                 'bgra8unorm-storage',
@@ -145,10 +164,7 @@ export class Context3D extends CEventDispatcher {
                 'indirect-first-instance',
                 'rg11b10ufloat-renderable',
             ],
-            requiredLimits: {
-                minUniformBufferOffsetAlignment: 256,
-                maxStorageBufferBindingSize: this.adapter.limits.maxStorageBufferBindingSize
-            }
+            requiredLimits
         });
         if (!this.device) throw new Error('Your browser does not support WebGPU!');
         this.device.label = `device-${Context3D._nextLabel++}`;
