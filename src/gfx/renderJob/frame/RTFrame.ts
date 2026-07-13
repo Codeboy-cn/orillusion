@@ -61,6 +61,17 @@ export class RTFrame {
         rtFrame.depthTexture = this.depthTexture;
         rtFrame.zPreTexture = this.zPreTexture;
         rtFrame.customSize = this.customSize;
+        rtFrame.label = this.label;
+        rtFrame.isOutTarget = this.isOutTarget;
+        rtFrame.depthCleanValue = this.depthCleanValue;
+        rtFrame.depthViewIndex = this.depthViewIndex;
+        // sampleCount must travel with the clone: continuation passes
+        // (Sky/Transmission/SortedTransparent) cloned an MSAA frame into a
+        // sampleCount=0 copy, so their pass states attached single-sample
+        // views to multisample pipelines and failed validation every frame.
+        rtFrame.sampleCount = this.sampleCount;
+        // depthLoadOp is deliberately NOT copied: continuation clones set
+        // their own load behaviour explicitly at the call site.
     }
 
     /** Return a new RTFrame copied from this one via {@link clone2Frame}. */
