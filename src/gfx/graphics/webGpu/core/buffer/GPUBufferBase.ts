@@ -592,8 +592,11 @@ export class GPUBufferBase {
 
         this.memory = new MemoryDO();
         this.memoryNodes = new Map<string | number, MemoryInfo>();
-        this._dataView = new Float32Array(this.memory.shareDataBuffer);
         this.memory.allocation(this.byteSize);
+        // The view must wrap the buffer allocated above — creating it before
+        // allocation() wrapped undefined (a zero-length view) and clean()
+        // silently did nothing.
+        this._dataView = new Float32Array(this.memory.shareDataBuffer);
         if (data) {
             let m = this.memory.allocation_node(data.length * 4);
             m.setArrayBuffer(0, data as unknown as ArrayBuffer);
@@ -629,8 +632,8 @@ export class GPUBufferBase {
 
         this.memory = new MemoryDO();
         this.memoryNodes = new Map<string | number, MemoryInfo>();
-        this._dataView = new Float32Array(this.memory.shareDataBuffer);
         this.memory.allocation(totalLength);
+        this._dataView = new Float32Array(this.memory.shareDataBuffer);
         for (let i = 0; i < count; i++) {
             let name = i;
 
