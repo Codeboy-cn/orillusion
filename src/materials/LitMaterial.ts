@@ -33,50 +33,19 @@ export class LitMaterial extends Material {
         this.shader = shader;
     }
 
-    /** Clone this material into a new LitMaterial, copying PBR uniforms and textures. */
+    /** Clone this material into a new LitMaterial, deep-copying PBR uniforms and textures. */
     public clone(): Material {
-        let litMaterial = new LitMaterial();
-
-        let colorPass = litMaterial.shader.getDefaultColorShader();
-        let sourceShader = this.shader.getDefaultColorShader();
-        colorPass.defineValue = { ...sourceShader.defineValue }
-        colorPass.setUniform(`shadowBias`, sourceShader.getUniform(`shadowBias`));
-
-        colorPass.setUniform(`baseColor`, sourceShader.getUniform(`baseColor`));
-        colorPass.setUniform(`specularColor`, sourceShader.getUniform(`specularColor`));
-        colorPass.setUniform(`emissiveColor`, sourceShader.getUniform(`emissiveColor`));
-        colorPass.setUniform(`materialF0`, sourceShader.getUniform(`materialF0`));
-        colorPass.setUniform(`envIntensity`, sourceShader.getUniform(`envIntensity`));
-        colorPass.setUniform(`normalScale`, sourceShader.getUniform(`normalScale`));
-        colorPass.setUniform(`roughness`, sourceShader.getUniform(`roughness`));
-        colorPass.setUniform(`metallic`, sourceShader.getUniform(`metallic`));
-        colorPass.setUniform(`ao`, sourceShader.getUniform(`ao`));
-        colorPass.setUniform(`roughness_min`, sourceShader.getUniform(`roughness_min`));
-        colorPass.setUniform(`roughness_max`, sourceShader.getUniform(`roughness_max`));
-        colorPass.setUniform(`metallic_min`, sourceShader.getUniform(`metallic_min`));
-        colorPass.setUniform(`metallic_max`, sourceShader.getUniform(`metallic_max`));
-        colorPass.setUniform(`emissiveIntensity`, sourceShader.getUniform(`emissiveIntensity`));
-        colorPass.setUniform(`alphaCutoff`, sourceShader.getUniform(`alphaCutoff`));
-        colorPass.setUniform(`ior`, sourceShader.getUniform(`ior`));
-        colorPass.setUniform(`clearcoatFactor`, sourceShader.getUniform(`clearcoatFactor`));
-        colorPass.setUniform(`clearcoatRoughnessFactor`, sourceShader.getUniform(`clearcoatRoughnessFactor`));
-        colorPass.setUniform(`clearcoatColor`, sourceShader.getUniform(`clearcoatColor`));
-        colorPass.setUniform(`clearcoatWeight`, sourceShader.getUniform(`clearcoatWeight`));
-        colorPass.setUniform(`clearcoatIor`, sourceShader.getUniform(`clearcoatIor`));
-
-        colorPass.setTexture(`baseMap`, sourceShader.getTexture(`baseMap`));
-        colorPass.setTexture(`normalMap`, sourceShader.getTexture(`normalMap`));
-        colorPass.setTexture(`emissiveMap`, sourceShader.getTexture(`emissiveMap`));
-        colorPass.setTexture(`aoMap`, sourceShader.getTexture(`aoMap`));
-        colorPass.setTexture(`maskMap`, sourceShader.getTexture(`maskMap`));
-        colorPass.setTexture(`empty`, sourceShader.getTexture(`empty`));
-
-        colorPass.setUniform(`baseMapOffsetSize`, sourceShader.getUniform(`baseMapOffsetSize`));
-        colorPass.setUniform(`normalMapOffsetSize`, sourceShader.getUniform(`normalMapOffsetSize`));
-        colorPass.setUniform(`emissiveMapOffsetSize`, sourceShader.getUniform(`emissiveMapOffsetSize`));
-        colorPass.setUniform(`roughnessMapOffsetSize`, sourceShader.getUniform(`roughnessMapOffsetSize`));
-        colorPass.setUniform(`metallicMapOffsetSize`, sourceShader.getUniform(`metallicMapOffsetSize`));
-        colorPass.setUniform(`aoMapOffsetSize`, sourceShader.getUniform(`aoMapOffsetSize`));
+        let litMaterial = new LitMaterial(this._ctx);
+        // Go through Shader.clone → RenderShaderPass.clone: that path
+        // re-creates every UniformNode BY VALUE (its comment documents
+        // exactly the shared-Color/Vector bleed the old hand-rolled copy
+        // had — recoloring the clone's baseColor recolored the source too)
+        // and copies textures, defines and the full shaderState
+        // (blendMode / cullMode / transparent / castShadow included).
+        litMaterial.shader = this.shader.clone();
+        litMaterial.name = this.name;
+        // Material-level state living outside the shader.
+        litMaterial._alphaMode = this._alphaMode;
         return litMaterial;
     }
 
