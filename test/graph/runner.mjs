@@ -22,6 +22,7 @@ const HOST = 'http://localhost:4000';
 const TIMEOUT_MS = 25000;
 
 const TARGETS = [
+    './graph/ContextLeak.test.ts',
     './graph/LoopResilience.test.ts',
     './graph/RenderGraph.test.ts',
     './graph/ForwardRendererJob.test.ts',

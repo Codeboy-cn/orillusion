@@ -2,19 +2,40 @@ import { RTFrame } from '../../../renderJob/frame/RTFrame';
 import { RTResourceConfig } from '../../../renderJob/config/RTResourceConfig';
 import { Context3D } from '../Context3D';
 import { RendererPassState } from '../../../renderJob/passRenderer/state/RendererPassState';
+import { Texture } from '../core/texture/Texture';
 /**
  * @internal
  */
 export class WebGPUDescriptorCreator {
 
     /** Per-Context3D cache of RTFrame→RendererPassState so descriptors built
-     *  against one device are not reused for another. */
-    private static _perContextPassState: WeakMap<Context3D, Map<RTFrame, RendererPassState>> = new WeakMap();
-    private static _passStateMap(ctx: Context3D): Map<RTFrame, RendererPassState> {
+     *  against one device are not reused for another. The inner map is a
+     *  WeakMap (it is only ever get/set, never iterated) so any code path
+     *  that still manufactures throwaway RTFrame clone keys gets GC'd
+     *  instead of pinning its RendererPassState forever. */
+    private static _perContextPassState: WeakMap<Context3D, WeakMap<RTFrame, RendererPassState>> = new WeakMap();
+    private static _passStateMap(ctx: Context3D): WeakMap<RTFrame, RendererPassState> {
         let m = this._perContextPassState.get(ctx);
         if (!m) {
-            m = new Map<RTFrame, RendererPassState>();
+            m = new WeakMap<RTFrame, RendererPassState>();
             this._perContextPassState.set(ctx, m);
+        }
+        return m;
+    }
+
+    /** Per-Context3D MSAA side-band cache keyed by the underlying color
+     *  attachment: every pass state targeting the same attachment shares
+     *  one multisample texture (this is also what makes a continuation
+     *  pass's `load` actually see the previous pass's MSAA contents —
+     *  each state used to load from its own freshly created empty
+     *  texture). Entries are retired via delayDestroyTexture when the
+     *  attachment's size / format / sample count changes. */
+    private static _perContextMsaaSideband: WeakMap<Context3D, WeakMap<object, { tex: GPUTexture, sampleCount: number, width: number, height: number, format: GPUTextureFormat }>> = new WeakMap();
+    private static _msaaSidebandMap(ctx: Context3D) {
+        let m = this._perContextMsaaSideband.get(ctx);
+        if (!m) {
+            m = new WeakMap();
+            this._perContextMsaaSideband.set(ctx, m);
         }
         return m;
     }
@@ -70,21 +91,41 @@ export class WebGPUDescriptorCreator {
                 }
             }
 
-            // Allocate per-attachment MSAA side-band textures. Done here
-            // (not in beginRenderPass) because this is the one hook that
-            // already runs on resize (via customSize descriptors being
-            // rebuilt) and owns the lifetime tied to the rtFrame cache key.
+            // Resolve per-attachment MSAA side-band textures from the
+            // shared per-attachment cache. Done here (not in
+            // beginRenderPass) because this is the one hook that already
+            // runs on resize (via customSize descriptors being rebuilt).
+            // Unconditionally creating a texture here used to leak one
+            // GPUTexture per call AND meant continuation passes loaded
+            // from their own blank multisample texture instead of the
+            // one the previous pass rendered into.
             if (rps.multisample > 0) {
                 rps.multiTextures = [];
+                const sideband = WebGPUDescriptorCreator._msaaSidebandMap(ctx);
                 for (let i = 0; i < rtFrame.renderTargets.length; i++) {
                     const rt = rtFrame.renderTargets[i];
-                    rps.multiTextures[i] = ctx.device.createTexture({
-                        label: `${rps.label || 'MSAA'}_ms_${i}`,
-                        size: { width: rt.width, height: rt.height },
-                        sampleCount: rps.multisample,
-                        format: rt.format,
-                        usage: GPUTextureUsage.RENDER_ATTACHMENT,
-                    });
+                    let entry = sideband.get(rt);
+                    if (entry && (entry.sampleCount !== rps.multisample || entry.width !== rt.width || entry.height !== rt.height || entry.format !== rt.format)) {
+                        Texture.delayDestroyTexture(ctx, entry.tex);
+                        entry = null;
+                    }
+                    if (!entry) {
+                        entry = {
+                            tex: ctx.device.createTexture({
+                                label: `${rps.label || 'MSAA'}_ms_${i}`,
+                                size: { width: rt.width, height: rt.height },
+                                sampleCount: rps.multisample,
+                                format: rt.format,
+                                usage: GPUTextureUsage.RENDER_ATTACHMENT,
+                            }),
+                            sampleCount: rps.multisample,
+                            width: rt.width,
+                            height: rt.height,
+                            format: rt.format,
+                        };
+                        sideband.set(rt, entry);
+                    }
+                    rps.multiTextures[i] = entry.tex;
                 }
             }
 
