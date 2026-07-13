@@ -1,4 +1,6 @@
 import { BitmapTexture2D } from '../../../textures/BitmapTexture2D';
+import { StringUtil } from '../../../util/StringUtil';
+import { FileLoader } from '../../FileLoader';
 import { ParserBase } from '../ParserBase';
 import { ParserFormat } from '../ParserFormat';
 import { GLTF_Info } from './GLTFInfo';
@@ -38,27 +40,37 @@ export class GLBParser extends ParserBase {
         let byteArray = new Uint8Array(buffer);
         byteArray['pos'] = 0;
 
+        if (buffer.byteLength < 12) {
+            throw new Error(`GLB file is only ${buffer.byteLength} bytes — no room for a header`);
+        }
         const fileHeader: GLBHeader = this.parseHeader(byteArray);
 
         if (fileHeader.magic != 0x46546c67) {
-            console.error(`invalid GLB file`);
-            return false;
+            throw new Error(`invalid GLB file: bad magic 0x${fileHeader.magic.toString(16)}`);
         }
 
         if (fileHeader.version !== 2.0) {
-            console.error(`GLBParser only support glTF 2.0 for now! Received glTF version: ${fileHeader.version}`);
-            return false;
+            throw new Error(`GLBParser only supports glTF 2.0 — received glTF version ${fileHeader.version}`);
+        }
+
+        // Validate the declared total length against what actually
+        // arrived: shorter means a truncated download; longer just means
+        // trailing garbage we can safely ignore.
+        let scanEnd = fileHeader.length;
+        if (buffer.byteLength < fileHeader.length) {
+            throw new Error(`GLB header declares ${fileHeader.length} bytes but only ${buffer.byteLength} arrived — truncated download?`);
+        } else if (buffer.byteLength > fileHeader.length) {
+            console.warn(`GLB has ${buffer.byteLength - fileHeader.length} trailing bytes beyond the declared length ${fileHeader.length}; ignoring them.`);
         }
 
         let chunks: Array<GLBChunk> = [];
-        while (byteArray['pos'] < byteArray.length) {
-            let chunk = this.parseChunk(byteArray);
+        while (byteArray['pos'] < scanEnd) {
+            let chunk = this.parseChunk(byteArray, scanEnd);
             chunks.push(chunk);
         }
 
-        if (chunks[0].chunkType != 0x4e4f534a) {
-            console.error(`invalid GLBChunk`);
-            return false;
+        if (chunks.length == 0 || chunks[0].chunkType != 0x4e4f534a) {
+            throw new Error(`invalid GLB: the first chunk must be the JSON chunk`);
         }
 
         let gltfJSON = new TextDecoder('utf-8').decode(chunks[0].chunkData);
@@ -66,26 +78,18 @@ export class GLBParser extends ParserBase {
         this._gltf = new GLTF_Info();
         this._gltf = { ...this._gltf, ...obj };
         this._gltf.resources = {};
-        for (let i = 0; i < this._gltf.buffers.length; i++) {
-            let buffer = this._gltf.buffers[i];
+        // A glTF without buffers is legal (e.g. all-external resources).
+        const bufferDefs = this._gltf.buffers ?? [];
+        for (let i = 0; i < bufferDefs.length; i++) {
+            let buffer = bufferDefs[i];
+            if (!chunks[i + 1]) {
+                throw new Error(`GLB buffer ${i} expects BIN chunk ${i + 1}, but the file contains only ${chunks.length} chunk(s) — missing BIN chunk`);
+            }
             buffer.isParsed = true;
             buffer.dbuffer = chunks[i + 1].chunkData.buffer;
         }
 
-        if (this._gltf.images) {
-            for (let i = 0; i < this._gltf.images.length; i++) {
-                let image = this._gltf.images[i];
-                image.name = image.name || 'bufferView_' + image.bufferView.toString();
-                const bufferView = this._gltf.bufferViews[image.bufferView];
-                const buffer = this._gltf.buffers[bufferView.buffer];
-                let dataBuffer = new Uint8Array(buffer.dbuffer, bufferView.byteOffset, bufferView.byteLength);
-                let imgData = new Blob([dataBuffer], { type: image.mimeType });
-                let dtexture = new BitmapTexture2D(true, this.ctx);
-                await dtexture.loadFromBlob(imgData);
-                dtexture.name = image.name;
-                this._gltf.resources[image.name] = dtexture;
-            }
-        }
+        await this.parseImages();
 
         let subParser = new GLTFSubParser();
         let nodes = await subParser.parse(this.initUrl, this._gltf, this._gltf.scene);
@@ -104,9 +108,36 @@ export class GLBParser extends ParserBase {
         dbuffer.isParsed = true;
         dbuffer.dbuffer = bin;
 
-        if (this._gltf.images) {
-            for (let i = 0; i < this._gltf.images.length; i++) {
-                let image = this._gltf.images[i];
+        await this.parseImages();
+
+        let subParser = new GLTFSubParser();
+        let nodes = await subParser.parse(this.initUrl, this._gltf, this._gltf.scene);
+        if (nodes) {
+            this.data = nodes.rootNode;
+            return nodes.rootNode;
+        }
+        return null;
+    }
+
+    /**
+     * Materialize every gltf image into `resources`. Images inside a GLB
+     * normally reference a bufferView, but the spec also allows external
+     * or data: URIs — those used to crash with a TypeError on
+     * `image.bufferView.toString()`.
+     */
+    private async parseImages() {
+        if (!this._gltf.images) return;
+        for (let i = 0; i < this._gltf.images.length; i++) {
+            let image = this._gltf.images[i];
+            if (image.uri) {
+                // External / data: URI image — legal glTF output. data:
+                // URIs are consumed by BitmapTexture2D's base64 branch.
+                const url = image.uri.startsWith('data:') ? image.uri : StringUtil.parseUrl(this.baseUrl, image.uri);
+                image.name = image.name || StringUtil.getURLName(image.uri);
+                const texture = await new FileLoader(this.ctx).loadAsyncBitmapTexture(url);
+                texture.name = image.name;
+                this._gltf.resources[image.name] = texture;
+            } else if (image.bufferView !== undefined) {
                 image.name = image.name || 'bufferView_' + image.bufferView.toString();
                 const bufferView = this._gltf.bufferViews[image.bufferView];
                 const buffer = this._gltf.buffers[bufferView.buffer];
@@ -116,16 +147,10 @@ export class GLBParser extends ParserBase {
                 await dtexture.loadFromBlob(imgData);
                 dtexture.name = image.name;
                 this._gltf.resources[image.name] = dtexture;
+            } else {
+                throw new Error(`GLB image ${i} has neither 'uri' nor 'bufferView'`);
             }
         }
-
-        let subParser = new GLTFSubParser();
-        let nodes = await subParser.parse(this.initUrl, this._gltf, this._gltf.scene);
-        if (nodes) {
-            this.data = nodes.rootNode;
-            return nodes.rootNode;
-        }
-        return null;
     }
 
     public verification(): boolean {
@@ -146,13 +171,20 @@ export class GLBParser extends ParserBase {
         return result;
     }
 
-    private parseChunk(buffer: Uint8Array): GLBChunk {
+    private parseChunk(buffer: Uint8Array, scanEnd?: number): GLBChunk {
+        const limit = scanEnd ?? buffer.length;
         let pos = buffer['pos'];
+        if (pos + 8 > limit) {
+            throw new Error(`GLB chunk header at byte ${pos} runs past the end of the file (${limit} bytes) — truncated file?`);
+        }
         let result = new GLBChunk();
         let data = new Uint32Array(buffer.buffer, pos, 2);
         pos = buffer['pos'] += data.byteLength;
         result.chunkLength = data[0];
         result.chunkType = data[1];
+        if (pos + result.chunkLength > limit) {
+            throw new Error(`GLB chunk (type 0x${result.chunkType.toString(16)}) at byte ${pos} declares ${result.chunkLength} bytes but only ${limit - pos} remain — truncated file?`);
+        }
         result.chunkData = new Uint8Array(buffer.buffer, pos, result.chunkLength);
         const bytes = new Uint8Array(result.chunkLength);
         for (let i = 0; i < result.chunkLength; i++) bytes[i] = result.chunkData[i];
