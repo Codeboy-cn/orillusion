@@ -1,5 +1,5 @@
 import { test, expect, end } from '../util'
-import { WasmMatrix, Matrix4, Quaternion, Ray, Vector3, Orientation3D } from '@orillusion/core';
+import { WasmMatrix, MathUtil, Matrix4, Quaternion, Ray, Vector3, Orientation3D, matrixRotateY } from '@orillusion/core';
 
 // Regression tests for audit findings M1 / M2 / M8 (batch 1).
 
@@ -87,6 +87,71 @@ await test('Matrix4.transpose works on helpMatrix and leaves it unpolluted [audi
     expect(Matrix4.helpMatrix.rawData[2]).toEqual(8);
     expect(Matrix4.helpMatrix.rawData[13]).toEqual(7);
     expect(Matrix4.helpMatrix.rawData[7]).toEqual(13);
+})
+
+await test('makeMatrix44ByQuaternion does not scale the translation [audit M6]', async () => {
+    await WasmMatrix.init(Matrix4.allocCount);
+    let mat = new Matrix4();
+    mat.makeMatrix44ByQuaternion(new Vector3(1, 2, 3), new Vector3(2, 2, 2), new Quaternion());
+    // Translation stays raw (used to come out as (2,4,6)); basis scaled.
+    expect(mat.rawData[12]).toSubequal(1, 0.0001);
+    expect(mat.rawData[13]).toSubequal(2, 0.0001);
+    expect(mat.rawData[14]).toSubequal(3, 0.0001);
+    expect(mat.rawData[0]).toSubequal(2, 0.0001);
+    expect(mat.rawData[5]).toSubequal(2, 0.0001);
+    expect(mat.rawData[10]).toSubequal(2, 0.0001);
+})
+
+await test('ortho/orthoZO match the engine-convention orthoOffCenter [audit M7]', async () => {
+    await WasmMatrix.init(Matrix4.allocCount);
+    let a = new Matrix4(); a.ortho(10, 10, 1, 100);
+    let b = new Matrix4(); b.orthoOffCenter(-5, 5, -5, 5, 1, 100);
+    for (let i = 0; i < 16; i++) expect(a.rawData[i]).toSubequal(b.rawData[i], 0.0001);
+
+    let c = new Matrix4(); c.orthoZO(-5, 5, -5, 5, 1, 100);
+    for (let i = 0; i < 16; i++) expect(c.rawData[i]).toSubequal(b.rawData[i], 0.0001);
+
+    // LH zero-to-one depth: near maps to 0, far maps to 1.
+    const depth = (m: Matrix4, z: number) => z * m.rawData[10] + m.rawData[14];
+    expect(depth(c, 1)).toSubequal(0, 0.0001);
+    expect(depth(c, 100)).toSubequal(1, 0.0001);
+})
+
+await test('angle_360 returns oriented degrees; getRandDirXYZ stays in the sphere [audit M9]', async () => {
+    await WasmMatrix.init(Matrix4.allocCount);
+    // XZ-plane pair: X→Z is one winding, Z→X the other; both in degrees.
+    const x = new Vector3(1, 0, 0), z = new Vector3(0, 0, 1);
+    const a1 = MathUtil.angle_360(z, x);
+    const a2 = MathUtil.angle_360(x, z);
+    expect(a1).toSubequal(90, 0.01);
+    expect(a2).toSubequal(270, 0.01);
+
+    for (let i = 0; i < 1000; i++) {
+        const v = MathUtil.getRandDirXYZ(5);
+        expect(Math.sqrt(v.x * v.x + v.y * v.y + v.z * v.z) <= 5.0001).toEqual(true);
+    }
+})
+
+await test('matrixRotateY writes a complete Y-rotation matrix [audit M10]', async () => {
+    await WasmMatrix.init(Matrix4.allocCount);
+    let m = new Matrix4();
+    m.rawData.set([9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9]);
+    matrixRotateY(Math.PI / 2, m);
+    const d = m.rawData;
+    expect(d[0]).toSubequal(0, 0.0001);
+    expect(d[2]).toSubequal(-1, 0.0001);
+    expect(d[4]).toSubequal(0, 0.0001);
+    expect(d[5]).toSubequal(1, 0.0001);
+    expect(d[8]).toSubequal(1, 0.0001);
+    expect(d[10]).toSubequal(0, 0.0001);
+    expect(d[12]).toSubequal(0, 0.0001);
+    expect(d[15]).toSubequal(1, 0.0001);
+
+    // Static variant used to call the wasm matrix-multiply entry point.
+    let m2 = new Matrix4();
+    m2.rawData.set([9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9]);
+    Matrix4.matrixRotateY(Math.PI / 2, m2);
+    for (let i = 0; i < 16; i++) expect(m2.rawData[i]).toSubequal(d[i], 0.0001);
 })
 
 setTimeout(end, 500)
