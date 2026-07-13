@@ -35,6 +35,9 @@ export class TextGeometry extends ExtrudeGeometry {
 
     public set text(v: string) {
         this._text = v;
+        // Discard shapes built for the previous text, otherwise buildShape
+        // appends the new glyph outlines to the stale ones.
+        this.shapes.length = 0;
         let paths = this.font.getPath(v, 0, 0, this.fontSize);
         this.buildShape(paths);
         this.buildGeometry(this.options);

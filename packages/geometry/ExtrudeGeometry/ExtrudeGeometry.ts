@@ -356,15 +356,32 @@ export class ExtrudeGeometry extends GeometryBase {
             }
 
             const nextIndex = verticesArray.length / 3;
+            // generateSideWallUV samples the vertices at slots (n-6, n-3, n-2, n-1)
+            // of the 6 vertices pushed above, so uvs[] maps to different quad
+            // corners depending on the winding branch.
             const uvs = WorldUVGenerator.generateSideWallUV(verticesArray, nextIndex - 6, nextIndex - 3, nextIndex - 2, nextIndex - 1);
 
-            addUV(uvs[0]);
-            addUV(uvs[1]);
-            addUV(uvs[3]);
+            if (isClockWise) {
+                // Slots hold (a, b, c, d): uvs = [uv(a), uv(b), uv(c), uv(d)].
+                // tri1 = (a, b, d), tri2 = (b, c, d).
+                addUV(uvs[0]);
+                addUV(uvs[1]);
+                addUV(uvs[3]);
 
-            addUV(uvs[1]);
-            addUV(uvs[2]);
-            addUV(uvs[3]);
+                addUV(uvs[1]);
+                addUV(uvs[2]);
+                addUV(uvs[3]);
+            } else {
+                // Slots hold (a, b, d, c): uvs = [uv(a), uv(b), uv(d), uv(c)].
+                // tri1 = (a, d, b), tri2 = (b, d, c).
+                addUV(uvs[0]);
+                addUV(uvs[2]);
+                addUV(uvs[1]);
+
+                addUV(uvs[1]);
+                addUV(uvs[2]);
+                addUV(uvs[3]);
+            }
         }
 
         function addVertex(index: number) {

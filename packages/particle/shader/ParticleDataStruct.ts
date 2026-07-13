@@ -26,6 +26,7 @@ export let ParticleDataStructShader = /* wgsl */ `
         overLife_scale: array<vec4<f32>,2>,
         overLife_colors: array<vec4<f32>,2>,
         overLife_rotations: array<vec4<f32>,2>,
+        overLife_speed: array<vec4<f32>,2>,
         cameraPos: vec4<f32>,
 
         textureSheet_ClipCol: u32,

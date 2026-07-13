@@ -108,6 +108,7 @@ export class ParticleEmitterModule extends ParticleModuleBase {
    */
   public set angle(v: number) {
     this._angle = v;
+    this.needReset = true;
   }
 
   /**

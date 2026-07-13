@@ -20,6 +20,11 @@ export class ParticleGlobalMemory extends ParticleBuffer {
 
     constructor(size: number, data?: Float32Array) {
         super(size, data);
+        // Pre-allocate every field of the WGSL GlobalData struct in
+        // declaration order (see ParticleDataStruct.ts). Field offsets are
+        // assigned on first allocation, so relying on alloc-on-miss inside
+        // the setters made the layout depend on setter call order and could
+        // desync it from the fixed WGSL struct.
         this._instanceID = this.allocUint32(`instance_index`);
         this._maxParticles = this.allocUint32(`maxParticles`);
         this._time = this.allocFloat32(`time`);
@@ -29,6 +34,25 @@ export class ParticleGlobalMemory extends ParticleBuffer {
         this._simulatorSpace = this.allocUint32(`simulatorSpace`);
         this._retain1 = this.allocFloat32(`retain1`);
         this._emitterPos = this.allocVec4(`emitterPos`);
+        this.allocVec3(`gravity`);
+        this.allocFloat32(`spaceDamping`);
+        this.allocFloat32(`enable_dirBySpeed`);
+        this.allocFloat32(`enable_dirBySpeed1`);
+        this.allocFloat32(`enable_dirBySpeed2`);
+        this.allocFloat32(`enable_dirBySpeed3`);
+        this.alloc(`overLife_scale`, 4 * 4 * 2);
+        this.alloc(`overLife_colors`, 4 * 4 * 2);
+        this.alloc(`overLife_rotations`, 4 * 4 * 2);
+        this.alloc(`overLife_speed`, 4 * 4 * 2);
+        this.allocVec4(`cameraPos`);
+        this.allocUint32(`textureSheet_ClipCol`);
+        this.allocUint32(`textureSheet_TotalClip`);
+        this.allocFloat32(`textureSheet_PlayRate`);
+        this.allocUint32(`textureSheet_TextureWidth`);
+        this.allocUint32(`textureSheet_TextureHeight`);
+        this.allocFloat32(`textureSheet_retain0`);
+        this.allocFloat32(`textureSheet_retain1`);
+        this.allocFloat32(`textureSheet_retain2`);
     }
 
     public setInstanceID(v: number) {

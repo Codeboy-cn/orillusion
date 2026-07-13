@@ -10,9 +10,11 @@ import { ParticleModuleBase } from './ParticleModuleBase';
 export class ParticleOverLifeSpeedModule extends ParticleModuleBase {
 
     /**
-    * Describe the velocity change of particles from birth to end
+    * Per-axis scale applied to the particle displacement, interpolated from
+    * birth (segment 0) to end of life (segment 1). 1.0 keeps the original
+    * speed; 0.0 stops the particle.
     */
-    public speedSegments: Vector4[] = [new Vector4(0, 0, 0, 0), new Vector4(0, 0, 0, 0)];
+    public speedSegments: Vector4[] = [new Vector4(1, 1, 1, 1), new Vector4(1, 1, 1, 1)];
 
 
     /**

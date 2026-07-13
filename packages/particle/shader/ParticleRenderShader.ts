@@ -81,7 +81,11 @@ export let ParticleRenderShader = /* wgsl */ `
         let frame: u32 = particle.textureSheet_Frame;
         let clipW: u32 = u32(size.x) / particleGlobalData.textureSheet_ClipCol;
         let ratioW: f32 = f32(clipW) / f32(size.x);
-        let ratioH: f32 = f32(clipW) / f32(size.y);
+        // Derive the cell height from the sheet's row count instead of
+        // assuming square cells (clipW == clipH).
+        let rowCount: u32 = (particleGlobalData.textureSheet_TotalClip + particleGlobalData.textureSheet_ClipCol - 1u) / particleGlobalData.textureSheet_ClipCol;
+        let clipH: u32 = u32(size.y) / rowCount;
+        let ratioH: f32 = f32(clipH) / f32(size.y);
         let col: u32 = frame % particleGlobalData.textureSheet_ClipCol;
         let row: u32 = frame / particleGlobalData.textureSheet_ClipCol;
         ORI_VertexOut.varying_UV0.x = (vertex.uv.x + f32(col)) * ratioW;

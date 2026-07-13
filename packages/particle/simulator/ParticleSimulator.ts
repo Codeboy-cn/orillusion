@@ -87,6 +87,8 @@ export class ParticleSimulator {
             ret.setSimulator(this);
             ret[`__init`]();
             this._particleModules.set(c.prototype, ret);
+            // A new module must be baked into the buffers on next update.
+            this.needReset = true;
             return ret;
         }
         return this.getModule(c);
@@ -107,6 +109,8 @@ export class ParticleSimulator {
     public removeModule<T extends ParticleModuleBase>(c: Ctor<T>) {
         if (this._particleModules.has(c.prototype)) {
             this._particleModules.delete(c.prototype);
+            // Rebuild so the removed module's data no longer applies.
+            this.needReset = true;
         }
     }
 
@@ -126,6 +130,12 @@ export class ParticleSimulator {
             v.generateParticleModuleData(this.particleGlobalMemory, this.particleLocalMemory);
         });
         this.initPipeline();
+        // Keep the render-side instance count in sync with maxParticle:
+        // every needReset rebuild funnels through here, so changes made
+        // after ParticleSystem.start() still propagate to the draw call.
+        if (this._particleSystem) {
+            this._particleSystem.instanceCount = this.maxParticle;
+        }
     }
 
     protected generateParticleGlobalData() {
