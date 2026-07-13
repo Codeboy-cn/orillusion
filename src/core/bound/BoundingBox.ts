@@ -201,9 +201,12 @@ export class BoundingBox implements IBound {
      */
     public static fromPoints(points: Vector3[]): BoundingBox {
         var bounds: BoundingBox = new BoundingBox(new Vector3(), new Vector3());
+        bounds.min.set(Infinity, Infinity, Infinity);
+        bounds.max.set(-Infinity, -Infinity, -Infinity);
         for (var i: number = 0; i < points.length; i++) {
             bounds.expandByPoint(points[i]);
         }
+        bounds.setFromMinMax(bounds.min, bounds.max);
         return bounds;
     }
 
