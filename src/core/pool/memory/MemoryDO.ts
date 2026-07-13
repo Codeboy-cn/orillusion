@@ -30,6 +30,10 @@ export class MemoryDO {
     }
 
     public allocation_node(byteSize: number): MemoryInfo {
+        // Keep node starts 4-byte aligned: after 1/2-byte fields an
+        // unaligned offset makes Float32Array/Int32Array views over the
+        // node throw a RangeError.
+        this._byteOffset = (this._byteOffset + 3) & ~3;
         if (this._byteOffset + byteSize > this.shareDataBuffer.byteLength) {
             console.error('memory not enough!', this._byteOffset, byteSize, this.shareDataBuffer.byteLength);
             return null;
@@ -44,6 +48,7 @@ export class MemoryDO {
     }
 
     public allocation_memory(memoryInfo: MemoryInfo): MemoryInfo {
+        this._byteOffset = (this._byteOffset + 3) & ~3;
         if (this._byteOffset + memoryInfo.byteSize > this.shareDataBuffer.byteLength) {
             console.error('memory not enough!', this._byteOffset, memoryInfo.byteSize, this.shareDataBuffer.byteLength);
             return null;
