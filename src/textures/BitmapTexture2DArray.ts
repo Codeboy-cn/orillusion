@@ -72,6 +72,10 @@ export class BitmapTexture2DArray extends Texture implements ITexture {
                 const bitmapTexture = this._bitmapTextures[i];
                 bitmapTexture.pid = i;
             }
+            // Re-copy the GPU array layers: pids were re-packed above, but the
+            // GPU texture still holds the old layer order — every texture after
+            // the removed one would display its predecessor's image.
+            this.updateTexture();
         }
     }
 
