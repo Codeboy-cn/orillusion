@@ -722,7 +722,11 @@ export class Matrix4 {
     public ortho(w: number, h: number, zn: number, zf: number) {
         let data = this.rawData;
 
-        data[0] = 2 / w;
+        // Match orthoOffCenter's engine convention (negated X, LH depth
+        // [0,1]) — this used to be +2/w, mirroring X relative to every
+        // in-use ortho path. ortho(w,h,...) now equals
+        // orthoOffCenter(-w/2, w/2, -h/2, h/2, ...).
+        data[0] = -2 / w;
         data[1] = 0;
         data[2] = 0;
         data[3] = 0;
@@ -756,26 +760,12 @@ export class Matrix4 {
      * @returns this matrix
      */
     public orthoZO(left: number, right: number, bottom: number, top: number, near: number, far: number) {
-        let data = this.rawData;
-        let lr = 1 / (left - right);
-        let bt = 1 / (bottom - top);
-        let nf = 1 / (near - far);
-        data[0] = -2 * lr;
-        data[1] = 0;
-        data[2] = 0;
-        data[3] = 0;
-        data[4] = 0;
-        data[5] = -2 * bt;
-        data[6] = 0;
-        data[7] = 0;
-        data[8] = 0;
-        data[9] = 0;
-        data[10] = nf;
-        data[11] = 0;
-        data[12] = (left + right) * lr;
-        data[13] = (top + bottom) * bt;
-        data[14] = near * nf;
-        data[15] = 1;
+        // This was the right-handed glMatrix formula: under the engine's
+        // left-handed +Z convention its depth landed entirely outside
+        // [0,1] (depth(near) < 0). Now identical to orthoOffCenter — the
+        // engine-convention LH zero-to-one ortho used by cameras and
+        // shadow paths.
+        this.orthoOffCenter(left, right, bottom, top, near, far);
         return this;
     }
 
