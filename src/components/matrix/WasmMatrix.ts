@@ -152,33 +152,43 @@ export class WasmMatrix {
         this.matrixSRTBuffer[matIndex * WasmMatrix.srtStride + 2] = z;
     }
 
-    /** Set a per-frame continuous translation delta (auto-applied each update). */
+    /**
+     * Recompute the continuous-transform flag (state slot 1) from the
+     * current continued SRT values: active while any component is non-zero.
+     */
+    private static _refreshContinueState(matIndex: number) {
+        const base = matIndex * WasmMatrix.continuedSrtStride;
+        let active = 0;
+        for (let i = 0; i < WasmMatrix.continuedSrtStride; i++) {
+            if (this.matrixContinuedSRTBuffer[base + i] != 0) {
+                active = 1;
+                break;
+            }
+        }
+        this.matrixStateBuffer[matIndex * WasmMatrix.stateStruct + 1] = active;
+    }
+
+    /** Set a per-frame continuous translation delta (auto-applied each update). Writing zero stops it. */
     public static setContinueTranslate(matIndex: number, x: number, y: number, z: number) {
-        if (x != 0 || y != 0 || z != 0) {
-            this.matrixContinuedSRTBuffer[matIndex * WasmMatrix.continuedSrtStride + 6] = x;
-            this.matrixContinuedSRTBuffer[matIndex * WasmMatrix.continuedSrtStride + 7] = y;
-            this.matrixContinuedSRTBuffer[matIndex * WasmMatrix.continuedSrtStride + 8] = z;
-            this.matrixStateBuffer[matIndex * WasmMatrix.stateStruct + 1] = 1;
-        }
+        this.matrixContinuedSRTBuffer[matIndex * WasmMatrix.continuedSrtStride + 6] = x;
+        this.matrixContinuedSRTBuffer[matIndex * WasmMatrix.continuedSrtStride + 7] = y;
+        this.matrixContinuedSRTBuffer[matIndex * WasmMatrix.continuedSrtStride + 8] = z;
+        this._refreshContinueState(matIndex);
     }
 
-    /** Set a per-frame continuous rotation delta (Euler degrees/frame, auto-applied each update). */
+    /** Set a per-frame continuous rotation delta (Euler degrees/frame, auto-applied each update). Writing zero stops it. */
     public static setContinueRotation(matIndex: number, x: number, y: number, z: number) {
-        if (x != 0 || y != 0 || z != 0) {
-            this.matrixContinuedSRTBuffer[matIndex * WasmMatrix.continuedSrtStride + 3] = x;
-            this.matrixContinuedSRTBuffer[matIndex * WasmMatrix.continuedSrtStride + 4] = y;
-            this.matrixContinuedSRTBuffer[matIndex * WasmMatrix.continuedSrtStride + 5] = z;
-            this.matrixStateBuffer[matIndex * WasmMatrix.stateStruct + 1] = 1;
-        }
+        this.matrixContinuedSRTBuffer[matIndex * WasmMatrix.continuedSrtStride + 3] = x;
+        this.matrixContinuedSRTBuffer[matIndex * WasmMatrix.continuedSrtStride + 4] = y;
+        this.matrixContinuedSRTBuffer[matIndex * WasmMatrix.continuedSrtStride + 5] = z;
+        this._refreshContinueState(matIndex);
     }
 
-    /** Set a per-frame continuous scale delta (auto-applied each update). */
+    /** Set a per-frame continuous scale delta (auto-applied each update). Writing zero stops it. */
     public static setContinueScale(matIndex: number, x: number, y: number, z: number) {
-        if (x != 0 || y != 0 || z != 0) {
-            this.matrixContinuedSRTBuffer[matIndex * WasmMatrix.continuedSrtStride + 0] = x;
-            this.matrixContinuedSRTBuffer[matIndex * WasmMatrix.continuedSrtStride + 1] = y;
-            this.matrixContinuedSRTBuffer[matIndex * WasmMatrix.continuedSrtStride + 2] = z;
-            this.matrixStateBuffer[matIndex * WasmMatrix.stateStruct + 1] = 1;
-        }
+        this.matrixContinuedSRTBuffer[matIndex * WasmMatrix.continuedSrtStride + 0] = x;
+        this.matrixContinuedSRTBuffer[matIndex * WasmMatrix.continuedSrtStride + 1] = y;
+        this.matrixContinuedSRTBuffer[matIndex * WasmMatrix.continuedSrtStride + 2] = z;
+        this._refreshContinueState(matIndex);
     }
 }

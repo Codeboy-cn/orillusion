@@ -224,6 +224,13 @@ export class Transform extends ComponentBase {
         WasmMatrix.setScale(this.index, this._localScale.x, this._localScale.y, this._localScale.z);
         WasmMatrix.setRotation(this.index, this._localRotQuat.x, this._localRotQuat.y, this._localRotQuat.z, this._localRotQuat.w);
         WasmMatrix.setTranslate(this.index, this._localPos.x, this._localPos.y, this._localPos.z);
+        // The matrix slot may be recycled from a destroyed object; clear any
+        // inherited continuous SRT deltas and parent linkage, otherwise the
+        // new object spins/moves on its own.
+        WasmMatrix.setContinueScale(this.index, 0, 0, 0);
+        WasmMatrix.setContinueRotation(this.index, 0, 0, 0);
+        WasmMatrix.setContinueTranslate(this.index, 0, 0, 0);
+        WasmMatrix.setParent(this.index, -1, 0);
     }
 
     /** Lifecycle hook called once when the transform is created. */
