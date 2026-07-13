@@ -15,6 +15,7 @@ export class StaticAudio extends ComponentBase {
     };
     public playing = false;
     private _currentTime: number = 0;
+    private _startCtxTime: number = 0;
     private _buffer: AudioBuffer | null = null
     constructor() {
         super();
@@ -70,7 +71,12 @@ export class StaticAudio extends ComponentBase {
         source.loop = this._options.loop;
         this.source = source;
         this.connect();
+        // Resume from the accumulated buffer offset; wrap for looped buffers.
+        if (this._options.loop && this._buffer && this._currentTime > this._buffer.duration) {
+            this._currentTime %= this._buffer.duration;
+        }
         this.source.start(0, this._currentTime);
+        this._startCtxTime = this.context.currentTime;
         this.setVolume(this._options.volume);
         this.playing = true;
         return this;
@@ -80,7 +86,9 @@ export class StaticAudio extends ComponentBase {
             console.warn('Audio is not playing');
             return this;
         }
-        this._currentTime = this.context?.currentTime || 0;
+        // Accumulate elapsed playback time as a buffer offset —
+        // context.currentTime is an absolute clock, not a buffer position.
+        this._currentTime += (this.context?.currentTime || 0) - this._startCtxTime;
         this.source?.stop();
         this.source?.disconnect();
         this.playing = false;
