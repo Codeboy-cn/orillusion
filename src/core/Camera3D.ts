@@ -692,6 +692,14 @@ export class Camera3D extends ComponentBase {
      * @param force whether to force-destroy
      */
     public destroy(force?: boolean): void {
+        // Unhook the ctx RESIZE listener first: after the matrix slots below
+        // are freed, a window resize would otherwise call updateProjection on
+        // this destroyed camera and write into recycled slots.
+        if (this._resizeListenerAttached && this._boundCtx) {
+            this._boundCtx.removeEventListener(CResizeEvent.RESIZE, this.updateProjection, this);
+            this._resizeListenerAttached = false;
+        }
+        this._boundCtx = null;
         // Release the 7 Matrix4 slots this camera holds in the static matrix table;
         // ComponentBase.destroy() wouldn't know about these private fields.
         for (const m of [this._projectionMatrix, this._projectionMatrixInv, this._viewMatrix, this._viewMatrixInv, this._unprojection, this._pvMatrix, this._pvMatrixInv]) {
