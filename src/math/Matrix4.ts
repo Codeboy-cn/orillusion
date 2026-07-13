@@ -2366,8 +2366,16 @@ export class Matrix4 {
     public makeMatrix44ByQuaternion(pos: Vector3, scale: Vector3, rot: Quaternion) {
         this.identity();
         Quaternion.quaternionToMatrix(rot, this);
-        this.appendTranslation(pos.x, pos.y, pos.z);
-        this.appendScale(scale.x, scale.y, scale.z);
+        // Compose T·R·S like the euler-based makeMatrix44 helper: scale
+        // the rotation basis columns, then place the translation raw.
+        // The old append order produced S·T·R — the translation itself
+        // was multiplied by the scale (pos (1,2,3) with scale 2 landed
+        // at (2,4,6)).
+        const d = this.rawData;
+        d[0] *= scale.x; d[1] *= scale.x; d[2] *= scale.x;
+        d[4] *= scale.y; d[5] *= scale.y; d[6] *= scale.y;
+        d[8] *= scale.z; d[9] *= scale.z; d[10] *= scale.z;
+        d[12] = pos.x; d[13] = pos.y; d[14] = pos.z; d[15] = 1;
     }
 }
 
