@@ -154,21 +154,24 @@ export class PositionAudio extends StaticAudio {
         if (isNaN(_orientation.x)) {
             return;
         }
+        // LH engine -> RH Web Audio: negate Z (see AudioListener.onUpdate).
         if (panner.positionX && this.context) {
             const endTime = this.context.currentTime;
             panner.positionX.linearRampToValueAtTime(_position.x, endTime);
             panner.positionY.linearRampToValueAtTime(_position.y, endTime);
-            panner.positionZ.linearRampToValueAtTime(_position.z, endTime);
+            panner.positionZ.linearRampToValueAtTime(-_position.z, endTime);
             panner.orientationX.linearRampToValueAtTime(_orientation.x, endTime);
             panner.orientationY.linearRampToValueAtTime(_orientation.y, endTime);
-            panner.orientationZ.linearRampToValueAtTime(_orientation.z, endTime);
+            panner.orientationZ.linearRampToValueAtTime(-_orientation.z, endTime);
         } else {
-            panner.setPosition(_position.x, _position.y, _position.z);
-            panner.setOrientation(_orientation.x, _orientation.y, _orientation.z);
+            panner.setPosition(_position.x, _position.y, -_position.z);
+            panner.setOrientation(_orientation.x, _orientation.y, -_orientation.z);
         }
     }
     public destroy(force?: boolean) {
-        this.panner.disconnect();
+        // panner only exists after setLisenter(); destroying an
+        // unconfigured component must not crash the cleanup chain.
+        this.panner?.disconnect();
         this.hideHelper();
         super.destroy(force);
     }

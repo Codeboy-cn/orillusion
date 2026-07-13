@@ -56,7 +56,10 @@ export class VideoTexture extends Texture {
         }
         if (old) {
             old.pause()
-            old.src = old.srcObject = null
+            // src is a USVString: assigning null coerces to the literal
+            // string "null" and load() then requests ./null (404 + error).
+            old.src = ''
+            old.srcObject = null
             old.load()
         }
     }

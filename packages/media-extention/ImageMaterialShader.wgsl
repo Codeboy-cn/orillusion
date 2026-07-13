@@ -26,7 +26,12 @@ fn frag(){
         discard;
     }
 
-    let videoColor = textureSample(baseMap, baseMapSampler, uv);
+    var videoColor = textureSample(baseMap, baseMapSampler, uv);
+
+    // Default BitmapTexture2D is rgba8unorm holding sRGB-encoded bytes;
+    // decode to linear so the sRGB swapchain doesn't double-encode
+    // (same fix as the UnLit-family shaders).
+    videoColor = vec4<f32>(gammaToLiner(videoColor.rgb), videoColor.a);
 
     ORI_ShadingInput.BaseColor = videoColor * materialUniform.baseColor ;
     UnLit();

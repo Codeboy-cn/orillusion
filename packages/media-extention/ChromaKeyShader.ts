@@ -47,7 +47,7 @@ fn frag(){
     }
 
     let texSize = textureDimensions(baseMap).xy;
-    let color = textureLoad(baseMap, vec2<i32>( i32(uv.x * f32(texSize.x)), i32(uv.y * f32(texSize.y))) );
+    let color = textureLoad(baseMap, texelCoord(uv, texSize));
 
     let key_cb = rgb2cb(materialUniform.keyColor.rgb);
     let key_cr = rgb2cr(materialUniform.keyColor.rgb);
@@ -73,10 +73,23 @@ fn frag(){
     }
     let dif = (color - result);
     let desaturatedDif = rgb2y(dif.xyz);
-    result += mix(0, desaturatedDif, materialUniform.despoilLuminanceAdd);
+    // Luminance compensation must not touch alpha, or keyed-out pixels
+    // become opaque again as soon as despoilLuminanceAdd > 0.
+    result = vec4<f32>(result.rgb + mix(0, desaturatedDif, materialUniform.despoilLuminanceAdd), result.a);
+
+    // texture_external returns sRGB-encoded values; decode to linear so
+    // the sRGB swapchain doesn't double-encode (same as VideoShader).
+    result = vec4<f32>(gammaToLiner(result.rgb), result.a);
 
     ORI_ShadingInput.BaseColor = result * baseColor ;
     UnLit();
+}
+
+fn texelCoord(uv: vec2<f32>, texSize: vec2<u32>) -> vec2<i32> {
+    // Clamp: uv=1.0 (and the +/- one-texel neighbor taps) would index
+    // one past the edge, where textureLoad returns indeterminate values.
+    let coord = vec2<i32>(vec2<f32>(texSize) * uv);
+    return clamp(coord, vec2<i32>(0), vec2<i32>(texSize) - 1);
 }
 
 fn rgb2cr(color: vec3<f32>) -> f32 {
@@ -105,7 +118,7 @@ fn colorclose(Cb_p: f32, Cr_p: f32, Cb_key: f32, Cr_key: f32, tola: f32, tolb: f
 }
 
 fn maskedTex2D(uv: vec2<f32>, texSize: vec2<u32>, key_cb: f32, key_cr: f32) -> f32 {
-    let color = textureLoad(baseMap, vec2<i32>( i32(uv.x * f32(texSize.x)), i32(uv.y * f32(texSize.y))) );
+    let color = textureLoad(baseMap, texelCoord(uv, texSize));
     let pix_cb = rgb2cb(color.rgb);
     let pix_cr = rgb2cr(color.rgb);
     return colorclose(pix_cb, pix_cr, key_cb, key_cr, materialUniform.colorCutoff, materialUniform.colorFeathering);

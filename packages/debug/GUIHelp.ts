@@ -43,7 +43,9 @@ class _GUIHelp {
         let tobj = {
             [label]: obj[property]
         }
-        dgui.add(tobj, label, c, d, e).onChange((v) => {
+        // Return the controller so chaining works in debug mode too,
+        // matching the _nullBind stub contract above.
+        return dgui.add(tobj, label, c, d, e).onChange((v) => {
             obj[property] = v;
         })
     }

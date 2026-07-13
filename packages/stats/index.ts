@@ -62,7 +62,9 @@ class Stats extends ComponentBase {
         const time = this.beginTime = performance.now()
         if (time >= this.prevTime + 1000) {
             this.fpsPanel.update((this.frames * 1000) / (time - this.prevTime), 100)
-            this.memPanel?.update((performance as any).memory.totalJSHeapSize / 1048576, 256)
+            // usedJSHeapSize tracks live allocations (drops after GC);
+            // totalJSHeapSize is the reserved heap and barely moves.
+            this.memPanel?.update((performance as any).memory.usedJSHeapSize / 1048576, 256)
             this.prevTime = time
             this.frames = 0
         }
