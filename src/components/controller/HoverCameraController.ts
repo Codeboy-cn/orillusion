@@ -142,6 +142,12 @@ export class HoverCameraController extends ComponentBase {
         return owner?.inputSystem;
     }
 
+    // Input system captured when listeners are attached. destroy() runs
+    // after Entity has already torn down the Transform, so deriving the
+    // input system through transform.view3D at that point returns nothing
+    // and the listeners would leak.
+    private _boundInput: any = null;
+
     /**
      * @internal
      */
@@ -149,6 +155,7 @@ export class HoverCameraController extends ComponentBase {
         this.camera = this.object3D.getOrAddComponent(Camera3D);
         const input = this._input();
         if (!input) return;
+        this._boundInput = input;
         input.addEventListener(PointerEvent3D.POINTER_DOWN, this.onMouseDown, this);
         input.addEventListener(PointerEvent3D.POINTER_MOVE, this.onMouseMove, this, null, 10);
         input.addEventListener(PointerEvent3D.POINTER_UP, this.onMouseUp, this, null, 10);
@@ -301,7 +308,8 @@ export class HoverCameraController extends ComponentBase {
      * @internal
      */
     public destroy(force?: boolean) {
-        const input = this._input();
+        const input = this._boundInput ?? this._input();
+        this._boundInput = null;
         if (input) {
             input.removeEventListener(PointerEvent3D.POINTER_DOWN, this.onMouseDown, this);
             input.removeEventListener(PointerEvent3D.POINTER_MOVE, this.onMouseMove, this);
