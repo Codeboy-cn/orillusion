@@ -149,6 +149,12 @@ export class GLBParser extends ParserBase {
                 // uri-images up by `image.uri` first. Name/basename keys
                 // collided when two images shared a (base)name.
                 this._gltf.resources[image.uri] = texture;
+                // Back-compat alias: resources were historically reachable
+                // by image name; keep that for unclaimed names (uri stays
+                // authoritative, duplicate names never overwrite).
+                if (image.name && !this._gltf.resources[image.name]) {
+                    this._gltf.resources[image.name] = texture;
+                }
             } else if (image.bufferView !== undefined) {
                 // Key bufferView images by their unique bufferView index —
                 // GLTFSubParser.parseTexture uses the same key. Keying by a
@@ -162,6 +168,9 @@ export class GLBParser extends ParserBase {
                 let dtexture = new BitmapTexture2D(true, this.ctx);
                 await dtexture.loadFromBlob(imgData);
                 dtexture.name = image.name;
+                if (image.name && image.name !== key && !this._gltf.resources[image.name]) {
+                    this._gltf.resources[image.name] = dtexture;
+                }
                 this._gltf.resources[key] = dtexture;
             } else {
                 throw new Error(`GLB image ${i} has neither 'uri' nor 'bufferView'`);
