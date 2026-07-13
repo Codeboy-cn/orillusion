@@ -61,19 +61,7 @@ export class GLBParser extends ParserBase {
             return false;
         }
 
-        // let time = performance.now();
-        let gltfJSON = '';
-        let maxCount = 65535;
-        let chunkJSONData = chunks[0].chunkData;
-        for (let i = 0; i < chunkJSONData.length; i += maxCount) {
-            let count = chunkJSONData.length - i;
-            count = Math.min(count, maxCount);
-            let newUint = chunkJSONData.subarray(i, i + count);
-            gltfJSON += String.fromCharCode(...newUint);
-        }
-        // console.log(performance.now() - time);
-
-        // let gltfJSON = String.fromCharCode(...chunks[0].chunkData) ;//.apply(null, chunks[0].chunkData);
+        let gltfJSON = new TextDecoder('utf-8').decode(chunks[0].chunkData);
         let obj = JSON.parse(gltfJSON) as object;
         this._gltf = new GLTF_Info();
         this._gltf = { ...this._gltf, ...obj };
