@@ -154,7 +154,10 @@ export class CEventDispatcher {
 
         if (eventType) {
             if (this.listeners[eventType]) {
-                for (var i: number = 0; i < this.listeners[eventType].length; i++) {
+                // Iterate backwards: splicing forward skipped every other
+                // listener, leaving half of them undisposed (and still
+                // reachable by an in-flight dispatch).
+                for (var i: number = this.listeners[eventType].length - 1; i >= 0; i--) {
                     listener = this.listeners[eventType][i];
                     listener.dispose();
                     this.listeners[eventType].splice(i, 1);
@@ -164,7 +167,7 @@ export class CEventDispatcher {
             }
         } else {
             for (let key in this.listeners) {
-                for (var i: number = 0; i < this.listeners[key].length; i++) {
+                for (var i: number = this.listeners[key].length - 1; i >= 0; i--) {
                     listener = this.listeners[key][i];
                     listener.dispose();
                     this.listeners[key].splice(i, 1);
