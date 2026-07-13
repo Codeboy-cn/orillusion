@@ -515,6 +515,13 @@ export class ParticleEmitterModule extends ParticleModuleBase {
           MinMaxCurve.evaluate(this.startVelocityZ, this._rand.getFloat())
         );
 
+        // Cone shape emits along the cone surface: redirect the start
+        // velocity outward once its magnitude is known (must run after
+        // the generic start_velocity assignment above).
+        if (this.shapeType == ShapeType.Cone) {
+          this.applyConeShapeStartVelocity(pd);
+        }
+
 
         // pd.start_rotVelocity.setXYZ(0, 0, (this._rand.getFloat() * 0.5 - 0.5 * 0.5) * DEGREES_TO_RADIANS);
 
@@ -619,6 +626,46 @@ export class ParticleEmitterModule extends ParticleModuleBase {
   }
 
   protected calculateConeShapeParticlePos(pd: ParticleStandardData) {
+    // Sample the cone base disc; the outward tilt is applied to the
+    // start velocity afterwards (see applyConeShapeStartVelocity).
+    let theta = this._rand.getFloat() * 360 * DEGREES_TO_RADIANS;
+    let r: number;
+    switch (this.emitLocation) {
+      case EmitLocation.Edge:
+      case EmitLocation.Shell:
+        r = this.radius;
+        break;
+      case EmitLocation.Default:
+      case EmitLocation.Volume:
+      default:
+        // sqrt keeps the distribution uniform over the disc area
+        r = Math.sqrt(this._rand.getFloat()) * this.radius;
+        break;
+    }
+    pd.start_pos.setXYZ(r * Math.cos(theta), 0, r * Math.sin(theta));
+  }
+
+  /**
+   * Tilt the start velocity outward from the emitter axis (+Y) so cone
+   * particles spread into a cone instead of moving straight up. The tilt
+   * grows with the sampled base-disc radius and reaches `angle` (the cone
+   * opening angle, in degrees) at the rim. Speed magnitude is preserved.
+   */
+  protected applyConeShapeStartVelocity(pd: ParticleStandardData) {
+    const vx = pd.start_velocity.x;
+    const vy = pd.start_velocity.y;
+    const vz = pd.start_velocity.z;
+    const speed = Math.sqrt(vx * vx + vy * vy + vz * vz);
+    if (speed == 0 || this.radius == 0) return;
+    const px = pd.start_pos.x;
+    const pz = pd.start_pos.z;
+    const r = Math.sqrt(px * px + pz * pz);
+    if (r == 0) return;
+    const tilt = Math.tan(this.angle * DEGREES_TO_RADIANS) * (r / this.radius);
+    const dx = (px / r) * tilt;
+    const dz = (pz / r) * tilt;
+    const len = Math.sqrt(dx * dx + 1.0 + dz * dz);
+    pd.start_velocity.setXYZ((speed * dx) / len, speed / len, (speed * dz) / len);
   }
 
   protected calculateSphereShapeParticlePos(pd: ParticleStandardData) {
