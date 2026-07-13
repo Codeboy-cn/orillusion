@@ -87,9 +87,11 @@ export let ParticleComputeShader = /* wgsl */ `
   }
 
   fn gravity(time:f32) -> vec4<f32> {
-    // let t: f32 = time * time;
-    // return 0.5 * vec4<f32>(globalData.gravity, 1.0) * t * ( 1.0 - (globalData.spaceDamping * 0.002) );
-    return 0.5 * vec4<f32>(globalData.gravity, 1.0) * time * ( 1.0 - (globalData.spaceDamping * 0.002) );
+    // Uniform-acceleration displacement: 0.5 * g * t^2 (matches the
+    // force integrator below); the linear-in-time variant was a debug
+    // leftover that made gravity fall short of a parabola.
+    let t: f32 = time * time;
+    return 0.5 * vec4<f32>(globalData.gravity, 1.0) * t * ( 1.0 - (globalData.spaceDamping * 0.002) );
   }
 
   fn calculationForce(time:f32) -> vec4<f32> {
