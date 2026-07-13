@@ -191,7 +191,7 @@ export class GLTFSubParser {
                     } else {
                         textureInfo.dtexture = preloaded;
                     }
-                } else if (image.bufferView) {
+                } else if (image.bufferView !== undefined) {
                     const name = image?.name;
                     let bitmapTexture: BitmapTexture2D = this.gltf.resources[name];
                     if (!bitmapTexture) {
