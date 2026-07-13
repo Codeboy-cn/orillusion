@@ -46,8 +46,14 @@ export class View3D extends CEventListener {
 
     public set enablePick(value: boolean) {
         if (this._enablePick != value) {
-            this.pickFire = new PickFire(this);
-            this.pickFire.start();
+            if (value) {
+                if (!this.pickFire) {
+                    this.pickFire = new PickFire(this);
+                }
+                this.pickFire.start();
+            } else {
+                this.pickFire?.stop();
+            }
         }
         this._enablePick = value;
     }
