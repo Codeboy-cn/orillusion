@@ -373,6 +373,7 @@ fn writePath3DPath(nodeData:ShapeData){
     var curDestIndex:u32 = destPointStart;
 
     curPoint3D = srcPathBuffer[curSrcIndex];
+    currentPoint = curPoint3D.xyz;
 
     var currentInvalid:f32;
     let firstPoint = currentPoint;

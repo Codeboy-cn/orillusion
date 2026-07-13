@@ -88,12 +88,14 @@ export class Path2DShape3D extends LineShape3D implements CanvasPath {
         }
         let matrix: Matrix4 = new Matrix4().identity().createByRotation(deltaAngle, Vector3.UP);
 
-        let point: Vector3 = rotateLocalPos.add(centerPoint);
+        // Keep rotateLocalPos purely local: clone before adding the center offset,
+        // otherwise the world-space point keeps being rotated on later iterations.
+        let point: Vector3 = rotateLocalPos.clone().add(centerPoint);
         this.appendPoint(point.x, point.z);
 
         for (let i = 0; i < segment; i++) {
             rotateLocalPos = Matrix4.transformVector(matrix, rotateLocalPos, rotateLocalPos);
-            point = rotateLocalPos.add(centerPoint);
+            point = rotateLocalPos.clone().add(centerPoint);
             this.appendPoint(point.x, point.z);
         }
     }
@@ -108,7 +110,7 @@ export class Path2DShape3D extends LineShape3D implements CanvasPath {
         }
         let start = this._currentCoord;
         if (start.invalid) {
-            let lastPt = this._points3D[this._points3D.length];
+            let lastPt = this._points3D[this._points3D.length - 1];
             start.invalid = lastPt.invalid = false;
         }
         let cp1 = new Vector3(cp1x, cp1y);
@@ -181,7 +183,7 @@ export class Path2DShape3D extends LineShape3D implements CanvasPath {
         }
         let start = this._currentCoord;
         if (start.invalid) {
-            let lastPt = this._points3D[this._points3D.length];
+            let lastPt = this._points3D[this._points3D.length - 1];
             start.invalid = lastPt.invalid = false;
         }
 

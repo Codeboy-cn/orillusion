@@ -43,19 +43,21 @@ export let graphicTrailCompute = (segmentCode: number) => {
     var<private> viewDir:vec3f;
 
     @compute @workgroup_size(256)
-    fn CsMain(@builtin(workgroup_id) workgroup_id : vec3<u32> , @builtin(global_invocation_id) global_invocation_id : vec3<u32>){
+    fn CsMain(@builtin(workgroup_id) workgroup_id : vec3<u32> , @builtin(local_invocation_id) local_invocation_id : vec3<u32>){
         let rID = workgroup_id.x ;
         let trailInfo = trailBuffer[rID];
         let vLen = u32(trailInfo.segment+1.0) ;
-        let vID = global_invocation_id.x ;
+        // Use the per-ribbon local vertex index: one workgroup per ribbon.
+        let vID = local_invocation_id.x ;
 
-        // if(vID < vLen ){
+        if(vID < vLen ){
             time = globalUniform.time * 0.001;
             var right:vec3f ;
-            
+
             switch (u32(trailInfo.faceMode)) {
                 case 0u:{
-                    right = getRightByMode(vID,vLen,viewDir,trailInfo) ;
+                    // FaceToCamera: derive the facing axis from the camera position.
+                    right = getRightByMode(vID,vLen,viewDir,true,trailInfo) ;
                     break;
                 }
                 case 1u:{
@@ -63,7 +65,8 @@ export let graphicTrailCompute = (segmentCode: number) => {
                     break;
                 }
                 case 2u:{
-                    right = getRightByMode(vID,vLen,trailInfo.up.xyz,trailInfo) ;
+                    // FaceToUp: use the user supplied up vector as the facing axis.
+                    right = getRightByMode(vID,vLen,trailInfo.up.xyz,false,trailInfo) ;
                     break;
                 }
                 default:{
@@ -71,7 +74,7 @@ export let graphicTrailCompute = (segmentCode: number) => {
                 }
             }
             writeTOBuffer(rID,vID,vLen,right,trailInfo);
-        // }
+        }
     }
 
  
@@ -135,31 +138,43 @@ export let graphicTrailCompute = (segmentCode: number) => {
         return vec2<u32>(li,ri);
     }
 
-    fn getRightByMode( vID:u32 , vLen:u32, up:vec3f, trailInfo:TrailInfo ) -> vec3f{
+    // When useCamera is true the facing axis is derived from the camera position,
+    // otherwise the supplied up vector is used (FaceToUp mode).
+    fn getRightByMode( vID:u32 , vLen:u32, up:vec3f, useCamera:bool, trailInfo:TrailInfo ) -> vec3f{
         var right:vec3f;
+        var axis:vec3f = up;
         if(vID==0u){
             // first
             let sp0 = models[i32(trailInfo.ids[ 0 ])][3].xyz ;
             let sp1 = models[i32(trailInfo.ids[ 1 ])][3].xyz ;
             let firstFront = normalize(sp1 - sp0) ;
-            viewDir = -normalize(globalUniform.CameraPos.xyz - sp0) ;
-            right = normalize(cross(firstFront,viewDir));
+            if(useCamera){
+                viewDir = -normalize(globalUniform.CameraPos.xyz - sp0) ;
+                axis = viewDir;
+            }
+            right = normalize(cross(firstFront,axis));
         }else if( vID < (vLen-1) ){
             // body
             let bp0 = models[i32(trailInfo.ids[vID-1])][3].xyz ;
             let bp1 = models[i32(trailInfo.ids[vID])][3].xyz ;
             let bp2 = models[i32(trailInfo.ids[vID+1])][3].xyz ;
-            viewDir = -normalize(globalUniform.CameraPos.xyz - bp1) ;
-            right = getRight(bp0,bp1,bp2,viewDir) ;
+            if(useCamera){
+                viewDir = -normalize(globalUniform.CameraPos.xyz - bp1) ;
+                axis = viewDir;
+            }
+            right = getRight(bp0,bp1,bp2,axis) ;
         }else{
             // last
             let ep0 = models[i32(trailInfo.ids[u32(trailInfo.segment)-1u])][3].xyz ;
             let ep1 = models[i32(trailInfo.ids[u32(trailInfo.segment)])][3].xyz ;
             let endFront = normalize(ep1 - ep0) ;
-            viewDir = -normalize(globalUniform.CameraPos.xyz - ep1) ;
-            right = normalize(cross(endFront,viewDir));
+            if(useCamera){
+                viewDir = -normalize(globalUniform.CameraPos.xyz - ep1) ;
+                axis = viewDir;
+            }
+            right = normalize(cross(endFront,axis));
         }
-        return normalize(right) ; 
+        return normalize(right) ;
     }
     `
     return code;

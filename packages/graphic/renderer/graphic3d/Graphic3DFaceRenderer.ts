@@ -139,10 +139,16 @@ export class Graphic3DFaceRenderer extends MeshRenderer {
                 this.realDrawShape++;
             }
             shapeInfo.startPath = offset;
-            offset += shapeInfo.paths.length;
             for (let j = 0; j < shapeInfo.pathCount; j++) {
-                this.pathBuffer.setVector4(`${i}_path_${j}`, shapeInfo.paths[j]);
+                // Key by the ABSOLUTE slot index so the buffer position always equals
+                // the slot referenced by startPath. GPUBufferBase.setVector4 allocates
+                // memory nodes sequentially on first use of a name; since this loop
+                // always writes slots 0..total-1 in increasing order in a single pass,
+                // new slot names are first-used in increasing order and their buffer
+                // positions match the slot indices, regardless of which shape grows.
+                this.pathBuffer.setVector4(`path_${offset + j}`, shapeInfo.paths[j]);
             }
+            offset += shapeInfo.paths.length;
             this.shapeBuffer.setStruct(ShapeInfo, i, shapeInfo);
         }
         this.shapeBuffer.apply();
@@ -191,6 +197,10 @@ export class Graphic3DFaceRenderer extends MeshRenderer {
     public onCompute(view: View3D, command: GPUCommandEncoder): void {
         if (this.needUpdate) {
             this.needUpdate = false;
+            // Reset the atomic face counter before each dispatch, otherwise the
+            // compute shader keeps appending faces after the previous dispatch.
+            this.drawBuffer.setUint32('skipFace', 0);
+            this.drawBuffer.apply();
             this.computeTrail(view, command);
         }
     }

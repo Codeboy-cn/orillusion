@@ -24,7 +24,8 @@ export let GrassGeometryCompute_cs = /*wgsl*/`
     // Grass geometry compute code goes here
       var time = globalUniform.time * 0.005;
       let globalIndex = workgroup_id.x * 256u + local_invocation_id.x ;
-      if(globalIndex < drawBuffer.skipFace2 * 12u){
+      // skipFace2 holds maxNodeCount; one invocation handles one grass node.
+      if(globalIndex < drawBuffer.skipFace2){
          // if(globalIndex == 0u){
          // }
 

@@ -115,8 +115,13 @@ export class EllipseShape3D extends Shape3D {
     }
 
     protected writeShapeData() {
+        let end = this._endAngle;
+        let start = this._startAngle;
+        if (end < start) {
+            end += 360;
+        }
         super.writeShapeData(
             this._rx, this._ry, this._segment, this._rotation,
-            this._startAngle, this._endAngle, Number(this._arcType));
+            start, end, Number(this._arcType));
     }
 }

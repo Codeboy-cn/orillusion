@@ -144,16 +144,16 @@ export class Graphic3D extends Object3D {
             var y: number = radius * Math.sin(verAngle);
             switch (up) {
                 case Vector3.X_AXIS:
-                    points.push(center.add(new Vector3(0, x, y)));
+                    points.push(center.clone().add(new Vector3(0, x, y)));
                     break;
                 case Vector3.Y_AXIS:
-                    points.push(center.add(new Vector3(x, 0, y)));
+                    points.push(center.clone().add(new Vector3(x, 0, y)));
                     break;
                 case Vector3.Z_AXIS:
-                    points.push(center.add(new Vector3(x, y, 0)));
+                    points.push(center.clone().add(new Vector3(x, y, 0)));
                     break;
                 default:
-                    points.push(center.add(new Vector3(x, y, 0)));
+                    points.push(center.clone().add(new Vector3(x, y, 0)));
                     break;
             }
         }
@@ -271,16 +271,16 @@ export class Graphic3D extends Object3D {
             var y: number = radius * Math.sin(verAngle);
             switch (up) {
                 case Vector3.X_AXIS:
-                    points.push(center.add(new Vector3(0, x, y)));
+                    points.push(center.clone().add(new Vector3(0, x, y)));
                     break;
                 case Vector3.Y_AXIS:
-                    points.push(center.add(new Vector3(x, 0, y)));
+                    points.push(center.clone().add(new Vector3(x, 0, y)));
                     break;
                 case Vector3.Z_AXIS:
-                    points.push(center.add(new Vector3(x, y, 0)));
+                    points.push(center.clone().add(new Vector3(x, y, 0)));
                     break;
                 default:
-                    points.push(center.add(new Vector3(x, y, 0)));
+                    points.push(center.clone().add(new Vector3(x, y, 0)));
                     break;
             }
         }
@@ -328,16 +328,16 @@ export class Graphic3D extends Object3D {
             var y: number = radius * Math.sin(verAngle);
             switch (up) {
                 case Vector3.X_AXIS:
-                    points.push(center.add(new Vector3(0, x, y)));
+                    points.push(center.clone().add(new Vector3(0, x, y)));
                     break;
                 case Vector3.Y_AXIS:
-                    points.push(center.add(new Vector3(x, 0, y)));
+                    points.push(center.clone().add(new Vector3(x, 0, y)));
                     break;
                 case Vector3.Z_AXIS:
-                    points.push(center.add(new Vector3(x, y, 0)));
+                    points.push(center.clone().add(new Vector3(x, y, 0)));
                     break;
                 default:
-                    points.push(center.add(new Vector3(x, y, 0)));
+                    points.push(center.clone().add(new Vector3(x, y, 0)));
                     break;
             }
         }
@@ -457,11 +457,14 @@ export class Graphic3D extends Object3D {
      */
     public ChangeColor(uuid: string, color: Color) {
         var shape: Graphics3DShape;
+        var owner: typeof this.mLineRender | typeof this.mFillRender;
 
         if (this.mLineRender.shapes.has(uuid)) {
             shape = this.mLineRender.shapes.get(uuid);
+            owner = this.mLineRender;
         } else if (this.mFillRender.shapes.has(uuid)) {
             shape = this.mFillRender.shapes.get(uuid);
+            owner = this.mFillRender;
         } else return
 
         const colorData = shape.colorData;
@@ -471,5 +474,7 @@ export class Graphic3D extends Object3D {
             colorData[i + 2] = color.b;
             colorData[i + 3] = color.a;
         }
+        // Mark the owning batch dirty so the new colors are uploaded.
+        owner.markDirty();
     }
 }

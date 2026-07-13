@@ -49,6 +49,9 @@ export class Shape3DRenderer extends DynamicFaceRenderer {
      * @memberof Shape3DRenderer
      */
     public createShape<T extends Shape3D>(cls: Ctor<T>): T {
+        if (this._freeShapes.length == 0) {
+            throw new Error('Shape3DRenderer: shape pool exhausted (maxNodeCount reached)');
+        }
         let destShapeID = this._freeShapes.shift();
         let struct = this.nodes[destShapeID];
         let shape3D = new cls(struct, this._srcPathFloat32Array, this._srcIndexUint32Array, destShapeID);

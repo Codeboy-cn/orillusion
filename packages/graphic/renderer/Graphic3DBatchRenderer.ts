@@ -9,6 +9,7 @@ import { Graphic3DFixedRenderMaterial } from "./Graphic3DFixedRenderMaterial";
 export class Graphic3DBatchRenderer extends RenderNode {
     public shapes: Map<string, Graphics3DShape>;
     protected mDirtyData: boolean = false;
+    protected mOverflowWarned: boolean = false;
     protected mBatchSize: number;
     protected mMinIndexCount: number;
     protected mGPUPrimitiveTopology: GPUPrimitiveTopology;
@@ -29,7 +30,8 @@ export class Graphic3DBatchRenderer extends RenderNode {
         this.castShadow = false;
         this.geometry = new GeometryBase();
 
-        let indexData = new Uint16Array((Math.trunc(this.mMinIndexCount * this.mBatchSize / 4) + 1) * 4);
+        // Cap at 65536 entries: Uint16 index values wrap for entries >= 65536.
+        let indexData = new Uint16Array(Math.min(65536, (Math.trunc(this.mMinIndexCount * this.mBatchSize / 4) + 1) * 4));
         for (let i = 0; i < indexData.length; i++) {
             indexData[i] = i;
         }
@@ -68,6 +70,8 @@ export class Graphic3DBatchRenderer extends RenderNode {
             data.pointData = new Float32Array(4 * points.length);
             data.colorData = new Float32Array(4 * points.length);
         }
+        // Track the used float count so nodeUpdate uploads only live data.
+        data.count = 4 * points.length;
 
         const pointData = data.pointData;
         const colorData = data.colorData;
@@ -90,6 +94,13 @@ export class Graphic3DBatchRenderer extends RenderNode {
         this.shapes.set(uuid, data);
     }
 
+    /**
+     * Mark the batched vertex data dirty so it is re-uploaded on next nodeUpdate.
+     */
+    public markDirty() {
+        this.mDirtyData = true;
+    }
+
     public removeShape(uuid: string) {
         if (this.shapes.has(uuid)) {
             this.mDirtyData = true;
@@ -109,11 +120,23 @@ export class Graphic3DBatchRenderer extends RenderNode {
             let offset = 0;
             let posAttrData = this.geometry.getAttribute(VertexAttributeName.position);
             let colAttrData = this.geometry.getAttribute(VertexAttributeName.color);
+            const capacity = posAttrData.data.length;
 
             this.shapes.forEach((shape, uuid) => {
-                posAttrData.data.set(shape.pointData, offset);
-                colAttrData.data.set(shape.colorData, offset);
-                offset += shape.pointData.length;
+                // Upload only the used float count, not the allocated capacity,
+                // so stale tail vertices do not render after a shape shrinks.
+                const used = shape.count;
+                if (offset + used > capacity) {
+                    // Skip shapes that would overflow the attribute capacity.
+                    if (!this.mOverflowWarned) {
+                        this.mOverflowWarned = true;
+                        console.warn('Graphic3DBatchRenderer: vertex attribute capacity exceeded, some shapes are skipped');
+                    }
+                    return;
+                }
+                posAttrData.data.set(shape.pointData.subarray(0, used), offset);
+                colAttrData.data.set(shape.colorData.subarray(0, used), offset);
+                offset += used;
             });
 
             this.geometry.vertexBuffer.upload(VertexAttributeName.position, posAttrData);
@@ -135,6 +158,8 @@ export class Graphic3DBatchRenderer extends RenderNode {
         if (this.shapes.has(uuid)) {
             shape = this.shapes.get(uuid);
             shape.reset();
+            // Keep the transform binding in sync with the caller's argument.
+            shape.transformIndex = transformIndex;
         } else {
             shape = new Graphics3DShape(transformIndex);
             shape.uuid = uuid;
