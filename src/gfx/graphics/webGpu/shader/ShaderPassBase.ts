@@ -370,7 +370,7 @@ export class ShaderPassBase {
      * @param name buffer name
      */
     public getBuffer(name: string): GPUBufferBase {
-        return this._bufferDic[name].data;
+        return this._bufferDic.get(name);
     }
 
     /**
