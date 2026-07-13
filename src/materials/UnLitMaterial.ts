@@ -82,6 +82,10 @@ export class UnLitMaterial extends Material {
                 colorPass.renderOrder = 3000;
                 break;
         }
+        // shaderState fields are written directly (no notifying setters):
+        // force a pipeline rebuild or OPAQUE<->MASK toggles keep the old
+        // alphaToCoverage state.
+        colorPass.noticeValueChange();
         // Live alphaMode toggles change which EntityCollect bucket
         // attached renderers should be in. See LitMaterial setter.
         this._notifyRenderClassificationDirty();

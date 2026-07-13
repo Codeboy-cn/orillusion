@@ -4,6 +4,7 @@ import { Context3D } from '../gfx/graphics/webGpu/Context3D';
 import { FileLoader } from '../loader/FileLoader';
 import { LoaderFunctions } from '../loader/LoaderFunctions';
 import { RGBEParser } from '../loader/parser/RGBEParser';
+import { toHalfFloat } from '../util/Convert';
 /**
  * HDR Texture
  * @group Texture
@@ -28,9 +29,6 @@ export class HDRTexture extends Texture {
         this.height = height;
         this._ensureBound(ctx);
         let device = this._boundCtx!.device;
-        const bit = 2; //half float
-        const bytesPerRow = width * 4 * bit;
-        let fixedData: ArrayBuffer = data;
 
         this.format = GPUTextureFormat.rgba16float;
         this.useMipmap = useMipmap;
@@ -39,28 +37,31 @@ export class HDRTexture extends Texture {
 
         this.updateGPUTexture();
 
-        const textureDataBuffer = device.createBuffer({
-            size: fixedData.byteLength,
-            usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC,
-        });
-
-        device.queue.writeBuffer(textureDataBuffer, 0, fixedData);
-        const commandEncoder = this._boundCtx!.gpuContext.beginCommandEncoder();
-        commandEncoder.copyBufferToTexture(
-            {
-                buffer: textureDataBuffer,
-                bytesPerRow: bytesPerRow,
-            },
-            {
-                texture: this.getGPUTexture(),
-            },
-            {
-                width: width,
-                height: height,
-                depthOrArrayLayers: 1,
-            },
+        // `data` holds raw RGBE bytes (4 B/px, shared exponent). Decode to
+        // rgba16float on the CPU — the bytes were previously copied
+        // bit-for-bit as if they already were half floats, which both
+        // failed the copy size validation (needs 8 B/px) and would have
+        // produced noise. writeTexture also lifts the 256-byte row
+        // alignment restriction of copyBufferToTexture.
+        const rgbe = new Uint8Array(data);
+        const pixelCount = width * height;
+        const half = new Uint16Array(pixelCount * 4);
+        const HALF_ONE = toHalfFloat(1);
+        for (let i = 0; i < pixelCount; i++) {
+            const s = i * 4;
+            const e = rgbe[s + 3];
+            const scale = Math.pow(2.0, e - 128.0) / 255.0;
+            half[s + 0] = toHalfFloat(rgbe[s + 0] * scale);
+            half[s + 1] = toHalfFloat(rgbe[s + 1] * scale);
+            half[s + 2] = toHalfFloat(rgbe[s + 2] * scale);
+            half[s + 3] = HALF_ONE;
+        }
+        device.queue.writeTexture(
+            { texture: this.getGPUTexture() },
+            half,
+            { bytesPerRow: width * 4 * 2, rowsPerImage: height },
+            { width: width, height: height, depthOrArrayLayers: 1 },
         );
-        this._boundCtx!.gpuContext.endCommandEncoder(commandEncoder);
 
         if (!this.useMipmap) {
             this.samplerBindingLayout.type = `filtering`;

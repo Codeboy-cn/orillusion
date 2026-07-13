@@ -21,7 +21,10 @@ export class GlassMaterial extends Material {
         super();
         ShaderLib.register("GlassShader", GlassShader);
 
-        this.shader = new Shader();
+        // Build the COLOR pass BEFORE assigning to this.shader: the
+        // Material.shader setter dereferences getDefaultShaders()[0], so an
+        // empty Shader crashes and the pass must actually be registered.
+        let shader = new Shader();
 
         let colorShader = new RenderShaderPass('GlassShader', 'GlassShader');
         colorShader.passType = PassType.COLOR;
@@ -34,6 +37,9 @@ export class GlassMaterial extends Material {
         shaderState.receiveEnv = true;
         shaderState.acceptGI = true;
         shaderState.useLight = true;
+
+        shader.addRenderPass(colorShader);
+        this.shader = shader;
 
         const res = Engine3D.resFor(ctx);
         this.shader.setTexture("baseMap", res.whiteTexture);

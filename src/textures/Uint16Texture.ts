@@ -2,6 +2,7 @@ import { Texture } from '../gfx/graphics/webGpu/core/texture/Texture';
 import { TextureMipmapGenerator } from '../gfx/graphics/webGpu/core/texture/TextureMipmapGenerator';
 import { GPUTextureFormat } from '../gfx/graphics/webGpu/WebGPUConst';
 import { Context3D } from '../gfx/graphics/webGpu/Context3D';
+import { toHalfFloat } from '../util/Convert';
 /**
  * @internal
  * Uint16 texture
@@ -20,35 +21,25 @@ export class Uint16Texture extends Texture {
     public create(width: number, height: number, data: Float32Array, useMiamp: boolean = true, ctx?: Context3D) {
         this._ensureBound(ctx);
         let device = this._boundCtx!.device;
-        const bytesPerRow = width * 4 * 4;
         this.format = GPUTextureFormat.rgba16float;
 
-        this.mipmapCount = Math.floor(useMiamp ? Math.log2(width) : 1);
+        // max(1, ...): log2(1)=0 produced an invalid zero-mip descriptor.
+        this.mipmapCount = useMiamp ? Math.max(1, Math.floor(Math.log2(width))) : 1;
         this.createTextureDescriptor(width, height, this.mipmapCount, this.format);
 
-        const textureDataBuffer = device.createBuffer({
-            size: data.byteLength,
-            usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC,
-        });
-
-        device.queue.writeBuffer(textureDataBuffer, 0, data as BufferSource);
-        const commandEncoder = this._boundCtx!.gpuContext.beginCommandEncoder();
-        commandEncoder.copyBufferToTexture(
-            {
-                buffer: textureDataBuffer,
-                bytesPerRow: bytesPerRow,
-            },
-            {
-                texture: this.getGPUTexture(),
-            },
-            {
-                width: width,
-                height: height,
-                depthOrArrayLayers: 1,
-            },
+        // Convert f32 -> f16: the raw Float32Array was previously copied
+        // bit-for-bit into the rgba16float texture with an 16-byte-per-pixel
+        // row stride (this format is 8), producing noise and misaligned rows.
+        const half = new Uint16Array(width * height * 4);
+        for (let i = 0, c = Math.min(half.length, data.length); i < c; i++) {
+            half[i] = toHalfFloat(data[i]);
+        }
+        device.queue.writeTexture(
+            { texture: this.getGPUTexture() },
+            half,
+            { bytesPerRow: width * 4 * 2, rowsPerImage: height },
+            { width: width, height: height, depthOrArrayLayers: 1 },
         );
-
-        this._boundCtx!.gpuContext.endCommandEncoder(commandEncoder);
 
         this.minFilter = `nearest`;
         this.magFilter = `nearest`;

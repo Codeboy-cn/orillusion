@@ -105,6 +105,10 @@ export class LambertMaterial extends Material {
                 colorPass.renderOrder = 3000;
                 break;
         }
+        // shaderState fields are written directly (no notifying setters):
+        // force a pipeline rebuild or OPAQUE<->MASK toggles keep the old
+        // alphaToCoverage state.
+        colorPass.noticeValueChange();
         this._notifyRenderClassificationDirty();
     }
 
