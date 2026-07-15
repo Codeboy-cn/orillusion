@@ -73,6 +73,10 @@ export let ParticleRenderShader = /* wgsl */ `
         var viewPosition = ORI_MATRIX_V * worldPos;
         var clipPosition = ORI_MATRIX_P * viewPosition;
 
+        #if USE_LOGDEPTH
+            clipPosition.z = log2Depth(clipPosition.w, globalUniform.near, globalUniform.far);
+        #endif
+
         let size = vec2<u32>(particleGlobalData.textureSheet_TextureWidth, particleGlobalData.textureSheet_TextureHeight);
         let frame: u32 = particle.textureSheet_Frame;
         let clipW: u32 = u32(size.x) / particleGlobalData.textureSheet_ClipCol;
@@ -119,8 +123,7 @@ export let ParticleRenderShader = /* wgsl */ `
             worldMatrix[2].xyz
          );
         let v3Look: vec3<f32> = normalize(dir * mat3);
-        let up: vec3<f32> = normalize(cross(vec3<f32>(0.0, 1.0, 0.0), v3Look));
-        let v3Right: vec3<f32> = normalize(cross(v3Look, up));
+        let v3Right: vec3<f32> = normalize(cross(vec3<f32>(0.0, 1.0, 0.0), v3Look));
         let v3Up: vec3<f32> = cross(v3Look, v3Right);
         return mat3x3<f32>(v3Right, v3Up, v3Look);
     }
