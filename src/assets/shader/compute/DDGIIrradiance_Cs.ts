@@ -127,7 +127,10 @@ fn CsMain(@builtin(global_invocation_id) globalInvocation_id : vec3<u32>)
 
    storePixelAtCoord(probeIrradianceMap, pixelCoord , vec4<f32>(lerpDataResult.color.xyz, 1.0), true);
 
-   storePixelAtCoord(probeDepthMap, pixelCoord , vec4<f32>(resultDepth.xy, 0.0, 1.0), false);
+   // Store the temporally blended depth moments (matching the color path)
+   // so the visibility test doesn't flicker with the per-frame random ray
+   // orientation.
+   storePixelAtCoord(probeDepthMap, pixelCoord , vec4<f32>(lerpDataResult.depth.xy, 0.0, 1.0), false);
 }
 
 fn lerpHitData(data:CacheHitData, coord:vec2<i32>) -> CacheHitData{
@@ -265,7 +268,12 @@ fn radianceProbeOnce(rayID:f32, tdr:vec3<f32>){
    var rayHitLocation = rayProbeBuffer.WPosition + normalize(rayProbeBuffer.WNormal) * 0.01;
 
    var rayProbeDistance = length(probeLocation - rayHitLocation) ;
-   // rayProbeDistance = min(uniformData.ProbeSpace * 4.0, rayProbeDistance) ;
+   // Clamp ray misses (sky hits report ~65504 world units) to the probe
+   // grid's max visibility distance. Without this, distance^2 overflows
+   // rgba16float in the depth moments texture, the Chebyshev variance
+   // becomes inf, and the visibility test stops rejecting anything —
+   // bright outside-the-wall probes leak through every wall seam.
+   rayProbeDistance = min(uniformData.maxDistance, rayProbeDistance) ;
 
    // if (dot(rayProbeBuffer.WNormal, rayProbeBuffer.WNormal) < epsilon) {
    //   rayProbeDistance = epsilon ;

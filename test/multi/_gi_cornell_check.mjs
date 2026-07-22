@@ -1,9 +1,12 @@
 // GI regression check: loads gi/Sample_GICornellBox.ts and samples canvas
 // pixels to assert the DDGI result is sane:
-//   - left wall reads red-dominant, right wall green-dominant
-//   - ceiling / upper back wall (indirect-only surfaces) are lit and neutral,
-//     i.e. not black (dead GI) and not green-tinted (the historical probe
-//     GBuffer positionMap-clear bug polluted everything green)
+//   - left wall red-dominant, right wall green-dominant
+//   - ceiling / upper back wall (indirect-only surfaces) lit and not
+//     green-polluted (historical probe GBuffer positionMap-clear bug)
+//   - probe color bleeding visible: back wall near the red wall reads a red
+//     tint, ceiling near the green wall reads a green tint
+//   - no light-leak seam at the ceiling / back-wall junction
+// Coordinates assume the sample's stock camera (hoverCtrl distance 26).
 // Assumes vite on :4000. Exit code 0 = pass.
 //
 // Usage: node test/multi/_gi_cornell_check.mjs [wait_ms]
@@ -14,7 +17,7 @@ import { join } from 'path';
 
 const HOST = 'http://localhost:4000';
 const CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
-const WAIT_MS = Number(process.argv[2] ?? 14000);
+const WAIT_MS = Number(process.argv[2] ?? 40000);
 const userDataDir = mkdtempSync(join(tmpdir(), 'cdp-gicheck-'));
 const port = 9222 + Math.floor(Math.random() * 1000);
 
@@ -73,11 +76,21 @@ async function main() {
                 const p = ctx.getImageData(Math.round(src.width * fx), Math.round(src.height * fy), 1, 1).data;
                 return [p[0], p[1], p[2]];
             }
+            // brightest pixel in a vertical band across the ceiling/back-wall
+            // junction — a light-leak seam shows up as a bright strip here
+            let seamMax = 0;
+            for (let fy = 0.150; fy <= 0.198; fy += 0.002) {
+                const p = px(0.5, fy);
+                seamMax = Math.max(seamMax, (p[0] + p[1] + p[2]) / 3);
+            }
             return {
-                leftWall: px(0.30, 0.50),
-                rightWall: px(0.70, 0.50),
-                ceiling: px(0.40, 0.27),
-                backTop: px(0.50, 0.38),
+                leftWall: px(0.12, 0.48),
+                rightWall: px(0.87, 0.48),
+                ceiling: px(0.50, 0.11),
+                backTop: px(0.50, 0.24),
+                bleedRed: px(0.28, 0.48),
+                bleedGreen: px(0.69, 0.14),
+                seamMax,
             };
         })()`,
         awaitPromise: true, returnByValue: true,
@@ -98,6 +111,11 @@ async function main() {
         if (lum < 35) fails.push(`${name} too dark (dead GI): ${v[name]}`);
         if (g > r * 1.35 && g > b * 1.35) fails.push(`${name} green-polluted: ${v[name]}`);
     }
+    const [br, bg] = v.bleedRed;
+    if (!(br > bg + 8)) fails.push(`no red bleed on back wall near red wall: ${v.bleedRed}`);
+    const [gr, gg, gb] = v.bleedGreen;
+    if (!(gg > gb + 8 && gg + 5 > gr)) fails.push(`no green bleed on ceiling near green wall: ${v.bleedGreen}`);
+    if (v.seamMax > 195) fails.push(`bright light-leak seam at ceiling/back junction: lum ${v.seamMax.toFixed(0)}`);
     if (fails.length) {
         for (const m of fails) console.error('FAIL:', m);
         process.exit(1);

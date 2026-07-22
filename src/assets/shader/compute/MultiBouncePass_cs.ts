@@ -49,7 +49,9 @@ export let MultiBouncePass_cs: string = /*wgsl*/ `
   }
 
   fn rotateDir(n:vec3<f32>) -> vec3<f32>{
-     return normalize(applyQuaternion(-n, quaternion));
+     // Same convention as Irradiance_frag: texels are keyed by
+     // applyQuaternion(worldDir) with no negation.
+     return normalize(applyQuaternion(n, quaternion));
   }
 
   fn sampleLitColor(uv:vec2<i32>) -> vec4<f32>
@@ -136,6 +138,12 @@ export let MultiBouncePass_cs: string = /*wgsl*/ `
       irradianceFieldSurface.irradianceProbeSideLength);
 
     var probeIrradiance: vec3<f32> = textureSampleLevel(irradianceMap, irradianceMapSampler, texCoord, 0.0).xyz;
+    // The irradiance map stores gamma-encoded values (pow(1/ddgiGamma) at
+    // write time). Decode to linear before feeding energy back into the
+    // bounce loop — the encoded value is up to an order of magnitude
+    // larger than the linear one in dim scenes, which slowly inflated the
+    // whole GI solution and flattened its color ratios.
+    probeIrradiance = pow(probeIrradiance, vec3<f32>(uniformData.ddgiGamma));
     return vec4<f32>(probeIrradiance, 1.0);
   }
 

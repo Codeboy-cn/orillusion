@@ -60,7 +60,7 @@ export let Irradiance_frag: string = /*wgsl*/ `
     fn debugProbe(id:i32) -> vec4<f32>{
         getIrradianceFieldSurface();
         var direction = normalize(ORI_VertexVarying.vWorldNormal);
-        direction = applyQuaternion(-direction, quaternion);
+        direction = applyQuaternion(direction, quaternion);
         var probeTextureUV : vec2<f32> = textureCoordFromDirection(normalize(direction),
             id,
             irradianceFieldSurface.irradianceTextureWidth,
@@ -77,7 +77,7 @@ export let Irradiance_frag: string = /*wgsl*/ `
     fn debugProbeDepth(id:i32) -> vec4<f32>{
         getIrradianceFieldSurface();
         var direction = normalize(ORI_VertexVarying.vWorldNormal);
-        direction = applyQuaternion(-direction, quaternion);
+        direction = applyQuaternion(direction, quaternion);
         var probeTextureUV : vec2<f32> = textureCoordFromDirection(normalize(direction),
             id,
             irradianceFieldSurface.irradianceTextureWidth,
@@ -171,10 +171,17 @@ export let Irradiance_frag: string = /*wgsl*/ `
 
     var<private> wpNormal:vec3<f32> ;
     fn sampleIrradianceField() -> vec4<f32>{
+        return sampleIrradianceFieldDir(ORI_ShadingInput.Normal.xyz);
+    }
+
+    // Sample the probe field for an arbitrary world-space direction.
+    // Used with the surface normal for diffuse GI, and with the
+    // reflection vector for occlusion-aware ambient specular.
+    fn sampleIrradianceFieldDir(direction0:vec3<f32>) -> vec4<f32>{
         wpNormal = ORI_ShadingInput.Normal.xyz ;
         var wo:vec3<f32> = ORI_CameraWorldDir ;
         var wsN:vec3<f32> = normalize(wpNormal);
-        var direction:vec3<f32> = wpNormal;
+        var direction:vec3<f32> = direction0;
         var worldPosition: vec3<f32> = ORI_VertexVarying.vWorldPos.xyz;
    
         getIrradianceFieldSurface();
@@ -245,8 +252,14 @@ export let Irradiance_frag: string = /*wgsl*/ `
 
             weight *= trilinearWeight;
             
-            //worldPosToAdjProbe
-            let rotateDir = applyQuaternion(-direction, quaternion);
+            // Irradiance texels are keyed by the world-space direction the
+            // capture pass rotated through the fixed quaternion (see
+            // DDGIIrradiance_Cs.getSampleProbeUV). The depth lookup above
+            // already uses applyQuaternion(dir) with NO negation; sampling
+            // with -direction here read the opposite hemisphere (floor
+            // fetched under-floor sky, ceiling fetched above-roof sky),
+            // which killed wall color bleeding and glowed every wall seam.
+            let rotateDir = applyQuaternion(direction, quaternion);
             probeTextureUV = textureCoordFromDirection((rotateDir),
             adjacentProbeIndex,
             irradianceFieldSurface.irradianceTextureWidth,

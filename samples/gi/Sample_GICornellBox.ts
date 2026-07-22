@@ -25,6 +25,13 @@ class Sample_GICornellBox {
                     offsetY: 10,
                     offsetZ: 0,
                     indirectIntensity: 1,
+                    // The colored walls receive almost no direct sunlight —
+                    // they are lit by the emissive ceiling quad through the
+                    // multi-bounce feedback loop, which also carries their
+                    // reflected color into the probes. The 0.025 engine
+                    // default is tuned for sun-lit exteriors and leaves the
+                    // walls (and their color bleeding) nearly black here.
+                    bounceIntensity: 0.3,
                     lerpHysteresis: 0.004,//default value is 0.01
                     maxDistance: 16,
                     probeSpace: 6,
@@ -57,7 +64,7 @@ class Sample_GICornellBox {
         param.camera.distance = 100;
 
         let exampleScene = createExampleScene(engine, param);
-        exampleScene.hoverCtrl.setCamera(0, 0, 50, new Vector3(0, 10, 0));
+        exampleScene.hoverCtrl.setCamera(0, 0, 26, new Vector3(0, 10, 0));
         this.scene = exampleScene.scene;
         this.view = exampleScene.view;
         // startRenderViews binds view.engine3D — must precede addGIProbes,
