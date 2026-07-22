@@ -10,6 +10,7 @@ import { GlobalBindGroup } from '../../../graphics/webGpu/core/bindGroups/Global
 import { Texture } from '../../../graphics/webGpu/core/texture/Texture';
 import { GPUTextureFormat } from '../../../graphics/webGpu/WebGPUConst';
 import { WebGPUDescriptorCreator } from '../../../graphics/webGpu/descriptor/WebGPUDescriptorCreator';
+import { toHalfFloat } from '../../../../util/Convert';
 import { EntityCollect } from '../../collect/EntityCollect';
 import { ProbeGBufferFrame } from '../../frame/ProbeGBufferFrame';
 import { RenderContext } from '../../passRenderer/RenderContext';
@@ -106,9 +107,11 @@ export class GIPass extends RenderGraphPass {
         this._cubeCamera.bindCtx(ctx);
 
         const usage = GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.COPY_SRC | GPUTextureUsage.COPY_DST;
-        this.irradianceDepthMap = new RenderTexture(giSetting.octRTMaxSize, giSetting.octRTMaxSize, GPUTextureFormat.rgba16float, false, usage, 1, 0, true, true, ctx);
+        // Fixed-size DDGI resources: never autoResize with the canvas —
+        // a window resize would recreate them and wipe probe irradiance.
+        this.irradianceDepthMap = new RenderTexture(giSetting.octRTMaxSize, giSetting.octRTMaxSize, GPUTextureFormat.rgba16float, false, usage, 1, 0, true, false, ctx);
         this.irradianceDepthMap.name = 'irradianceDepthMap';
-        this.irradianceColorMap = new RenderTexture(giSetting.octRTMaxSize, giSetting.octRTMaxSize, GPUTextureFormat.rgba16float, false, usage, 1, 0, true, true, ctx);
+        this.irradianceColorMap = new RenderTexture(giSetting.octRTMaxSize, giSetting.octRTMaxSize, GPUTextureFormat.rgba16float, false, usage, 1, 0, true, false, ctx);
         this.irradianceColorMap.name = 'irradianceColorMap';
 
         this._probeGBufferFrame = new ProbeGBufferFrame(this.sizeW, this.sizeH, false, ctx);
@@ -217,7 +220,15 @@ export class GIPass extends RenderGraphPass {
         const probeList = EntityCollect.instance.getProbes(view.scene);
         this._renderContext.gpu = view.engine3D.context3D.gpuContext;
         this._renderContext.clean();
-        this._renderContext.beginOpaqueRenderPass();
+        // The probe GBuffer accumulates one probe tile per frame while the
+        // irradiance compute reads ALL tiles every frame, so the color
+        // attachments must load previous content. beginOpaqueRenderPass()
+        // would force attachment[0] (positionMap) to 'clear', wiping the
+        // world positions of every previously rendered probe. Depth stays
+        // 'clear': it is per-frame scratch for the single probe rendered.
+        this._renderContext.beginContinueRendererPassState('load', 'clear');
+        this._renderContext.begineNewCommand();
+        this._renderContext.beginNewEncoder();
         this._tempProbeList.length = 0;
 
         let remainCount = Math.min(this._probeCountPerFrame, probeList.length);
@@ -347,14 +358,20 @@ export class GIPass extends RenderGraphPass {
     protected _writeToTexture(texture: RenderTexture, array: Float32Array, width: number, height: number): void {
         const ctx = texture._boundCtx!;
         const device = ctx.device;
+        // Target textures are rgba16float: encode the f32 input to packed
+        // f16 (8 bytes per texel) before the buffer->texture copy.
+        const halfData = new Uint16Array(array.length);
+        for (let i = 0; i < array.length; i++) {
+            halfData[i] = toHalfFloat(array[i]);
+        }
         const buffer = device.createBuffer({
-            size: array.byteLength,
+            size: halfData.byteLength,
             usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC,
         });
-        device.queue.writeBuffer(buffer, 0, array as BufferSource);
+        device.queue.writeBuffer(buffer, 0, halfData as BufferSource);
         const commandEncoder = ctx.gpuContext.beginCommandEncoder();
         commandEncoder.copyBufferToTexture(
-            { buffer, bytesPerRow: width * 16 },
+            { buffer, bytesPerRow: width * 8 },
             { texture: texture.getGPUTexture() },
             { width, height, depthOrArrayLayers: 1 },
         );

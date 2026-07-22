@@ -271,8 +271,13 @@ fn radianceProbeOnce(rayID:f32, tdr:vec3<f32>){
    //   rayProbeDistance = epsilon ;
    // }
 
-   let rid = i32(probeID) * i32(RAYS_PER_PROBE) + i32(rayID) ;
-   depthRaysBuffer[rid] = vec4<f32>(rayDirection.xyz,rayProbeDistance) ;
+   // Debug readback buffer: the slot index only depends on probe + ray,
+   // so restrict the write to one thread per probe to avoid every oct
+   // texel thread racing on the same 144 slots.
+   if(workgroup_idx == 0u && workgroup_idy == 0u){
+     let rid = i32(probeID) * i32(RAYS_PER_PROBE) + i32(rayID) ;
+     depthRaysBuffer[rid] = vec4<f32>(rayDirection.xyz,rayProbeDistance) ;
+   }
 
    // Detect misses and force depth
    var i_weight = max(0.0, dot(tdr,rayDirection) );

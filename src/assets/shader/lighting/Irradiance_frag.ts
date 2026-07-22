@@ -68,9 +68,12 @@ export let Irradiance_frag: string = /*wgsl*/ `
             irradianceFieldSurface.irradianceProbeSideLength);
 
         var probeIrradiance: vec4<f32> = textureSampleLevel(irradianceMap, irradianceMapSampler, probeTextureUV ,0.0);
+        // The map stores gamma-encoded irradiance (pow(1/ddgiGamma) at
+        // write time); decode so the debug spheres show linear values.
+        probeIrradiance = vec4<f32>(pow(probeIrradiance.xyz, vec3<f32>(irradianceData.ddgiGamma)), probeIrradiance.w);
         return probeIrradiance;
     }
-    
+
     fn debugProbeDepth(id:i32) -> vec4<f32>{
         getIrradianceFieldSurface();
         var direction = normalize(ORI_VertexVarying.vWorldNormal);

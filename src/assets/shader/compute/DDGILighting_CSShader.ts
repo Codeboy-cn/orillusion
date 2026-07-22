@@ -155,13 +155,17 @@ fn pointShadowMapCompare(shadowBias:f32){
 fn directLighting( albedo:vec3<f32> , WP :vec3<f32>, N:vec3<f32> , V:vec3<f32> , light:LightData , shadowBias:f32  ) -> vec3<f32> {
  var L = -normalize(light.direction.xyz) ;
  var NoL = max(dot(N,L),0.0);
- let lightCC = pow( light.lightColor.rgb,vec3<f32>(2.2));
- var lightColor = getHDRColor( lightCC , light.linear ) ;
- var att = light.intensity / LUMEN ;
+ // Keep the probe-captured radiance consistent with the camera pass
+ // (LightingFunction_frag.sampleLighting): linear lightColor via
+ // getHDRColor and raw light.intensity as attenuation. The previous
+ // pow(2.2) + intensity/LUMEN*2 convention made probes see the scene
+ // ~5x darker than the camera, starving the whole GI feedback loop.
+ var lightColor = getHDRColor( light.lightColor.rgb , light.linear ) ;
+ var att = max(0.0, light.intensity) ;
  if(light.castShadow>=0){
      lightColor *= shadowStrut.directShadowVisibility ;
  }
- let finalLight = (albedo / PI) * lightColor * NoL * att * 2.0 ;
+ let finalLight = (albedo / PI) * lightColor * NoL * att ;
  return finalLight ;
 }
 

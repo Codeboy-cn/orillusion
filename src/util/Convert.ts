@@ -50,3 +50,17 @@ export let toHalfFloat = function (val) {
     bits += m & 1;
     return bits;
 };
+
+/**
+ * @internal
+ * Decode an IEEE 754 half-precision (binary16) value to a JS number.
+ * @group Util
+ */
+export let fromHalfFloat = function (h: number): number {
+    const sign = (h & 0x8000) ? -1 : 1;
+    const exp = (h & 0x7c00) >> 10;
+    const frac = h & 0x03ff;
+    if (exp === 0) return sign * Math.pow(2, -14) * (frac / 1024);
+    if (exp === 0x1f) return frac ? NaN : sign * Infinity;
+    return sign * Math.pow(2, exp - 15) * (1 + frac / 1024);
+};
