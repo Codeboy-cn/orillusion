@@ -208,7 +208,11 @@ export class Engine3D {
             gi: {
                 enable: false, offsetX: 0, offsetY: 0, offsetZ: 0, probeSpace: 64, probeXCount: 4, probeYCount: 2,
                 probeZCount: 4, probeSize: 32, probeSourceTextureSize: 2048, octRTMaxSize: 2048, octRTSideSize: 16,
-                maxDistance: 64 * 1.73, normalBias: 0.25, depthSharpness: 1, hysteresis: 0.98, lerpHysteresis: 0.01,
+                // lerpHysteresis: per-frame temporal blend weight of the DDGI
+                // irradiance. 0.02 reaches ~95% convergence in ~150 frames;
+                // the old 0.01 default took twice as long for little extra
+                // stability (rays are already cosine-weighted over 144 dirs).
+                maxDistance: 64 * 1.73, normalBias: 0.25, depthSharpness: 1, hysteresis: 0.98, lerpHysteresis: 0.02,
                 irradianceChebyshevBias: 0.01, rayNumber: 144, irradianceDistanceBias: 32, indirectIntensity: 1.0,
                 ddgiGamma: 2.2, bounceIntensity: 0.025, probeRoughness: 1, realTimeGI: false, debug: false, autoRenderProbe: false,
                 probeCountPerFrame: 1,

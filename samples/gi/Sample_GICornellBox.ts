@@ -32,7 +32,7 @@ class Sample_GICornellBox {
                     // default is tuned for sun-lit exteriors and leaves the
                     // walls (and their color bleeding) nearly black here.
                     bounceIntensity: 0.3,
-                    lerpHysteresis: 0.004,//default value is 0.01
+                    lerpHysteresis: 0.02,
                     maxDistance: 16,
                     probeSpace: 6,
                     normalBias: 0,
@@ -51,6 +51,14 @@ class Sample_GICornellBox {
                 },
                 render: {
                     debug: true,
+                },
+                sky: {
+                    // The box's open front lets the bright atmospheric sky
+                    // pour into the wall/box gaps; its irradiance is ~5-10x
+                    // the walls' bounce radiance, so it drowns the red/green
+                    // color bleeding on the wall-facing box faces. Dim the
+                    // sky so the interior bounce light dominates.
+                    skyExposure: 0.2,
                 },
             },
             renderLoop: () => {
