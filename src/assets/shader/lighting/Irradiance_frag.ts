@@ -241,7 +241,12 @@ export let Irradiance_frag: string = /*wgsl*/ `
                 chebyshevWeight = max((chebyshevWeight * chebyshevWeight * chebyshevWeight), 0.0);
             }
 
-            weight *= max(0.05, chebyshevWeight);
+            // No 0.05 visibility floor: with extreme inside/outside contrast
+            // (a bright cavity behind a wall), a 5% floor leaks the interior
+            // field onto exterior surfaces as per-probe blotches. The crush
+            // filter below already smoothly squashes tiny weights, and the
+            // final normalization keeps the result defined.
+            weight *= max(0.0001, chebyshevWeight);
             weight = max(0.000001, weight);
 
             let crushThreshold = 0.2;

@@ -322,7 +322,11 @@ fn radianceProbeOnce(rayID:f32, tdr:vec3<f32>){
       resultIrradiance += vec4(rayProbeBuffer.WRadiance.rgb * i_weight, i_weight );
    }
    if(d_weight>= epsilon){
-       resultDepth += vec4(rayProbeDistance * d_weight, rayProbeDistance * rayProbeDistance * d_weight, 0.0 , i_weight);
+       // Accumulate the SAME weight in .w that scales the moments —
+       // normalizing d_weight-weighted sums by the i_weight total skewed
+       // the depth mean/variance whenever depthSharpness != 1, breaking
+       // the Chebyshev visibility test for sharpened depth lobes.
+       resultDepth += vec4(rayProbeDistance * d_weight, rayProbeDistance * rayProbeDistance * d_weight, 0.0 , d_weight);
    }
 }
 
