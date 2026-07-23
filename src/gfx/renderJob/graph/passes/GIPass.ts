@@ -220,18 +220,22 @@ export class GIPass extends RenderGraphPass {
         const probeList = EntityCollect.instance.getProbes(view.scene);
         this._renderContext.gpu = view.engine3D.context3D.gpuContext;
         this._renderContext.clean();
-        // The probe GBuffer accumulates one probe tile per frame while the
-        // irradiance compute reads ALL tiles every frame, so the color
+        // The probe GBuffer accumulates a few probe tiles per frame while
+        // the irradiance compute reads ALL tiles every frame, so the color
         // attachments must load previous content. beginOpaqueRenderPass()
         // would force attachment[0] (positionMap) to 'clear', wiping the
         // world positions of every previously rendered probe. Depth stays
-        // 'clear': it is per-frame scratch for the single probe rendered.
+        // 'clear': it is per-frame scratch for the probes rendered now.
         this._renderContext.beginContinueRendererPassState('load', 'clear');
         this._renderContext.begineNewCommand();
         this._renderContext.beginNewEncoder();
         this._tempProbeList.length = 0;
 
-        let remainCount = Math.min(this._probeCountPerFrame, probeList.length);
+        // Per-frame probe budget from setting.gi.probeCountPerFrame
+        // (default 1). Clamp to the probes left in this sweep so the
+        // round-robin index never runs past the list.
+        const perFrame = Math.max(1, Math.floor(view.engine3D.setting.gi.probeCountPerFrame ?? this._probeCountPerFrame));
+        let remainCount = Math.min(perFrame, probeList.length - this._nextProbeIndex);
         this._probeRenderResult.count = remainCount;
 
         while (remainCount > 0) {

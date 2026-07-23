@@ -797,6 +797,7 @@ export class GUIUtil {
         });
 
         GUIHelp.add(giSetting, 'autoRenderProbe');
+        GUIHelp.add(giSetting, 'probeCountPerFrame', 1, 32, 1);
         open && GUIHelp.open();
         GUIHelp.endFolder();
 
