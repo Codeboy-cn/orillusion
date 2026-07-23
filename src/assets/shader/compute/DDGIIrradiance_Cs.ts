@@ -22,6 +22,9 @@ struct RayProbeBuffer{
   WPosition: vec3<f32>,
   WNormal:vec3<f32>,
   WRadiance:vec4<f32>,
+  // Sky-hit marker: positionMap.w holds ~65504 for sky pixels
+  // (SkyGBuffer pass); geometry stores its emissive.r there.
+  WPosW: f32,
 }
 
 struct CacheHitData{
@@ -267,6 +270,21 @@ fn radianceProbeOnce(rayID:f32, tdr:vec3<f32>){
    var rayProbeBuffer = getCurrentRayHitBuffer(probeUV);
    var rayHitLocation = rayProbeBuffer.WPosition + normalize(rayProbeBuffer.WNormal) * 0.01;
 
+   // Backface heuristic (reference DDGI): a ray that hits a surface from
+   // behind (GBuffer normals are unflipped geometric normals) means this
+   // probe sits inside geometry in that direction. Such hits carry no
+   // valid radiance, and shrinking their recorded distance makes the
+   // Chebyshev visibility test reject this probe for any receiver beyond
+   // the shell — dead inside-a-mesh probes stop dragging nearby surfaces
+   // toward black.
+   // Backface test built ONLY from quantities of the fetched texel itself
+   // (hit position + hit normal), so it is immune to any direction
+   // remapping inside the cube fetch: if the hit surface's normal points
+   // away from the probe->hit vector, the probe is seeing its back side.
+   let isSky = rayProbeBuffer.WPosW > 10000.0;
+   let toHit = rayProbeBuffer.WPosition - probeLocation;
+   let isBackface = !isSky && dot(toHit, rayProbeBuffer.WNormal) > 0.0;
+
    var rayProbeDistance = length(probeLocation - rayHitLocation) ;
    // Clamp ray misses (sky hits report ~65504 world units) to the probe
    // grid's max visibility distance. Without this, distance^2 overflows
@@ -274,6 +292,9 @@ fn radianceProbeOnce(rayID:f32, tdr:vec3<f32>){
    // becomes inf, and the visibility test stops rejecting anything —
    // bright outside-the-wall probes leak through every wall seam.
    rayProbeDistance = min(uniformData.maxDistance, rayProbeDistance) ;
+   if (isBackface) {
+     rayProbeDistance = rayProbeDistance * 0.1;
+   }
 
    // if (dot(rayProbeBuffer.WNormal, rayProbeBuffer.WNormal) < epsilon) {
    //   rayProbeDistance = epsilon ;
@@ -291,7 +312,7 @@ fn radianceProbeOnce(rayID:f32, tdr:vec3<f32>){
    var i_weight = max(0.0, dot(tdr,rayDirection) );
    var d_weight = pow(i_weight, uniformData.depthSharpness);
    
-   if (i_weight >= epsilon) {
+   if (i_weight >= epsilon && !isBackface) {
       // Cosine-weight the radiance like the reference DDGI estimator
       // (sum += weight * radiance, normalized by sum of weights below).
       // Accumulating unweighted radiance flattened every texel toward the
@@ -308,7 +329,9 @@ fn radianceProbeOnce(rayID:f32, tdr:vec3<f32>){
 fn getCurrentRayHitBuffer(probeUV:vec2<f32>) -> RayProbeBuffer {
   var rayProbeBuffer : RayProbeBuffer ;
   var uv:vec2<i32> = vec2<i32>(probeUV.xy * f32(PROBEMAP_SOURCESIZE - 1.0));
-  rayProbeBuffer.WPosition = textureLoad(positionMap, uv, 0).xyz ;
+  let posTexel = textureLoad(positionMap, uv, 0);
+  rayProbeBuffer.WPosition = posTexel.xyz ;
+  rayProbeBuffer.WPosW = posTexel.w ;
   rayProbeBuffer.WNormal = normalize(textureLoad(normalMap, uv, 0).xyz * 2.0 - 1.0);
   rayProbeBuffer.WRadiance = textureLoad(colorMap, uv, 0).xyzw * energyConservation;
   return rayProbeBuffer ;
