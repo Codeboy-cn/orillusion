@@ -28,10 +28,9 @@ class Sample_GICornellBox {
                     // The colored walls receive almost no direct sunlight —
                     // they are lit by the emissive ceiling quad through the
                     // multi-bounce feedback loop, which also carries their
-                    // reflected color into the probes. The 0.025 engine
-                    // default is tuned for sun-lit exteriors and leaves the
-                    // walls (and their color bleeding) nearly black here.
-                    bounceIntensity: 0.3,
+                    // reflected color into the probes. 1.0 = energy-exact
+                    // single-bounce feedback (see MultiBouncePass_cs).
+                    bounceIntensity: 1.0,
                     lerpHysteresis: 0.02,
                     maxDistance: 16,
                     probeSpace: 6,

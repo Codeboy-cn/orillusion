@@ -102,17 +102,17 @@ export let MultiBouncePass_cs: string = /*wgsl*/ `
   }
 
   fn blendIrradianceColor(irradiance:vec4<f32>) -> vec4<f32>{
-     var bounceColor = irradiance * ulitColor;
-     let bounceIntensity = getBounceIntensity(uniformData.bounceIntensity);
-     let conservation1 = 1.0 / sqrt((1.0 + bounceIntensity * 0.55));
-     let conservation2 = 1.0 / sqrt((1.0 + bounceIntensity));
-     var result = litColor * conservation2 + bounceColor * sqrt(bounceIntensity) * conservation1;
-     return vec4<f32>(result.xyz, litColor.w);
-  }
-
-  fn getBounceIntensity(intensity:f32) -> f32 {
-    var value = clamp(intensity, 0.0, 1.0) * 10.0;
-    return value;
+     // irradiance.xyz is the decoded probe value S = E / (2*PI). A
+     // Lambertian surface re-emits L = E * albedo / PI = 2 * S * albedo,
+     // so bounceIntensity in [0,1] scales the physically exact single
+     // bounce (1 = energy-exact; the feedback loop converges because
+     // albedo < 1). The previous form divided the direct term by
+     // sqrt(1 + 10*bounceIntensity) — halving probe direct lighting at
+     // the sample's settings — and capped the bounce term well below
+     // the physical level, which starved multi-bounce color transport.
+     let k = clamp(uniformData.bounceIntensity, 0.0, 1.0);
+     var result = litColor.rgb + irradiance.xyz * ulitColor.rgb * (2.0 * k);
+     return vec4<f32>(result, litColor.w);
   }
 
   fn getCoordOffset(id:u32) -> vec2<u32>{

@@ -292,9 +292,13 @@ fn radianceProbeOnce(rayID:f32, tdr:vec3<f32>){
    var d_weight = pow(i_weight, uniformData.depthSharpness);
    
    if (i_weight >= epsilon) {
-     //  var weightColor = pow(weight, (2.0 - uniformData.probeRoughness) * 2.0);
-      resultIrradiance += vec4(rayProbeBuffer.WRadiance.rgb, i_weight );
-     
+      // Cosine-weight the radiance like the reference DDGI estimator
+      // (sum += weight * radiance, normalized by sum of weights below).
+      // Accumulating unweighted radiance flattened every texel toward the
+      // plain hemisphere average — grazing directions counted as much as
+      // the normal direction — which washed out directional GI and wall
+      // color bleeding. The depth moments below already weight correctly.
+      resultIrradiance += vec4(rayProbeBuffer.WRadiance.rgb * i_weight, i_weight );
    }
    if(d_weight>= epsilon){
        resultDepth += vec4(rayProbeDistance * d_weight, rayProbeDistance * rayProbeDistance * d_weight, 0.0 , i_weight);
