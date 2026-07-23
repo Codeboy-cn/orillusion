@@ -229,6 +229,18 @@ export let Irradiance_frag: string = /*wgsl*/ `
             // the crush filter squashes what remains to a <1% share.
             weight *= (wrapShading * wrapShading) + 0.02;
 
+            // Tangent-plane cull: a probe behind the receiver's surface
+            // plane has no unoccluded path to it (only through the surface
+            // itself), independent of the sample direction. Chebyshev alone
+            // cannot reject these reliably — their diagonal depth texels
+            // straddle near-wall and far-cavity hits — and once the
+            // multi-bounce loop converges, even a few percent of leaked
+            // weight from the bright cavity shows up on the dark exterior
+            // as probe-sized warm patches. The soft edge keeps in-plane
+            // probes partially usable and avoids a hard cutoff on curved
+            // or normal-mapped surfaces.
+            weight *= smoothstep(-0.05, 0.25, dot(worldPosToAdjProbe, wsN));
+
             var depthDir = -biasedPosToAdjProbe;//probe - world
             depthDir = applyQuaternion(depthDir, quaternion);
             var probeTextureUV : vec2<f32> = textureCoordFromDirection(depthDir.xyz,
