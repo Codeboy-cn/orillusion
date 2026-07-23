@@ -218,7 +218,16 @@ export let Irradiance_frag: string = /*wgsl*/ `
             var weight = 1.0;
 
             var wrapShading = (dot(worldPosToAdjProbe, direction) + 1.0) * 0.5;
-            weight *= (wrapShading * wrapShading) + 0.2;
+            // Small wrap floor (reference uses 0.2). A probe behind the
+            // receiver's surface plane cannot see the receiver, but at a
+            // 16x16 oct resolution its depth texel toward a diagonal
+            // receiver straddles near-wall and far-cavity hits, giving a
+            // mean/variance too smeared for Chebyshev to reject reliably.
+            // With the bright-cavity/dark-exterior contrast (~5x) the 0.2
+            // floor let those probes brighten exterior walls into blotches;
+            // 0.02 keeps the term nonzero (corner cages stay defined) while
+            // the crush filter squashes what remains to a <1% share.
+            weight *= (wrapShading * wrapShading) + 0.02;
 
             var depthDir = -biasedPosToAdjProbe;//probe - world
             depthDir = applyQuaternion(depthDir, quaternion);
@@ -241,12 +250,15 @@ export let Irradiance_frag: string = /*wgsl*/ `
                 chebyshevWeight = max((chebyshevWeight * chebyshevWeight * chebyshevWeight), 0.0);
             }
 
-            // No 0.05 visibility floor: with extreme inside/outside contrast
-            // (a bright cavity behind a wall), a 5% floor leaks the interior
-            // field onto exterior surfaces as per-probe blotches. The crush
-            // filter below already smoothly squashes tiny weights, and the
-            // final normalization keeps the result defined.
-            weight *= max(0.0001, chebyshevWeight);
+            // Reference DDGI visibility floor. A lit receiver sits exactly at
+            // its probes' stored mean distance, so bilinear/cone error flips
+            // the occlusion branch texel-to-texel; without a floor those
+            // false rejections crush valid probes and the normalized mix
+            // degenerates into shadow-acne blotches. The floor is safe
+            // against through-wall leaks because occluded probes have
+            // dist >> mean (accurate with a sharp depth lobe), and 0.05 is
+            // then squashed to <0.01% share by the crush filter below.
+            weight *= max(0.05, chebyshevWeight);
             weight = max(0.000001, weight);
 
             let crushThreshold = 0.2;

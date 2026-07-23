@@ -34,12 +34,27 @@ class Sample_GICornellBox {
                     lerpHysteresis: 0.02,
                     maxDistance: 16,
                     probeSpace: 6,
-                    normalBias: 0,
+                    // Shifts the visibility-test sample point off the surface
+                    // toward the viewer: surfaceBias = (N + 3*viewDir) * 0.25
+                    // (up to ~1 world unit at probeSpace 6). At 0 a lit surface
+                    // sits exactly at its probes' stored mean distance, and the
+                    // sharpened depth lobe (depthSharpness 50) makes Chebyshev
+                    // reject valid probes wherever bilinear filtering nudges
+                    // the mean below the true distance — shadow-acne blotches.
+                    normalBias: 0.25,
                     probeSize: 32,
                     octRTSideSize: 16,
                     octRTMaxSize: 2048,
                     ddgiGamma: 2.2,
-                    depthSharpness: 1,
+                    // Depth-moment lobe exponent. Must be much sharper than
+                    // the cosine irradiance lobe (reference DDGI uses ~50):
+                    // at 1 the stored "mean visible distance" is a whole-
+                    // hemisphere average, so interior probes report ~half the
+                    // cavity size toward a wall right next to them, the
+                    // Chebyshev test never sees them as occluded, and the
+                    // bright interior field leaks onto exterior surfaces as
+                    // probe-sized color blotches.
+                    depthSharpness: 50,
                     autoRenderProbe: true,
                 },
                 shadow: {

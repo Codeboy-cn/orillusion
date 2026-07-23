@@ -379,9 +379,21 @@ fn readRayHitData( uv:vec2<i32> ) -> CacheHitData{
 }
 
 fn getCurrentDir() -> vec3<f32> {
-  var ux = f32(workgroup_idx) / OCT_SIDE_SIZE_f32;
-  var uy = f32(workgroup_idy) / OCT_SIDE_SIZE_f32;
-  var uv = vec2<f32>(ux,uy) * 2.0 - 1.0 ;
+  // Texel -> oct direction for THIS texel's stored data. Two subtleties:
+  // 1) +0.5: anchor on the texel CENTER. Readers (Irradiance_frag /
+  //    MultiBounce) map a direction to pixel (octEncode(d)+1)*0.5*size and
+  //    bilinear-sample texel centers; corner anchoring skews every lookup
+  //    by half a texel (~11 deg at 16x16).
+  // 2) Negation: the cube-GBuffer fetch chain (getSampleProbeUV's face
+  //    mapping + UV flip) returns the hit for the 180-deg-about-the-oct-pole
+  //    rotated direction. Without compensating here, every stored texel is
+  //    keyed to the mirrored world direction (front<->back, left<->right),
+  //    so the Chebyshev visibility test reads sky where a wall is: interior
+  //    probes pass the test through walls and splash the bright cavity
+  //    field onto exterior surfaces as probe-sized color blotches.
+  var ux = (f32(workgroup_idx) + 0.5) / OCT_SIDE_SIZE_f32;
+  var uy = (f32(workgroup_idy) + 0.5) / OCT_SIDE_SIZE_f32;
+  var uv = -(vec2<f32>(ux,uy) * 2.0 - 1.0) ;
   var dir = octDecode(uv) ;
   return normalize(dir) ;
 }

@@ -212,7 +212,12 @@ export class Engine3D {
                 // irradiance. 0.02 reaches ~95% convergence in ~150 frames;
                 // the old 0.01 default took twice as long for little extra
                 // stability (rays are already cosine-weighted over 144 dirs).
-                maxDistance: 64 * 1.73, normalBias: 0.25, depthSharpness: 1, hysteresis: 0.98, lerpHysteresis: 0.02,
+                // depthSharpness: exponent of the depth-moment lobe. It must
+                // be far sharper than the cosine irradiance lobe (reference
+                // DDGI uses ~50) or the stored mean visible distance becomes
+                // a hemisphere-wide average and the Chebyshev visibility test
+                // stops rejecting occluded probes (light leaks through walls).
+                maxDistance: 64 * 1.73, normalBias: 0.25, depthSharpness: 50, hysteresis: 0.98, lerpHysteresis: 0.02,
                 irradianceChebyshevBias: 0.01, rayNumber: 144, irradianceDistanceBias: 32, indirectIntensity: 1.0,
                 ddgiGamma: 2.2, bounceIntensity: 0.025, probeRoughness: 1, realTimeGI: false, debug: false, autoRenderProbe: false,
                 probeCountPerFrame: 1,
