@@ -195,6 +195,8 @@ export let Irradiance_frag: string = /*wgsl*/ `
 
         var irradiance = vec3<f32>(0.0, 0.0, 0.0);
         var accumulatedWeights = 0.0;
+        // Largest tangent-plane factor in the cage — see the gate below.
+        var tangentGate = 0.0;
         var biasedWorldPosition = (worldPosition + surfaceBias);
 
         var baseProbeCoords: vec3<i32> = getBaseGridCoord(irradianceFieldSurface, worldPosition);
@@ -244,7 +246,9 @@ export let Irradiance_frag: string = /*wgsl*/ `
             // as probe-sized warm patches. The soft edge keeps in-plane
             // probes partially usable and avoids a hard cutoff on curved
             // or normal-mapped surfaces.
-            weight *= smoothstep(-0.05, 0.25, dot(worldPosToAdjProbe, wsN));
+            let tangentFactor = smoothstep(-0.05, 0.25, dot(worldPosToAdjProbe, wsN));
+            weight *= tangentFactor;
+            tangentGate = max(tangentGate, tangentFactor);
 
             var depthDir = -biasedPosToAdjProbe;//probe - world
             depthDir = applyQuaternion(depthDir, quaternion);
@@ -313,11 +317,22 @@ export let Irradiance_frag: string = /*wgsl*/ `
             return vec4<f32>(0.0, 0.0, 0.0,1.0);
         }
 
-        irradiance *= (1.0 / accumulatedWeights);   
-        irradiance *= irradiance;                   
+        irradiance *= (1.0 / accumulatedWeights);
+        irradiance *= irradiance;
 
         irradiance *= 6.2831853071795864;
         irradiance *= irradianceData.indirectIntensity;
+        // Absolute cull gate. Normalizing by accumulatedWeights erases
+        // how much weight actually SURVIVED the culls: on a receiver
+        // whose whole cage is behind its tangent plane (e.g. the
+        // cavity's exterior walls) the per-probe floors leave ~1e-17
+        // sums whose weighted average still rescales to full cavity
+        // brightness. Gate on the cage's LARGEST tangent-plane factor
+        // instead of the weight sum: it is exactly 0 for such receivers
+        // yet ~1 for any legitimate one (at least one probe clearly in
+        // front of the surface), independent of how small the wrap/
+        // Chebyshev floors make the surviving weights.
+        irradiance *= tangentGate;
         return vec4<f32>(irradiance,1.0) ;
     }
 
