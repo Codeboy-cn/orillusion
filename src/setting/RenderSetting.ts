@@ -1,6 +1,7 @@
 import { DepthOfViewSetting } from "./post/DepthOfViewSetting";
 import { GlobalFogSetting } from "./post/GlobalFogSetting";
 import { GTAOSetting } from "./post/GTAOSetting";
+import { SSGISetting } from "./post/SSGISetting";
 import { OutlineSetting } from "./post/OutlineSetting";
 import { SkylineSetting } from "./post/SkylineSetting";
 import { SSRSetting } from "./post/SSRSetting";
@@ -88,7 +89,7 @@ export type RenderSetting = {
         ssr?: SSRSetting;
         taa?: TAASetting;
         gtao?: GTAOSetting;
-        ssgi?: GTAOSetting;
+        ssgi?: SSGISetting;
         outline?: OutlineSetting;
         globalFog?: GlobalFogSetting;
 	skyline?: SkylineSetting;

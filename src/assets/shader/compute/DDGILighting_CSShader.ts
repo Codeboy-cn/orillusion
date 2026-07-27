@@ -180,17 +180,30 @@ fn pointLighting( albedo:vec3<f32>,WP:vec3<f32>, N:vec3<f32>, V:vec3<f32>, light
  }
 
  if( abs(dist) < light.range ){
-     var L = dir ;
-     var atten = 1.0 ;
-     atten = 1.0 - smoothstep(0.0,light.range,dist) ;
-     atten *= 1.0 / max(light.radius,0.0001) ;
+     // Match the camera pass (LightingFunction_frag.pointLighting):
+     // smoothstep range falloff * 1/radius * sphere_unit energy term,
+     // linear lightColor via getHDRColor, cosine NoL and the cube
+     // shadow. The previous body kept the legacy intensity/LUMEN*2
+     // scale, skipped NoL/shadow entirely and — worst — returned
+     // color*0.0 (debug leftover), so probes received NO point-light
+     // radiance at all: the field was fed exclusively by captured
+     // emissive pixels, and any probe whose view contains no emissive
+     // texel (e.g. grazing corner probes) converged to exactly zero.
+     var atten = 1.0 - smoothstep(0.0,light.range,dist) ;
+     atten *= 1.0 / max(light.radius,0.001) ;
+     // sphere_unit(light.range, light.intensity), PI2 = PI*PI inlined.
+     atten *= light.intensity / (4.0 * 9.86960440 * light.range * light.range) ;
 
-     var lightColor = light.lightColor.rgb  ;
-     lightColor = getHDRColor(lightColor , light.linear ) * light.intensity / LUMEN * 2.0;
-     color = (albedo / PI) * lightColor.rgb * atten ;
+     let NoL = max(dot(N, dir), 0.0);
+     var lightColor = getHDRColor(light.lightColor.rgb , light.linear ) ;
+     var shadow = 1.0 ;
+     if (light.castShadow >= 0) {
+        shadow = shadowStrut.pointShadows[i32(light.castShadow)] ;
+     }
+     color = (albedo / PI) * lightColor.rgb * NoL * atten * shadow ;
  }
 
- return  color *0.0;
+ return color ;
 }
 
 fn spotLight( albedo:vec3<f32>,WP:vec3<f32>, N:vec3<f32>, V:vec3<f32>, light:LightData ) -> vec3<f32> {
@@ -204,12 +217,19 @@ fn spotLight( albedo:vec3<f32>,WP:vec3<f32>, N:vec3<f32>, V:vec3<f32>, light:Lig
 
  var color = vec3<f32>(0.0) ;
  if( abs(dist) < light.range * 2.0 ){
+     // Match the camera pass (LightingFunction_frag.spotLighting) the
+     // same way pointLighting above does: cone falloff * range falloff
+     // * 1/radius * sphere_unit energy term, linear lightColor via
+     // getHDRColor, cosine NoL and the cube shadow. The previous body
+     // kept the legacy intensity/LUMEN*2 scale and skipped NoL/shadow,
+     // so probes saw spot-lit surfaces with wrong energy, no cosine
+     // falloff and light leaking through occluders.
      var L = dir ;
      let theta = dot(-L, normalize(light.direction));
      let angle = acos(theta) ;
      var atten = 1.0 ;
      atten = 1.0 - smoothstep(0.0,light.range,dist) ;
-     atten *= 1.0 / max(light.radius,0.1) ;
+     atten *= 1.0 / max(light.radius,0.001) ;
      if(angle < light.outerCutOff){
        if(angle > light.innerCutOff){
          atten *= 1.0 - smoothstep(light.innerCutOff, light.outerCutOff, angle) ;
@@ -217,9 +237,16 @@ fn spotLight( albedo:vec3<f32>,WP:vec3<f32>, N:vec3<f32>, V:vec3<f32>, light:Lig
      }else{
        atten = 0.0 ;
      }
-     var lightColor = light.lightColor.rgb  ;
-     lightColor = getHDRColor(lightColor , light.linear ) * light.intensity / LUMEN * 2.0;
-     color = (albedo / PI) * lightColor.rgb * atten ;
+     // sphere_unit(light.range, light.intensity), PI2 = PI*PI inlined.
+     atten *= light.intensity / (4.0 * 9.86960440 * light.range * light.range) ;
+
+     let NoL = max(dot(N, dir), 0.0);
+     var lightColor = getHDRColor(light.lightColor.rgb , light.linear ) ;
+     var shadow = 1.0 ;
+     if (light.castShadow >= 0) {
+        shadow = shadowStrut.pointShadows[i32(light.castShadow)] ;
+     }
+     color = (albedo / PI) * lightColor.rgb * NoL * atten * shadow ;
    }
  return  color ;
 }

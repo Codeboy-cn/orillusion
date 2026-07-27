@@ -69,8 +69,13 @@ export let Irradiance_frag: string = /*wgsl*/ `
 
         var probeIrradiance: vec4<f32> = textureSampleLevel(irradianceMap, irradianceMapSampler, probeTextureUV ,0.0);
         // The map stores gamma-encoded irradiance (pow(1/ddgiGamma) at
-        // write time); decode so the debug spheres show linear values.
-        probeIrradiance = vec4<f32>(pow(probeIrradiance.xyz, vec3<f32>(irradianceData.ddgiGamma)), probeIrradiance.w);
+        // write time); decode AND apply the same 2*PI solid-angle factor
+        // the lighting reader uses (sampleIrradianceField), so the debug
+        // spheres show the field's effective irradiance instead of a
+        // value 6.28x darker.
+        probeIrradiance = vec4<f32>(
+            pow(probeIrradiance.xyz, vec3<f32>(irradianceData.ddgiGamma)) * 6.2831853071795864,
+            probeIrradiance.w);
         return probeIrradiance;
     }
 

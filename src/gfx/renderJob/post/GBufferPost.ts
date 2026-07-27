@@ -18,9 +18,7 @@ import { GTAO_cs } from '../../../assets/shader/compute/GTAO_cs';
 import { CResizeEvent } from '../../../event/CResizeEvent';
 import { TextureScaleCompute } from '../../generate/convert/TextureScaleCompute';
 import { RenderTexture } from '../../../textures/RenderTexture';
-import { SSGI2_cs } from '../../../assets/shader/compute/SSGI2_cs';
-import { Denoising_cs } from '../../../assets/shader/compute/utils/Denoising_cs';
-import { Combine_cs, TestComputeLoadBuffer, Vector3, mergeFunctions } from '../../..';
+import { TestComputeLoadBuffer } from '../../..';
 
 /**
  * Ground base Ambient Occlusion
