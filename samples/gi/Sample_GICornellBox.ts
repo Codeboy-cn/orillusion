@@ -1,4 +1,4 @@
-import { Object3D, Scene3D, Engine3D, GlobalIlluminationComponent, Vector3, PostProcessingComponent, View3D, CameraUtil, HoverCameraController, PointLight, ColliderComponent, SphereColliderShape, PointerEvent3D, Probe } from "@orillusion/core";
+import { Object3D, Scene3D, Engine3D, GlobalIlluminationComponent, Vector3, PostProcessingComponent, View3D, CameraUtil, HoverCameraController, PointLight, ColliderComponent, SphereColliderShape, PointerEvent3D, Probe, MeshRenderer, LitMaterial } from "@orillusion/core";
 import { GUIHelp } from "@orillusion/debug/GUIHelp";
 import { GUIUtil } from "@samples/utils/GUIUtil";
 
@@ -45,23 +45,34 @@ class Sample_GICornellBox {
                     // toward the viewer: surfaceBias = (N + 3*viewDir) * 0.25
                     // (up to ~1 world unit at probeSpace 6). At 0 a lit surface
                     // sits exactly at its probes' stored mean distance, and the
-                    // sharpened depth lobe (depthSharpness 50) makes Chebyshev
-                    // reject valid probes wherever bilinear filtering nudges
-                    // the mean below the true distance — shadow-acne blotches.
+                    // sharpened depth lobe makes Chebyshev reject valid probes
+                    // wherever bilinear filtering nudges the mean below the
+                    // true distance — shadow-acne blotches.
                     normalBias: 0.25,
                     probeSize: 32,
-                    octRTSideSize: 16,
+                    // 32x32 oct tiles (engine default 16): halves the depth
+                    // texel's angular width (22deg -> 11deg). With probes
+                    // sitting 1-3 units from the box/walls, a 22deg depth
+                    // texel blends floor/face/far-cavity distances, the
+                    // Chebyshev mean wobbles texel to texel, and the shadow
+                    // pocket's edge on nearby geometry turns into an
+                    // irregular wavy line; at 11deg the boundary resolves
+                    // into a smooth gradient.
+                    octRTSideSize: 32,
                     octRTMaxSize: 2048,
                     ddgiGamma: 2.2,
-                    // Depth-moment lobe exponent. Must be much sharper than
-                    // the cosine irradiance lobe (reference DDGI uses ~50):
-                    // at 1 the stored "mean visible distance" is a whole-
-                    // hemisphere average, so interior probes report ~half the
-                    // cavity size toward a wall right next to them, the
-                    // Chebyshev test never sees them as occluded, and the
-                    // bright interior field leaks onto exterior surfaces as
-                    // probe-sized color blotches.
-                    depthSharpness: 50,
+                    // Depth-moment lobe exponent. Two-sided constraint: much
+                    // sharper than the cosine irradiance lobe (at 1 the mean
+                    // visible distance smears to a hemisphere average and
+                    // Chebyshev stops rejecting occluded probes — interior
+                    // light leaks onto the exterior walls), yet no narrower
+                    // than one 16x16 oct depth texel (~22 deg): at 50 the
+                    // ~19 deg lobe left the reader's direction-quantization
+                    // spread out of the stored variance, and Chebyshev cut
+                    // corner-adjacent probes along razor-thin radial bands —
+                    // the color steps near the wall-floor / wall-ceiling
+                    // corners. 18 = ~32 deg lobe, matched to the tile size.
+                    depthSharpness: 18,
                     autoRenderProbe: true,
                 },
                 render: {
@@ -132,6 +143,9 @@ class Sample_GICornellBox {
             let pick = e.target;
             if (pick instanceof Probe) {
                 console.log(`[probe pick] index=${pick.index} name=${pick.name} pos=(${pick.x}, ${pick.y}, ${pick.z})`);
+                // Fly the hover camera to look at the clicked probe.
+                let ctrl = this.view.camera.object3D.getComponent(HoverCameraController);
+                ctrl.setCamera(ctrl.roll, ctrl.pitch, 12, new Vector3(pick.x, pick.y, pick.z));
             }
         }, this);
     }
@@ -139,8 +153,18 @@ class Sample_GICornellBox {
     async initScene() {
         let box = await this.engine.res.loadGltf('gltfs/cornellBox/cornellBox.gltf') as Object3D;
         box.localScale = new Vector3(10, 10, 10);
-        // The ceiling quad keeps its gltf emissive: the probes capture it
-        // and the multi-bounce loop spreads it through the cavity.
+        // TEMP: zero out the gltf lamp quad's emissive so the point light
+        // below is the cavity's ONLY light source (both the camera pass
+        // and the probe captures read the same material uniform, so this
+        // removes the lamp from the GI feedback loop too).
+        for (let mr of box.getComponentsInChild(MeshRenderer)) {
+            for (let mat of mr.materials) {
+                if (mat instanceof LitMaterial && mat.emissiveIntensity > 0) {
+                    console.log(`[emissive off] ${mr.object3D.name} intensity=${mat.emissiveIntensity}`);
+                    mat.emissiveIntensity = 0;
+                }
+            }
+        }
         this.scene.addChild(box);
 
         // Point light just below the ceiling lamp quad (cavity is
@@ -163,6 +187,17 @@ class Sample_GICornellBox {
         GUIHelp.add(pointLight, 'intensity', 0, 50, 0.1);
         GUIHelp.add(pointLight, 'range', 1, 100, 1);
         GUIHelp.add(lightObj, 'y', 1, 19, 0.1);
+        GUIHelp.endFolder();
+
+        // A/B the tonemap: the walls' top-to-bottom hue shift is mostly
+        // ACES highlight desaturation — toggling to 'None' makes the
+        // wall color uniform (and blows out the lamp area, which is why
+        // the tonemap exists).
+        GUIHelp.addFolder('Tonemap');
+        let tonemapState = { ACES: true };
+        GUIHelp.add(tonemapState, 'ACES').onChange((v: boolean) => {
+            this.engine.setting.render.tonemap.mode = v ? 'ACES' : 'None';
+        });
         GUIHelp.endFolder();
     }
 }
