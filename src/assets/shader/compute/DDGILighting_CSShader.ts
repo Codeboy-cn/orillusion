@@ -130,12 +130,25 @@ fn directShadowMapingIndex(light:LightData, matrix:mat4x4<f32>, P:vec3<f32>, N:v
 }
 
 fn pointShadowMapCompare(shadowBias:f32){
+   for(var j:i32 = i32(0) ; j < i32(8); j = j + 1 )
+   {
+       shadowStrut.pointShadows[j] = 1.0 ;
+   }
+   // Same conventions as the camera pass (PointShadow_frag), which this
+   // previously diverged from on every count: the cube map layer is the
+   // light's castShadow slot (not the light buffer index), the stored
+   // depth is normalized by the light's own shadow-camera far
+   // (shadowFar = range by default — dividing by the MAIN camera far made
+   // compareZ ~20x too small here, the compare always passed, and probe
+   // captures saw the scene with no point shadows at all: surfaces inside
+   // another object's shadow were fed to the field fully lit, washing the
+   // bottom probe rows with phantom white light), and the bias is the
+   // light's resolved world-space shadowBias scaled by distance.
    for(var i:i32 = i32(0) ; i < i32(8); i = i + 1 )
-   { 
-       var v = 1.0 ;
+   {
        let light = lightBuffer[i] ;
-       if(light.castShadow < 0 ){
-         shadowStrut.pointShadows[i] = v ;
+       let shadowIdx = i32(light.castShadow);
+       if(shadowIdx < 0 || shadowIdx >= 8){
          continue ;
        }
 
@@ -143,14 +156,16 @@ fn pointShadowMapCompare(shadowBias:f32){
        var dir:vec3<f32> = normalize(frgToLight)  ;
 
        var len = length(frgToLight) ;
-       let compareZ = (len - shadowBias) / globalUniform.far;
-       var depth = textureSampleCompareLevel(pointShadowMap,pointShadowMapSampler,dir.xyz,i,compareZ); 
+       let shadowFarDecode = select(globalUniform.far, light.shadowFar, light.shadowFar > 0.0);
+       let lengthScale = min(len / max(light.range, 1.0), 1.0);
+       let worldBias = max(light.shadowBias[0] * lengthScale, shadowBias);
+       let compareZ = (len - worldBias) / shadowFarDecode;
+       var depth = textureSampleCompareLevel(pointShadowMap,pointShadowMapSampler,dir.xyz,shadowIdx,compareZ);
        if(depth < 0.5){
-          v = 0.0 ; 
+          shadowStrut.pointShadows[shadowIdx] = 0.0 ;
        }
-       shadowStrut.pointShadows[i] = v ;
    }
-} 
+}
 
 fn directLighting( albedo:vec3<f32> , WP :vec3<f32>, N:vec3<f32> , V:vec3<f32> , light:LightData , shadowBias:f32  ) -> vec3<f32> {
  var L = -normalize(light.direction.xyz) ;
