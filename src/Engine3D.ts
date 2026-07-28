@@ -214,11 +214,17 @@ export class Engine3D {
                 // the old 0.01 default took twice as long for little extra
                 // stability (rays are already cosine-weighted over 144 dirs).
                 // depthSharpness: exponent of the depth-moment lobe. It must
-                // be far sharper than the cosine irradiance lobe (reference
-                // DDGI uses ~50) or the stored mean visible distance becomes
-                // a hemisphere-wide average and the Chebyshev visibility test
-                // stops rejecting occluded probes (light leaks through walls).
-                maxDistance: 64 * 1.73, normalBias: 0.25, depthSharpness: 50, hysteresis: 0.98, lerpHysteresis: 0.02,
+                // be much sharper than the cosine irradiance lobe (at 1 the
+                // stored mean visible distance becomes a hemisphere-wide
+                // average and Chebyshev stops rejecting occluded probes),
+                // BUT the lobe must stay at least as wide as one oct depth
+                // texel (~22 deg at octRTSideSize 16): the reader queries
+                // directions up to half a texel from the stored center, and
+                // a narrower lobe leaves that direction-quantization spread
+                // out of the variance — Chebyshev then razor-cuts probes at
+                // radial bands, drawing arcs / color steps near concave
+                // corners. 18 gives a ~32 deg lobe, matched to 16x16 tiles.
+                maxDistance: 64 * 1.73, normalBias: 0.25, depthSharpness: 18, hysteresis: 0.98, lerpHysteresis: 0.02,
                 irradianceChebyshevBias: 0.01, rayNumber: 144, irradianceDistanceBias: 32, indirectIntensity: 1.0,
                 ddgiGamma: 2.2, bounceIntensity: 0.025, probeRoughness: 1, realTimeGI: false, debug: false, autoRenderProbe: false,
                 probeCountPerFrame: 1,

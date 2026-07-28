@@ -199,7 +199,13 @@ export let Irradiance_frag: string = /*wgsl*/ `
         var tangentGate = 0.0;
         var biasedWorldPosition = (worldPosition + surfaceBias);
 
-        var baseProbeCoords: vec3<i32> = getBaseGridCoord(irradianceFieldSurface, worldPosition);
+        // Base cage from the BIASED position, matching the alpha computed
+        // below from the same point (RTXGI does likewise). Mixing unbiased
+        // base coords with biased alpha made the trilinear weights jump
+        // when the surface point crossed a probe-grid plane but the biased
+        // point had not (or vice versa) — a C0 discontinuity showing as a
+        // hard seam on surfaces crossing cage boundaries.
+        var baseProbeCoords: vec3<i32> = getBaseGridCoord(irradianceFieldSurface, biasedWorldPosition);
         
         var baseProbeWorldPosition: vec3<f32> = gridCoordToPosition(irradianceFieldSurface, baseProbeCoords) ;
         
@@ -261,14 +267,35 @@ export let Irradiance_frag: string = /*wgsl*/ `
             var filteredDistance : vec2<f32> = 2.0 * textureSampleLevel(irradianceDepthMap, irradianceDepthMapSampler, probeTextureUV,0.0).rg ;
            
             var variance = abs((filteredDistance.x * filteredDistance.x) - filteredDistance.y);
+            // Estimator-variance floor. The stored moments only carry the
+            // spread of distances INSIDE the depth lobe; the spread caused
+            // by querying up to half an oct texel away from the texel
+            // center (where distance-vs-direction changes fastest — walls
+            // seen at grazing angles near concave corners) is not in the
+            // data. Without a floor that missing term leaves sigma at a
+            // few tenths of a unit and the occlusion branch cuts probes
+            // over a razor-thin radial band, drawing probe-radius arcs /
+            // color steps near wall-floor and wall-ceiling corners. A
+            // floor of 10% of the mean turns those cuts into ~mean/10-wide
+            // ramps while leaving genuine occlusion (dist >> mean) at
+            // effectively zero weight.
+            variance = max(variance, square1f(0.1 * filteredDistance.x));
 
             var chebyshevWeight = 1.0;
             if(biasedPosToAdjProbeDist > filteredDistance.x ) // occluded
             {
                 var v = biasedPosToAdjProbeDist - filteredDistance.x ;
                 chebyshevWeight = variance / (variance + (v * v));
-                // Increase the contrast in the weight
-                chebyshevWeight = max((chebyshevWeight * chebyshevWeight * chebyshevWeight), 0.0);
+                // NO cube-contrast here (the reference cubes this weight).
+                // Anti-leak does not need it: occluded probes far behind a
+                // wall land below the 0.05 floor either way, and the crush
+                // filter + tangent gate squash what remains. What the cube
+                // DID do was sharpen every partial-visibility transition
+                // (receiver near a probe's own recorded surface, e.g. a
+                // box face 2-3 units from a probe) from a gradual ramp
+                // into a hard, wavy iso-distance edge — the irregular
+                // dark/lit boundary lines at the bottom of objects
+                // standing near walls.
             }
 
             // Reference DDGI visibility floor. A lit receiver sits exactly at

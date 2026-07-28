@@ -1,12 +1,14 @@
 // GI regression check: loads gi/Sample_GICornellBox.ts and samples canvas
 // pixels to assert the DDGI result is sane:
 //   - left wall red-dominant, right wall green-dominant
-//   - ceiling / upper back wall (indirect-only surfaces) lit and not
-//     green-polluted (historical probe GBuffer positionMap-clear bug)
-//   - probe color bleeding visible: back wall near the red wall reads a red
-//     tint, ceiling near the green wall reads a green tint
-//   - no light-leak seam at the ceiling / back-wall junction
-// Coordinates assume the sample's stock camera (hoverCtrl distance 26).
+//   - ceiling / upper back wall lit and not green-polluted (historical
+//     probe GBuffer positionMap-clear bug)
+//   - probe color bleeding visible: shadowed floor behind the tall box
+//     reads the red wall's tint, floor by the green wall reads green
+//   - ceiling / back-wall junction not blown to full saturation
+// Coordinates assume the sample's stock camera (hoverCtrl distance 26)
+// and its 2026-07 scene: cavity lit by a ceiling point light (0.8) plus
+// the gltf's emissive lamp quad — no DirectLight, no sky (skyExposure 0).
 // Assumes vite on :4000. Exit code 0 = pass.
 //
 // Usage: node test/multi/_gi_cornell_check.mjs [wait_ms]
@@ -76,21 +78,30 @@ async function main() {
                 const p = ctx.getImageData(Math.round(src.width * fx), Math.round(src.height * fy), 1, 1).data;
                 return [p[0], p[1], p[2]];
             }
-            // brightest pixel in a vertical band across the ceiling/back-wall
-            // junction — a light-leak seam shows up as a bright strip here
+            // Ceiling/back-wall junction (~fy 0.198 at the stock camera).
+            // A leak lights the concave corner ABOVE its flanking
+            // surfaces; legitimately the corner is the darkest spot
+            // (corner occlusion). Compare the junction against both
+            // flanks instead of absolute values so lamp-driven ACES
+            // saturation on the near-lamp ceiling cannot trip it.
+            function lum(fx, fy) { const p = px(fx, fy); return (p[0] + p[1] + p[2]) / 3; }
             let seamMax = 0;
-            for (let fy = 0.150; fy <= 0.198; fy += 0.002) {
-                const p = px(0.5, fy);
-                seamMax = Math.max(seamMax, (p[0] + p[1] + p[2]) / 3);
-            }
+            for (let fy = 0.190; fy <= 0.206; fy += 0.002) seamMax = Math.max(seamMax, lum(0.5, fy));
+            const seamFlankCeiling = lum(0.5, 0.172);
+            const seamFlankWall = lum(0.5, 0.225);
             return {
                 leftWall: px(0.12, 0.48),
                 rightWall: px(0.87, 0.48),
                 ceiling: px(0.50, 0.11),
                 backTop: px(0.50, 0.24),
-                bleedRed: px(0.28, 0.48),
-                bleedGreen: px(0.69, 0.14),
+                // red wall inside the tall box's shadow — direct light is
+                // fully blocked there, so any red is bounce-carried
+                bleedRed: px(0.247, 0.637),
+                // green wall base at the bottom-right, likewise shadowed
+                bleedGreen: px(0.880, 0.963),
                 seamMax,
+                seamFlankCeiling,
+                seamFlankWall,
             };
         })()`,
         awaitPromise: true, returnByValue: true,
@@ -101,10 +112,13 @@ async function main() {
     if (!v || v.err) { console.error('sample failed:', v && v.err); process.exit(2); }
     console.log(JSON.stringify(v));
     const fails = [];
+    // Difference-based dominance: under the bright point light ACES
+    // compresses ratios (a lit red wall reads ~240/167/158), so ratio
+    // thresholds would need the red channel near saturation.
     const [lr, lg, lb] = v.leftWall;
-    if (!(lr > 60 && lr > lg * 1.5 && lr > lb * 1.5)) fails.push(`leftWall not red-dominant: ${v.leftWall}`);
+    if (!(lr > 60 && lr > lg + 40 && lr > lb + 40)) fails.push(`leftWall not red-dominant: ${v.leftWall}`);
     const [rr, rg] = v.rightWall;
-    if (!(rg > 60 && rg > rr * 1.5)) fails.push(`rightWall not green-dominant: ${v.rightWall}`);
+    if (!(rg > 60 && rg > rr + 25)) fails.push(`rightWall not green-dominant: ${v.rightWall}`);
     for (const name of ['ceiling', 'backTop']) {
         const [r, g, b] = v[name];
         const lum = (r + g + b) / 3;
@@ -112,10 +126,13 @@ async function main() {
         if (g > r * 1.35 && g > b * 1.35) fails.push(`${name} green-polluted: ${v[name]}`);
     }
     const [br, bg] = v.bleedRed;
-    if (!(br > bg + 8)) fails.push(`no red bleed on back wall near red wall: ${v.bleedRed}`);
+    if (!(br > 60 && br > bg + 30)) fails.push(`no bounce light on shadowed red wall: ${v.bleedRed}`);
     const [gr, gg, gb] = v.bleedGreen;
-    if (!(gg > gb + 8 && gg + 5 > gr)) fails.push(`no green bleed on ceiling near green wall: ${v.bleedGreen}`);
-    if (v.seamMax > 195) fails.push(`bright light-leak seam at ceiling/back junction: lum ${v.seamMax.toFixed(0)}`);
+    if (!(gg > 60 && gg > gb + 15 && gg > gr + 15)) fails.push(`no bounce light on shadowed green wall: ${v.bleedGreen}`);
+    // A leak lights the concave junction ABOVE both flanking surfaces;
+    // legitimately it is the local minimum (corner occlusion).
+    const flankMax = Math.max(v.seamFlankCeiling, v.seamFlankWall);
+    if (v.seamMax > flankMax + 10) fails.push(`junction brighter than both flanks (leak): ${v.seamMax.toFixed(0)} vs flanks ${v.seamFlankCeiling.toFixed(0)}/${v.seamFlankWall.toFixed(0)}`);
     if (fails.length) {
         for (const m of fails) console.error('FAIL:', m);
         process.exit(1);
