@@ -43,7 +43,9 @@ struct TraceUniform {
     // [probeCursor, probeCursor + updateCount) modulo probeCount.
     probeCursor : f32,
     updateCount : f32,
-    retain0 : f32,
+    // Per-update temporal blend weight for the RT blend kernel (see
+    // DDGITraceBlend_Cs lerpHitData).
+    rtLerp : f32,
     retain1 : f32,
     retain2 : f32,
 };

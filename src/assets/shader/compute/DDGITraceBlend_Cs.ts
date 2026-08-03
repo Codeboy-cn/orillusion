@@ -36,7 +36,7 @@ struct TraceUniform {
     skyIntensity : f32,
     probeCursor : f32,
     updateCount : f32,
-    retain0 : f32,
+    rtLerp : f32,
     retain1 : f32,
     retain2 : f32,
 };
@@ -160,15 +160,28 @@ fn accumulateRay(rayID : f32, texelDir : vec3<f32>) {
 fn lerpHitData(data : CacheHitData, coord : vec2<i32>) -> CacheHitData {
     var newData : CacheHitData = data;
     var oldData = readRayHitData(coord);
-    let base = uniformData.lerpHysteresis;
+    // RT-specific base weight (TraceUniform.rtLerp), NOT the raster
+    // lerpHysteresis: 0.2 was tuned for the raster cadence of ONE probe
+    // per frame (each probe re-blends every ~probeCount frames). The
+    // traced path re-blends every probe every 1-3 frames, so the same
+    // per-update weight absorbs ~15x more per second and the per-frame
+    // random ray rotation noise reads as visible GI breathing/flicker
+    // (CDP-measured: vault p2p 4.1 at 0.2 vs 0.2 at weight 0.02).
+    let base = traceUniform.rtLerp;
 
     var colorWeight = base;
     if (oldData.color.w < 1e-5 && newData.color.w > 1e-5) {
         colorWeight = 1.0;
     } else {
+        // Change detector: boost ONLY well above the estimator noise
+        // floor. The 144-ray cosine estimate fluctuates up to ~25%
+        // per update on dim texels under the per-frame ray rotation,
+        // so the ramp starts at 40% relative change — real lighting
+        // edits (lights toggled, geometry moved) exceed that
+        // persistently and converge in a few updates, noise does not.
         let relChange = length(newData.color.rgb - oldData.color.rgb) / max(length(oldData.color.rgb), 1e-3);
-        let boost = smoothstep(0.1, 1.0, relChange);
-        colorWeight = mix(base, min(base * 4.0, 0.8), boost);
+        let boost = smoothstep(0.4, 2.0, relChange);
+        colorWeight = mix(base, 0.5, boost);
     }
 
     var depthWeight = base;

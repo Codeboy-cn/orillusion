@@ -140,6 +140,7 @@ export class DDGITracePass {
         this._traceUniform!.setFloat('skyIntensity', setting.rtSkyIntensity ?? 1.0);
         this._traceUniform!.setFloat('probeCursor', this._probeCursor);
         this._traceUniform!.setFloat('updateCount', updateCount);
+        this._traceUniform!.setFloat('rtLerp', setting.rtLerpHysteresis ?? 0.05);
         this._traceUniform!.apply();
 
         this._probeCursor = (this._probeCursor + updateCount) % probeCount;

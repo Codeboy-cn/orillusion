@@ -170,4 +170,15 @@ export type GlobalIlluminationSetting = {
      * budget so GI appears immediately. Default 0 (off).
      */
     rtRaysPerFrame?: number;
+    /**
+     * Ray-traced path per-update temporal blend weight (default 0.05).
+     * Separate from the raster lerpHysteresis (0.2): the RT path
+     * re-blends every probe every 1-3 frames instead of once per
+     * probeCount frames, so the same per-update weight would absorb
+     * far more per-update ray noise per second and the GI visibly
+     * flickers/breathes. History-empty texels still bootstrap at
+     * weight 1, and large persistent changes still fast-blend through
+     * the change detector, so reactivity is preserved.
+     */
+    rtLerpHysteresis?: number;
 };
