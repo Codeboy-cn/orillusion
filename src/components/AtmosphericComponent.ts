@@ -48,6 +48,26 @@ export class AtmosphericComponent extends SkyRenderer {
     private _onChange: boolean = true;
     private _relatedTransform: Transform;
     private _historyData: HistoryData;
+    private _useAsEnvMap: boolean = true;
+
+    /** Whether the atmospheric sky texture is also assigned as the
+     *  scene's envMap (feeding material IBL / reflections). Default true.
+     *  Set false — before start() or at runtime — to keep the visible
+     *  sky dome while scene.envMap stays untouched (engine defaultSky
+     *  unless something else set it). */
+    public get useAsEnvMap(): boolean { return this._useAsEnvMap; }
+    public set useAsEnvMap(value: boolean) {
+        if (this._useAsEnvMap == value) return;
+        this._useAsEnvMap = value;
+        const scene = this.transform?.scene3D;
+        if (!scene || !this._atmosphericScatteringSky) return;
+        if (value) {
+            scene.envMap = this._atmosphericScatteringSky;
+        } else if (scene.envMap == this._atmosphericScatteringSky) {
+            // Null restores the lazy defaultSky fallback in Scene3D.envMap.
+            scene.envMap = null;
+        }
+    }
 
     /** CPU-side setting object. Available pre-GPU: setters mutate this; the
      *  GPU sky consumes it on first render. */
@@ -110,7 +130,9 @@ export class AtmosphericComponent extends SkyRenderer {
         this._atmosphericScatteringSky = new AtmosphericScatteringSky(this._pendingSetting, ctx);
         let scene = this.transform.scene3D;
         this.map = this._atmosphericScatteringSky;
-        scene.envMap = this._atmosphericScatteringSky;
+        if (this._useAsEnvMap) {
+            scene.envMap = this._atmosphericScatteringSky;
+        }
     }
 
     /** Ensure the GPU sky exists, then run base startup. */

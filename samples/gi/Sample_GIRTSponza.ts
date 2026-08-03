@@ -61,6 +61,7 @@ class Sample_GIRTSponza {
         this.scene = new Scene3D();
         let sky = this.scene.addComponent(AtmosphericComponent);
         sky.exposure = 1.0;
+        (this as any).sky = sky;
 
         let camera = CameraUtil.createCamera3DObject(this.scene);
         camera.perspective(60, engine.aspect, 0.1, 500.0);
@@ -167,6 +168,9 @@ class Sample_GIRTSponza {
         GUIHelp.add(sunObj, 'rotationX', -180, 180, 1);
         GUIHelp.add(sunObj, 'rotationY', -180, 180, 1);
         GUIHelp.add(sun, 'enableCSM');
+        // Toggle whether the atmospheric sky doubles as scene.envMap
+        // (material IBL / reflections); off restores the engine default.
+        GUIHelp.add((this as any).sky, 'useAsEnvMap');
         GUIHelp.endFolder();
 
         // gi uniforms upload only when the volume is flagged changed, so
