@@ -250,7 +250,11 @@ export class DDGITracePass {
     private createShaders(view: View3D): void {
         const lightEntries = GlobalBindGroup.getLightEntries(view.scene);
         const modelMatrixBuffer = GlobalBindGroup.getModelMatrixBindGroup(this._ctx).matrixBufferDst;
-        const defaultSky = Engine3D.resFor(this._ctx).defaultSky;
+        // Prefer the scene's actual sky cube (e.g. the atmospheric sky) so
+        // sky-miss rays carry the radiance the camera also sees; fall back
+        // to the default environment cube.
+        const sceneSky = EntityCollect.instance.getSky(view.scene) as SkyRenderer | null;
+        const defaultSky = (sceneSky && sceneSky.map) ? sceneSky.map : Engine3D.resFor(this._ctx).defaultSky;
 
         const trace = new ComputeShader(DDGITrace_shader);
         trace.setStorageBuffer('bvhNodes', this._bvhNodesBuffer!);
