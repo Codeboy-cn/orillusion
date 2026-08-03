@@ -511,6 +511,18 @@ export let BRDF_frag: string = /*wgsl*/ `
          // distinct: env → ambient brightness on matte / shadow
          // areas; spec → highlight / mirror reflection.
          var indirectionCube: vec3<f32> = globalUniform.skyExposure * env ;
+         #if USEGI
+            // The sky env has no notion of occlusion, so indoor surfaces at
+            // grazing angles reflect the outdoor sky through walls — visible
+            // as bright light-leak seams along wall junctions. When DDGI is
+            // active, rough surfaces take their ambient specular from the
+            // probe field along the reflection vector instead (irradiance is
+            // cosine-convolved, a good match for rough GGX lobes). Smooth
+            // surfaces keep the sharp sky env — probes are too blurry there.
+            let giSpecEnv = sampleIrradianceFieldDir(reflectDir).rgb / 3.1415926 ;
+            let giSpecWeight = smoothstep(0.3, 0.7, roughness);
+            indirectionCube = mix(indirectionCube, giSpecEnv, giSpecWeight);
+         #endif
          var F_IndirectionLight = F_indirect_Function(NdotV,roughness,F0);
 
          var AB = LUT_Approx(roughness,NdotV);

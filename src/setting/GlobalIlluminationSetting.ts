@@ -119,4 +119,11 @@ export type GlobalIlluminationSetting = {
      * Set whether the probe automatically render scene
      */
     autoRenderProbe: boolean;
+    /**
+     * How many probes re-capture their cube GBuffer each frame (default 1).
+     * A full probe sweep takes ceil(probeXCount*probeYCount*probeZCount / N)
+     * frames, so raising this makes GI react to scene changes faster at the
+     * cost of N-1 extra 6-face probe renders per frame.
+     */
+    probeCountPerFrame?: number;
 };

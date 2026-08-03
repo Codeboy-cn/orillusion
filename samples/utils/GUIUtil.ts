@@ -1,6 +1,6 @@
 import { GUIHelp } from "@orillusion/debug/GUIHelp";
 import { UVMoveComponent } from "@samples/material/script/UVMoveComponent";
-import { ProfilerDraw, PassType, OutlinePost, GBufferPost, Engine3D, AtmosphericComponent, GlobalFog, Transform, BloomPost, GodRayPost, Object3D, DirectLight, PointLight, SpotLight, GlobalIlluminationComponent, View3D, Color, LitMaterial, BlendMode, MorphTargetBlender, SkinnedMeshRenderer2, AnimatorComponent, GTAOPost, TAAPost, DepthOfFieldPost, Vector3, Vector4, Vector2 } from "@orillusion/core";
+import { ProfilerDraw, PassType, OutlinePost, GBufferPost, Engine3D, AtmosphericComponent, GlobalFog, Transform, BloomPost, GodRayPost, Object3D, DirectLight, PointLight, SpotLight, GlobalIlluminationComponent, View3D, Color, LitMaterial, BlendMode, MorphTargetBlender, SkinnedMeshRenderer2, AnimatorComponent, GTAOPost, SSGIPost, TAAPost, DepthOfFieldPost, Vector3, Vector4, Vector2 } from "@orillusion/core";
 import { Graphic3D } from "@orillusion/graphic";
 
 export class GUIUtil {
@@ -797,6 +797,7 @@ export class GUIUtil {
         });
 
         GUIHelp.add(giSetting, 'autoRenderProbe');
+        GUIHelp.add(giSetting, 'probeCountPerFrame', 1, 32, 1);
         open && GUIHelp.open();
         GUIHelp.endFolder();
 
@@ -1040,6 +1041,18 @@ export class GUIUtil {
         GUIHelp.add(post, "darkFactor", 0.0, 5, 0.001);
         GUIHelp.add(post, "blendColor");
         GUIHelp.add(post, "multiBounce");
+        open && GUIHelp.open();
+        GUIHelp.endFolder();
+    }
+
+    public static renderSSGI(post: SSGIPost, open: boolean = false) {
+        GUIHelp.addFolder("SSGI");
+        GUIHelp.add(post, "enable");
+        GUIHelp.add(post, "intensity", 0.0, 10, 0.01);
+        GUIHelp.add(post, "radius", 1, 200, 1);
+        GUIHelp.add(post, "sliceCount", 2, 8, 1);
+        GUIHelp.add(post, "stepCount", 4, 16, 1);
+        GUIHelp.add(post, "hysteresis", 0, 0.99, 0.01);
         open && GUIHelp.open();
         GUIHelp.endFolder();
     }

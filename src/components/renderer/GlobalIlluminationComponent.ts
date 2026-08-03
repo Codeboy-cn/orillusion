@@ -143,9 +143,10 @@ export class GlobalIlluminationComponent extends ComponentBase {
     }
 
     public onUpdate(): void {
-        const setting = this.transform.scene3D.view.engine3D.setting;
-        setting.gi.maxDistance = setting.gi.probeSpace * 1.5;
-
+        // Do not overwrite setting.gi.maxDistance here: the shaders derive
+        // their own probeSpace * sqrt(3) bound (DDGIIrradianceVolume), and
+        // stomping the user's configured value every frame silently broke
+        // any sample that set gi.maxDistance explicitly.
         let camera = this.transform.scene3D.view.camera;
         let scale = Vector3.distance(camera.transform.worldPosition, camera.transform.targetPos) / 300;
         // console.log(scale);

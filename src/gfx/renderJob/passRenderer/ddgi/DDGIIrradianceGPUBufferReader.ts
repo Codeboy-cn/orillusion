@@ -1,6 +1,7 @@
 ﻿import { CEvent } from "../../../../event/CEvent";
 import { CEventDispatcher } from "../../../../event/CEventDispatcher";
 import { RenderTexture } from "../../../../textures/RenderTexture";
+import { fromHalfFloat } from "../../../../util/Convert";
 import { bindCtx, Context3D } from "../../../graphics/webGpu/Context3D";
 import { GIPass, GIRenderCompleteEvent } from "../../graph/passes/GIPass";
 
@@ -40,15 +41,17 @@ export class DDGIIrradianceGPUBufferReader extends CEventDispatcher {
         bindCtx(this, ctx);
         let device = this._boundCtx!.device;
 
+        // Source textures are rgba16float: 4 components x 2 bytes = 8 bytes
+        // per texel in the copy, decoded to f32 after mapping.
         this.opColorBuffer = device.createBuffer({
-            size: pixelCount * 4 * 4,
+            size: pixelCount * 4 * 2,
             usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
             mappedAtCreation: false,
         });
         this.opColorArray = new Float32Array(pixelCount * 4);
 
         this.opDepthBuffer = device.createBuffer({
-            size: pixelCount * 4 * 4,
+            size: pixelCount * 4 * 2,
             usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
             mappedAtCreation: false,
         });
@@ -78,12 +81,15 @@ export class DDGIIrradianceGPUBufferReader extends CEventDispatcher {
     private async read(srcTexture: GPUTexture, dstBuffer: GPUBuffer, output: Float32Array) {
         const gpu = this._boundCtx!.gpuContext;
         let command = gpu.beginCommandEncoder();
-        command.copyTextureToBuffer({ texture: srcTexture }, { buffer: dstBuffer, bytesPerRow: srcTexture.width * 16 }, [srcTexture.width, srcTexture.height]);
+        // rgba16float rows are width * 8 bytes (4 x f16 per texel).
+        command.copyTextureToBuffer({ texture: srcTexture }, { buffer: dstBuffer, bytesPerRow: srcTexture.width * 8 }, [srcTexture.width, srcTexture.height]);
         gpu.endCommandEncoder(command);
 
         await dstBuffer.mapAsync(GPUMapMode.READ);
-        const copyArrayBuffer = dstBuffer.getMappedRange();
-        output.set(new Float32Array(copyArrayBuffer), 0);
+        const halfData = new Uint16Array(dstBuffer.getMappedRange());
+        for (let i = 0; i < output.length; i++) {
+            output[i] = fromHalfFloat(halfData[i]);
+        }
         dstBuffer.unmap();
     }
 }

@@ -60,7 +60,7 @@ export let Irradiance_frag: string = /*wgsl*/ `
     fn debugProbe(id:i32) -> vec4<f32>{
         getIrradianceFieldSurface();
         var direction = normalize(ORI_VertexVarying.vWorldNormal);
-        direction = applyQuaternion(-direction, quaternion);
+        direction = applyQuaternion(direction, quaternion);
         var probeTextureUV : vec2<f32> = textureCoordFromDirection(normalize(direction),
             id,
             irradianceFieldSurface.irradianceTextureWidth,
@@ -68,13 +68,21 @@ export let Irradiance_frag: string = /*wgsl*/ `
             irradianceFieldSurface.irradianceProbeSideLength);
 
         var probeIrradiance: vec4<f32> = textureSampleLevel(irradianceMap, irradianceMapSampler, probeTextureUV ,0.0);
+        // The map stores gamma-encoded irradiance (pow(1/ddgiGamma) at
+        // write time); decode AND apply the same 2*PI solid-angle factor
+        // the lighting reader uses (sampleIrradianceField), so the debug
+        // spheres show the field's effective irradiance instead of a
+        // value 6.28x darker.
+        probeIrradiance = vec4<f32>(
+            pow(probeIrradiance.xyz, vec3<f32>(irradianceData.ddgiGamma)) * 6.2831853071795864,
+            probeIrradiance.w);
         return probeIrradiance;
     }
-    
+
     fn debugProbeDepth(id:i32) -> vec4<f32>{
         getIrradianceFieldSurface();
         var direction = normalize(ORI_VertexVarying.vWorldNormal);
-        direction = applyQuaternion(-direction, quaternion);
+        direction = applyQuaternion(direction, quaternion);
         var probeTextureUV : vec2<f32> = textureCoordFromDirection(normalize(direction),
             id,
             irradianceFieldSurface.irradianceTextureWidth,
@@ -168,10 +176,17 @@ export let Irradiance_frag: string = /*wgsl*/ `
 
     var<private> wpNormal:vec3<f32> ;
     fn sampleIrradianceField() -> vec4<f32>{
+        return sampleIrradianceFieldDir(ORI_ShadingInput.Normal.xyz);
+    }
+
+    // Sample the probe field for an arbitrary world-space direction.
+    // Used with the surface normal for diffuse GI, and with the
+    // reflection vector for occlusion-aware ambient specular.
+    fn sampleIrradianceFieldDir(direction0:vec3<f32>) -> vec4<f32>{
         wpNormal = ORI_ShadingInput.Normal.xyz ;
         var wo:vec3<f32> = ORI_CameraWorldDir ;
         var wsN:vec3<f32> = normalize(wpNormal);
-        var direction:vec3<f32> = wpNormal;
+        var direction:vec3<f32> = direction0;
         var worldPosition: vec3<f32> = ORI_VertexVarying.vWorldPos.xyz;
    
         getIrradianceFieldSurface();
@@ -180,9 +195,17 @@ export let Irradiance_frag: string = /*wgsl*/ `
 
         var irradiance = vec3<f32>(0.0, 0.0, 0.0);
         var accumulatedWeights = 0.0;
+        // Largest tangent-plane factor in the cage — see the gate below.
+        var tangentGate = 0.0;
         var biasedWorldPosition = (worldPosition + surfaceBias);
 
-        var baseProbeCoords: vec3<i32> = getBaseGridCoord(irradianceFieldSurface, worldPosition);
+        // Base cage from the BIASED position, matching the alpha computed
+        // below from the same point (RTXGI does likewise). Mixing unbiased
+        // base coords with biased alpha made the trilinear weights jump
+        // when the surface point crossed a probe-grid plane but the biased
+        // point had not (or vice versa) — a C0 discontinuity showing as a
+        // hard seam on surfaces crossing cage boundaries.
+        var baseProbeCoords: vec3<i32> = getBaseGridCoord(irradianceFieldSurface, biasedWorldPosition);
         
         var baseProbeWorldPosition: vec3<f32> = gridCoordToPosition(irradianceFieldSurface, baseProbeCoords) ;
         
@@ -208,7 +231,30 @@ export let Irradiance_frag: string = /*wgsl*/ `
             var weight = 1.0;
 
             var wrapShading = (dot(worldPosToAdjProbe, direction) + 1.0) * 0.5;
-            weight *= (wrapShading * wrapShading) + 0.2;
+            // Small wrap floor (reference uses 0.2). A probe behind the
+            // receiver's surface plane cannot see the receiver, but at a
+            // 16x16 oct resolution its depth texel toward a diagonal
+            // receiver straddles near-wall and far-cavity hits, giving a
+            // mean/variance too smeared for Chebyshev to reject reliably.
+            // With the bright-cavity/dark-exterior contrast (~5x) the 0.2
+            // floor let those probes brighten exterior walls into blotches;
+            // 0.02 keeps the term nonzero (corner cages stay defined) while
+            // the crush filter squashes what remains to a <1% share.
+            weight *= (wrapShading * wrapShading) + 0.02;
+
+            // Tangent-plane cull: a probe behind the receiver's surface
+            // plane has no unoccluded path to it (only through the surface
+            // itself), independent of the sample direction. Chebyshev alone
+            // cannot reject these reliably — their diagonal depth texels
+            // straddle near-wall and far-cavity hits — and once the
+            // multi-bounce loop converges, even a few percent of leaked
+            // weight from the bright cavity shows up on the dark exterior
+            // as probe-sized warm patches. The soft edge keeps in-plane
+            // probes partially usable and avoids a hard cutoff on curved
+            // or normal-mapped surfaces.
+            let tangentFactor = smoothstep(-0.05, 0.25, dot(worldPosToAdjProbe, wsN));
+            weight *= tangentFactor;
+            tangentGate = max(tangentGate, tangentFactor);
 
             var depthDir = -biasedPosToAdjProbe;//probe - world
             depthDir = applyQuaternion(depthDir, quaternion);
@@ -221,16 +267,45 @@ export let Irradiance_frag: string = /*wgsl*/ `
             var filteredDistance : vec2<f32> = 2.0 * textureSampleLevel(irradianceDepthMap, irradianceDepthMapSampler, probeTextureUV,0.0).rg ;
            
             var variance = abs((filteredDistance.x * filteredDistance.x) - filteredDistance.y);
+            // Estimator-variance floor. The stored moments only carry the
+            // spread of distances INSIDE the depth lobe; the spread caused
+            // by querying up to half an oct texel away from the texel
+            // center (where distance-vs-direction changes fastest — walls
+            // seen at grazing angles near concave corners) is not in the
+            // data. Without a floor that missing term leaves sigma at a
+            // few tenths of a unit and the occlusion branch cuts probes
+            // over a razor-thin radial band, drawing probe-radius arcs /
+            // color steps near wall-floor and wall-ceiling corners. A
+            // floor of 10% of the mean turns those cuts into ~mean/10-wide
+            // ramps while leaving genuine occlusion (dist >> mean) at
+            // effectively zero weight.
+            variance = max(variance, square1f(0.1 * filteredDistance.x));
 
             var chebyshevWeight = 1.0;
             if(biasedPosToAdjProbeDist > filteredDistance.x ) // occluded
             {
                 var v = biasedPosToAdjProbeDist - filteredDistance.x ;
                 chebyshevWeight = variance / (variance + (v * v));
-                // Increase the contrast in the weight
-                chebyshevWeight = max((chebyshevWeight * chebyshevWeight * chebyshevWeight), 0.0);
+                // NO cube-contrast here (the reference cubes this weight).
+                // Anti-leak does not need it: occluded probes far behind a
+                // wall land below the 0.05 floor either way, and the crush
+                // filter + tangent gate squash what remains. What the cube
+                // DID do was sharpen every partial-visibility transition
+                // (receiver near a probe's own recorded surface, e.g. a
+                // box face 2-3 units from a probe) from a gradual ramp
+                // into a hard, wavy iso-distance edge — the irregular
+                // dark/lit boundary lines at the bottom of objects
+                // standing near walls.
             }
 
+            // Reference DDGI visibility floor. A lit receiver sits exactly at
+            // its probes' stored mean distance, so bilinear/cone error flips
+            // the occlusion branch texel-to-texel; without a floor those
+            // false rejections crush valid probes and the normalized mix
+            // degenerates into shadow-acne blotches. The floor is safe
+            // against through-wall leaks because occluded probes have
+            // dist >> mean (accurate with a sharp depth lobe), and 0.05 is
+            // then squashed to <0.01% share by the crush filter below.
             weight *= max(0.05, chebyshevWeight);
             weight = max(0.000001, weight);
 
@@ -242,8 +317,14 @@ export let Irradiance_frag: string = /*wgsl*/ `
 
             weight *= trilinearWeight;
             
-            //worldPosToAdjProbe
-            let rotateDir = applyQuaternion(-direction, quaternion);
+            // Irradiance texels are keyed by the world-space direction the
+            // capture pass rotated through the fixed quaternion (see
+            // DDGIIrradiance_Cs.getSampleProbeUV). The depth lookup above
+            // already uses applyQuaternion(dir) with NO negation; sampling
+            // with -direction here read the opposite hemisphere (floor
+            // fetched under-floor sky, ceiling fetched above-roof sky),
+            // which killed wall color bleeding and glowed every wall seam.
+            let rotateDir = applyQuaternion(direction, quaternion);
             probeTextureUV = textureCoordFromDirection((rotateDir),
             adjacentProbeIndex,
             irradianceFieldSurface.irradianceTextureWidth,
@@ -263,11 +344,22 @@ export let Irradiance_frag: string = /*wgsl*/ `
             return vec4<f32>(0.0, 0.0, 0.0,1.0);
         }
 
-        irradiance *= (1.0 / accumulatedWeights);   
-        irradiance *= irradiance;                   
+        irradiance *= (1.0 / accumulatedWeights);
+        irradiance *= irradiance;
 
         irradiance *= 6.2831853071795864;
         irradiance *= irradianceData.indirectIntensity;
+        // Absolute cull gate. Normalizing by accumulatedWeights erases
+        // how much weight actually SURVIVED the culls: on a receiver
+        // whose whole cage is behind its tangent plane (e.g. the
+        // cavity's exterior walls) the per-probe floors leave ~1e-17
+        // sums whose weighted average still rescales to full cavity
+        // brightness. Gate on the cage's LARGEST tangent-plane factor
+        // instead of the weight sum: it is exactly 0 for such receivers
+        // yet ~1 for any legitimate one (at least one probe clearly in
+        // front of the surface), independent of how small the wrap/
+        // Chebyshev floors make the surviving weights.
+        irradiance *= tangentGate;
         return vec4<f32>(irradiance,1.0) ;
     }
 

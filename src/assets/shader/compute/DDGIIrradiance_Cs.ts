@@ -22,6 +22,9 @@ struct RayProbeBuffer{
   WPosition: vec3<f32>,
   WNormal:vec3<f32>,
   WRadiance:vec4<f32>,
+  // Sky-hit marker: positionMap.w holds ~65504 for sky pixels
+  // (SkyGBuffer pass); geometry stores its emissive.r there.
+  WPosW: f32,
 }
 
 struct CacheHitData{
@@ -127,7 +130,10 @@ fn CsMain(@builtin(global_invocation_id) globalInvocation_id : vec3<u32>)
 
    storePixelAtCoord(probeIrradianceMap, pixelCoord , vec4<f32>(lerpDataResult.color.xyz, 1.0), true);
 
-   storePixelAtCoord(probeDepthMap, pixelCoord , vec4<f32>(resultDepth.xy, 0.0, 1.0), false);
+   // Store the temporally blended depth moments (matching the color path)
+   // so the visibility test doesn't flicker with the per-frame random ray
+   // orientation.
+   storePixelAtCoord(probeDepthMap, pixelCoord , vec4<f32>(lerpDataResult.depth.xy, 0.0, 1.0), false);
 }
 
 fn lerpHitData(data:CacheHitData, coord:vec2<i32>) -> CacheHitData{
@@ -264,34 +270,72 @@ fn radianceProbeOnce(rayID:f32, tdr:vec3<f32>){
    var rayProbeBuffer = getCurrentRayHitBuffer(probeUV);
    var rayHitLocation = rayProbeBuffer.WPosition + normalize(rayProbeBuffer.WNormal) * 0.01;
 
+   // Backface heuristic (reference DDGI): a ray that hits a surface from
+   // behind (GBuffer normals are unflipped geometric normals) means this
+   // probe sits inside geometry in that direction. Such hits carry no
+   // valid radiance, and shrinking their recorded distance makes the
+   // Chebyshev visibility test reject this probe for any receiver beyond
+   // the shell — dead inside-a-mesh probes stop dragging nearby surfaces
+   // toward black.
+   // Backface test built ONLY from quantities of the fetched texel itself
+   // (hit position + hit normal), so it is immune to any direction
+   // remapping inside the cube fetch: if the hit surface's normal points
+   // away from the probe->hit vector, the probe is seeing its back side.
+   let isSky = rayProbeBuffer.WPosW > 10000.0;
+   let toHit = rayProbeBuffer.WPosition - probeLocation;
+   let isBackface = !isSky && dot(toHit, rayProbeBuffer.WNormal) > 0.0;
+
    var rayProbeDistance = length(probeLocation - rayHitLocation) ;
-   // rayProbeDistance = min(uniformData.ProbeSpace * 4.0, rayProbeDistance) ;
+   // Clamp ray misses (sky hits report ~65504 world units) to the probe
+   // grid's max visibility distance. Without this, distance^2 overflows
+   // rgba16float in the depth moments texture, the Chebyshev variance
+   // becomes inf, and the visibility test stops rejecting anything —
+   // bright outside-the-wall probes leak through every wall seam.
+   rayProbeDistance = min(uniformData.maxDistance, rayProbeDistance) ;
+   if (isBackface) {
+     rayProbeDistance = rayProbeDistance * 0.1;
+   }
 
    // if (dot(rayProbeBuffer.WNormal, rayProbeBuffer.WNormal) < epsilon) {
    //   rayProbeDistance = epsilon ;
    // }
 
-   let rid = i32(probeID) * i32(RAYS_PER_PROBE) + i32(rayID) ;
-   depthRaysBuffer[rid] = vec4<f32>(rayDirection.xyz,rayProbeDistance) ;
+   // Debug readback buffer: the slot index only depends on probe + ray,
+   // so restrict the write to one thread per probe to avoid every oct
+   // texel thread racing on the same 144 slots.
+   if(workgroup_idx == 0u && workgroup_idy == 0u){
+     let rid = i32(probeID) * i32(RAYS_PER_PROBE) + i32(rayID) ;
+     depthRaysBuffer[rid] = vec4<f32>(rayDirection.xyz,rayProbeDistance) ;
+   }
 
    // Detect misses and force depth
    var i_weight = max(0.0, dot(tdr,rayDirection) );
    var d_weight = pow(i_weight, uniformData.depthSharpness);
    
-   if (i_weight >= epsilon) {
-     //  var weightColor = pow(weight, (2.0 - uniformData.probeRoughness) * 2.0);
-      resultIrradiance += vec4(rayProbeBuffer.WRadiance.rgb, i_weight );
-     
+   if (i_weight >= epsilon && !isBackface) {
+      // Cosine-weight the radiance like the reference DDGI estimator
+      // (sum += weight * radiance, normalized by sum of weights below).
+      // Accumulating unweighted radiance flattened every texel toward the
+      // plain hemisphere average — grazing directions counted as much as
+      // the normal direction — which washed out directional GI and wall
+      // color bleeding. The depth moments below already weight correctly.
+      resultIrradiance += vec4(rayProbeBuffer.WRadiance.rgb * i_weight, i_weight );
    }
    if(d_weight>= epsilon){
-       resultDepth += vec4(rayProbeDistance * d_weight, rayProbeDistance * rayProbeDistance * d_weight, 0.0 , i_weight);
+       // Accumulate the SAME weight in .w that scales the moments —
+       // normalizing d_weight-weighted sums by the i_weight total skewed
+       // the depth mean/variance whenever depthSharpness != 1, breaking
+       // the Chebyshev visibility test for sharpened depth lobes.
+       resultDepth += vec4(rayProbeDistance * d_weight, rayProbeDistance * rayProbeDistance * d_weight, 0.0 , d_weight);
    }
 }
 
 fn getCurrentRayHitBuffer(probeUV:vec2<f32>) -> RayProbeBuffer {
   var rayProbeBuffer : RayProbeBuffer ;
   var uv:vec2<i32> = vec2<i32>(probeUV.xy * f32(PROBEMAP_SOURCESIZE - 1.0));
-  rayProbeBuffer.WPosition = textureLoad(positionMap, uv, 0).xyz ;
+  let posTexel = textureLoad(positionMap, uv, 0);
+  rayProbeBuffer.WPosition = posTexel.xyz ;
+  rayProbeBuffer.WPosW = posTexel.w ;
   rayProbeBuffer.WNormal = normalize(textureLoad(normalMap, uv, 0).xyz * 2.0 - 1.0);
   rayProbeBuffer.WRadiance = textureLoad(colorMap, uv, 0).xyzw * energyConservation;
   return rayProbeBuffer ;
@@ -335,10 +379,26 @@ fn readRayHitData( uv:vec2<i32> ) -> CacheHitData{
 }
 
 fn getCurrentDir() -> vec3<f32> {
-  var ux = f32(workgroup_idx) / OCT_SIDE_SIZE_f32;
-  var uy = f32(workgroup_idy) / OCT_SIDE_SIZE_f32;
+  // Texel -> oct direction for THIS texel's stored data. Two subtleties:
+  // 1) +0.5: anchor on the texel CENTER. Readers (Irradiance_frag /
+  //    MultiBounce) map a direction to pixel (octEncode(d)+1)*0.5*size and
+  //    bilinear-sample texel centers; corner anchoring skews every lookup
+  //    by half a texel (~11 deg at 16x16).
+  // 2) Antipode: the cube-GBuffer fetch chain (getSampleProbeUV's face
+  //    mapping + UV flip) returns the hit for the ANTIPODE of the queried
+  //    direction. Keying each texel to -octDecode(uv) makes the stored
+  //    field line up with the readers' direction convention on all three
+  //    axes. The previous octDecode(-uv) form (a 180-deg spin about the
+  //    oct pole = world Y) fixed the horizontal mirroring but left the
+  //    field flipped VERTICALLY: probes stored the floor's distance in
+  //    their upward texels and vice versa, so Chebyshev falsely occluded
+  //    receivers above a probe wherever the floor was nearer than the
+  //    receiver — a hard, wavy dark band on walls near the bottom probe
+  //    row (and E(N) of floors/ceilings sampled the opposite hemisphere).
+  var ux = (f32(workgroup_idx) + 0.5) / OCT_SIDE_SIZE_f32;
+  var uy = (f32(workgroup_idy) + 0.5) / OCT_SIDE_SIZE_f32;
   var uv = vec2<f32>(ux,uy) * 2.0 - 1.0 ;
-  var dir = octDecode(uv) ;
+  var dir = -octDecode(uv) ;
   return normalize(dir) ;
 }
 

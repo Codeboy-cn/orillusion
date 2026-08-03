@@ -10,6 +10,7 @@ import { GlobalBindGroup } from '../../../graphics/webGpu/core/bindGroups/Global
 import { Texture } from '../../../graphics/webGpu/core/texture/Texture';
 import { GPUTextureFormat } from '../../../graphics/webGpu/WebGPUConst';
 import { WebGPUDescriptorCreator } from '../../../graphics/webGpu/descriptor/WebGPUDescriptorCreator';
+import { toHalfFloat } from '../../../../util/Convert';
 import { EntityCollect } from '../../collect/EntityCollect';
 import { ProbeGBufferFrame } from '../../frame/ProbeGBufferFrame';
 import { RenderContext } from '../../passRenderer/RenderContext';
@@ -79,7 +80,15 @@ export class GIPass extends RenderGraphPass {
 
     protected readonly _passType: PassType = PassType.GI;
     protected _volume!: DDGIIrradianceVolume;
+    // One CubeCamera per probe rendered in the same frame. All probes of a
+    // frame are encoded into ONE command buffer, and each camera's global
+    // uniform is uploaded via queue.writeBuffer BEFORE that buffer executes
+    // — so re-using a single CubeCamera for several probes makes every
+    // probe render from the LAST probe's position. The pool gives each
+    // per-frame probe its own camera (and uniform buffers).
+    protected _cubeCameras: CubeCamera[] = [];
     protected _cubeCamera!: CubeCamera;
+    protected _cubeCameraCtx: any;
     protected _renderContext!: RenderContext;
     protected _rendererPassState!: RendererPassState;
     protected _probeGBufferFrame!: ProbeGBufferFrame;
@@ -102,13 +111,14 @@ export class GIPass extends RenderGraphPass {
         this.sizeH = giSetting.probeSourceTextureSize;
         this.probeNext = giSetting.probeSourceTextureSize / giSetting.probeSize;
 
-        this._cubeCamera = new CubeCamera(0.01, 5000);
-        this._cubeCamera.bindCtx(ctx);
+        this._cubeCameraCtx = ctx;
 
         const usage = GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.COPY_SRC | GPUTextureUsage.COPY_DST;
-        this.irradianceDepthMap = new RenderTexture(giSetting.octRTMaxSize, giSetting.octRTMaxSize, GPUTextureFormat.rgba16float, false, usage, 1, 0, true, true, ctx);
+        // Fixed-size DDGI resources: never autoResize with the canvas —
+        // a window resize would recreate them and wipe probe irradiance.
+        this.irradianceDepthMap = new RenderTexture(giSetting.octRTMaxSize, giSetting.octRTMaxSize, GPUTextureFormat.rgba16float, false, usage, 1, 0, true, false, ctx);
         this.irradianceDepthMap.name = 'irradianceDepthMap';
-        this.irradianceColorMap = new RenderTexture(giSetting.octRTMaxSize, giSetting.octRTMaxSize, GPUTextureFormat.rgba16float, false, usage, 1, 0, true, true, ctx);
+        this.irradianceColorMap = new RenderTexture(giSetting.octRTMaxSize, giSetting.octRTMaxSize, GPUTextureFormat.rgba16float, false, usage, 1, 0, true, false, ctx);
         this.irradianceColorMap.name = 'irradianceColorMap';
 
         this._probeGBufferFrame = new ProbeGBufferFrame(this.sizeW, this.sizeH, false, ctx);
@@ -217,15 +227,28 @@ export class GIPass extends RenderGraphPass {
         const probeList = EntityCollect.instance.getProbes(view.scene);
         this._renderContext.gpu = view.engine3D.context3D.gpuContext;
         this._renderContext.clean();
-        this._renderContext.beginOpaqueRenderPass();
+        // The probe GBuffer accumulates a few probe tiles per frame while
+        // the irradiance compute reads ALL tiles every frame, so the color
+        // attachments must load previous content. beginOpaqueRenderPass()
+        // would force attachment[0] (positionMap) to 'clear', wiping the
+        // world positions of every previously rendered probe. Depth stays
+        // 'clear': it is per-frame scratch for the probes rendered now.
+        this._renderContext.beginContinueRendererPassState('load', 'clear');
+        this._renderContext.begineNewCommand();
+        this._renderContext.beginNewEncoder();
         this._tempProbeList.length = 0;
 
-        let remainCount = Math.min(this._probeCountPerFrame, probeList.length);
+        // Per-frame probe budget from setting.gi.probeCountPerFrame
+        // (default 1). Clamp to the probes left in this sweep so the
+        // round-robin index never runs past the list.
+        const perFrame = Math.max(1, Math.floor(view.engine3D.setting.gi.probeCountPerFrame ?? this._probeCountPerFrame));
+        let remainCount = Math.min(perFrame, probeList.length - this._nextProbeIndex);
         this._probeRenderResult.count = remainCount;
 
+        let slot = 0;
         while (remainCount > 0) {
             const probe = probeList[this._nextProbeIndex];
-            this._updateProbe(view, probe, this._renderContext.encoder);
+            this._updateProbe(view, probe, this._renderContext.encoder, this._getCubeCamera(slot++));
             remainCount--;
             this._nextProbeIndex++;
             if (probe.drawCallFrame < 3) this._tempProbeList.push(probe);
@@ -237,7 +260,7 @@ export class GIPass extends RenderGraphPass {
 
         const isComplete = this._nextProbeIndex >= probeList.length;
         if (isComplete && this._isRenderCloudGI) {
-            this._updateProbe(view, probeList[0], this._renderContext.encoder);
+            this._updateProbe(view, probeList[0], this._renderContext.encoder, this._getCubeCamera(slot++));
         }
         this._renderContext.endRenderPass();
 
@@ -248,11 +271,23 @@ export class GIPass extends RenderGraphPass {
         }
     }
 
-    protected _updateProbe(view: View3D, probe: Probe, encoder: GPURenderPassEncoder): void {
+    /** Get (or lazily create) the CubeCamera for the given per-frame probe slot. */
+    protected _getCubeCamera(slot: number): CubeCamera {
+        let cam = this._cubeCameras[slot];
+        if (!cam) {
+            cam = new CubeCamera(0.01, 5000);
+            cam.bindCtx(this._cubeCameraCtx);
+            this._cubeCameras[slot] = cam;
+        }
+        return cam;
+    }
+
+    protected _updateProbe(view: View3D, probe: Probe, encoder: GPURenderPassEncoder, cubeCamera: CubeCamera): void {
         const lights = EntityCollect.instance.getLights(view.scene);
         const cubeSize = this._volume.setting.probeSize;
         probe.drawCallFrame += 1;
 
+        this._cubeCamera = cubeCamera;
         this._cubeCamera.x = probe.x;
         this._cubeCamera.y = probe.y;
         this._cubeCamera.z = probe.z;
@@ -347,14 +382,20 @@ export class GIPass extends RenderGraphPass {
     protected _writeToTexture(texture: RenderTexture, array: Float32Array, width: number, height: number): void {
         const ctx = texture._boundCtx!;
         const device = ctx.device;
+        // Target textures are rgba16float: encode the f32 input to packed
+        // f16 (8 bytes per texel) before the buffer->texture copy.
+        const halfData = new Uint16Array(array.length);
+        for (let i = 0; i < array.length; i++) {
+            halfData[i] = toHalfFloat(array[i]);
+        }
         const buffer = device.createBuffer({
-            size: array.byteLength,
+            size: halfData.byteLength,
             usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC,
         });
-        device.queue.writeBuffer(buffer, 0, array as BufferSource);
+        device.queue.writeBuffer(buffer, 0, halfData as BufferSource);
         const commandEncoder = ctx.gpuContext.beginCommandEncoder();
         commandEncoder.copyBufferToTexture(
-            { buffer, bytesPerRow: width * 16 },
+            { buffer, bytesPerRow: width * 8 },
             { texture: texture.getGPUTexture() },
             { width, height, depthOrArrayLayers: 1 },
         );
@@ -362,6 +403,7 @@ export class GIPass extends RenderGraphPass {
     }
 
     public destroy(): void {
-        this._cubeCamera?.destroy();
+        for (const cam of this._cubeCameras) cam?.destroy();
+        this._cubeCameras.length = 0;
     }
 }

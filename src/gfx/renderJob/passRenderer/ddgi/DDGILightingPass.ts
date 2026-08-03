@@ -22,7 +22,7 @@ export class DDGILightingPass {
     public lightingTexture: RenderTexture;
     constructor(ctx?: Context3D) {
         let giSetting = ctx!.engine!.setting.gi;
-        this.lightingTexture = new RenderTexture(giSetting.probeSourceTextureSize, giSetting.probeSourceTextureSize, GPUTextureFormat.rgba16float, false, GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.STORAGE_BINDING, 1, 0, true, true, ctx);
+        this.lightingTexture = new RenderTexture(giSetting.probeSourceTextureSize, giSetting.probeSourceTextureSize, GPUTextureFormat.rgba16float, false, GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.COPY_SRC, 1, 0, true, false, ctx);
     }
 
     private create(view: View3D) {

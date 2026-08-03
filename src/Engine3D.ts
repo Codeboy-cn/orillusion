@@ -169,6 +169,7 @@ export class Engine3D {
                     outline: { enable: false, strength: 1, groupCount: 4, outlinePixel: 2, fadeOutlinePixel: 4, textureScale: 1, useAddMode: false, debug: true },
                     taa: { enable: false, jitterSeedCount: 8, blendFactor: 0.1, sharpFactor: 0.6, sharpPreBlurFactor: 0.5, temporalJitterScale: 0.13, debug: true },
                     gtao: { enable: false, darkFactor: 1.0, maxDistance: 5.0, maxPixel: 50.0, rayMarchSegment: 6, multiBounce: false, usePosFloat32: true, blendColor: true, debug: true },
+                    ssgi: { enable: false, intensity: 1.0, radius: 24, sliceCount: 4, stepCount: 8, hysteresis: 0.9 },
                     ssr: { enable: false, pixelRatio: 1, fadeEdgeRatio: 0.2, rayMarchRatio: 0.5, fadeDistanceMin: 600, fadeDistanceMax: 2000, roughnessThreshold: 0.5, powDotRN: 0.2, mixThreshold: 0.1, debug: true },
                     fxaa: { enable: false },
                     skyline: {
@@ -208,9 +209,27 @@ export class Engine3D {
             gi: {
                 enable: false, offsetX: 0, offsetY: 0, offsetZ: 0, probeSpace: 64, probeXCount: 4, probeYCount: 2,
                 probeZCount: 4, probeSize: 32, probeSourceTextureSize: 2048, octRTMaxSize: 2048, octRTSideSize: 16,
-                maxDistance: 64 * 1.73, normalBias: 0.25, depthSharpness: 1, hysteresis: 0.98, lerpHysteresis: 0.01,
+                // lerpHysteresis: per-frame temporal blend weight of the DDGI
+                // irradiance. 0.2 reaches ~95% convergence in ~14 probe
+                // updates — fast enough that lighting changes settle in
+                // seconds even at probeCountPerFrame 1 (rays are already
+                // cosine-weighted over 144 dirs, so the extra per-update
+                // noise stays below the visible threshold).
+                // depthSharpness: exponent of the depth-moment lobe. It must
+                // be much sharper than the cosine irradiance lobe (at 1 the
+                // stored mean visible distance becomes a hemisphere-wide
+                // average and Chebyshev stops rejecting occluded probes),
+                // BUT the lobe must stay at least as wide as one oct depth
+                // texel (~22 deg at octRTSideSize 16): the reader queries
+                // directions up to half a texel from the stored center, and
+                // a narrower lobe leaves that direction-quantization spread
+                // out of the variance — Chebyshev then razor-cuts probes at
+                // radial bands, drawing arcs / color steps near concave
+                // corners. 18 gives a ~32 deg lobe, matched to 16x16 tiles.
+                maxDistance: 64 * 1.73, normalBias: 0.25, depthSharpness: 18, hysteresis: 0.98, lerpHysteresis: 0.2,
                 irradianceChebyshevBias: 0.01, rayNumber: 144, irradianceDistanceBias: 32, indirectIntensity: 1.0,
                 ddgiGamma: 2.2, bounceIntensity: 0.025, probeRoughness: 1, realTimeGI: false, debug: false, autoRenderProbe: false,
+                probeCountPerFrame: 1,
             },
             sky: { type: 'HDRSKY', sky: null, skyExposure: 1.0, defaultFar: 65536, defaultNear: 1 },
             light: { maxLight: 4096 },

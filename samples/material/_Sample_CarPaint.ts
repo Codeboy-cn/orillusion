@@ -80,7 +80,7 @@ export class Sample_CarPaint {
 		// GUIUtil.renderDirLight(this.lightObj.getComponent(DirectLight));
 		GUIUtil.renderProfiler(ProfilerUtil.viewCount(this.view));
 		GUIUtil.renderShadowSetting(this.engine);
-		let f = GUIHelp.addFolder("SSGI");
+		let f = GUIHelp.addFolder("Exposure");
 		f.open();
 		GUIHelp.add(this.engine.setting.sky, 'skyExposure', 0.0, 5.0, 0.0001);
 		GUIHelp.add(this.engine.setting.render, 'hdrExposure', 0.0, 5.0, 0.0001);
