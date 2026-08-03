@@ -126,4 +126,19 @@ export type GlobalIlluminationSetting = {
      * cost of N-1 extra 6-face probe renders per frame.
      */
     probeCountPerFrame?: number;
+    /**
+     * Use the software-ray-traced probe update path (BVH compute tracing)
+     * instead of the cube-capture GBuffer path. Updates EVERY probe with
+     * `rayNumber` rays each frame, needs no shadow maps for the probe
+     * lighting (shadow rays are traced against the same BVH), and reacts
+     * to light changes immediately. The BVH rebuilds automatically when
+     * meshes are added or removed; transform-only changes are picked up
+     * on the next rebuild.
+     */
+    rayTracing?: boolean;
+    /**
+     * Sky radiance multiplier for rays that miss the scene on the
+     * ray-traced path (samples the environment cube). Default 1.
+     */
+    rtSkyIntensity?: number;
 };

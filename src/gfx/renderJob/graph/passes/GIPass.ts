@@ -18,6 +18,7 @@ import { DDGIIrradianceComputePass } from '../../passRenderer/ddgi/DDGIIrradianc
 import { DDGIIrradianceVolume } from '../../passRenderer/ddgi/DDGIIrradianceVolume';
 import { DDGILightingPass } from '../../passRenderer/ddgi/DDGILightingPass';
 import { DDGIMultiBouncePass } from '../../passRenderer/ddgi/DDGIMultiBouncePass';
+import { DDGITracePass } from '../../passRenderer/ddgi/DDGITracePass';
 import { Probe } from '../../passRenderer/ddgi/Probe';
 import { PassType } from '../../passRenderer/state/PassType';
 import { RendererPassState } from '../../passRenderer/state/RendererPassState';
@@ -77,6 +78,8 @@ export class GIPass extends RenderGraphPass {
     public lightingPass: DDGILightingPass | null = null;
     public bouncePass: DDGIMultiBouncePass | null = null;
     public irradianceComputePass: DDGIIrradianceComputePass | null = null;
+    /** Software-ray-traced probe update path (setting.gi.rayTracing). */
+    public tracePass: DDGITracePass | null = null;
 
     protected readonly _passType: PassType = PassType.GI;
     protected _volume!: DDGIIrradianceVolume;
@@ -120,6 +123,16 @@ export class GIPass extends RenderGraphPass {
         this.irradianceDepthMap.name = 'irradianceDepthMap';
         this.irradianceColorMap = new RenderTexture(giSetting.octRTMaxSize, giSetting.octRTMaxSize, GPUTextureFormat.rgba16float, false, usage, 1, 0, true, false, ctx);
         this.irradianceColorMap.name = 'irradianceColorMap';
+
+        if (giSetting.rayTracing) {
+            // Software-ray-traced path: no probe cube captures, no shadow
+            // map dependency (shadow rays run against the BVH), and no
+            // lighting / bounce / raster-irradiance child passes.
+            this.tracePass = new DDGITracePass(ctx, this._volume, this.irradianceColorMap, this.irradianceDepthMap);
+            b.write<RenderTexture>(DDGI_IRRADIANCE_MAP, () => this.irradianceColorMap);
+            b.write<RenderTexture>(DDGI_DEPTH_MAP, () => this.irradianceDepthMap);
+            return;
+        }
 
         this._probeGBufferFrame = new ProbeGBufferFrame(this.sizeW, this.sizeH, false, ctx);
         this.positionMap = this._probeGBufferFrame.renderTargets[0];
@@ -167,6 +180,13 @@ export class GIPass extends RenderGraphPass {
         this._volume.updateOrientation();
         this._volume.isVolumeFrameChange = false;
         this._volume.uploadBuffer();
+
+        if (this.tracePass) {
+            // Ray-traced path updates EVERY probe each frame; the raster
+            // round-robin, lighting and bounce passes do not apply.
+            this.tracePass.compute(view);
+            return;
+        }
 
         this._renderProbes(view);
         const probeBeRendered = this._probeRenderResult.count > 0;
