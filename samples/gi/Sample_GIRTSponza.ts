@@ -131,11 +131,12 @@ class Sample_GIRTSponza {
         }
     }
 
-    /** Per-material IBL-diffuse scale. envIntensity only scales the IBL
-     *  diffuse term (BRDF_frag), so zeroing it suppresses ambient env
-     *  light while the atmospheric sky stays visible — skyExposure would
-     *  black out the sky dome too. */
-    private setEnvDiffuse(root: Object3D, v: number) {
+    /** Per-material scale of the WHOLE indirect diffuse term. With GI on,
+     *  fragData.Irradiance comes from the probe field (BxDF_frag USEGI),
+     *  and indirectionDiffuse_Function multiplies it by envIntensity — so
+     *  0 kills the GI diffuse too, NOT just ambient env light. Kept at 1;
+     *  the slider exists for debugging the indirect term as a whole. */
+    private setIndirectDiffuse(root: Object3D, v: number) {
         for (const mr of root.getComponents(MeshRenderer)) {
             for (const mat of mr.materials ?? []) {
                 mat?.setUniformFloat('envIntensity', v);
@@ -146,8 +147,6 @@ class Sample_GIRTSponza {
     async initScene() {
         let sponza = await this.engine.res.loadGltf('gltfs/glb/Sponza.glb') as Object3D;
         this.scene.addChild(sponza);
-        // Suppress ambient env light: the probe field owns the indirect term.
-        this.setEnvDiffuse(sponza, 0);
         (this as any).sponza = sponza;
 
         // Sun angled through the atrium roof opening so the courtyard
@@ -181,9 +180,14 @@ class Sample_GIRTSponza {
         GUIHelp.add(this.engine.setting.gi, 'indirectIntensity', 0, 5, 0.05).onChange(() => volume.setVolumeDataChange());
         GUIHelp.add(this.engine.setting.gi, 'bounceIntensity', 0, 1, 0.01).onChange(() => volume.setVolumeDataChange());
         GUIHelp.add(this.engine.setting.gi, 'rtProbeCountPerFrame', 0, 1024, 32);
-        // Ambient env-light (IBL diffuse) scale over the whole scene.
-        const env = { envDiffuse: 0 };
-        GUIHelp.add(env, 'envDiffuse', 0, 1, 0.05).onChange((v: number) => this.setEnvDiffuse(sponza, v));
+        // With GI on, sky light only enters through the probes (trace-kernel
+        // sky-miss rays); rtSkyIntensity is the live knob to suppress it.
+        // The trace pass re-uploads it every frame, no volume poke needed.
+        GUIHelp.add(this.engine.setting.gi, 'rtSkyIntensity', 0, 4, 0.05);
+        // Whole indirect-diffuse scale (GI + env fallback), per material —
+        // NOT an "ambient env only" switch; see setIndirectDiffuse.
+        const indirect = { indirectDiffuse: 1 };
+        GUIHelp.add(indirect, 'indirectDiffuse', 0, 1, 0.05).onChange((v: number) => this.setIndirectDiffuse(sponza, v));
         GUIHelp.endFolder();
 
         // Grid density: probes along the longest scene axis. Baked into
