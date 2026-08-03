@@ -145,11 +145,39 @@ fn accumulateRay(rayID : f32, texelDir : vec3<f32>) {
     }
 }
 
+// Temporal blend with two speedball-style upgrades over the constant-
+// coefficient raster kernel:
+// 1. History bootstrap: a texel whose stored history is empty (w == 0,
+//    the buffers clear to zero) accepts the FIRST contributing update
+//    outright instead of crawling up from black at lerpHysteresis per
+//    update — this is what makes the first GI frame appear at full
+//    brightness (noisy) instead of at 20%.
+// 2. Change-adaptive color weight: large relative changes (light
+//    toggled, geometry moved) blend in faster than the steady-state
+//    coefficient, small ones keep the stable base weight. Depth moments
+//    stay at the base weight — visibility stability is worth more than
+//    reaction speed there.
 fn lerpHitData(data : CacheHitData, coord : vec2<i32>) -> CacheHitData {
     var newData : CacheHitData = data;
     var oldData = readRayHitData(coord);
-    newData.color = mix(oldData.color, newData.color, uniformData.lerpHysteresis);
-    newData.depth = mix(oldData.depth, newData.depth, uniformData.lerpHysteresis);
+    let base = uniformData.lerpHysteresis;
+
+    var colorWeight = base;
+    if (oldData.color.w < 1e-5 && newData.color.w > 1e-5) {
+        colorWeight = 1.0;
+    } else {
+        let relChange = length(newData.color.rgb - oldData.color.rgb) / max(length(oldData.color.rgb), 1e-3);
+        let boost = smoothstep(0.1, 1.0, relChange);
+        colorWeight = mix(base, min(base * 4.0, 0.8), boost);
+    }
+
+    var depthWeight = base;
+    if (oldData.depth.w < 1e-5 && newData.depth.w > 1e-5) {
+        depthWeight = 1.0;
+    }
+
+    newData.color = mix(oldData.color, newData.color, colorWeight);
+    newData.depth = mix(oldData.depth, newData.depth, depthWeight);
     return newData;
 }
 

@@ -1,4 +1,7 @@
 import { Engine3D } from '../../../../Engine3D';
+import { Time } from '../../../../util/Time';
+import { BitmapTexture2D } from '../../../../textures/BitmapTexture2D';
+import { BitmapTexture2DArray } from '../../../../textures/BitmapTexture2DArray';
 import { MeshRenderer } from '../../../../components/renderer/MeshRenderer';
 import { SkyRenderer } from '../../../../components/renderer/SkyRenderer';
 import { GIProbeMaterial } from '../../../../materials/GIProbeMaterial';
@@ -56,6 +59,20 @@ export class DDGITracePass {
     private _dirty = true;
     private _rayHitBufferFloats = 0;
     private _probeCursor = 0;
+    // First sweep after a (re)build ignores the per-frame budget so every
+    // probe gets data immediately — paired with the blend kernel's
+    // history bootstrap this makes GI appear at full brightness on the
+    // first traced frame instead of fading in over a full sweep.
+    private _fullSweepPending = true;
+    // Frame-time driven budget scale (speedball-style throttle): shrinks
+    // when the frame runs long, recovers when there is headroom.
+    private _budgetScale = 1;
+    // Per-material albedo textures downscaled into a 2d-array (layer =
+    // material index) so hit shading bounces COLORED light. Built async
+    // after each rebuild; the trace shader is (re)created once it lands.
+    private _albedoAtlas: BitmapTexture2DArray | null = null;
+    private _atlasBuildId = 0;
+    private _needShaderRecreate = false;
 
     /** True once the auto-fit grid has been computed and written back
      *  into setting.gi (probe counts / spacing / offsets). Debug tooling
@@ -85,6 +102,10 @@ export class DDGITracePass {
             // run one frame against stale (possibly zero-count) uniforms.
             this._volume.uploadBuffer();
         }
+        if (this._needShaderRecreate && this._albedoAtlas) {
+            this._needShaderRecreate = false;
+            this.createShaders(view);
+        }
         if (!this._traceShader || !this._blendShader || this._nodeCount === 0) return;
 
         const setting = this._volume.setting;
@@ -92,9 +113,26 @@ export class DDGITracePass {
         if (probeCount === 0) return;
         const lights = EntityCollect.instance.getLights(view.scene);
 
-        // Round-robin window: rtProbeCountPerFrame 0 = every probe each frame.
-        const budget = Math.floor(setting.rtProbeCountPerFrame ?? 0);
-        const updateCount = budget > 0 ? Math.min(budget, probeCount) : probeCount;
+        // Budget: rtRaysPerFrame (ray budget / frame, speedball-style)
+        // wins over rtProbeCountPerFrame (probe budget / frame); both 0 =
+        // every probe each frame. The frame-time throttle scales whichever
+        // budget is active; the unbudgeted mode stays untouched so the
+        // Cornell bench keeps its all-probes behavior.
+        const rayBudget = Math.floor(setting.rtRaysPerFrame ?? 0);
+        const probeBudget = Math.floor(setting.rtProbeCountPerFrame ?? 0);
+        let budget = rayBudget > 0 ? Math.max(1, Math.floor(rayBudget / setting.rayNumber)) : probeBudget;
+        if (budget > 0) {
+            const dt = Time.delta;
+            if (dt > 22) this._budgetScale = Math.max(0.1, this._budgetScale * 0.85);
+            else if (dt < 13) this._budgetScale = Math.min(1, this._budgetScale * 1.05);
+            budget = Math.max(1, Math.floor(budget * this._budgetScale));
+        }
+        let updateCount = budget > 0 ? Math.min(budget, probeCount) : probeCount;
+        if (this._fullSweepPending) {
+            this._fullSweepPending = false;
+            this._probeCursor = 0;
+            updateCount = probeCount;
+        }
         if (this._probeCursor >= probeCount) this._probeCursor = 0;
 
         this._traceUniform!.setFloat('nodeCount', this._nodeCount);
@@ -181,13 +219,16 @@ export class DDGITracePass {
 
         this._volume.setVolumeDataChange();
         this._probeCursor = 0;
+        this._fullSweepPending = true;
         this.autoFitDone = true;
     }
 
     private rebuild(view: View3D): void {
         const triPositions: number[] = [];
+        const triUVs: number[] = [];
         const triMaterialIds: number[] = [];
         const materials: number[] = [];
+        const albedoSources: (CanvasImageSource | null)[] = [];
         let minX = Infinity, minY = Infinity, minZ = Infinity;
         let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
 
@@ -196,11 +237,14 @@ export class DDGITracePass {
             const posAttr = geometry.getAttribute(VertexAttributeName.position);
             const indexAttr = geometry.getAttribute(VertexAttributeName.indices);
             if (!posAttr || !posAttr.data || posAttr.data.length < 9) return;
+            const uvAttr = geometry.getAttribute(VertexAttributeName.uv);
+            const uvData = (uvAttr && uvAttr.data && uvAttr.data.length >= 2) ? (uvAttr.data as Float32Array) : null;
 
             const matIndex = materials.length / 8;
             let albedoR = 0.7, albedoG = 0.7, albedoB = 0.7;
             let emissiveR = 0, emissiveG = 0, emissiveB = 0;
             const material = renderer.material as any;
+            let albedoSource: CanvasImageSource | null = null;
             try {
                 const baseColor = material?.baseColor;
                 if (baseColor) { albedoR = baseColor.r; albedoG = baseColor.g; albedoB = baseColor.b; }
@@ -211,10 +255,12 @@ export class DDGITracePass {
                     emissiveG = emissiveColor.g * emissiveIntensity;
                     emissiveB = emissiveColor.b * emissiveIntensity;
                 }
+                albedoSource = material?.baseMap?.source ?? null;
             } catch (e) {
                 // Materials without these uniforms fall back to gray.
             }
             materials.push(albedoR, albedoG, albedoB, 0, emissiveR, emissiveG, emissiveB, 0);
+            albedoSources.push(albedoSource);
 
             const m = renderer.transform.worldMatrix.rawData;
             const pos = posAttr.data as Float32Array;
@@ -228,6 +274,11 @@ export class DDGITracePass {
                 if (wy < minY) minY = wy; if (wy > maxY) maxY = wy;
                 if (wz < minZ) minZ = wz; if (wz > maxZ) maxZ = wz;
                 triPositions.push(wx, wy, wz);
+                if (uvData) {
+                    triUVs.push(uvData[vi * 2] || 0, uvData[vi * 2 + 1] || 0);
+                } else {
+                    triUVs.push(0, 0);
+                }
             };
 
             if (indexAttr && indexAttr.data && indexAttr.data.length >= 3) {
@@ -273,16 +324,22 @@ export class DDGITracePass {
             nodeData[dst + 8] = nodes[src + 8];
         }
 
-        // Triangles reordered into BVH leaf order: 3 vec4 per triangle,
-        // material index in [0].w.
-        const triData = new Float32Array(triCount * 12);
+        // Triangles reordered into BVH leaf order: 4 vec4 per triangle —
+        // [0]=v0.xyz,matId  [1]=v1.xyz,uv0.x  [2]=v2.xyz,uv0.y  [3]=uv1.xy,uv2.xy
+        const triData = new Float32Array(triCount * 16);
         for (let i = 0; i < triCount; i++) {
-            const src = triOrder[i] * 9;
-            const dst = i * 12;
+            const tri = triOrder[i];
+            const src = tri * 9;
+            const uvSrc = tri * 6;
+            const dst = i * 16;
             triData[dst] = soup[src]; triData[dst + 1] = soup[src + 1]; triData[dst + 2] = soup[src + 2];
-            triData[dst + 3] = triMaterialIds[triOrder[i]];
+            triData[dst + 3] = triMaterialIds[tri];
             triData[dst + 4] = soup[src + 3]; triData[dst + 5] = soup[src + 4]; triData[dst + 6] = soup[src + 5];
+            triData[dst + 7] = triUVs[uvSrc];
             triData[dst + 8] = soup[src + 6]; triData[dst + 9] = soup[src + 7]; triData[dst + 10] = soup[src + 8];
+            triData[dst + 11] = triUVs[uvSrc + 1];
+            triData[dst + 12] = triUVs[uvSrc + 2]; triData[dst + 13] = triUVs[uvSrc + 3];
+            triData[dst + 14] = triUVs[uvSrc + 4]; triData[dst + 15] = triUVs[uvSrc + 5];
         }
 
         const materialData = new Float32Array(materials);
@@ -307,9 +364,51 @@ export class DDGITracePass {
             this._traceUniform = new UniformGPUBuffer(8);
         }
 
+        // Kick the async albedo-atlas build. Until the FIRST atlas lands
+        // the trace shader cannot exist (it binds the atlas), so the first
+        // dispatch waits ~a frame for the downscale; later rebuilds keep
+        // tracing with the previous atlas and swap when ready.
+        void this.buildAlbedoAtlas(albedoSources);
+
         // Bind-group layouts cache buffer objects, so the shaders are
         // recreated whenever the BVH buffers are (rebuilds are rare).
-        this.createShaders(view);
+        if (this._albedoAtlas) {
+            this.createShaders(view);
+        } else {
+            this._needShaderRecreate = true;
+        }
+    }
+
+    /** Downscale each material's albedo texture into one 128x128 layer of
+     *  a texture_2d_array (white for untextured materials, sRGB so the
+     *  sampler decodes to linear like the raster path's baseMap). */
+    private async buildAlbedoAtlas(sources: (CanvasImageSource | null)[]): Promise<void> {
+        const buildId = ++this._atlasBuildId;
+        const SIZE = 128;
+        const layerCount = Math.max(1, Math.min(sources.length, 256));
+        const bitmaps: BitmapTexture2D[] = [];
+        for (let i = 0; i < layerCount; i++) {
+            const canvas = new OffscreenCanvas(SIZE, SIZE);
+            const c2d = canvas.getContext('2d')!;
+            c2d.fillStyle = '#ffffff';
+            c2d.fillRect(0, 0, SIZE, SIZE);
+            const src = sources[i];
+            if (src) {
+                try { c2d.drawImage(src, 0, 0, SIZE, SIZE); } catch (e) { /* decode-locked sources stay white */ }
+            }
+            // .source = OffscreenCanvas does NOT upload (known gap in
+            // BitmapTexture2D); go through an ImageBitmap, which does.
+            const bmp = await createImageBitmap(canvas);
+            if (buildId !== this._atlasBuildId) return;
+            const tex = new BitmapTexture2D(false, this._ctx, 'srgb');
+            tex.source = bmp;
+            bitmaps.push(tex);
+        }
+        if (buildId !== this._atlasBuildId) return;
+        const atlas = new BitmapTexture2DArray(SIZE, SIZE, layerCount, this._ctx, 0, 'srgb');
+        atlas.setTextures(bitmaps);
+        this._albedoAtlas = atlas;
+        this._needShaderRecreate = true;
     }
 
     private createShaders(view: View3D): void {
@@ -330,6 +429,7 @@ export class DDGITracePass {
         trace.setUniformBuffer('traceUniform', this._traceUniform!);
         trace.setSamplerTexture('irradianceMap', this._irradianceColorMap);
         trace.setSamplerTexture('prefilterMap', defaultSky);
+        trace.setSamplerTexture('albedoAtlas', this._albedoAtlas!);
         trace.setStorageBuffer('models', modelMatrixBuffer);
         trace.setStorageBuffer('lightBuffer', lightEntries.storageGPUBuffer);
         this._traceShader = trace;

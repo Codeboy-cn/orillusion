@@ -35,10 +35,11 @@ class Sample_GIRTSponza {
                     probeYCount: 0,
                     probeZCount: 0,
                     rtDivisions: divisions,
-                    // Round-robin budget: 256 probes/frame. At divisions 16
-                    // Sponza fits ~17x8x11 = ~1500 probes, so a full sweep
-                    // takes ~6 frames at ~37k rays/frame.
-                    rtProbeCountPerFrame: 256,
+                    // speedball-style ray budget: 98304 rays/frame = 682
+                    // probes/frame at 144 rays, auto-throttled on slow
+                    // frames. The first sweep after (re)build always covers
+                    // ALL probes, so GI appears at full brightness at once.
+                    rtRaysPerFrame: 98304,
                     indirectIntensity: 1,
                     bounceIntensity: 1.0,
                     normalBias: 0.25,
@@ -60,7 +61,7 @@ class Sample_GIRTSponza {
 
         this.scene = new Scene3D();
         let sky = this.scene.addComponent(AtmosphericComponent);
-        sky.exposure = 1.0;
+        sky.useAsEnvMap = false;
         (this as any).sky = sky;
 
         let camera = CameraUtil.createCamera3DObject(this.scene);
@@ -69,7 +70,7 @@ class Sample_GIRTSponza {
         // roll 90 puts the camera on +X inside the atrium looking down the
         // long axis (roll -90 lands inside the west wall).
         let ctrl = camera.object3D.addComponent(HoverCameraController);
-        ctrl.setCamera(90, -5, 10, new Vector3(0, 4, 0));
+        ctrl.setCamera(75, -5, 10, new Vector3(0, 4, 0));
 
         let view = new View3D();
         view.scene = this.scene;
@@ -183,7 +184,7 @@ class Sample_GIRTSponza {
         });
         GUIHelp.add(this.engine.setting.gi, 'indirectIntensity', 0, 5, 0.05).onChange(() => volume.setVolumeDataChange());
         GUIHelp.add(this.engine.setting.gi, 'bounceIntensity', 0, 1, 0.01).onChange(() => volume.setVolumeDataChange());
-        GUIHelp.add(this.engine.setting.gi, 'rtProbeCountPerFrame', 0, 1024, 32);
+        GUIHelp.add(this.engine.setting.gi, 'rtRaysPerFrame', 0, 262144, 4096);
         // With GI on, sky light only enters through the probes (trace-kernel
         // sky-miss rays); rtSkyIntensity is the live knob to suppress it.
         // The trace pass re-uploads it every frame, no volume poke needed.

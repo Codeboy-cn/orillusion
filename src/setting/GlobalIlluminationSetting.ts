@@ -161,4 +161,13 @@ export type GlobalIlluminationSetting = {
      * frame, so a full sweep takes ceil(probeCount / N) frames.
      */
     rtProbeCountPerFrame?: number;
+    /**
+     * Ray-traced path TOTAL ray budget per frame (speedball-style).
+     * When > 0 it takes precedence over rtProbeCountPerFrame: the pass
+     * updates floor(rtRaysPerFrame / rayNumber) probes per frame,
+     * auto-throttled down when the frame runs long. The first sweep
+     * after a BVH (re)build always covers every probe regardless of
+     * budget so GI appears immediately. Default 0 (off).
+     */
+    rtRaysPerFrame?: number;
 };

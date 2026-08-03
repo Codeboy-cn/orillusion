@@ -59,6 +59,11 @@ struct TraceUniform {
 @group(1) @binding(1) var irradianceMap : texture_2d<f32>;
 @group(1) @binding(2) var prefilterMapSampler : sampler;
 @group(1) @binding(3) var prefilterMap : texture_cube<f32>;
+// Per-material albedo textures downscaled into one array (layer = material
+// index, clamped). Layers are WHITE for untextured materials so the
+// baseColor factor passes through unchanged.
+@group(1) @binding(4) var albedoAtlasSampler : sampler;
+@group(1) @binding(5) var albedoAtlas : texture_2d_array<f32>;
 
 @group(2) @binding(0) var<storage, read> models : Uniforms;
 @group(2) @binding(1) var<storage, read> lightBuffer : array<LightData>;
@@ -72,14 +77,21 @@ var<private> quaternion : vec4<f32> = vec4<f32>(0.0, -0.7071067811865475, 0.7071
 struct HitInfo {
     t : f32,
     triIndex : i32,
+    // Barycentrics of the hit (hit = (1-u-v)*v0 + u*v1 + v*v2), used for
+    // the albedo-texture UV lookup.
+    u : f32,
+    v : f32,
 };
 
 // Node stride is 3 vec4s (12 floats), see BVHBuilder.ts:
 //   [0].xyz bounds min, [0].w skip link
 //   [1].xyz bounds max, [1].w triangle offset (leaf) / -1 (interior)
 //   [2].x  triangle count
-// Triangle stride is 3 vec4s: v0/v1/v2 in xyz, with the material index
-// stored in [0].w. Triangles are pre-sorted in BVH leaf order.
+// Triangle stride is 4 vec4s, pre-sorted in BVH leaf order:
+//   [0] = v0.xyz, material index
+//   [1] = v1.xyz, uv0.x
+//   [2] = v2.xyz, uv0.y
+//   [3] = uv1.xy, uv2.xy
 fn traverseBVH(rayOrigin : vec3<f32>, rayDir : vec3<f32>, tMax : f32, anyHit : bool) -> HitInfo {
     var hit : HitInfo;
     hit.t = tMax;
@@ -106,10 +118,12 @@ fn traverseBVH(rayOrigin : vec3<f32>, rayDir : vec3<f32>, tMax : f32, anyHit : b
             let triCount = i32(bvhNodes[n * 3 + 2].x);
             for (var i : i32 = 0; i < triCount; i = i + 1) {
                 let tri = triOffset + i;
-                let t = intersectTriangle(tri, rayOrigin, rayDir, hit.t);
-                if (t > 0.0) {
-                    hit.t = t;
+                let r = intersectTriangle(tri, rayOrigin, rayDir, hit.t);
+                if (r.x > 0.0) {
+                    hit.t = r.x;
                     hit.triIndex = tri;
+                    hit.u = r.y;
+                    hit.v = r.z;
                     if (anyHit) { return hit; }
                 }
             }
@@ -121,31 +135,45 @@ fn traverseBVH(rayOrigin : vec3<f32>, rayDir : vec3<f32>, tMax : f32, anyHit : b
     return hit;
 }
 
-// Moeller-Trumbore; returns -1 on miss, else the hit distance in (EPS, tMax).
-fn intersectTriangle(tri : i32, rayOrigin : vec3<f32>, rayDir : vec3<f32>, tMax : f32) -> f32 {
-    let v0 = bvhTriangles[tri * 3].xyz;
-    let e1 = bvhTriangles[tri * 3 + 1].xyz - v0;
-    let e2 = bvhTriangles[tri * 3 + 2].xyz - v0;
+// Moeller-Trumbore; returns (-1,0,0) on miss, else (t, u, v) with the
+// hit distance in (EPS, tMax) and the barycentrics of the hit.
+fn intersectTriangle(tri : i32, rayOrigin : vec3<f32>, rayDir : vec3<f32>, tMax : f32) -> vec3<f32> {
+    let v0 = bvhTriangles[tri * 4].xyz;
+    let e1 = bvhTriangles[tri * 4 + 1].xyz - v0;
+    let e2 = bvhTriangles[tri * 4 + 2].xyz - v0;
     let p = cross(rayDir, e2);
     let det = dot(e1, p);
-    if (abs(det) < 1e-9) { return -1.0; }
+    if (abs(det) < 1e-9) { return vec3<f32>(-1.0, 0.0, 0.0); }
     let invDet = 1.0 / det;
     let s = rayOrigin - v0;
     let u = dot(s, p) * invDet;
-    if (u < 0.0 || u > 1.0) { return -1.0; }
+    if (u < 0.0 || u > 1.0) { return vec3<f32>(-1.0, 0.0, 0.0); }
     let q = cross(s, e1);
     let v = dot(rayDir, q) * invDet;
-    if (v < 0.0 || u + v > 1.0) { return -1.0; }
+    if (v < 0.0 || u + v > 1.0) { return vec3<f32>(-1.0, 0.0, 0.0); }
     let t = dot(e2, q) * invDet;
-    if (t <= EPS || t >= tMax) { return -1.0; }
-    return t;
+    if (t <= EPS || t >= tMax) { return vec3<f32>(-1.0, 0.0, 0.0); }
+    return vec3<f32>(t, u, v);
 }
 
 fn triangleNormal(tri : i32) -> vec3<f32> {
-    let v0 = bvhTriangles[tri * 3].xyz;
-    let e1 = bvhTriangles[tri * 3 + 1].xyz - v0;
-    let e2 = bvhTriangles[tri * 3 + 2].xyz - v0;
+    let v0 = bvhTriangles[tri * 4].xyz;
+    let e1 = bvhTriangles[tri * 4 + 1].xyz - v0;
+    let e2 = bvhTriangles[tri * 4 + 2].xyz - v0;
     return normalize(cross(e1, e2));
+}
+
+// Interpolated UV at the hit, then the material's downscaled albedo
+// texture (layer = material index). fract() emulates repeat addressing.
+fn sampleAlbedoTexture(hit : HitInfo, matIndex : i32) -> vec3<f32> {
+    let t1 = bvhTriangles[hit.triIndex * 4 + 1];
+    let t2 = bvhTriangles[hit.triIndex * 4 + 2];
+    let t3 = bvhTriangles[hit.triIndex * 4 + 3];
+    let uv0 = vec2<f32>(t1.w, t2.w);
+    let w = 1.0 - hit.u - hit.v;
+    let uv = uv0 * w + t3.xy * hit.u + t3.zw * hit.v;
+    let layer = min(matIndex, i32(textureNumLayers(albedoAtlas)) - 1);
+    return textureSampleLevel(albedoAtlas, albedoAtlasSampler, fract(uv), layer, 0.0).rgb;
 }
 
 fn calcProbePosition(id : u32) -> vec3<f32> {
@@ -298,8 +326,11 @@ fn CsMain(@builtin(global_invocation_id) globalInvocation_id : vec3<u32>) {
             result = vec4<f32>(0.0, 0.0, 0.0, -dist * 0.1);
         } else {
             let hitPos = probeLocation + rayDirection * hit.t;
-            let matIndex = i32(bvhTriangles[hit.triIndex * 3].w);
-            let albedo = bvhMaterials[matIndex * 2].xyz;
+            let matIndex = i32(bvhTriangles[hit.triIndex * 4].w);
+            // baseColor factor x downscaled albedo texture (white layer for
+            // untextured materials) — Lumen-style textured GI, so scenes
+            // whose color lives in textures bounce COLORED light.
+            let albedo = bvhMaterials[matIndex * 2].xyz * sampleAlbedoTexture(hit, matIndex);
             let emissive = bvhMaterials[matIndex * 2 + 1].xyz;
             let direct = evaluateDirect(albedo, hitPos, normal);
             // Infinite bounce mirrors MultiBouncePass_cs blendIrradianceColor:
