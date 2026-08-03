@@ -72,7 +72,9 @@ export class DDGIIrradianceVolume {
 
     private createFramesBuffer(): void {
         if (!this.probesBufferData) {
-            let size: number = this.setting.probeXCount * this.setting.probeYCount * this.setting.probeZCount;
+            // Counts can be 0 at init when the ray-traced path auto-fits
+            // the grid later; keep the buffer non-empty so binding stays valid.
+            let size: number = Math.max(1, this.setting.probeXCount * this.setting.probeYCount * this.setting.probeZCount);
             this.probesBufferData = new Float32Array(size * 4);
             this.probesBufferData.fill(-1);
             this.probesBuffer = new StorageGPUBuffer(size * 4, GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST);

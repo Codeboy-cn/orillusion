@@ -230,6 +230,7 @@ export class Engine3D {
                 irradianceChebyshevBias: 0.01, rayNumber: 144, irradianceDistanceBias: 32, indirectIntensity: 1.0,
                 ddgiGamma: 2.2, bounceIntensity: 0.025, probeRoughness: 1, realTimeGI: false, debug: false, autoRenderProbe: false,
                 probeCountPerFrame: 1, rayTracing: false, rtSkyIntensity: 1.0,
+                rtAutoFit: false, rtDivisions: 12, rtProbeCountPerFrame: 0,
             },
             sky: { type: 'HDRSKY', sky: null, skyExposure: 1.0, defaultFar: 65536, defaultNear: 1 },
             light: { maxLight: 4096 },

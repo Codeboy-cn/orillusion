@@ -141,4 +141,24 @@ export type GlobalIlluminationSetting = {
      * ray-traced path (samples the environment cube). Default 1.
      */
     rtSkyIntensity?: number;
+    /**
+     * Ray-traced path: auto-fit the probe volume to the scene bounds at
+     * BVH build time. Also implied when probeXCount/probeYCount/
+     * probeZCount are ALL 0. The fitted values are written back into
+     * probeXCount/probeYCount/probeZCount, probeSpace and offsetX/Y/Z,
+     * so debug tooling reads the real grid.
+     */
+    rtAutoFit?: boolean;
+    /**
+     * Ray-traced auto-fit: probe count along the LONGEST scene axis
+     * (default 12, clamped 2..32). The other axes derive from it so
+     * grid cells stay roughly cubic.
+     */
+    rtDivisions?: number;
+    /**
+     * Ray-traced path probe-update budget per frame. 0 (default) =
+     * update EVERY probe each frame; N > 0 = round-robin N probes per
+     * frame, so a full sweep takes ceil(probeCount / N) frames.
+     */
+    rtProbeCountPerFrame?: number;
 };

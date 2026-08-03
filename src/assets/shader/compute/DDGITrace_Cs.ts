@@ -39,7 +39,13 @@ struct TraceUniform {
     nodeCount : f32,
     lightCount : f32,
     skyIntensity : f32,
+    // Round-robin window: this frame updates probes
+    // [probeCursor, probeCursor + updateCount) modulo probeCount.
+    probeCursor : f32,
+    updateCount : f32,
     retain0 : f32,
+    retain1 : f32,
+    retain2 : f32,
 };
 
 @group(0) @binding(0) var<storage, read> bvhNodes : array<vec4<f32>>;
@@ -260,9 +266,12 @@ fn evaluateDirect(albedo : vec3<f32>, hitPos : vec3<f32>, N : vec3<f32>) -> vec3
 fn CsMain(@builtin(global_invocation_id) globalInvocation_id : vec3<u32>) {
     let raysPerProbe = u32(uniformData.rayNumber);
     let probeCount = u32(uniformData.gridXCount * uniformData.gridYCount * uniformData.gridZCount);
+    if (probeCount == 0u || raysPerProbe == 0u) { return; }
+    let updateCount = u32(traceUniform.updateCount);
     let idx = globalInvocation_id.x;
-    if (idx >= raysPerProbe * probeCount) { return; }
-    let probeID = idx / raysPerProbe;
+    let slot = idx / raysPerProbe;
+    if (slot >= updateCount) { return; }
+    let probeID = (u32(traceUniform.probeCursor) + slot) % probeCount;
     let rayID = idx % raysPerProbe;
 
     let probeLocation = calcProbePosition(probeID);

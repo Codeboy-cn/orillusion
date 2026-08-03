@@ -54,6 +54,13 @@ export class DDGITracePass {
     private _nodeCount = 0;
     private _lastMeshFingerprint = -1;
     private _dirty = true;
+    private _rayHitBufferFloats = 0;
+    private _probeCursor = 0;
+
+    /** True once the auto-fit grid has been computed and written back
+     *  into setting.gi (probe counts / spacing / offsets). Debug tooling
+     *  (probe spheres) should be created only after this. */
+    public autoFitDone = false;
 
     constructor(ctx: Context3D, volume: DDGIIrradianceVolume, irradianceColorMap: RenderTexture, irradianceDepthMap: RenderTexture) {
         this._ctx = ctx;
@@ -73,27 +80,40 @@ export class DDGITracePass {
             this._lastMeshFingerprint = fingerprint;
             this._dirty = false;
             this.rebuild(view);
+            // Auto-fit may have rewritten the grid settings AFTER this
+            // frame's volume upload; re-upload now so the kernels never
+            // run one frame against stale (possibly zero-count) uniforms.
+            this._volume.uploadBuffer();
         }
         if (!this._traceShader || !this._blendShader || this._nodeCount === 0) return;
 
         const setting = this._volume.setting;
         const probeCount = setting.probeXCount * setting.probeYCount * setting.probeZCount;
+        if (probeCount === 0) return;
         const lights = EntityCollect.instance.getLights(view.scene);
+
+        // Round-robin window: rtProbeCountPerFrame 0 = every probe each frame.
+        const budget = Math.floor(setting.rtProbeCountPerFrame ?? 0);
+        const updateCount = budget > 0 ? Math.min(budget, probeCount) : probeCount;
+        if (this._probeCursor >= probeCount) this._probeCursor = 0;
 
         this._traceUniform!.setFloat('nodeCount', this._nodeCount);
         this._traceUniform!.setFloat('lightCount', lights.length);
         this._traceUniform!.setFloat('skyIntensity', setting.rtSkyIntensity ?? 1.0);
-        this._traceUniform!.setFloat('retain0', 0);
+        this._traceUniform!.setFloat('probeCursor', this._probeCursor);
+        this._traceUniform!.setFloat('updateCount', updateCount);
         this._traceUniform!.apply();
 
-        const totalRays = probeCount * setting.rayNumber;
+        this._probeCursor = (this._probeCursor + updateCount) % probeCount;
+
+        const totalRays = updateCount * setting.rayNumber;
         this._traceShader.workerSizeX = Math.ceil(totalRays / 64);
         this._traceShader.workerSizeY = 1;
         this._traceShader.workerSizeZ = 1;
 
         this._blendShader.workerSizeX = setting.octRTSideSize / 8;
         this._blendShader.workerSizeY = setting.octRTSideSize / 8;
-        this._blendShader.workerSizeZ = probeCount;
+        this._blendShader.workerSizeZ = updateCount;
 
         const gpu = view.engine3D.context3D.gpuContext;
         const command = gpu.beginCommandEncoder();
@@ -127,10 +147,49 @@ export class DDGITracePass {
         }
     }
 
+    /** Auto-fit the probe grid to the collected scene AABB (speedball-style):
+     *  pad the bounds by 6% per side, spacing = longest axis / rtDivisions,
+     *  per-axis counts derived so cells stay roughly cubic. Active when
+     *  setting.rtAutoFit is true OR all three probe counts are 0. The result
+     *  is written back into setting.gi and the volume uniform re-uploads. */
+    private applyAutoFit(minX: number, minY: number, minZ: number, maxX: number, maxY: number, maxZ: number): void {
+        const setting = this._volume.setting;
+        const wantsAutoFit = setting.rtAutoFit === true
+            || (setting.probeXCount === 0 && setting.probeYCount === 0 && setting.probeZCount === 0);
+        if (!wantsAutoFit) return;
+
+        const pad = 0.06;
+        let sizeX = Math.max(maxX - minX, 1e-3);
+        let sizeY = Math.max(maxY - minY, 1e-3);
+        let sizeZ = Math.max(maxZ - minZ, 1e-3);
+        sizeX *= 1 + 2 * pad; sizeY *= 1 + 2 * pad; sizeZ *= 1 + 2 * pad;
+
+        const divisions = Math.min(32, Math.max(2, Math.round(setting.rtDivisions ?? 12)));
+        const longest = Math.max(sizeX, sizeY, sizeZ);
+        const spacing = longest / divisions;
+        const axis = (s: number) => Math.min(32, Math.max(2, Math.round(s / spacing) + 1));
+
+        setting.probeXCount = axis(sizeX);
+        setting.probeYCount = axis(sizeY);
+        setting.probeZCount = axis(sizeZ);
+        setting.probeSpace = spacing;
+        // calcPosition centers the grid on the offset, so the offset is
+        // simply the AABB center.
+        setting.offsetX = (minX + maxX) * 0.5;
+        setting.offsetY = (minY + maxY) * 0.5;
+        setting.offsetZ = (minZ + maxZ) * 0.5;
+
+        this._volume.setVolumeDataChange();
+        this._probeCursor = 0;
+        this.autoFitDone = true;
+    }
+
     private rebuild(view: View3D): void {
         const triPositions: number[] = [];
         const triMaterialIds: number[] = [];
         const materials: number[] = [];
+        let minX = Infinity, minY = Infinity, minZ = Infinity;
+        let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
 
         this.forEachRenderer(view, (renderer) => {
             const geometry = renderer.geometry;
@@ -162,11 +221,13 @@ export class DDGITracePass {
             const pushVertex = (vi: number) => {
                 const x = pos[vi * 3], y = pos[vi * 3 + 1], z = pos[vi * 3 + 2];
                 // Column-major world transform (translation at 12/13/14).
-                triPositions.push(
-                    m[0] * x + m[4] * y + m[8] * z + m[12],
-                    m[1] * x + m[5] * y + m[9] * z + m[13],
-                    m[2] * x + m[6] * y + m[10] * z + m[14],
-                );
+                const wx = m[0] * x + m[4] * y + m[8] * z + m[12];
+                const wy = m[1] * x + m[5] * y + m[9] * z + m[13];
+                const wz = m[2] * x + m[6] * y + m[10] * z + m[14];
+                if (wx < minX) minX = wx; if (wx > maxX) maxX = wx;
+                if (wy < minY) minY = wy; if (wy > maxY) maxY = wy;
+                if (wz < minZ) minZ = wz; if (wz > maxZ) maxZ = wz;
+                triPositions.push(wx, wy, wz);
             };
 
             if (indexAttr && indexAttr.data && indexAttr.data.length >= 3) {
@@ -192,6 +253,8 @@ export class DDGITracePass {
         const triCount = triMaterialIds.length;
         this._nodeCount = 0;
         if (triCount === 0) return;
+
+        this.applyAutoFit(minX, minY, minZ, maxX, maxY, maxZ);
 
         const soup = new Float32Array(triPositions);
         const { nodes, nodeCount, triOrder } = BVHBuilder.build(soup, triCount);
@@ -230,8 +293,10 @@ export class DDGITracePass {
 
         const setting = this._volume.setting;
         const probeCount = setting.probeXCount * setting.probeYCount * setting.probeZCount;
-        if (!this._rayHitBuffer) {
-            this._rayHitBuffer = new StorageGPUBuffer(probeCount * setting.rayNumber * 4, GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST);
+        const rayFloats = Math.max(4, probeCount * setting.rayNumber * 4);
+        if (!this._rayHitBuffer || this._rayHitBufferFloats < rayFloats) {
+            this._rayHitBuffer = new StorageGPUBuffer(rayFloats, GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST);
+            this._rayHitBufferFloats = rayFloats;
         }
         if (!this._irradianceBuffer) {
             const pixelCount = setting.octRTMaxSize * setting.octRTMaxSize;
@@ -276,6 +341,7 @@ export class DDGITracePass {
         blend.setStorageTexture('probeIrradianceMap', this._irradianceColorMap);
         blend.setStorageTexture('probeDepthMap', this._irradianceDepthMap);
         blend.setStorageBuffer('rayHitBuffer', this._rayHitBuffer!);
+        blend.setUniformBuffer('traceUniform', this._traceUniform!);
         blend.setStorageBuffer('models', modelMatrixBuffer);
         this._blendShader = blend;
     }

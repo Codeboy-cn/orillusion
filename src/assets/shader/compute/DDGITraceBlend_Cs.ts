@@ -29,6 +29,18 @@ struct CacheHitData {
   depth : vec4<f32>,
 }
 
+// Must match TraceUniform in DDGITrace_Cs.
+struct TraceUniform {
+    nodeCount : f32,
+    lightCount : f32,
+    skyIntensity : f32,
+    probeCursor : f32,
+    updateCount : f32,
+    retain0 : f32,
+    retain1 : f32,
+    retain2 : f32,
+};
+
 // NOTE: every declared binding must be referenced — the engine builds
 // bind groups from shader reflection while the pipeline uses layout
 // 'auto', which strips unused bindings and then rejects the group.
@@ -38,6 +50,7 @@ struct CacheHitData {
 @group(0) @binding(3) var probeIrradianceMap : texture_storage_2d<rgba16float, write>;
 @group(0) @binding(4) var probeDepthMap : texture_storage_2d<rgba16float, write>;
 @group(0) @binding(5) var<storage, read> rayHitBuffer : array<vec4<f32>>;
+@group(0) @binding(6) var<uniform> traceUniform : TraceUniform;
 
 @group(1) @binding(0) var<storage, read> models : Uniforms;
 
@@ -63,7 +76,12 @@ fn CsMain(@builtin(global_invocation_id) globalInvocation_id : vec3<u32>) {
     OCT_SIDE_SIZE_f32 = f32(uniformData.OctRTSideSize);
     hysteresis = uniformData.hysteresis;
 
-    probeID = globalInvocation_id.z;
+    // Dispatch z covers the round-robin window; map the slot to the
+    // actual probe index (same mapping as DDGITrace_Cs).
+    let probeCount = u32(uniformData.gridXCount * uniformData.gridYCount * uniformData.gridZCount);
+    if (probeCount == 0u) { return; }
+    if (globalInvocation_id.z >= u32(traceUniform.updateCount)) { return; }
+    probeID = (u32(traceUniform.probeCursor) + globalInvocation_id.z) % probeCount;
     workgroup_idx = globalInvocation_id.x;
     workgroup_idy = globalInvocation_id.y;
 

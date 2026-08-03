@@ -3,10 +3,12 @@ import { GUIHelp } from "@orillusion/debug/GUIHelp";
 
 // Software-ray-traced DDGI on the Sponza atrium: a sun (DirectLight)
 // shafts into the courtyard and the probe field carries the bounce into
-// the arcades. Uses setting.gi.rayTracing, so the ~260k-triangle glb is
-// flattened into the BVH once at load and every probe refreshes each
-// frame — no cube captures, no shadow-map dependency for the probes
-// (shadow rays run against the BVH).
+// the arcades. Uses setting.gi.rayTracing with the AUTO-FIT grid (probe
+// counts all 0): the trace pass measures the scene AABB while building
+// the BVH and derives counts / spacing / offsets from rtDivisions, so
+// the only density knob is "probes along the longest axis" — same
+// deployment model as speedball. Probe updates run round-robin under
+// rtProbeCountPerFrame instead of all-probes-every-frame.
 //
 // Known v1 limitation of the traced path: hit albedo comes from the
 // material baseColor FACTOR only (no texture sampling), so on Sponza —
@@ -17,11 +19,9 @@ class Sample_GIRTSponza {
     scene: Scene3D;
     view: View3D;
     async run() {
-        // Probe counts fix the debug-sphere entity count and the atlas
-        // layout at init time, so GUI changes apply through a reload with
-        // the chosen counts persisted here.
-        const stored = sessionStorage.getItem('rtSponzaProbeCounts');
-        const probeCounts = stored ? JSON.parse(stored) : { x: 8, y: 4, z: 4 };
+        // Divisions is baked into the auto-fit grid (and the debug-sphere
+        // entity count) at init, so GUI changes apply through a reload.
+        const divisions = Number(sessionStorage.getItem('rtSponzaDivisions')) || 16;
 
         const engine = this.engine = await Engine3D.init({
             setting: {
@@ -29,17 +29,16 @@ class Sample_GIRTSponza {
                     enable: true,
                     rayTracing: true,
                     debug: true,
-                    // Khronos Sponza spans roughly x [-12,12], y [0,12],
-                    // z [-7,7] meters. 8x4x4 probes at 3.2m spacing cover
-                    // the atrium and the first arcade ring; the volume is
-                    // lifted so the bottom row sits above the floor slab.
-                    probeXCount: probeCounts.x,
-                    probeYCount: probeCounts.y,
-                    probeZCount: probeCounts.z,
-                    probeSpace: 3.2,
-                    offsetX: 0,
-                    offsetY: 5.5,
-                    offsetZ: 0,
+                    // All-zero probe counts = auto-fit: the grid is derived
+                    // from the measured scene bounds at BVH build time.
+                    probeXCount: 0,
+                    probeYCount: 0,
+                    probeZCount: 0,
+                    rtDivisions: divisions,
+                    // Round-robin budget: 256 probes/frame. At divisions 16
+                    // Sponza fits ~17x8x11 = ~1500 probes, so a full sweep
+                    // takes ~6 frames at ~37k rays/frame.
+                    rtProbeCountPerFrame: 256,
                     indirectIntensity: 1,
                     bounceIntensity: 1.0,
                     normalBias: 0.25,
@@ -54,17 +53,7 @@ class Sample_GIRTSponza {
                     debug: true,
                 },
             },
-            renderLoop: () => {
-                // Probe entities exist only after the component started;
-                // shrink the stock 4m debug spheres to Sponza scale once.
-                if (this.giComponent?.isStart) {
-                    for (const child of this.giComponent.object3D.entityChildren) {
-                        (child as Object3D).localScale = new Vector3(0.15, 0.15, 0.15);
-                    }
-                    this.giComponent.object3D.transform.enable = this.uiState.showProbes;
-                    this.giComponent = null;
-                }
-            },
+            renderLoop: () => this.onFrame(),
         });
 
         this.scene = new Scene3D();
@@ -85,22 +74,38 @@ class Sample_GIRTSponza {
         // Debug hook for CDP-driven A/B checks (_gi_rt_sponza A/B script).
         (window as any).__sample = this;
 
-        // Probe debug spheres (GIProbeMaterial visualizes the SAME atlas
-        // the ray-traced path writes). The RT path never renders probe
-        // cube captures, so the component only supplies the spheres here.
-        let probeObj = new Object3D();
-        this.giComponent = probeObj.addComponent(GlobalIlluminationComponent, this.scene);
-        this.probeHolder = probeObj;
-        this.scene.addChild(probeObj);
-
         GUIHelp.init();
         await this.initScene();
     }
 
     private giComponent: GlobalIlluminationComponent | null = null;
-    private probeHolder: Object3D;
+    private probeHolder: Object3D | null = null;
     private savedIndirect = 1;
     uiState = { giEnable: true, showProbes: true };
+
+    /** Frame hook: create the probe debug spheres only AFTER auto-fit has
+     *  written the real grid into setting.gi (the component bakes probe
+     *  entities from the counts at its init), then shrink the stock 4m
+     *  spheres to Sponza scale once the component starts. */
+    private onFrame() {
+        if (!this.probeHolder) {
+            const tracePass = (this.view?.renderGraph?.getPass('GIPass') as any)?.tracePass;
+            if (tracePass?.autoFitDone) {
+                const g = this.engine.setting.gi;
+                console.log(`[auto-fit] probes ${g.probeXCount}x${g.probeYCount}x${g.probeZCount} = ${g.probeXCount * g.probeYCount * g.probeZCount}, spacing ${g.probeSpace.toFixed(2)}`);
+                let probeObj = new Object3D();
+                this.giComponent = probeObj.addComponent(GlobalIlluminationComponent, this.scene);
+                this.probeHolder = probeObj;
+                this.scene.addChild(probeObj);
+            }
+        } else if (this.giComponent?.isStart) {
+            for (const child of this.giComponent.object3D.entityChildren) {
+                (child as Object3D).localScale = new Vector3(0.1, 0.1, 0.1);
+            }
+            this.giComponent.object3D.transform.enable = this.uiState.showProbes;
+            this.giComponent = null;
+        }
+    }
 
     /** Set indirect GI intensity and force the volume uniform re-upload. */
     setIndirect(v: number) {
@@ -158,28 +163,25 @@ class Sample_GIRTSponza {
         GUIHelp.addFolder('GI');
         GUIHelp.add(this.uiState, 'giEnable').onChange((v: boolean) => this.setGIEnable(v));
         GUIHelp.add(this.uiState, 'showProbes').onChange((v: boolean) => {
-            this.probeHolder.transform.enable = v;
+            if (this.probeHolder) this.probeHolder.transform.enable = v;
         });
         GUIHelp.add(this.engine.setting.gi, 'indirectIntensity', 0, 5, 0.05).onChange(() => volume.setVolumeDataChange());
         GUIHelp.add(this.engine.setting.gi, 'bounceIntensity', 0, 1, 0.01).onChange(() => volume.setVolumeDataChange());
+        GUIHelp.add(this.engine.setting.gi, 'rtProbeCountPerFrame', 0, 1024, 32);
         GUIHelp.endFolder();
 
-        // Probe counts are baked into the component / atlas at init, so
-        // new values apply through a reload (persisted in sessionStorage).
-        const counts = {
-            x: this.engine.setting.gi.probeXCount,
-            y: this.engine.setting.gi.probeYCount,
-            z: this.engine.setting.gi.probeZCount,
+        // Grid density: probes along the longest scene axis. Baked into
+        // the auto-fit + debug spheres at init, so apply reloads the page.
+        const grid = {
+            divisions: this.engine.setting.gi.rtDivisions,
             apply: () => {
-                sessionStorage.setItem('rtSponzaProbeCounts', JSON.stringify({ x: counts.x, y: counts.y, z: counts.z }));
+                sessionStorage.setItem('rtSponzaDivisions', String(grid.divisions));
                 location.reload();
             },
         };
-        GUIHelp.addFolder('Probe Count (reload)');
-        GUIHelp.add(counts, 'x', 2, 12, 1);
-        GUIHelp.add(counts, 'y', 2, 8, 1);
-        GUIHelp.add(counts, 'z', 2, 8, 1);
-        GUIHelp.addButton('apply', counts.apply);
+        GUIHelp.addFolder('Probe Grid (reload)');
+        GUIHelp.add(grid, 'divisions', 4, 32, 1);
+        GUIHelp.addButton('apply', grid.apply);
         GUIHelp.endFolder();
     }
 }
