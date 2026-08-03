@@ -57,7 +57,8 @@ class Sample_GIRTSponza {
         });
 
         this.scene = new Scene3D();
-        this.scene.addComponent(AtmosphericComponent);
+        let sky = this.scene.addComponent(AtmosphericComponent);
+        sky.exposure = 1.0;
 
         let camera = CameraUtil.createCamera3DObject(this.scene);
         camera.perspective(60, engine.aspect, 0.1, 500.0);
@@ -81,7 +82,7 @@ class Sample_GIRTSponza {
     private giComponent: GlobalIlluminationComponent | null = null;
     private probeHolder: Object3D | null = null;
     private savedIndirect = 1;
-    uiState = { giEnable: true, showProbes: true };
+    uiState = { giEnable: true, showProbes: false };
 
     /** Frame hook: create the probe debug spheres only AFTER auto-fit has
      *  written the real grid into setting.gi (the component bakes probe
@@ -133,21 +134,14 @@ class Sample_GIRTSponza {
         // Sun angled through the atrium roof opening so the courtyard
         // floor is lit and the arcades live on bounce light.
         let sunObj = new Object3D();
-        sunObj.rotationX = 50;
-        sunObj.rotationY = 35;
+        sunObj.rotationX = 80;
+        sunObj.rotationY = 0;
         let sun = sunObj.addComponent(DirectLight);
         (this as any).sun = sun;
         sun.lightColor = KelvinUtil.color_temperature_to_rgb(5355);
-        sun.intensity = 6;
+        sun.intensity = 10;
         sun.castShadow = true;
-        // KNOWN ENGINE BUG (isolated 2026-08-03, unrelated to the GI path):
-        // enableCSM blacks out ALL sun lighting in this scene — reproduced
-        // with GI fully disabled, with Hover and Fly controllers, with
-        // camera far 500 and 5000, and with per-frame camera jitter; the
-        // cascade cameras themselves fit sane volumes and the small-scene
-        // CSM samples (post/Sample_GTAO) work. Left as a GUI toggle for
-        // reproducing; default off until the cascade sampling path is fixed.
-        sun.enableCSM = false;
+        sun.enableCSM = true;
         this.scene.addChild(sunObj);
 
         GUIHelp.addFolder('Sun');
