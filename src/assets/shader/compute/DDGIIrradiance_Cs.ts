@@ -384,17 +384,21 @@ fn getCurrentDir() -> vec3<f32> {
   //    MultiBounce) map a direction to pixel (octEncode(d)+1)*0.5*size and
   //    bilinear-sample texel centers; corner anchoring skews every lookup
   //    by half a texel (~11 deg at 16x16).
-  // 2) Negation: the cube-GBuffer fetch chain (getSampleProbeUV's face
-  //    mapping + UV flip) returns the hit for the 180-deg-about-the-oct-pole
-  //    rotated direction. Without compensating here, every stored texel is
-  //    keyed to the mirrored world direction (front<->back, left<->right),
-  //    so the Chebyshev visibility test reads sky where a wall is: interior
-  //    probes pass the test through walls and splash the bright cavity
-  //    field onto exterior surfaces as probe-sized color blotches.
+  // 2) Antipode: the cube-GBuffer fetch chain (getSampleProbeUV's face
+  //    mapping + UV flip) returns the hit for the ANTIPODE of the queried
+  //    direction. Keying each texel to -octDecode(uv) makes the stored
+  //    field line up with the readers' direction convention on all three
+  //    axes. The previous octDecode(-uv) form (a 180-deg spin about the
+  //    oct pole = world Y) fixed the horizontal mirroring but left the
+  //    field flipped VERTICALLY: probes stored the floor's distance in
+  //    their upward texels and vice versa, so Chebyshev falsely occluded
+  //    receivers above a probe wherever the floor was nearer than the
+  //    receiver — a hard, wavy dark band on walls near the bottom probe
+  //    row (and E(N) of floors/ceilings sampled the opposite hemisphere).
   var ux = (f32(workgroup_idx) + 0.5) / OCT_SIDE_SIZE_f32;
   var uy = (f32(workgroup_idy) + 0.5) / OCT_SIDE_SIZE_f32;
-  var uv = -(vec2<f32>(ux,uy) * 2.0 - 1.0) ;
-  var dir = octDecode(uv) ;
+  var uv = vec2<f32>(ux,uy) * 2.0 - 1.0 ;
+  var dir = -octDecode(uv) ;
   return normalize(dir) ;
 }
 

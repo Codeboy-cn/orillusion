@@ -1,4 +1,4 @@
-import { Object3D, Scene3D, Engine3D, GlobalIlluminationComponent, Vector3, PostProcessingComponent, View3D, CameraUtil, HoverCameraController, PointLight, ColliderComponent, SphereColliderShape, PointerEvent3D, Probe, MeshRenderer, LitMaterial } from "@orillusion/core";
+import { Object3D, Scene3D, Engine3D, GlobalIlluminationComponent, Vector3, PostProcessingComponent, View3D, CameraUtil, HoverCameraController, PointLight, ColliderComponent, SphereColliderShape, PointerEvent3D, Probe } from "@orillusion/core";
 import { GUIHelp } from "@orillusion/debug/GUIHelp";
 import { GUIUtil } from "@samples/utils/GUIUtil";
 
@@ -38,7 +38,6 @@ class Sample_GICornellBox {
                     // energy-exact single-bounce feedback (see
                     // MultiBouncePass_cs).
                     bounceIntensity: 1.0,
-                    lerpHysteresis: 0.02,
                     maxDistance: 16,
                     probeSpace: 8.38,
                     // Shifts the visibility-test sample point off the surface
@@ -153,18 +152,6 @@ class Sample_GICornellBox {
     async initScene() {
         let box = await this.engine.res.loadGltf('gltfs/cornellBox/cornellBox.gltf') as Object3D;
         box.localScale = new Vector3(10, 10, 10);
-        // TEMP: zero out the gltf lamp quad's emissive so the point light
-        // below is the cavity's ONLY light source (both the camera pass
-        // and the probe captures read the same material uniform, so this
-        // removes the lamp from the GI feedback loop too).
-        for (let mr of box.getComponentsInChild(MeshRenderer)) {
-            for (let mat of mr.materials) {
-                if (mat instanceof LitMaterial && mat.emissiveIntensity > 0) {
-                    console.log(`[emissive off] ${mr.object3D.name} intensity=${mat.emissiveIntensity}`);
-                    mat.emissiveIntensity = 0;
-                }
-            }
-        }
         this.scene.addChild(box);
 
         // Point light just below the ceiling lamp quad (cavity is

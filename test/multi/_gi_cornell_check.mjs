@@ -92,7 +92,11 @@ async function main() {
             return {
                 leftWall: px(0.12, 0.48),
                 rightWall: px(0.87, 0.48),
-                ceiling: px(0.50, 0.11),
+                // 0.34 keeps the ceiling sample off the lamp quad, whose
+                // reading swings between blown-out (emissive on) and pure
+                // black (point-light-only benching) — neither says anything
+                // about the GI field on the ceiling itself.
+                ceiling: px(0.34, 0.11),
                 backTop: px(0.50, 0.24),
                 // red wall inside the tall box's shadow — direct light is
                 // fully blocked there, so any red is bounce-carried
