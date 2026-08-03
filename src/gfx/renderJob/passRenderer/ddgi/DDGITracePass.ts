@@ -1,7 +1,8 @@
 import { Engine3D } from '../../../../Engine3D';
 import { Time } from '../../../../util/Time';
-import { BitmapTexture2D } from '../../../../textures/BitmapTexture2D';
 import { BitmapTexture2DArray } from '../../../../textures/BitmapTexture2DArray';
+import { Texture } from '../../../graphics/webGpu/core/texture/Texture';
+import { DDGIAlbedoBlit_shader } from '../../../../assets/shader/compute/DDGIAlbedoBlit_Cs';
 import { MeshRenderer } from '../../../../components/renderer/MeshRenderer';
 import { SkyRenderer } from '../../../../components/renderer/SkyRenderer';
 import { GIProbeMaterial } from '../../../../materials/GIProbeMaterial';
@@ -68,11 +69,10 @@ export class DDGITracePass {
     // when the frame runs long, recovers when there is headroom.
     private _budgetScale = 1;
     // Per-material albedo textures downscaled into a 2d-array (layer =
-    // material index) so hit shading bounces COLORED light. Built async
-    // after each rebuild; the trace shader is (re)created once it lands.
+    // material index) so hit shading bounces COLORED light. Built by GPU
+    // blits at rebuild time — glTF textures keep no CPU-side image, so a
+    // canvas downscale would silently produce all-white layers.
     private _albedoAtlas: BitmapTexture2DArray | null = null;
-    private _atlasBuildId = 0;
-    private _needShaderRecreate = false;
 
     /** True once the auto-fit grid has been computed and written back
      *  into setting.gi (probe counts / spacing / offsets). Debug tooling
@@ -101,10 +101,6 @@ export class DDGITracePass {
             // frame's volume upload; re-upload now so the kernels never
             // run one frame against stale (possibly zero-count) uniforms.
             this._volume.uploadBuffer();
-        }
-        if (this._needShaderRecreate && this._albedoAtlas) {
-            this._needShaderRecreate = false;
-            this.createShaders(view);
         }
         if (!this._traceShader || !this._blendShader || this._nodeCount === 0) return;
 
@@ -229,7 +225,7 @@ export class DDGITracePass {
         const triUVs: number[] = [];
         const triMaterialIds: number[] = [];
         const materials: number[] = [];
-        const albedoSources: (CanvasImageSource | null)[] = [];
+        const albedoSources: (Texture | null)[] = [];
         let minX = Infinity, minY = Infinity, minZ = Infinity;
         let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
 
@@ -245,7 +241,7 @@ export class DDGITracePass {
             let albedoR = 0.7, albedoG = 0.7, albedoB = 0.7;
             let emissiveR = 0, emissiveG = 0, emissiveB = 0;
             const material = renderer.material as any;
-            let albedoSource: CanvasImageSource | null = null;
+            let albedoSource: Texture | null = null;
             try {
                 const baseColor = material?.baseColor;
                 if (baseColor) { albedoR = baseColor.r; albedoG = baseColor.g; albedoB = baseColor.b; }
@@ -256,7 +252,7 @@ export class DDGITracePass {
                     emissiveG = emissiveColor.g * emissiveIntensity;
                     emissiveB = emissiveColor.b * emissiveIntensity;
                 }
-                albedoSource = material?.baseMap?.source ?? null;
+                albedoSource = material?.baseMap ?? null;
             } catch (e) {
                 // Materials without these uniforms fall back to gray.
             }
@@ -365,51 +361,48 @@ export class DDGITracePass {
             this._traceUniform = new UniformGPUBuffer(8);
         }
 
-        // Kick the async albedo-atlas build. Until the FIRST atlas lands
-        // the trace shader cannot exist (it binds the atlas), so the first
-        // dispatch waits ~a frame for the downscale; later rebuilds keep
-        // tracing with the previous atlas and swap when ready.
-        void this.buildAlbedoAtlas(albedoSources);
+        this.buildAlbedoAtlas(albedoSources);
 
         // Bind-group layouts cache buffer objects, so the shaders are
         // recreated whenever the BVH buffers are (rebuilds are rare).
-        if (this._albedoAtlas) {
-            this.createShaders(view);
-        } else {
-            this._needShaderRecreate = true;
-        }
+        this.createShaders(view);
     }
 
-    /** Downscale each material's albedo texture into one 128x128 layer of
-     *  a texture_2d_array (white for untextured materials, sRGB so the
-     *  sampler decodes to linear like the raster path's baseMap). */
-    private async buildAlbedoAtlas(sources: (CanvasImageSource | null)[]): Promise<void> {
-        const buildId = ++this._atlasBuildId;
+    /** GPU-downscale each material's albedo texture into one 128x128
+     *  layer of a linear rgba8unorm texture_2d_array (sRGB storage
+     *  formats are not writable; the blit samples the sRGB source, so
+     *  stored values are already linear). Layers without a source get
+     *  white, so factor-only materials are unchanged. Runs synchronously
+     *  at rebuild time — one tiny dispatch per material. */
+    private buildAlbedoAtlas(sources: (Texture | null)[]): void {
         const SIZE = 128;
         const layerCount = Math.max(1, Math.min(sources.length, 256));
-        const bitmaps: BitmapTexture2D[] = [];
+        const atlas = new BitmapTexture2DArray(SIZE, SIZE, layerCount, this._ctx, GPUTextureUsage.STORAGE_BINDING);
+        const white = Engine3D.resFor(this._ctx).whiteTexture;
+
+        const gpu = this._ctx.gpuContext;
+        const command = gpu.beginCommandEncoder();
+        const blits: ComputeShader[] = [];
         for (let i = 0; i < layerCount; i++) {
-            const canvas = new OffscreenCanvas(SIZE, SIZE);
-            const c2d = canvas.getContext('2d')!;
-            c2d.fillStyle = '#ffffff';
-            c2d.fillRect(0, 0, SIZE, SIZE);
-            const src = sources[i];
-            if (src) {
-                try { c2d.drawImage(src, 0, 0, SIZE, SIZE); } catch (e) { /* decode-locked sources stay white */ }
-            }
-            // .source = OffscreenCanvas does NOT upload (known gap in
-            // BitmapTexture2D); go through an ImageBitmap, which does.
-            const bmp = await createImageBitmap(canvas);
-            if (buildId !== this._atlasBuildId) return;
-            const tex = new BitmapTexture2D(false, this._ctx, 'srgb');
-            tex.source = bmp;
-            bitmaps.push(tex);
+            const blit = new ComputeShader(DDGIAlbedoBlit_shader);
+            const param = new UniformGPUBuffer(4);
+            param.setFloat('layer', i);
+            param.setFloat('hasSource', sources[i] ? 1 : 0);
+            param.setFloat('retain0', 0);
+            param.setFloat('retain1', 0);
+            param.apply();
+            blit.setUniformBuffer('blitParam', param);
+            blit.setSamplerTexture('srcMap', sources[i] ?? white);
+            blit.setStorageTexture('dstMap', atlas);
+            blit.workerSizeX = SIZE / 8;
+            blit.workerSizeY = SIZE / 8;
+            blit.workerSizeZ = 1;
+            blits.push(blit);
         }
-        if (buildId !== this._atlasBuildId) return;
-        const atlas = new BitmapTexture2DArray(SIZE, SIZE, layerCount, this._ctx, 0, 'srgb');
-        atlas.setTextures(bitmaps);
+        gpu.computeCommand(command, blits);
+        gpu.endCommandEncoder(command);
+
         this._albedoAtlas = atlas;
-        this._needShaderRecreate = true;
     }
 
     private createShaders(view: View3D): void {
