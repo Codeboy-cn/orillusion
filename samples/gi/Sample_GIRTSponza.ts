@@ -1,4 +1,4 @@
-import { Object3D, Scene3D, Engine3D, Vector3, View3D, CameraUtil, FlyCameraController, AtmosphericComponent, DirectLight, KelvinUtil, GlobalBindGroup, GlobalIlluminationComponent } from "@orillusion/core";
+import { Object3D, Scene3D, Engine3D, Vector3, View3D, CameraUtil, AtmosphericComponent, DirectLight, KelvinUtil, GlobalBindGroup, GlobalIlluminationComponent, HoverCameraController } from "@orillusion/core";
 import { GUIHelp } from "@orillusion/debug/GUIHelp";
 
 // Software-ray-traced DDGI on the Sponza atrium: a sun (DirectLight)
@@ -56,15 +56,19 @@ class Sample_GIRTSponza {
             renderLoop: () => this.onFrame(),
         });
 
+        this.engine.setting.gi.indirectIntensity = 5;
+
         this.scene = new Scene3D();
         let sky = this.scene.addComponent(AtmosphericComponent);
         sky.exposure = 1.0;
 
         let camera = CameraUtil.createCamera3DObject(this.scene);
         camera.perspective(60, engine.aspect, 0.1, 500.0);
-        // Fly controller: WASD + mouse drag, Shift to speed up.
-        let ctrl = camera.object3D.addComponent(FlyCameraController);
-        ctrl.setCamera(new Vector3(10, 4, 0), new Vector3(0, 4, 0));
+        // Hover controller: drag to orbit, wheel to zoom, right-drag to pan.
+        // roll 90 puts the camera on +X inside the atrium looking down the
+        // long axis (roll -90 lands inside the west wall).
+        let ctrl = camera.object3D.addComponent(HoverCameraController);
+        ctrl.setCamera(90, -5, 10, new Vector3(0, 4, 0));
 
         let view = new View3D();
         view.scene = this.scene;
@@ -139,14 +143,14 @@ class Sample_GIRTSponza {
         let sun = sunObj.addComponent(DirectLight);
         (this as any).sun = sun;
         sun.lightColor = KelvinUtil.color_temperature_to_rgb(5355);
-        sun.intensity = 10;
+        sun.intensity = 20;
         sun.castShadow = true;
         sun.enableCSM = true;
         this.scene.addChild(sunObj);
 
         GUIHelp.addFolder('Sun');
         GUIHelp.add(sun, 'intensity', 0, 100, 1);
-        GUIHelp.add(sunObj, 'rotationX', 0, 90, 1);
+        GUIHelp.add(sunObj, 'rotationX', -180, 180, 1);
         GUIHelp.add(sunObj, 'rotationY', -180, 180, 1);
         GUIHelp.add(sun, 'enableCSM');
         GUIHelp.endFolder();
