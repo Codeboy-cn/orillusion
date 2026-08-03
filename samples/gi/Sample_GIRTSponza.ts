@@ -1,4 +1,4 @@
-import { Object3D, Scene3D, Engine3D, Vector3, View3D, CameraUtil, AtmosphericComponent, DirectLight, KelvinUtil, GlobalBindGroup, GlobalIlluminationComponent, HoverCameraController } from "@orillusion/core";
+import { Object3D, Scene3D, Engine3D, Vector3, View3D, CameraUtil, AtmosphericComponent, DirectLight, KelvinUtil, GlobalBindGroup, GlobalIlluminationComponent, HoverCameraController, MeshRenderer } from "@orillusion/core";
 import { GUIHelp } from "@orillusion/debug/GUIHelp";
 
 // Software-ray-traced DDGI on the Sponza atrium: a sun (DirectLight)
@@ -131,9 +131,24 @@ class Sample_GIRTSponza {
         }
     }
 
+    /** Per-material IBL-diffuse scale. envIntensity only scales the IBL
+     *  diffuse term (BRDF_frag), so zeroing it suppresses ambient env
+     *  light while the atmospheric sky stays visible — skyExposure would
+     *  black out the sky dome too. */
+    private setEnvDiffuse(root: Object3D, v: number) {
+        for (const mr of root.getComponents(MeshRenderer)) {
+            for (const mat of mr.materials ?? []) {
+                mat?.setUniformFloat('envIntensity', v);
+            }
+        }
+    }
+
     async initScene() {
         let sponza = await this.engine.res.loadGltf('gltfs/glb/Sponza.glb') as Object3D;
         this.scene.addChild(sponza);
+        // Suppress ambient env light: the probe field owns the indirect term.
+        this.setEnvDiffuse(sponza, 0);
+        (this as any).sponza = sponza;
 
         // Sun angled through the atrium roof opening so the courtyard
         // floor is lit and the arcades live on bounce light.
@@ -166,6 +181,9 @@ class Sample_GIRTSponza {
         GUIHelp.add(this.engine.setting.gi, 'indirectIntensity', 0, 5, 0.05).onChange(() => volume.setVolumeDataChange());
         GUIHelp.add(this.engine.setting.gi, 'bounceIntensity', 0, 1, 0.01).onChange(() => volume.setVolumeDataChange());
         GUIHelp.add(this.engine.setting.gi, 'rtProbeCountPerFrame', 0, 1024, 32);
+        // Ambient env-light (IBL diffuse) scale over the whole scene.
+        const env = { envDiffuse: 0 };
+        GUIHelp.add(env, 'envDiffuse', 0, 1, 0.05).onChange((v: number) => this.setEnvDiffuse(sponza, v));
         GUIHelp.endFolder();
 
         // Grid density: probes along the longest scene axis. Baked into
