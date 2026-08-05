@@ -174,7 +174,10 @@ export class BitmapTextureCube extends TextureCube {
             }
         } else {
             //@bug not generate OffscreenCanvas
-            if (this._images instanceof HTMLCanvasElement || this._images instanceof ImageBitmap) {
+            // _images is an ARRAY — probe its elements, not the array
+            // itself (Array instanceof HTMLCanvasElement is always false,
+            // so canvas/bitmap face lists silently never generated).
+            if (this._images[0] instanceof HTMLCanvasElement || this._images[0] instanceof ImageBitmap) {
                 this.generateImages(this._images);
             }
         }
@@ -237,18 +240,27 @@ export class BitmapTextureCube extends TextureCube {
         img.src = /^https?:|^data:|^blob:|^\//.test(url) ? url : new URL(url, (window.parent || window).location.origin + '/').href;
         img.setAttribute('crossOrigin', '');
         await img.decode();
-        let srcTexture = new BitmapTexture2D(false, this._boundCtx, this.colorSpace);
+        // Keep the whole face-bake pipeline byte-passthrough: sample the
+        // source WITHOUT hardware sRGB decode and write raw bytes into
+        // linear faces; the final cube (when srgb) decodes exactly once
+        // at sample time.
+        let srcTexture = new BitmapTexture2D(false, this._boundCtx, 'linear');
         srcTexture.name = StringUtil.getURLName(url);
-        srcTexture.format = this._ldrFormat;
+        srcTexture.format = GPUTextureFormat.rgba8unorm;
         srcTexture.source = await createImageBitmap(img);
 
         let cubeSize = Math.round(Math.log2(srcTexture.width / 4));
         cubeSize = Math.pow(2, cubeSize);
         this.width = this.height = cubeSize;
 
+        // Intermediate faces are written via storage bindings, and -srgb
+        // formats are not storage-capable; keep the faces linear (the final
+        // cube copy is format copy-compatible either way).
+        const faceFormat = (typeof this.format === 'string' && this.format.endsWith('-srgb'))
+            ? GPUTextureFormat.rgba8unorm : this.format;
         let textureList: VirtualTexture[] = [];
         for (let i = 0; i < 6; i++) {
-            let item = new VirtualTexture(cubeSize, cubeSize, this.format, false,
+            let item = new VirtualTexture(cubeSize, cubeSize, faceFormat, false,
                 GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.COPY_SRC | GPUTextureUsage.TEXTURE_BINDING, 1, 0, 1, this._boundCtx);
             item.name = 'face ' + i;
             textureList.push(item);

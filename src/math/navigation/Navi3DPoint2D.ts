@@ -30,7 +30,7 @@ export class Navi3DPoint2D {
     }
 
     public normalize(): void {
-        var size: number = length;
+        var size: number = this.length;
         if (size == 0)
             return;
         this.setTo(this.x / size, this.y / size);

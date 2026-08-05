@@ -56,6 +56,7 @@ class Sample_DirectLightShadow {
         // add a direction light
         let lightObj3D = new Object3D();
         lightObj3D.localPosition.set(-50, 200, 0);
+        lightObj3D.transform.apply();
         lightObj3D.rotationX = 40;
         lightObj3D.rotationY = 0;
         lightObj3D.rotationZ = 0;

@@ -23,9 +23,12 @@ export class ParticleLocalMemory extends ParticleBuffer {
         }
         let singleCount = this.particlesData.length > 0 ? this.particlesData[0].totalCount : 0;
 
-        let byteSize = Math.max(singleCount * count * 4, 32);
-        if (this.byteSize == undefined || this.byteSize < byteSize) {
-            this.createBuffer(GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC, byteSize);
+        // createBuffer takes a float count and multiplies by 4 internally;
+        // passing a byte size here over-allocated the buffer 4x (which was
+        // masking the missing max-particle guard in the compute shader).
+        let floatCount = Math.max(singleCount * count, 8);
+        if (this.byteSize == undefined || this.byteSize < floatCount * 4) {
+            this.createBuffer(GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC, floatCount);
         }
         this.reset();
 

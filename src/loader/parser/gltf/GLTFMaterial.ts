@@ -11,6 +11,8 @@ import { Texture, Vector4 } from "../../..";
 export class GLTFMaterial {
     /** Material name as declared in the glTF file. */
     name: string
+    /** Index of this material in the glTF `materials` array (unique dedupe key; undefined for the default material). */
+    materialId?: number;
     /** Shader define flags collected for this material (e.g. blend mode hints). */
     defines: string[];
     /** Whether the material is rendered double-sided. */

@@ -43,6 +43,8 @@ export class ParticleStandardSimulator extends ParticleSimulator {
             globalData.setVector4Array(`overLife_scale`, [Vector4.ONE.clone(), Vector4.ONE.clone()]);
             globalData.setVector4Array(`overLife_colors`, [Vector4.ONE.clone(), Vector4.ONE.clone()]);
             globalData.setVector4Array(`overLife_rotations`, [Vector4.ZERO.clone(), Vector4.ZERO.clone()]);
+            // Speed-over-life is a displacement scale factor: 1.0 = unchanged.
+            globalData.setVector4Array(`overLife_speed`, [Vector4.ONE.clone(), Vector4.ONE.clone()]);
 
             globalData.setVector4(`cameraPos`, Vector4.ZERO.clone());
 

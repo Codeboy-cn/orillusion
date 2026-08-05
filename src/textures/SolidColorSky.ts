@@ -36,7 +36,9 @@ export class SolidColorSky extends LDRTextureCube {
         this._skyColor = color;
         Res.fillColor(this._internalTexture.floatArray, this._minSize, this._minSize, this.color.r, this.color.g, this.color.b, this.color.a);
         this._internalTexture.updateTexture(this._minSize, this._minSize, this._internalTexture.floatArray, false);
-        this._faceData.uploadTexture(0, this._internalTexture);
+        // Re-upload ALL mips: uploadTexture(0, ...) left mip 1+ holding the
+        // previous color, so rough IBL/reflections kept sampling the old sky.
+        this._faceData.uploadErpTexture(this._internalTexture);
         return this;
     }
 

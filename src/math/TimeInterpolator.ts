@@ -429,7 +429,9 @@ export class Interpolator {
      */
     public static tick(delta: number) {
         let interpolators = Interpolator.interpolators;
-        for (let inter of interpolators) {
+        // Iterate in reverse with an index so removing items does not skip entries
+        for (let i = interpolators.length - 1; i >= 0; i--) {
+            let inter = interpolators[i];
             if (inter.complete) {
                 Interpolator.remove(inter, true);
             } else {
@@ -474,6 +476,17 @@ export class Interpolator {
         window['OvershootInterpolator'] = OvershootInterpolator;
         window['JumperInterpolator'] = JumperInterpolator;
         this._interpolator = new window[InterpolatorEnum[this.interpolatorEnum]]();
+
+        // Keep only animatable values: strip config keys and function/undefined entries
+        // so tick() never writes NaN onto the target
+        let animatable: any = {};
+        for (let p in this.property) {
+            if (p === 'delayTime' || p === 'onComplete' || p === 'onProgress') continue;
+            let value = this.property[p];
+            if (typeof value === 'function' || value === undefined) continue;
+            animatable[p] = value;
+        }
+        this.property = animatable;
 
         this.targetProperty = {};
         for (let p in this.property) {

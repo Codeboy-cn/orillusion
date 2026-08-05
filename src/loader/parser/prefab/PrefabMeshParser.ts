@@ -4,6 +4,7 @@ import { GeometryVertexType } from "../../../core/geometry/GeometryVertexType";
 import { VertexAttributeName } from "../../../core/geometry/VertexAttributeName";
 import { VertexAttribute } from "../../../core/geometry/VertexAttribute";
 import { BytesArray } from "../../../util/BytesArray";
+import { normalizeIndexArray } from "../gltf/GLTFIndexUtil";
 import { ParserBase } from "../ParserBase";
 import { ParserFormat } from "../ParserFormat";
 import { PrefabParser } from "./PrefabParser";
@@ -102,11 +103,10 @@ export class PrefabMeshParser extends ParserBase {
             }
 
 
-            if (tmpIndices.length > 65535) {
-                prefabMesh.indices = new Uint32Array(tmpIndices);
-            } else {
-                prefabMesh.indices = new Uint16Array(tmpIndices);
-            }
+            // Choose the index element width by the MAXIMUM INDEX VALUE,
+            // not the element count — a short index list can still address
+            // a vertex above 65535.
+            prefabMesh.indices = normalizeIndexArray(tmpIndices);
 
             let geometry = new GeometryBase();
             geometry.vertexDim = vertex_dim;
@@ -205,7 +205,7 @@ let MeshVertexAttribute = {
     "TexCoord0": VertexAttributeName.uv,
     "TexCoord1": VertexAttributeName.TEXCOORD_1,
     "TexCoord2": VertexAttributeName.TEXCOORD_2,
-    "TexCoord3": VertexAttributeName.TEXCOORD_2,
+    "TexCoord3": VertexAttributeName.TEXCOORD_3,
     "TexCoord4": VertexAttributeName.TEXCOORD_4,
     "TexCoord5": VertexAttributeName.TEXCOORD_5,
     "TexCoord6": VertexAttributeName.TEXCOORD_6,

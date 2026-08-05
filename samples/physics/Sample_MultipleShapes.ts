@@ -224,6 +224,7 @@ class BoxGenerator extends ComponentBase {
                 let index = Math.floor(now / this.interval) % this.totalShapes;
                 let shapeObject = this.container.getChildByIndex(index) as Object3D;
                 shapeObject.localPosition.set(Math.random() * 60 - 60 / 2, 40, Math.random() * 60 - 60 / 2);
+                shapeObject.transform.apply();
                 shapeObject.getComponent(Rigidbody).updateTransform(shapeObject.localPosition, null, true);
             } else {
                 this.addRandomShape();

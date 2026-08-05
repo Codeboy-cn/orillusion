@@ -1,6 +1,5 @@
 import { Matrix4 } from "../../math/Matrix4";
 import { Vector3 } from "../../math/Vector3";
-import { BoundingBox } from "../bound/BoundingBox";
 import { GeometryBase } from "./GeometryBase";
 import { VertexAttributeName } from "./VertexAttributeName";
 
@@ -46,7 +45,8 @@ export class ExtrudeGeometry extends GeometryBase {
         isShapeClosed && shape.push(shape[0]);
         this.sections = this.buildSections(shape, path);
         this.buildGeometry(shape, this.sections);
-        this.bounds = new BoundingBox(Vector3.ZERO.clone(), new Vector3(100, 100, 100));
+        // Do not assign hardcoded bounds here: the `bounds` getter lazily
+        // computes the correct box from the position attribute.
         return this;
     }
 

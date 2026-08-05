@@ -47,8 +47,15 @@ export class Static_Audio {
         {
             let group = new Object3D()
             let speaker = await this.engine.res.loadGltf('gltfs/speaker/scene.gltf')
-            speaker.localScale.set(4, 4, 4)
-            speaker.rotationX = -120
+            // scene.gltf's Cylinder nodes carry a 100x matrix plus a net -90deg
+            // X rotation. The loader used to discard node matrices, so both the
+            // scale and the angle here were authored against an implicit
+            // identity and now compound with the node chain.
+            // localScale.set() mutates Transform's internal vector in place and
+            // so never reaches the solver on its own — apply() pushes it.
+            speaker.localScale.set(0.01, 0.01, 0.01)
+            speaker.transform.apply()
+            speaker.rotationX = -30
             //speaker.y = 1.5
             group.addChild(speaker)
             group.y = 2

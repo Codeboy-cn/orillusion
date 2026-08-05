@@ -113,13 +113,15 @@ export let BRDF_frag: string = /*wgsl*/ `
 
     fn FresnelSchlickRoughness( NoV:f32,  F0:vec3<f32>,  roughness:f32) -> vec3<f32>
     {
-        return F0 + (max(vec3(roughness), F0) - F0) * pow(1.0 - NoV, 5.0);
+        // F90 is (1 - roughness): smooth surfaces get full grazing fresnel,
+        // rough surfaces suppress it (see computeFresnelSchlickRoughness).
+        return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(1.0 - NoV, 5.0);
     }
 
     fn DistributionGGX( NdotH:f32 ,  roughness:f32 ) -> f32
     {
         let alpha = roughness * roughness;
-        let alpha2 = roughness * roughness;
+        let alpha2 = alpha * alpha;
 
         let NdotH2 = NdotH * NdotH;
 
@@ -323,7 +325,10 @@ export let BRDF_frag: string = /*wgsl*/ `
     fn approximateSpecularIBL( specularColor:vec3<f32> , roughness:f32 , R:vec3<f32> , NoV:f32 ) -> vec3<f32> {
        
         let MAX_REFLECTION_LOD  = i32(textureNumLevels(prefilterMap)) ;
-        let mip = roughnessToMipmapLevel(roughness,MAX_REFLECTION_LOD) * f32(MAX_REFLECTION_LOD);
+        // roughnessToMipmapLevel already returns an absolute mip level;
+        // multiplying by MAX_REFLECTION_LOD again clamped every sample
+        // to the blurriest level (see IBLEnv/reflectEnvMap for reference).
+        let mip = roughnessToMipmapLevel(roughness,MAX_REFLECTION_LOD);
         fragData.EnvColor = (textureSampleLevel(prefilterMap, prefilterMapSampler, getSpecularDominantDir(fragData.N,R,roughness) , mip ).rgb);
         fragData.EnvColor = globalUniform.skyExposure * (fragData.EnvColor);
         var envBRDF = textureSampleLevel(brdflutMap, brdflutMapSampler, vec2<f32>(NoV, roughness) , 0.0 ) ;

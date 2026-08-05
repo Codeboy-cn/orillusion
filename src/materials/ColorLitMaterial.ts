@@ -19,10 +19,13 @@ export class ColorLitMaterial extends Material {
 
         ShaderLib.register("ColorLitShader", ColorLitShader);
 
-        this.shader = new Shader()
+        // Register the COLOR pass BEFORE assigning: the Material.shader
+        // setter dereferences getDefaultShaders()[0] immediately.
+        let shader = new Shader()
         let renderShader = new RenderShaderPass(`ColorLitShader`, `ColorLitShader`);
         renderShader.passType = PassType.COLOR;
-        this.shader.addRenderPass(renderShader);
+        shader.addRenderPass(renderShader);
+        this.shader = shader;
 
         renderShader.setDefine("USE_BRDF", true);
         renderShader.setShaderEntry(`VertMain`, `FragMain`)
@@ -47,7 +50,12 @@ export class ColorLitMaterial extends Material {
     }
 
     clone(): this {
-        return null;
+        // Returning null poisoned RenderNode.selfCloneMaterials with null
+        // materials; deep-copy the shader like the other material clones.
+        let ret = new ColorLitMaterial();
+        ret.shader = this.shader.clone();
+        ret.name = this.name;
+        return ret as this;
     }
 
     debug() {

@@ -5,6 +5,10 @@ import { ParserBase } from './parser/ParserBase';
  * @internal
  * Load management classes
  * @group Loader
+ * @deprecated This is a hollow stub: `load()` returns a promise that
+ * never settles (its switch has no working branch), so `loadAll` /
+ * `loadUrls` hang forever. Use `Engine3D.res` (the {@link Res} loader
+ * family) instead.
  */
 export class LoaderManager extends CEventDispatcher {
     private static _instance: LoaderManager;

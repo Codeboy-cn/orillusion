@@ -14,6 +14,11 @@ export class GLTFParser extends ParserBase {
     static format: ParserFormat = ParserFormat.JSON;
     private _gltf: GLTF_Info;
 
+    /** Parsed glTF info block (populated after parseJson). */
+    public get gltf(): GLTF_Info {
+        return this._gltf;
+    }
+
     public async parseJson(obj: object) {
         this._gltf = new GLTF_Info();
         this._gltf = { ...this._gltf, ...obj };
@@ -58,12 +63,9 @@ export class GLTFParser extends ParserBase {
         };
     }
 
-    public static getModelNameCounter() {
-        let counter = 0;
-
-        return function getModelNameCounter() {
-            return `GLTF_NO_NAME_MESH_${counter++}`;
-        };
+    private static _modelCounter = 0;
+    public static getModelNameCounter(): string {
+        return `GLTF_NO_NAME_MESH_${GLTFParser._modelCounter++}`;
     }
 
     public static getTexCoordDefine(texNum) {
@@ -179,12 +181,23 @@ export class GLTFParser extends ParserBase {
             for (let i = 0; i < this._gltf.images.length; i++) {
                 const element = this._gltf.images[i];
                 if (element.uri) {
-                    let url = StringUtil.parseUrl(this.baseUrl, element.uri)
-                    if (this.loaderFunctions?.onUrl)
-                        url = await this.loaderFunctions.onUrl(url)
+                    let url: string;
+                    if (element.uri.startsWith('data:')) {
+                        // data: URIs are self-contained — prepending baseUrl
+                        // corrupts them. Pass them through untouched (the
+                        // texture loader handles base64 payloads directly).
+                        url = element.uri;
+                    } else {
+                        url = StringUtil.parseUrl(this.baseUrl, element.uri)
+                        if (this.loaderFunctions?.onUrl)
+                            url = await this.loaderFunctions.onUrl(url)
+                    }
                     let promise = new FileLoader(this.ctx).loadAsyncBitmapTexture(url, this.loaderFunctions).then(texture => {
                         texture.name = StringUtil.getURLName(element.uri);
-                        this._gltf.resources[texture.name] = texture;
+                        // Key by the full uri (matching the buffers map):
+                        // basename keys made a/diffuse.png and b/diffuse.png
+                        // collide, with completion order deciding the winner.
+                        this._gltf.resources[element.uri] = texture;
                     })
                     textureArray.push(promise)
                 }

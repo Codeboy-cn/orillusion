@@ -143,7 +143,7 @@ export class Graphic3DRibbonRenderer extends MeshRenderer {
     }
 
     public setLineUVRect(i: number, v: Vector4) {
-        this.transformBuffer.setVector4("uvRect1_" + i, v);
+        this.transformBuffer.setVector4("uvRect2_" + i, v);
         this._onChange = true;
     }
 

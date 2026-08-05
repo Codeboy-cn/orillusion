@@ -304,7 +304,9 @@ export class Matrix4 {
      * @param target_Mat result matrix (referenced by index)
      */
     public static matrixRotateY(rad: number, target_Mat: Matrix4): void {
-        Matrix4.wasm.Matrix_Append(rad, target_Mat.index);
+        // Matrix_Append is the wasm matrix-multiply entry point, not a
+        // rotation builder — calling it here produced garbage.
+        matrixRotateY(rad, target_Mat);
     }
 
     /**
@@ -415,7 +417,14 @@ export class Matrix4 {
     private static floatArray: FloatArray = new Float64Array(16).fill(0);
 
     /**
-     * matrix multiply
+     * matrix multiply.
+     *
+     * NOTE: despite the name, this computes `this = mat4 · this`
+     * (a PREMULTIPLY — identical to {@link premultiply}), which is the
+     * opposite operand order of the static
+     * `Matrix4.multiplyMatrices(a, b) = a · b`. Prefer the static form
+     * or {@link multiplyMatrices} when operand order matters.
+     * See docs/engine-conventions.md.
      * @param mat4 multiply target
      */
     public multiply(mat4: Matrix4): this {
@@ -462,7 +471,8 @@ export class Matrix4 {
         return this;
     }
 
-    /** Set this = m * this. */
+    /** Set this = m * this. (The instance {@link multiply} performs the
+     *  SAME operation despite its name — see docs/engine-conventions.md.) */
     public premultiply(m: Matrix4): this {
         return this.multiplyMatrices(m, this) as this;
     }
@@ -714,7 +724,11 @@ export class Matrix4 {
     public ortho(w: number, h: number, zn: number, zf: number) {
         let data = this.rawData;
 
-        data[0] = 2 / w;
+        // Match orthoOffCenter's engine convention (negated X, LH depth
+        // [0,1]) — this used to be +2/w, mirroring X relative to every
+        // in-use ortho path. ortho(w,h,...) now equals
+        // orthoOffCenter(-w/2, w/2, -h/2, h/2, ...).
+        data[0] = -2 / w;
         data[1] = 0;
         data[2] = 0;
         data[3] = 0;
@@ -748,26 +762,12 @@ export class Matrix4 {
      * @returns this matrix
      */
     public orthoZO(left: number, right: number, bottom: number, top: number, near: number, far: number) {
-        let data = this.rawData;
-        let lr = 1 / (left - right);
-        let bt = 1 / (bottom - top);
-        let nf = 1 / (near - far);
-        data[0] = -2 * lr;
-        data[1] = 0;
-        data[2] = 0;
-        data[3] = 0;
-        data[4] = 0;
-        data[5] = -2 * bt;
-        data[6] = 0;
-        data[7] = 0;
-        data[8] = 0;
-        data[9] = 0;
-        data[10] = nf;
-        data[11] = 0;
-        data[12] = (left + right) * lr;
-        data[13] = (top + bottom) * bt;
-        data[14] = near * nf;
-        data[15] = 1;
+        // This was the right-handed glMatrix formula: under the engine's
+        // left-handed +Z convention its depth landed entirely outside
+        // [0,1] (depth(near) < 0). Now identical to orthoOffCenter — the
+        // engine-convention LH zero-to-one ortho used by cameras and
+        // shadow paths.
+        this.orthoOffCenter(left, right, bottom, top, near, far);
         return this;
     }
 
@@ -1610,7 +1610,7 @@ export class Matrix4 {
                     q.y = (mr[1] + mr[4]) / (4 * q.x);
                     q.z = (mr[8] + mr[2]) / (4 * q.x);
                 } else if (mr[5] > mr[10]) {
-                    rot.y = Math.sqrt(1 + mr[5] - mr[0] - mr[10]) / 2;
+                    q.y = Math.sqrt(1 + mr[5] - mr[0] - mr[10]) / 2;
 
                     q.x = (mr[1] + mr[4]) / (4 * q.y);
                     q.w = (mr[8] - mr[2]) / (4 * q.y);
@@ -1641,7 +1641,11 @@ export class Matrix4 {
      * @param target Vector of results
      * @param quaternion Rotate the quaternion
      * @param isDegree Whether to convert to Angle
-     * @param order convert order
+     * @param order convert order. DEFAULTS TO 'XYZ', but the engine's own
+     *        euler convention (Transform.rotationX/Y/Z,
+     *        Quaternion.setFromEuler/getEulerAngles) is 'ZYX' — pass
+     *        'ZYX' explicitly for values that round-trip with those APIs.
+     *        See docs/engine-conventions.md.
      * @returns
      */
     static getEuler(target: Vector3, quaternion: Quaternion, isDegree: boolean = true, order?: string) {
@@ -1902,22 +1906,13 @@ export class Matrix4 {
     public transpose() {
         let data: FloatArray = this.rawData;
 
-        for (let i: number = 0; i < Matrix4.helpMatrix.rawData.length; i++) {
-            Matrix4.helpMatrix.rawData[i] = data[i];
-        }
-
-        data[1] = Matrix4.helpMatrix.rawData[4];
-        data[2] = Matrix4.helpMatrix.rawData[8];
-        data[3] = Matrix4.helpMatrix.rawData[12];
-        data[4] = Matrix4.helpMatrix.rawData[1];
-        data[6] = Matrix4.helpMatrix.rawData[9];
-        data[7] = Matrix4.helpMatrix.rawData[13];
-        data[8] = Matrix4.helpMatrix.rawData[2];
-        data[9] = Matrix4.helpMatrix.rawData[6];
-        data[11] = Matrix4.helpMatrix.rawData[14];
-        data[12] = Matrix4.helpMatrix.rawData[3];
-        data[13] = Matrix4.helpMatrix.rawData[7];
-        data[14] = Matrix4.helpMatrix.rawData[11];
+        let t: number;
+        t = data[1]; data[1] = data[4]; data[4] = t;
+        t = data[2]; data[2] = data[8]; data[8] = t;
+        t = data[3]; data[3] = data[12]; data[12] = t;
+        t = data[6]; data[6] = data[9]; data[9] = t;
+        t = data[7]; data[7] = data[13]; data[13] = t;
+        t = data[11]; data[11] = data[14]; data[14] = t;
     }
 
     /**
@@ -2363,8 +2358,16 @@ export class Matrix4 {
     public makeMatrix44ByQuaternion(pos: Vector3, scale: Vector3, rot: Quaternion) {
         this.identity();
         Quaternion.quaternionToMatrix(rot, this);
-        this.appendTranslation(pos.x, pos.y, pos.z);
-        this.appendScale(scale.x, scale.y, scale.z);
+        // Compose T·R·S like the euler-based makeMatrix44 helper: scale
+        // the rotation basis columns, then place the translation raw.
+        // The old append order produced S·T·R — the translation itself
+        // was multiplied by the scale (pos (1,2,3) with scale 2 landed
+        // at (2,4,6)).
+        const d = this.rawData;
+        d[0] *= scale.x; d[1] *= scale.x; d[2] *= scale.x;
+        d[4] *= scale.y; d[5] *= scale.y; d[6] *= scale.y;
+        d[8] *= scale.z; d[9] *= scale.z; d[10] *= scale.z;
+        d[12] = pos.x; d[13] = pos.y; d[14] = pos.z; d[15] = 1;
     }
 }
 
@@ -2541,10 +2544,21 @@ export function matrixRotateY(rad: number, target: Matrix4) {
     out[1] = 0;
     out[2] = -s;
     out[3] = 0;
+    // Column 1 and the translation column must be written too — leaving
+    // whatever the target held produced a corrupt matrix unless the
+    // caller pre-identity()ed it.
+    out[4] = 0;
+    out[5] = 1;
+    out[6] = 0;
+    out[7] = 0;
     out[8] = s;
     out[9] = 0;
     out[10] = c;
     out[11] = 0;
+    out[12] = 0;
+    out[13] = 0;
+    out[14] = 0;
+    out[15] = 1;
     return out;
 }
 

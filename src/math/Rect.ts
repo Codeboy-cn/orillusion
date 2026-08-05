@@ -195,7 +195,7 @@ export class Rect {
         var bottom: number = Math.min(Ya2, Yb2);
         var left: number = Math.max(Xa1, Xb1);
         var right: number = Math.min(Xb2, Xa2);
-        if (top >= 0 && bottom >= 0 && bottom - top >= 0 && right - left > 0) {
+        if (bottom - top > 0 && right - left > 0) {
             target.x = left;
             target.y = top;
             target.width = right - left;

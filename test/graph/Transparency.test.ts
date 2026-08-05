@@ -221,7 +221,7 @@ await test('SortedTransparentPass reads _TransparentDrawContext (not ColorPass v
     engine.dispose()
 })
 
-await test('remove(GBufferResourcePass) surfaces the transparent-draw-context dependency on the next compile', async () => {
+await test('removing the draw-context creator surfaces the dependency on the next compile', async () => {
     const engine = await Engine3D.init({})
     const scene = new Scene3D()
     const cameraObj = new Object3D()
@@ -235,11 +235,17 @@ await test('remove(GBufferResourcePass) surfaces the transparent-draw-context de
     await delay(120)
 
     const graph = view.renderGraph!
-    // GBufferResourcePass is the creator of _ColorBuffer / _NormalBuffer /
-    // _TransparentDrawContext (ColorPass no longer produces them). Removing it
-    // must orphan those handles at compile time rather than silently skipping.
-    expect(graph.remove('GBufferResourcePass')).toEqual(true)
 
+    // ColorPass is deliberately NOT a resource creator (multiple ColorPass
+    // instances may coexist — terrain / clear-depth / world chains), so
+    // removing it must leave a compilable graph...
+    expect(graph.remove('ColorPass')).toEqual(true)
+    graph.compile()
+
+    // ...while removing the actual creator of _ColorBuffer / _NormalBuffer /
+    // _TransparentDrawContext (GBufferResourcePass) must fail compile with
+    // the removed resource named, not silently skip at execute.
+    expect(graph.remove('GBufferResourcePass')).toEqual(true)
     let threw: Error | null = null
     try { graph.compile() } catch (e) { threw = e as Error }
     if (!(threw instanceof UnresolvedResourceError)) throw new Error('expected UnresolvedResourceError after remove(GBufferResourcePass)')

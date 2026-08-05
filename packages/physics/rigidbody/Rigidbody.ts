@@ -154,7 +154,9 @@ export class Rigidbody extends ComponentBase {
         if (colliderShape instanceof BoxColliderShape) {
             shape = new Ammo.btBoxShape(TempPhyMath.toBtVec(colliderShape.halfSize));
         } else if (colliderShape instanceof CapsuleColliderShape) {
-            shape = new Ammo.btCapsuleShape(colliderShape.radius, colliderShape.height);
+            // CapsuleColliderShape.height is the TOTAL height; btCapsuleShape
+            // takes only the cylindrical section (total minus both caps).
+            shape = new Ammo.btCapsuleShape(colliderShape.radius, Math.max(colliderShape.height - 2 * colliderShape.radius, 0));
         } else if (colliderShape instanceof SphereColliderShape) {
             shape = new Ammo.btSphereShape(colliderShape.radius);
         } else {
@@ -271,7 +273,10 @@ export class Rigidbody extends ComponentBase {
      * Collision flags of the rigid body.
      */
     public get collisionFlags(): number {
-        return this._btRigidbody?.getCollisionFlags() ?? (this.mass === 0 ? 1 : 0);
+        // Before the native body exists, honour flags accumulated via
+        // addCollisionFlag — falling straight to the mass default made
+        // consecutive pre-start addCollisionFlag calls overwrite each other.
+        return this._btRigidbody?.getCollisionFlags() ?? this._collisionFlags ?? (this.mass === 0 ? 1 : 0);
     }
 
     /**
@@ -503,6 +508,10 @@ export class Rigidbody extends ComponentBase {
             if (oldMass === 0 || value === 0) {
                 ContactProcessedUtil.removeIgnoredPointer(this._btRigidbody.kB); // The pointer will become invalid; remove it from the silent-state table
                 Physics.world.removeRigidBody(this._btRigidbody); // Remove the rigid body
+                // Free the replaced native body + motion state (the shape is
+                // reused by initRigidbody and must NOT be destroyed here).
+                Ammo.destroy(this._btRigidbody.getMotionState());
+                Ammo.destroy(this._btRigidbody);
                 this.initRigidbody(); // Recreate the rigid body
                 this.collisionEventHandler.configure(this._btRigidbody.kB);
                 this._isSilent && ContactProcessedUtil.addIgnoredPointer(this._btRigidbody.kB);

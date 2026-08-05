@@ -181,6 +181,12 @@ export class Transform extends ComponentBase {
 
     /** Enable state; propagates to all child transforms. */
     public set enable(value: boolean) {
+        if (value && !this.transform._scene3d) {
+            // Intentional semantics: detached objects never enable (they are
+            // excluded from render collection). Warn because the silent
+            // rewrite to false repeatedly surprises downstream users.
+            console.warn('[Transform] enable=true on detached Object3D is ignored; addChild to a scene first.', this.object3D?.name);
+        }
         if (this.transform._scene3d && value) {
             super.enable = true;
         } else {
@@ -224,6 +230,13 @@ export class Transform extends ComponentBase {
         WasmMatrix.setScale(this.index, this._localScale.x, this._localScale.y, this._localScale.z);
         WasmMatrix.setRotation(this.index, this._localRotQuat.x, this._localRotQuat.y, this._localRotQuat.z, this._localRotQuat.w);
         WasmMatrix.setTranslate(this.index, this._localPos.x, this._localPos.y, this._localPos.z);
+        // The matrix slot may be recycled from a destroyed object; clear any
+        // inherited continuous SRT deltas and parent linkage, otherwise the
+        // new object spins/moves on its own.
+        WasmMatrix.setContinueScale(this.index, 0, 0, 0);
+        WasmMatrix.setContinueRotation(this.index, 0, 0, 0);
+        WasmMatrix.setContinueTranslate(this.index, 0, 0, 0);
+        WasmMatrix.setParent(this.index, -1, 0);
     }
 
     /** Lifecycle hook called once when the transform is created. */
@@ -390,6 +403,42 @@ export class Transform extends ComponentBase {
                 this.eventDispatcher.dispatchEvent(this.eventRotationChange);
             }
         }
+    }
+
+    /**
+     * Push in-place edits of {@link localPosition}, {@link localRotation} and
+     * {@link localScale} into the matrix solver.
+     *
+     * Those getters hand back Transform's own vectors, so mutating one in
+     * place — `transform.localScale.set(2, 2, 2)`, `transform.localPosition.x
+     * = 5` — bypasses the matching setter: the value never reaches the WASM
+     * SRT buffer the renderer reads, so the object keeps drawing at its old
+     * transform while the getter cheerfully reports the new one. Call this
+     * once after such edits:
+     *
+     * ```ts
+     * obj.localScale.set(0.04, 0.04, 0.04);
+     * obj.transform.apply();
+     * ```
+     *
+     * Not needed when assigning a whole vector (`transform.localScale = v`) or
+     * using the scalar accessors (`x`, `scaleX`, `rotationY`) — those already
+     * write through to the solver.
+     *
+     * Rotation is re-derived from the Euler {@link localRotation}. A rotation
+     * set through {@link localRotQuat} survives this unchanged: Euler values
+     * are not unique at gimbal lock, but the round-trip preserves the rotation
+     * itself.
+     *
+     * @returns this transform, so the call can be chained onto the edit.
+     */
+    public apply(): this {
+        WasmMatrix.setTranslate(this.index, this._localPos.x, this._localPos.y, this._localPos.z);
+        WasmMatrix.setScale(this.index, this._localScale.x, this._localScale.y, this._localScale.z);
+        Quaternion.HELP_1.setFromEuler(this._localRot.x, this._localRot.y, this._localRot.z);
+        this._applyLocalRotation(this._localRot, Quaternion.HELP_1);
+        this.notifyChange();
+        return this;
     }
 
     /**

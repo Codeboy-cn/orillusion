@@ -19,7 +19,9 @@ export class KDTreeRange {
     }
 
     public isInterestRange(src: KDTreeRange): boolean {
-        let fail = this.max > src.min || src.max < this.min;
+        // Ranges do NOT overlap when this one ends before src starts, or
+        // src ends before this one starts.
+        let fail = this.max < src.min || src.max < this.min;
         return !fail;
     }
 }

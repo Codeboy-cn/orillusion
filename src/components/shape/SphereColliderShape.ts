@@ -46,8 +46,13 @@ export class SphereColliderShape extends ColliderShape {
                 this._pickRet = { intersect: false, intersectPoint: new Vector3(), distance: 0 };
             }
             this._pickRet.intersect = true;
-            this._pickRet.intersectPoint = pick;
-            this._pickRet.distance = Vector3.distance(helpRay.origin, ColliderShape.v3_help_0);
+            // Copy the hit point: intersectSphere may return a shared helper
+            // vector that would be clobbered by the next ray query.
+            if (!this._pickRet.intersectPoint) {
+                this._pickRet.intersectPoint = new Vector3();
+            }
+            this._pickRet.intersectPoint.copy(pick);
+            this._pickRet.distance = Vector3.distance(helpRay.origin, pick);
             return this._pickRet;
         }
         return null;

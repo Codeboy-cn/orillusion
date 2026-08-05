@@ -52,9 +52,13 @@ await test('PreDepthPass is registered and exposes _MainDepthTexture + _ZBufferT
 
     const feature = view.renderGraph!.getPass('PreDepthPass') as PreDepthPass | null
     if (!feature) throw new Error('PreDepthPass not registered')
-    // The pass writes its internal depth RT (_PreDepthRT) plus the two
-    // published side-channel handles. Assert the external handles are present
-    // rather than the raw write count (which includes the RT edges).
+    // Three declared writes: the adopted _PreDepthRT itself plus the two
+    // published textures (_MainDepthTexture, _ZBufferTexture). The old
+    // expectation of 2 predates counting the RT write; the double
+    // adopt+useRenderTarget registration that produced 4 is fixed. Assert the
+    // count (catches a re-introduced double registration) and the identity of
+    // the two published handles (catches the RT edges masking a missing one).
+    expect(feature.writes.length).toEqual(3)
     expect(feature.writes.indexOf(MAIN_DEPTH_TEXTURE) >= 0).toEqual(true)
     expect(feature.writes.indexOf(Z_BUFFER_TEXTURE) >= 0).toEqual(true)
 

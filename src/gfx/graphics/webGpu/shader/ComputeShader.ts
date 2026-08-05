@@ -43,6 +43,10 @@ export class ComputeShader extends ShaderPassBase {
     private _sampleTextureDic: Map<string, Texture>;
     private _groupsShaderReflectionVarInfos: ShaderReflectionVarInfo[][];
     private _groupCache: { [name: string]: { groupIndex: number, infos: any } } = {};
+    /** Per bind-group snapshots of buffer GPU-identity revisions taken at
+     *  bind-group build time. compute() pull-compares them each dispatch
+     *  and rebuilds groups whose buffer was retired by resizeBuffer(). */
+    private _bufferSnapshots: Array<Array<{ buf: import('../core/buffer/GPUBufferBase').GPUBufferBase, rev: number }>> = [];
 
     /**
      *
@@ -108,6 +112,21 @@ export class ComputeShader extends ShaderPassBase {
             this.genComputePipeline();
         }
 
+        // Pull-check buffer GPU identity: a resizeBuffer() since the last
+        // dispatch retired the GPUBuffer a bind group references — submit
+        // would fail with "destroyed buffer used in a submit". Invalidate
+        // the affected groups so the rebuild loop below recreates them.
+        for (let i = 0; i < this._bufferSnapshots.length; ++i) {
+            const snaps = this._bufferSnapshots[i];
+            if (!snaps || !this.bindGroups[i]) continue;
+            for (const s of snaps) {
+                if (s.buf._gpuRevision !== s.rev) {
+                    this.bindGroups[i] = null;
+                    break;
+                }
+            }
+        }
+
         // Rebuild any bind groups that were invalidated since the last dispatch.
         // Callers (e.g. PostBase.bindUpstream) signal "re-bind needed" by
         // setting `this.bindGroups[i] = null` after updating the sampler /
@@ -161,6 +180,10 @@ export class ComputeShader extends ShaderPassBase {
                 },
             }
             entries.push(entry);
+            // Snapshot the buffer's GPU-identity revision: compute()
+            // pull-compares it each dispatch and lazily rebuilds this
+            // group when a resize retired the underlying GPUBuffer.
+            this._bufferSnapshots[groupIndex].push({ buf: buffer, rev: buffer._gpuRevision });
         } else {
             console.error(`ComputeShader(${this.instanceID})`, `buffer ${varName} is missing!`);
         }
@@ -169,13 +192,18 @@ export class ComputeShader extends ShaderPassBase {
     protected noticeBufferChange(name: string) {
         let bindGroupCache = this._groupCache[name];
         if (bindGroupCache) {
-            this.genGroups(bindGroupCache.groupIndex, bindGroupCache.infos, true);
+            // Defer the rebuild to the next compute() (its null-rebuild
+            // loop recreates the group). Rebuilding here synchronously
+            // touched buffer.buffer before the swapped-in buffer had a
+            // bound context and threw 'used before bindCtx'.
+            this.bindGroups[bindGroupCache.groupIndex] = null;
         }
     }
 
     protected genGroups(groupIndex: number, infos: ShaderReflectionVarInfo[][], force: boolean = false) {
         if (!this.bindGroups[groupIndex] || force) {
             const shaderRefs: ShaderReflectionVarInfo[] = infos[groupIndex];
+            this._bufferSnapshots[groupIndex] = [];
 
             let entries: GPUBindGroupEntry[] = [];
             for (let j = 0; j < shaderRefs.length; ++j) {
@@ -283,13 +311,45 @@ export class ComputeShader extends ShaderPassBase {
             this.genGroups(i, this._groupsShaderReflectionVarInfos);
         }
 
-        this._boundCtx!.addEventListener(CResizeEvent.RESIZE, (e) => {
-            for (let i = 0; i < shaderReflection.groups.length; ++i) {
-                let srvs = shaderReflection.groups[i];
-                this._groupsShaderReflectionVarInfos[i] = srvs;
-                this.genGroups(i, this._groupsShaderReflectionVarInfos, true);
-            }
-        }, this);
+        // Keep a reference to the RESIZE listener so destroy() can unhook
+        // it — the anonymous closure could never be removed and kept the
+        // whole shader (and its buffers) alive after hot-swapping compute
+        // effects.
+        if (!this._resizeListener) {
+            this._resizeListener = () => {
+                for (let i = 0; i < this.shaderReflection.groups.length; ++i) {
+                    let srvs = this.shaderReflection.groups[i];
+                    this._groupsShaderReflectionVarInfos[i] = srvs;
+                    this.genGroups(i, this._groupsShaderReflectionVarInfos, true);
+                }
+            };
+            this._boundCtx!.addEventListener(CResizeEvent.RESIZE, this._resizeListener, this);
+        }
+    }
+
+    private _resizeListener: Function = null;
+
+    public destroy(force?: boolean) {
+        if (this._resizeListener && this._boundCtx) {
+            this._boundCtx.removeEventListener(CResizeEvent.RESIZE, this._resizeListener, this);
+        }
+        this._resizeListener = null;
+        // genGroups attached Reference entries for every bound texture;
+        // detach them so this shader stops pinning the textures (and their
+        // Context3D) after it is destroyed. attached() is idempotent per
+        // (texture, this) pair, so one detach per dict entry is enough.
+        const refs = Reference.getInstance();
+        this._storageTextureDic.forEach((tex) => refs.detached(tex, this));
+        this._storageTextureDic.clear();
+        this._sampleTextureDic.forEach((tex) => refs.detached(tex, this));
+        this._sampleTextureDic.clear();
+        this._computePipeline = null;
+        this._csShaderModule = null;
+        this.bindGroups = [];
+        this._bufferSnapshots = [];
+        this._groupsShaderReflectionVarInfos = [];
+        this._groupCache = {};
+        super.destroy(force);
     }
 
     protected preCompileShader(shader: string) {

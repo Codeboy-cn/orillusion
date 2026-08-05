@@ -55,9 +55,16 @@ export class Static_Audio {
                 this.engine.res.loadGltf('gltfs/glb/CesiumMan.glb'),
                 fetch('https://cdn.orillusion.com/audio.ogg').then(res => res.arrayBuffer())
             ])
-            speaker.localScale.set(4, 4, 4)
-            speaker.rotationX = -120
-            speaker.y = 0.5
+            // scene.gltf's Cylinder nodes carry a 100x matrix plus a net -90deg
+            // X rotation. The loader used to discard node matrices, so both the
+            // scale and the angle here were authored against an implicit
+            // identity and now compound with the node chain.
+            // localScale.set() mutates Transform's internal vector in place and
+            // so never reaches the solver on its own — apply() pushes it.
+            speaker.localScale.set(0.01, 0.01, 0.01)
+            speaker.transform.apply()
+            speaker.rotationX = -30
+            // speaker.y = 0.5
             let group = new Object3D()
             group.addChild(speaker)
             group.y = 2
@@ -67,9 +74,12 @@ export class Static_Audio {
             man.scaleX = 10;
             man.scaleY = 10;
             man.scaleZ = 10;
-            man.rotationX = -90;
-            man.rotationY = -90
+            // No manual Z-up correction: CesiumMan's own Z_UP/Armature node
+            // matrices already encode exactly (-90, -90, 0). The loader used to
+            // discard node matrices, so this sample replicated the correction by
+            // hand; applying both now lays the model on its side.
             man.localPosition.set(0, 0.5, 30)
+            man.transform.apply()
             this.scene.addChild(man)
 
             let listener = man.addComponent(AudioListener)

@@ -32,15 +32,20 @@ export class BitmapTexture2DArray extends Texture implements ITexture {
 
     /**
      * fill self by set texture list
+     *
+     * Ownership: the array does NOT own the source textures. Replaced
+     * textures are only dropped from the list — callers that created them
+     * must destroy them when no longer used elsewhere.
      * @param texs array of BitmapTexture2D
      * @returns
      */
     public setTextures(texs: BitmapTexture2D[]) {
         this._bitmapTextures.length = 0;
         for (let i = 0; i < texs.length; i++) {
-            const tex = texs[i];
-            this.addTexture(tex);
+            this.appendTexture(texs[i]);
         }
+        // Single full-layer upload instead of one per appended texture.
+        this.updateTexture();
     }
 
     /**
@@ -49,14 +54,16 @@ export class BitmapTexture2DArray extends Texture implements ITexture {
      * @returns
      */
     public addTexture(bitmapTexture: BitmapTexture2D) {
+        this.appendTexture(bitmapTexture);
+        this.updateTexture();
+    }
+
+    private appendTexture(bitmapTexture: BitmapTexture2D) {
         if (bitmapTexture.width != this.width || bitmapTexture.height != this.height) {
             console.error("bitmap texture must match bitmapTextureArray size!");
         }
-        // if (this._bitmapTextures.indexOf(bitmapTexture) == -1) {
         bitmapTexture.pid = this._bitmapTextures.length;
         this._bitmapTextures.push(bitmapTexture);
-        this.updateTexture();
-        // }
     }
 
     /**
@@ -72,6 +79,10 @@ export class BitmapTexture2DArray extends Texture implements ITexture {
                 const bitmapTexture = this._bitmapTextures[i];
                 bitmapTexture.pid = i;
             }
+            // Re-copy the GPU array layers: pids were re-packed above, but the
+            // GPU texture still holds the old layer order — every texture after
+            // the removed one would display its predecessor's image.
+            this.updateTexture();
         }
     }
 

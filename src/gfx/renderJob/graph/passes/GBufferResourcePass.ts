@@ -126,6 +126,7 @@ export class GBufferResourcePass extends RenderGraphPass {
         for (const desc of splitRtFrame.rtDescriptors) desc.loadOp = 'load';
         this.splitRendererPassState = WebGPUDescriptorCreator.createRendererPassState(ctx, splitRtFrame);
         this.renderContext = new RenderContext(ctx, rtFrame);
+        this.renderContext.gpu = ctx.gpuContext;
     }
 
     private _publish(b: RenderGraphBuilder): void {
@@ -143,6 +144,11 @@ export class GBufferResourcePass extends RenderGraphPass {
     }
 
     public execute(_ctx: RenderGraphPassContext): void {
-        // Pure resource provider — no draws, no encoder.
+        // Pure resource provider — no draws, no encoder. But the shared
+        // RenderContext accumulates one RendererPassState per continuation
+        // pass (Sky / Transmission / SortedTransparent) each frame; reset it
+        // here every frame, mirroring GIPass / ReflectionPass. Nobody else
+        // owns this shared context, which is how the per-frame leak started.
+        this.renderContext.clean();
     }
 }

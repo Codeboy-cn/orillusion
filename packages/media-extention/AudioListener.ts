@@ -25,20 +25,23 @@ export class AudioListener extends ComponentBase {
         if (isNaN(_orientation.x)) {
             return;
         }
+        // The engine is left-handed (+Z forward, +X right) while Web Audio
+        // is right-handed; feeding coordinates through unchanged mirrors
+        // the stereo field left<->right. Negate Z to convert LH -> RH.
         if (listener.positionX) {
             const endTime = this.context.currentTime;
             listener.positionX.linearRampToValueAtTime(_position.x, endTime);
             listener.positionY.linearRampToValueAtTime(_position.y, endTime);
-            listener.positionZ.linearRampToValueAtTime(_position.z, endTime);
+            listener.positionZ.linearRampToValueAtTime(-_position.z, endTime);
             listener.forwardX.linearRampToValueAtTime(_orientation.x, endTime);
             listener.forwardY.linearRampToValueAtTime(_orientation.y, endTime);
-            listener.forwardZ.linearRampToValueAtTime(_orientation.z, endTime);
+            listener.forwardZ.linearRampToValueAtTime(-_orientation.z, endTime);
             listener.upX.linearRampToValueAtTime(up.x, endTime);
             listener.upY.linearRampToValueAtTime(up.y, endTime);
-            listener.upZ.linearRampToValueAtTime(up.z, endTime);
+            listener.upZ.linearRampToValueAtTime(-up.z, endTime);
         } else {
-            listener.setPosition(_position.x, _position.y, _position.z);
-            listener.setOrientation(_orientation.x, _orientation.y, _orientation.z, up.x, up.y, up.z);
+            listener.setPosition(_position.x, _position.y, -_position.z);
+            listener.setOrientation(_orientation.x, _orientation.y, -_orientation.z, up.x, up.y, -up.z);
         }
     }
     destroy() {

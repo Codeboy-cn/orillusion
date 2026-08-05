@@ -196,8 +196,19 @@ export class EntityCollect {
                     maps.splice(index, 1);
                 }
             }
+        } else if (renderNode.hasMask(RendererMask.Graphic3D)) {
+            // Mirror the add path: Graphic3D nodes live in _graphics, not
+            // the op/tr lists — without this branch they were drawn (and
+            // nodeUpdate'd) forever after removal/destroy.
+            let index = this._graphics.indexOf(renderNode);
+            if (index != -1) {
+                this._graphics.splice(index, 1);
+            }
         } else if (!BatchModeUtil.hasMask(renderNode.batchMode, BatchMode.None)) {
-
+            // Evict from whichever batch group (opaque or transparent)
+            // collected it, and invalidate that group's render bundles.
+            this._op_renderGroup.get(root)?.collect_remove(renderNode);
+            this._tr_renderGroup.get(root)?.collect_remove(renderNode);
         } else {
             // Search BOTH opaque and transparent lists, not the one
             // matching `renderNode.renderOrder`. When a material's

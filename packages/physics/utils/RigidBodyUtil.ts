@@ -31,6 +31,9 @@ export class RigidBodyUtil {
 
         const rbInfo = new Ammo.btRigidBodyConstructionInfo(mass, motionState, shape, localInertia);
         const bodyRb = new Ammo.btRigidBody(rbInfo);
+        // The construction info is copied by btRigidBody — free the wrapper
+        // or it leaks native memory once per body created.
+        Ammo.destroy(rbInfo);
 
         return bodyRb;
     }

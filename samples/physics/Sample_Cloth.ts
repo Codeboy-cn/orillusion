@@ -26,6 +26,7 @@ class Sample_Cloth {
         let sunLight = lightObj3D.addComponent(DirectLight);
         sunLight.intensity = 2;
         sunLight.castShadow = true;
+        sunLight.enableCSM = true;
         sunLight.shadowBoundWidth = 32;
         sunLight.shadowBoundHeight = 32;
         sunLight.shadowBoundFar = 32;

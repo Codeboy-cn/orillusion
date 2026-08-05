@@ -7,12 +7,13 @@ export class Graphics3DShape {
     public uuid: string;
     public type: string;
     public color: Color;
+    /** Number of floats actually used in pointData/colorData (used length, not capacity). */
     public count: number = 0;
     public pointData: Float32Array;
     public colorData: Float32Array;
     public dirtyData: boolean = false;
     public memoryDataIndex: number = -1;
-    protected transformIndex: number;
+    public transformIndex: number;
 
     constructor(transformIndex: number) {
         this.transformIndex = transformIndex;

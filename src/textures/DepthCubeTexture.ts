@@ -10,20 +10,10 @@ import { Context3D } from "../gfx/graphics/webGpu/Context3D";
  */
 export class DepthCubeTexture extends Texture implements ITexture {
 
-    /**
-     * texture width, default value is 4
-     */
-    public width: number = 4;
-
-    /**
-     * texture height, default value is 4
-     */
-    public height: number = 4;
-
-    /**
-     * depth or array layers, default value is 6
-     */
-    public depthOrArrayLayers: number = 6;
+    // NOTE: no width/height/depthOrArrayLayers field re-declarations here —
+    // with useDefineForClassFields their initializers would run AFTER
+    // super(width, height, 6) and stomp the constructor arguments
+    // (every instance ended up 4x4x6 regardless of what was requested).
 
     /**
      * GPUShaderStage
@@ -46,13 +36,17 @@ export class DepthCubeTexture extends Texture implements ITexture {
 
     public internalCreateBindingLayoutDesc() {
         this.samplerBindingLayout.type = `non-filtering`;
-        this.textureBindingLayout.sampleType = `unfilterable-float`;
+        // Depth formats must bind with sampleType 'depth' —
+        // 'unfilterable-float' fails bind-group validation for depth textures.
+        this.textureBindingLayout.sampleType = `depth`;
         this.textureBindingLayout.viewDimension = 'cube';
     }
 
     public internalCreateTexture() {
         this.textureDescriptor = {
-            format: `depth24plus`,
+            // Use the declared format — the descriptor previously hardcoded
+            // depth24plus while this.format claimed depth32float.
+            format: this.format,
             size: { width: this.width, height: this.height, depthOrArrayLayers: 6 },
             dimension: '2d',
             usage: GPUTextureUsage.COPY_DST | GPUTextureUsage.TEXTURE_BINDING,

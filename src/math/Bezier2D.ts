@@ -44,8 +44,8 @@ export class Bezier2D {
         let len = this.points.length - 1;
         let ci = Math.floor(len * v);
         let ni = ci + 1;
-        let w = MathUtil.fract((len + 1) * v);
-        if (ni >= len) {
+        let w = MathUtil.fract(len * v);
+        if (ni > len) {
             ni = ci;
             w = 0;
         }

@@ -113,6 +113,26 @@ export class GPUCullSystem {
         if (this._staging) this._staging[base + 11] = 0; // drawArgs.w
     }
 
+    /**
+     * Disable slots whose node is no longer in the frame's collect lists.
+     * Registration is re-driven every frame from those lists, but nothing
+     * ever disabled departed nodes — their slots stayed enable=1 forever
+     * and destroyed meshes lingered in the visibility/drawCmds output.
+     */
+    public pruneMissing(...liveLists: RenderNode[][]): void {
+        if (this._slotMap.size === 0) return;
+        const live = new Set<string>();
+        for (const list of liveLists) {
+            for (const node of list) live.add(node.instanceID);
+        }
+        const stride = GPUCullSystem.STRIDE;
+        for (const [id, slot] of this._slotMap) {
+            if (live.has(id)) continue;
+            this._slotMap.delete(id);
+            if (this._staging) this._staging[slot * stride + 11] = 0;
+        }
+    }
+
     private _writeMetadata(slot: number, node: RenderNode): void {
         const stride = GPUCullSystem.STRIDE;
         const base = slot * stride;

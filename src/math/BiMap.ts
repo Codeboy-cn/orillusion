@@ -33,8 +33,16 @@ export class BiMap<K, V> extends Map<K, V>{
     }
 
     set(key: K, value: V): this {
+        // negtive may be undefined while the base Map constructor seeds entries
+        if (this.negtive) {
+            // Remove the stale reverse mapping when overwriting an existing key
+            if (this.has(key)) {
+                let oldValue = this.get(key);
+                this.negtive.delete(oldValue);
+            }
+            this.negtive.set(value, key);
+        }
         super.set(key, value);
-        this.negtive.set(value, key);
         return this;
     }
 

@@ -43,7 +43,7 @@ export class Rand {
      */
     public static getFloatFromInt(value) {
         // take 23 bits of integer, and divide by 2^23-1
-        return Math.floor((value & 0x007fffff) * (1.0 / 8388607.0));
+        return (value & 0x007fffff) * (1.0 / 8388607.0);
     }
 
     /**

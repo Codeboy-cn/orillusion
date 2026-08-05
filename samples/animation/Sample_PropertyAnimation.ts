@@ -49,7 +49,10 @@ class Sample_PropertyAnimation {
         container.addChild(model);
         model.rotationY = 180;
         this.scene.addChild(container);
-        model.scaleX = model.scaleY = model.scaleZ = 0.01;
+        // Duck.gltf's root node carries a 0.01 unit-conversion matrix. The
+        // loader used to discard node matrices, so this scale was authored
+        // against an implicit 1.0; it now compounds with the node's 0.01.
+        model.scaleX = model.scaleY = model.scaleZ = 1;
 
         this.animation = await this.initPropertyAnim(container);
         this.animation.play(this.animation.defaultClip);

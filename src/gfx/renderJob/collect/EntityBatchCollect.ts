@@ -39,4 +39,22 @@ export class EntityBatchCollect {
             group.bundleMap.clear();
         }
     }
+
+    /**
+     * Remove a node from whichever group holds it and invalidate that
+     * group's recorded bundles — otherwise removed/destroyed instances
+     * keep being drawn by the stale bundle (and reference dead buffers).
+     */
+    public collect_remove(node: RenderNode) {
+        for (const [key, group] of this.renderGroup) {
+            const i = group.renderNodes.indexOf(node);
+            if (i === -1) continue;
+            group.renderNodes.splice(i, 1);
+            group.nodeVersion++;
+            group.bundleMap.clear();
+            if (group.renderNodes.length === 0) {
+                this.renderGroup.delete(key);
+            }
+        }
+    }
 }

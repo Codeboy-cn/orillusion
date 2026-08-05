@@ -31,5 +31,27 @@ await test('StorageGPUBuffer ', async () => {
     ]);
 })
 
+await test('clean() actually zeroes the CPU-side share buffer [audit W3]', async () => {
+    await Engine3D.init();
+    let buf = new StorageGPUBuffer(16);
+    buf.setFloat32Array('data', new Float32Array([1, 2, 3, 4]));
+
+    let view = new Float32Array(buf.memory.shareDataBuffer);
+    let hasNonZero = false;
+    for (let i = 0; i < view.length; i++) {
+        if (view[i] !== 0) { hasNonZero = true; break; }
+    }
+    expect(hasNonZero).toEqual(true);
+
+    // clean() used to wrap a Float32Array around undefined (view created
+    // before allocation), making it a silent no-op.
+    buf.clean();
+    view = new Float32Array(buf.memory.shareDataBuffer);
+    let allZero = true;
+    for (let i = 0; i < view.length; i++) {
+        if (view[i] !== 0) { allZero = false; break; }
+    }
+    expect(allZero).toEqual(true);
+})
 
 setTimeout(end, 500)

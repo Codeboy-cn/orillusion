@@ -56,7 +56,10 @@ export class VideoTexture extends Texture {
         }
         if (old) {
             old.pause()
-            old.src = old.srcObject = null
+            // src is a USVString: assigning null coerces to the literal
+            // string "null" and load() then requests ./null (404 + error).
+            old.src = ''
+            old.srcObject = null
             old.load()
         }
     }
@@ -103,5 +106,23 @@ export class VideoTexture extends Texture {
         video.playsInline = true
         video.crossOrigin = ''
         return video
+    }
+
+    /**
+     * Stop background decoding and release the internally created <video>
+     * element. Elements passed in by the caller (`external`) are only
+     * dereferenced — their lifecycle belongs to the caller.
+     */
+    public destroy(force?: boolean) {
+        if (this.media && !this.external) {
+            this.media.pause();
+            this.media.src = '';
+            this.media.srcObject = null;
+            this.media.load();
+        }
+        this.media = null;
+        this._des = null;
+        this.videoTexture = null;
+        super.destroy(force);
     }
 }

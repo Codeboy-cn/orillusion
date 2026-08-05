@@ -64,10 +64,13 @@ export class OutlinePostData {
         let data = this.slots[slot];
         if (data) {
             data.indexList.fill(-1);
-            for (let i = 0, c = indexList.length; i < c; i++) {
+            // Clamp to the slot capacity: indexList is MaxEntities long, so
+            // extra entries would be silently dropped while count overflowed.
+            let count = Math.min(indexList.length, this.MaxEntities);
+            for (let i = 0; i < count; i++) {
                 data.indexList[i] = indexList[i];
             }
-            data.count = indexList.length;
+            data.count = count;
             data.color.copy(color);
         }
         return this;

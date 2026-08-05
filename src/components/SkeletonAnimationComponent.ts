@@ -194,6 +194,13 @@ export class SkeletonAnimationComponent extends ComponentBase {
     clipState.speed = speed;
     clipState.reset();
 
+    // Cancel any in-flight cross fade so its per-frame weight ramp can't
+    // overwrite the weights forced below.
+    if (this._crossFadeState) {
+      this._crossFadeState.inClip = null;
+      this._crossFadeState.outClip = null;
+    }
+
     this._clipStates.forEach((clipState, name) => {
       clipState.weight = 0;
     })
@@ -295,21 +302,25 @@ export class SkeletonAnimationComponent extends ComponentBase {
       this._crossFadeState.update(delta);
     }
 
-    var totalWeight = 0;
     var mixClipState: SkeletonAnimationClipState[] = [];
     this._clipStates.forEach((clipState, name) => {
       if (clipState.weight > 0) {
         clipState.update(delta);
-        totalWeight += clipState.weight;
         mixClipState.push(clipState);
       }
     })
 
     if (mixClipState.length > 0) {
       this._mixSkeletonPose.copy(mixClipState[0].currSkeletonPose);
+      // Incremental weighted blend: lerp each new clip in with
+      // w_i / accumulatedWeight so the final mix equals the normalized
+      // weighted average for any number of clips (a fixed w_i / totalWeight
+      // is only correct for 2 clips).
+      let accWeight = mixClipState[0].weight;
       for (var i = 1; i < mixClipState.length; ++i) {
         const clipState = mixClipState[i];
-        this._mixTempSkeletonPose.lerp(this._mixSkeletonPose, clipState.currSkeletonPose, clipState.weight / totalWeight);
+        accWeight += clipState.weight;
+        this._mixTempSkeletonPose.lerp(this._mixSkeletonPose, clipState.currSkeletonPose, clipState.weight / accWeight);
         this._mixSkeletonPose.copy(this._mixTempSkeletonPose);
       }
     }

@@ -176,8 +176,11 @@ export class Ray {
      * @returns Returns a point at the specified location
      */
     public getPoint(t: number): Vector3 {
-        this._dir.multiplyScalar(t);
-        return this.origin.add(this._dir); // + t * m_Direction;
+        let target = new Vector3();
+        target.copy(this._dir);
+        target.multiplyScalar(t);
+        Vector3.add(target, this.origin, target);
+        return target;
     }
 
     /**
@@ -333,19 +336,24 @@ export class Ray {
         let c = Vector3.dot(oc, oc) - radius * radius;
         let dt = b * b - 4 * a * c;
 
-        let hit: Vector3 = Vector3.HELP_3;
+        // Return a fresh vector; a shared static helper would be corrupted by later users
+        let hit: Vector3 = new Vector3();
         if (dt < 0) {
             return null;
         } else {
-            let t0 = (-b - Math.sqrt(dt)) / (a * 2);
+            let sqrtDt = Math.sqrt(dt);
+            let t0 = (-b - sqrtDt) / (a * 2);
             if (t0 < 0) {
-                return null;
+                // Ray origin may be inside the sphere; try the far intersection
+                t0 = (-b + sqrtDt) / (a * 2);
+                if (t0 < 0) {
+                    return null;
+                }
             }
 
             hit.x = o.x + t0 * dir.x;
             hit.y = o.y + t0 * dir.y;
             hit.z = o.z + t0 * dir.z;
-            //let v = { hit.x - o.x, hit.y - o.y, hit.z - o.z };
             return hit;
         }
     }

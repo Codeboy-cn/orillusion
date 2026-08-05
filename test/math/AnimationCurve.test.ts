@@ -72,8 +72,10 @@ await test('AnimationCurve WarpTimeMode test', async () => {
     let v0 = animationCurve.getValue(-0.5);
     let v1 = animationCurve.getValue(1.5);
 
-    // preWarp Repeat loops -0.5 → 0.5, postWarp PingPong reflects 1.5 → 0.5,
-    // so both sample the same interior point as getValue(0.5).
+    // Repeat pre-wrap maps t=-0.5 onto t=0.5 inside [0,1]; PingPong
+    // post-wrap maps t=1.5 back onto t=0.5 — both must sample the same
+    // in-range point. The old golden (-8127000.075) was recorded from a
+    // broken wrap that cubic-extrapolated far outside the key range.
     expect(v0).toEqual(0.45625000000000004);
     expect(v1).toEqual(0.45625000000000004);
 })

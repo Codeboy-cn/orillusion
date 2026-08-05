@@ -122,6 +122,9 @@ export class KDTreeNode extends KDTreeUUID {
     protected autoSplit(): void {
         if (this._entities.count > KDTreeConfig.MaxEntityCountInLeaf && !this._right && !this._left && this.layer < KDTreeConfig.MaxLayer) {
             let tempList = this._splitEntityList;
+            // Clear leftovers from a previous split; otherwise stale entities
+            // accumulate and get re-attached on every subsequent split.
+            tempList.length = 0;
             let nextIndex = (this._dimensionIndex + 1) % this._dimensions.length;
             let nextDimension: string = this._dimensions[nextIndex];
             let divide: number = 0;

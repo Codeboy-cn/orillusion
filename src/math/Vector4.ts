@@ -69,9 +69,10 @@ export class Vector4 {
 
     public static RIGHT: Vector4 = new Vector4(1, 0, 0);
 
-    public static UP: Vector4 = new Vector4(0, -1, 0);
+    // Aligned with Vector3.UP/DOWN — these two were swapped.
+    public static UP: Vector4 = new Vector4(0, 1, 0);
 
-    public static DOWN: Vector4 = new Vector4(0, 1, 0);
+    public static DOWN: Vector4 = new Vector4(0, -1, 0);
 
     public static BACK: Vector4 = new Vector4(0, 0, -1);
 

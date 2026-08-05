@@ -209,9 +209,13 @@ export class ShadowLightsCollect {
         if (pointLightList) {
             nPointShadowStart = nDirShadowEnd;
             let j = 0;
-            for (let i = nPointShadowStart; i < pointLightList.length; i++) {
+            // pointLightList is its own 0-based array; nPointShadowStart only
+            // offsets the shared shadowLights slot table. Starting the LIST
+            // iteration at nDirShadowEnd skipped the first N point lights
+            // whenever directional shadows existed.
+            for (let i = 0; i < pointLightList.length; i++) {
                 const light = pointLightList[i];
-                shadowLights[i] = light.lightData.index;
+                shadowLights[nPointShadowStart + i] = light.lightData.index;
                 light.lightData.castShadowIndex = j++;
             }
             nPointShadowEnd = nPointShadowStart + pointLightList.length;

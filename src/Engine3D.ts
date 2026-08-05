@@ -475,7 +475,27 @@ export class Engine3D {
 
     // -------- render view setup --------
 
+    /** Stop, destroy and remove render jobs whose view is not in `keep` —
+     *  otherwise jobs for replaced views keep rendering forever. */
+    private _pruneRenderJobs(keep: View3D[]) {
+        for (const [view, job] of this.renderJobs) {
+            if (keep.indexOf(view) === -1) {
+                job.stop();
+                job.destroy();
+                this.renderJobs.delete(view);
+            }
+        }
+    }
+
     private _startRenderJob(view: View3D, JobCtor: new (view: View3D) => RendererJob = ForwardRendererJob): RendererJob {
+        // A re-call for the same view replaces the old job — tear it down
+        // cleanly instead of leaking its graph.
+        const oldJob = this.renderJobs.get(view);
+        if (oldJob) {
+            oldJob.stop();
+            oldJob.destroy();
+            this.renderJobs.delete(view);
+        }
         view.engine3D = this;
         // Bind camera to this engine's context so render-time lookups
         // (`GlobalBindGroup._ctxFromCamera`, `CameraUtil` math helpers)
@@ -512,6 +532,7 @@ export class Engine3D {
     }
 
     public startRenderView(view: View3D, JobCtor?: new (view: View3D) => RendererJob): RendererJob {
+        this._pruneRenderJobs([view]);
         this.views = [view];
         let job = this._startRenderJob(view, JobCtor);
         // Drive the render-job lifecycle synchronously here: previously
@@ -531,6 +552,7 @@ export class Engine3D {
     }
 
     public startRenderViews(views: View3D[], JobCtor?: new (view: View3D) => RendererJob) {
+        this._pruneRenderJobs(views);
         this.views = views;
         for (let v of views) {
             const job = this._startRenderJob(v, JobCtor);
@@ -548,6 +570,13 @@ export class Engine3D {
      *  instance is paused (see `_tick`). Resume any instance to restart it. */
     public static pause() {
         for (const inst of Engine3D._instances) inst._paused = true;
+        // Drop the pending RAF so the loop stops now rather than after one
+        // more wasted frame. _ensureLoop() guards on _rafId, so a frame
+        // already in flight still settles cleanly through _tick's finally.
+        if (this._rafId !== 0) {
+            cancelAnimationFrame(this._rafId);
+            this._rafId = 0;
+        }
     }
 
     /** Resume every engine instance and restart the shared render loop. */
@@ -576,45 +605,96 @@ export class Engine3D {
         }
     }
 
+    /**
+     * Called when a frame of an engine instance throws. Override to route
+     * render errors to your own reporting. Default: throttled
+     * console.error (first error with full stack, then every 10th error,
+     * then one per 300 frames).
+     */
+    public static onRenderError: (error: any, instance: Engine3D) => void = (error, _instance) => {
+        const n = ++Engine3D._renderErrorCount;
+        if (n === 1) {
+            console.error('[Engine3D] render frame failed (continuing):', error?.stack ?? error);
+        } else if (n % 10 === 0 || Time.frame - Engine3D._lastErrorLogFrame >= 300) {
+            console.error(`[Engine3D] render frame failed (${n} consecutive):`, error?.message ?? error);
+        } else {
+            return;
+        }
+        Engine3D._lastErrorLogFrame = Time.frame;
+    };
+    private static _renderErrorCount: number = 0;
+    private static _lastErrorLogFrame: number = 0;
+
     private static async _tick(time: number) {
-        // Gate on the smallest desired frame interval across active instances.
-        let minGate = 0;
-        for (let inst of this._instances) {
-            if (inst._paused) continue;
-            if (inst._frameRateValue > 0 && (minGate === 0 || inst._frameRateValue < minGate)) {
-                minGate = inst._frameRateValue;
+        // The finally clause guarantees the loop re-arms even if a frame
+        // throws — a single bad pass must not permanently stall rendering
+        // (pause()/resume() semantics are preserved: the re-arm is gated on
+        // at least one instance still being active).
+        try {
+            // Gate on the smallest desired frame interval across active instances.
+            let minGate = 0;
+            for (let inst of this._instances) {
+                if (inst._paused) continue;
+                if (inst._frameRateValue > 0 && (minGate === 0 || inst._frameRateValue < minGate)) {
+                    minGate = inst._frameRateValue;
+                }
             }
-        }
-        if (minGate > 0) {
-            let delta = time - this._time;
-            if (delta < minGate) {
-                let t = performance.now();
-                await new Promise(res => setTimeout(() => {
-                    time += (performance.now() - t);
-                    res(true);
-                }, minGate - delta));
+            if (minGate > 0) {
+                let delta = time - this._time;
+                if (delta < minGate) {
+                    let t = performance.now();
+                    await new Promise(res => setTimeout(() => {
+                        time += (performance.now() - t);
+                        res(true);
+                    }, minGate - delta));
+                }
+                this._time = time;
             }
-            this._time = time;
+
+            // Advance global time once per composite frame. The first frame has
+            // no meaningful previous timestamp (Time.time === 0 would make delta
+            // the whole page-load time), and a tab coming back from hidden would
+            // otherwise report the entire hidden span — clamp to Time.maxDelta.
+            Time.delta = Time.time === 0 ? 0 : Math.min(time - Time.time, Time.maxDelta);
+            Time.time = time;
+            Time.frame += 1;
+            Interpolator.tick(Time.delta);
+
+            for (let inst of this._instances) {
+                if (inst._paused) continue;
+                // Isolate instances from each other: one throwing instance
+                // must not take down the frames of its siblings.
+                try {
+                    await inst._renderOnce(time);
+                    Engine3D._renderErrorCount = 0;
+                } catch (e) {
+                    // A pass may have died between begin/endPass, leaving an
+                    // open encoder that would poison the next frame — drop it.
+                    try {
+                        inst.context3D?.gpuContext?.discardOpenEncoder();
+                    } catch (_) { /* the context itself may be gone */ }
+                    try {
+                        Engine3D.onRenderError?.(e, inst);
+                    } catch (_) { /* never let the hook kill the loop */ }
+                }
+            }
+        } finally {
+            this._rafId = 0;
+            // Keep the shared loop alive only while at least one instance is
+            // active; when every instance is paused it stops here and a later
+            // resume() restarts it via _ensureLoop(). Re-checking the set here
+            // (rather than a flag set inside the try) means a pause() that
+            // landed mid-frame is honoured, and a frame that threw still
+            // re-arms instead of stalling rendering permanently.
+            if (this._hasActiveInstance()) this._ensureLoop();
         }
+    }
 
-        // Advance global time once per composite frame.
-        Time.delta = time - Time.time;
-        Time.time = time;
-        Time.frame += 1;
-        Interpolator.tick(Time.delta);
-
-        let anyActive = false;
+    private static _hasActiveInstance(): boolean {
         for (let inst of this._instances) {
-            if (inst._paused) continue;
-            anyActive = true;
-            await inst._renderOnce(time);
+            if (!inst._paused) return true;
         }
-
-        this._rafId = 0;
-        // Keep the shared loop alive only while at least one instance is
-        // active; when every instance is paused it stops here and a later
-        // resume() restarts it via _ensureLoop().
-        if (anyActive) this._ensureLoop();
+        return false;
     }
 
     private async _renderOnce(_time: number) {

@@ -86,9 +86,16 @@ export class FlyCameraController extends ComponentBase {
         return owner?.inputSystem;
     }
 
+    // Input system captured when listeners are attached. destroy() runs
+    // after Entity has already torn down the Transform, so deriving the
+    // input system through transform.view3D at that point returns nothing
+    // and the listeners would leak.
+    private _boundInput: any = null;
+
     public start(): void {
         const input = this._input();
         if (input) {
+            this._boundInput = input;
             input.addEventListener(PointerEvent3D.POINTER_WHEEL, this.mouseWheel, this);
             input.addEventListener(PointerEvent3D.POINTER_UP, this.mouseUp, this);
             input.addEventListener(PointerEvent3D.POINTER_DOWN, this.mouseDown, this);
@@ -284,7 +291,7 @@ export class FlyCameraController extends ComponentBase {
      * @internal
      */
     public destroy(force?: boolean): void {
-        const input = this._input();
+        const input = this._boundInput ?? this._input();
         if (input) {
             input.removeEventListener(PointerEvent3D.POINTER_WHEEL, this.mouseWheel, this);
             input.removeEventListener(PointerEvent3D.POINTER_UP, this.mouseUp, this);
@@ -293,6 +300,7 @@ export class FlyCameraController extends ComponentBase {
             input.removeEventListener(KeyEvent.KEY_UP, this.keyUp, this);
             input.removeEventListener(KeyEvent.KEY_DOWN, this.keyDown, this);
         }
+        this._boundInput = null;
         super.destroy(force);
     }
 }

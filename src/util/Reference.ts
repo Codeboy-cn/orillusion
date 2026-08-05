@@ -10,7 +10,10 @@
  * @group Util
  */
 export class Reference {
-    protected reference: WeakMap<any, Map<any, any>>;
+    // Initialized eagerly: detached/hasReference/getReferenceCount/getReference
+    // dereference it without a guard, so lazy creation in attached() crashed
+    // any of those calls made before the first attach.
+    protected reference: WeakMap<any, Map<any, any>> = new WeakMap<any, Map<any, any>>();
 
     private static _ins: Reference;
 
@@ -26,8 +29,6 @@ export class Reference {
      * @param target reference parent
      */
     public attached(ref: any, target: any) {
-        this.reference ||= new WeakMap<any, Map<any, any>>();
-
         let refMap = this.reference.get(ref);
         refMap ||= new Map<any, any>();
         refMap.set(target, ref);

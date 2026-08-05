@@ -90,9 +90,10 @@ export class PreDepthPass extends RenderGraphPass {
 
         // Typed RT handle for the depth-only target. Adopt mode — we
         // don't own depthTex (RTResourceMap does). The encoder lifecycle
-        // is driven by `target.beginPass(...)` in execute().
-        b.adoptRenderTarget(PRE_DEPTH_RT, this._rtFrame, { label: 'PreDepth' });
-        this._target = b.useRenderTarget(PRE_DEPTH_RT);
+        // is driven by `target.beginPass(...)` in execute(). adopt already
+        // registers this pass as the RT's writer and returns the handle;
+        // chaining useRenderTarget on top double-registered the write.
+        this._target = b.adoptRenderTarget(PRE_DEPTH_RT, this._rtFrame, { label: 'PreDepth' });
 
         // _MainDepthTexture: the depth-only target the color pass
         // hooks into via `rtFrame.zPreTexture`. Returns the live

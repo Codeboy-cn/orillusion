@@ -12,7 +12,7 @@ export let LightingFunction_frag: string = /*wgsl*/ `
 
 
 
-const PI2 = 3.1415926 * 3.1415926 ;
+const LF_PI = 3.1415926 ;
 
 fn sampleLighting(light:LightData,direction:vec3f,iblSpecularResult:vec3f , intensity :f32 , shadow:f32 ) -> vec3f{
   var ret = vec3f(0.0);
@@ -49,7 +49,8 @@ fn directLighting( light:LightData, iblSpecularResult: vec3f) -> vec3<f32> {
     #if USE_LIGHT
       var L = normalize(light.direction.xyz);
       #if USE_BRDF
-        var shadow = directShadowVisibility[(light.castShadow)];
+        var shadow = 1.0;
+        if (light.castShadow >= 0) { shadow = directShadowVisibility[light.castShadow]; }
         color = sampleLighting(light, L, iblSpecularResult, light.intensity, shadow);
       #endif 
     #endif 
@@ -138,7 +139,10 @@ fn pointLighting( WP:vec3<f32>, light:LightData , iblSpecularResult : vec3f ) ->
         //     #endif
         // }
 
-        var shadow = pointShadows[i32(light.castShadow)] ;
+        // Non-shadow-casting lights carry castShadow = -1; indexing with it
+        // reads out of bounds (implementation-defined, usually slot 0).
+        var shadow = 1.0 ;
+        if (light.castShadow >= 0) { shadow = pointShadows[light.castShadow] ; }
 
         #if USE_IES_PROFILE
             atten *= getLightIESProfileAtt(WP,light);
@@ -163,7 +167,8 @@ fn pointAtt( WP:vec3<f32>, light:LightData ) -> f32 {
       var L = dir ;
       atten = 1.0 - smoothstep(0.0,light.range,dist) ;
       atten *= 1.0 / max(light.radius,0.001)  ;
-      var shadow = pointShadows[i32(light.castShadow)] ;
+      var shadow = 1.0 ;
+      if (light.castShadow >= 0) { shadow = pointShadows[light.castShadow] ; }
       #if USE_IES_PROFILE
           atten *= getLightIESProfileAtt(WP,light);
       #endif
@@ -202,7 +207,10 @@ fn spotLighting( WP:vec3<f32>, light:LightData , iblSpecularResult : vec3f) -> v
             atten = 0.0 ;
         }
 
-        var shadow = pointShadows[i32(light.castShadow)] ;
+        // Non-shadow-casting lights carry castShadow = -1; indexing with it
+        // reads out of bounds (implementation-defined, usually slot 0).
+        var shadow = 1.0 ;
+        if (light.castShadow >= 0) { shadow = pointShadows[light.castShadow] ; }
 
         #if USE_IES_PROFILE
             atten *= getLightIESProfileAtt(WP,light);
@@ -216,6 +224,8 @@ fn spotLighting( WP:vec3<f32>, light:LightData , iblSpecularResult : vec3f) -> v
 }
 
 fn sphere_unit( radius:f32 , intensity:f32 ) -> f32 {
-  return intensity / (4.0 * PI2 * radius * radius) ;
+  // Inverse-square falloff over the sphere surface area 4*pi*r^2 — the
+  // old constant was accidentally pi^2, dimming point/spot lights ~3.14x.
+  return intensity / (4.0 * LF_PI * radius * radius) ;
 }
 `

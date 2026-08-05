@@ -15,6 +15,13 @@ export class Time {
      * Time from previous frame to present
      */
     public static delta: number = 0;
+    /**
+     * Upper bound (in ms) applied to `delta` each frame. Protects
+     * delta-scaled animation/physics/input from huge jumps after the
+     * page was hidden or when the first frame arrives late. Set a
+     * different value to tune, e.g. `Time.maxDelta = 1000`.
+     */
+    public static maxDelta: number = 200;
 
     private static _startTime: number = 0;
     private static _timeLabel: string = ``;

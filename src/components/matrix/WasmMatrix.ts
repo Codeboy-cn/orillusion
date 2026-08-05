@@ -156,38 +156,63 @@ export class WasmMatrix {
         this.matrixSRTBuffer[index + 2] = z;
     }
 
-    /** Set a per-frame continuous translation delta (auto-applied each update). */
+    /**
+     * Recompute the continuous-transform flag (state slot 1) from the current
+     * continued SRT values: active while any delta is a no-op.
+     *
+     * The record is not uniformly "zero means idle": slots 3..6 hold a rotation
+     * delta *quaternion*, whose no-op value is identity (0, 0, 0, 1), so a plain
+     * non-zero scan would latch every slot active the moment a zero rotation was
+     * written (Transform's constructor does exactly that for every object).
+     * Scale and translation deltas are compared against zero as usual; an
+     * all-zero quaternion counts as idle too, for slots never written.
+     */
+    private static _refreshContinueState(matIndex: number) {
+        const base = matIndex * WasmMatrix.continuedSrtStride;
+        const buf = this.matrixContinuedSRTBuffer;
+        let active = 0;
+        // scale delta (0..2) and translation delta (7..9)
+        for (let i of [0, 1, 2, 7, 8, 9]) {
+            if (buf[base + i] != 0) {
+                active = 1;
+                break;
+            }
+        }
+        // rotation delta quaternion (3..6): idle when identity or untouched
+        if (!active) {
+            const qx = buf[base + 3], qy = buf[base + 4], qz = buf[base + 5], qw = buf[base + 6];
+            const isIdentity = qx == 0 && qy == 0 && qz == 0 && (qw == 1 || qw == 0);
+            if (!isIdentity) active = 1;
+        }
+        this.matrixStateBuffer[matIndex * WasmMatrix.stateStruct + 1] = active;
+    }
+
+    /** Set a per-frame continuous translation delta (auto-applied each update). Writing zero stops it. */
     public static setContinueTranslate(matIndex: number, x: number, y: number, z: number) {
-        if (x != 0 || y != 0 || z != 0) {
-            const index = matIndex * WasmMatrix.continuedSrtStride;
-            this.matrixContinuedSRTBuffer[index + 7] = x;
-            this.matrixContinuedSRTBuffer[index + 8] = y;
-            this.matrixContinuedSRTBuffer[index + 9] = z;
-            this.matrixStateBuffer[matIndex * WasmMatrix.stateStruct + 1] = 1;
-        }
+        const index = matIndex * WasmMatrix.continuedSrtStride;
+        this.matrixContinuedSRTBuffer[index + 7] = x;
+        this.matrixContinuedSRTBuffer[index + 8] = y;
+        this.matrixContinuedSRTBuffer[index + 9] = z;
+        this._refreshContinueState(matIndex);
     }
 
-    /** Set a per-frame continuous rotation delta (Euler degrees/frame, auto-applied each update). */
+    /** Set a per-frame continuous rotation delta (Euler degrees/frame, auto-applied each update). Writing zero stops it. */
     public static setContinueRotation(matIndex: number, x: number, y: number, z: number) {
-        if (x != 0 || y != 0 || z != 0) {
-            const temp = Quaternion.HELP_2.setFromEuler(x, y, z);
-            const index = matIndex * WasmMatrix.continuedSrtStride;
-            this.matrixContinuedSRTBuffer[index + 3] = temp.x;
-            this.matrixContinuedSRTBuffer[index + 4] = temp.y;
-            this.matrixContinuedSRTBuffer[index + 5] = temp.z;
-            this.matrixContinuedSRTBuffer[index + 6] = temp.w;
-            this.matrixStateBuffer[matIndex * WasmMatrix.stateStruct + 1] = 1;
-        }
+        const temp = Quaternion.HELP_2.setFromEuler(x, y, z);
+        const index = matIndex * WasmMatrix.continuedSrtStride;
+        this.matrixContinuedSRTBuffer[index + 3] = temp.x;
+        this.matrixContinuedSRTBuffer[index + 4] = temp.y;
+        this.matrixContinuedSRTBuffer[index + 5] = temp.z;
+        this.matrixContinuedSRTBuffer[index + 6] = temp.w;
+        this._refreshContinueState(matIndex);
     }
 
-    /** Set a per-frame continuous scale delta (auto-applied each update). */
+    /** Set a per-frame continuous scale delta (auto-applied each update). Writing zero stops it. */
     public static setContinueScale(matIndex: number, x: number, y: number, z: number) {
-        if (x != 0 || y != 0 || z != 0) {
-            const index = matIndex * WasmMatrix.continuedSrtStride;
-            this.matrixContinuedSRTBuffer[index + 0] = x;
-            this.matrixContinuedSRTBuffer[index + 1] = y;
-            this.matrixContinuedSRTBuffer[index + 2] = z;
-            this.matrixStateBuffer[matIndex * WasmMatrix.stateStruct + 1] = 1;
-        }
+        const index = matIndex * WasmMatrix.continuedSrtStride;
+        this.matrixContinuedSRTBuffer[index + 0] = x;
+        this.matrixContinuedSRTBuffer[index + 1] = y;
+        this.matrixContinuedSRTBuffer[index + 2] = z;
+        this._refreshContinueState(matIndex);
     }
 }

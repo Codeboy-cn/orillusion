@@ -144,9 +144,6 @@ export let BxDF_frag: string = /*wgsl*/ `
       // var kdLast = (1.0 - 0.04) * (1.0 - fragData.Metallic);    
       var iblDiffuseResult : vec3f ;
 
-      let MAX_LOD  = i32(textureNumLevels(prefilterMap)) ;
-      let mip = roughnessToMipmapLevel(fragData.Roughness,MAX_LOD) * f32(MAX_LOD) * 0.5;
-    
       var indirectionDiffuse = indirectionDiffuse_Function(fragData.NoV,fragData.N,fragData.Metallic,fragData.Albedo.rgb,fragData.Roughness,fragData.Ao,fragData.F0);
       iblDiffuseResult += indirectionDiffuse / 3.14;
 

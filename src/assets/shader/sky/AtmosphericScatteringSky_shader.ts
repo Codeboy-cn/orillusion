@@ -109,7 +109,9 @@ export class AtmosphericScatteringSky_shader {
       fn ComputePhaseMie(theta: f32, g:f32) -> f32
       {
         var g2 = g * g;
-        return (1.0 - g2) / pow(1.0 + g2 - 2.0 * g * saturate(theta), 1.5) / (4.0 * PI);
+        // Henyey-Greenstein phase domain is cos(theta) in [-1,1]; saturate
+        // flattened the whole back-scattering hemisphere to the theta=0 value.
+        return (1.0 - g2) / pow(1.0 + g2 - 2.0 * g * clamp(theta, -1.0, 1.0), 1.5) / (4.0 * PI);
       }
 
       fn ComputePhaseRayleigh(theta: f32) -> f32

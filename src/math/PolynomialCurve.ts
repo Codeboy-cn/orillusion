@@ -202,14 +202,17 @@ export class PolynomialCurve {
 
             // Add extra key to start if it doesn't match up
             if (editorCurve.getKey(0).time != 0.0) {
+                // segments was cleared above; make sure the slot exists before dereferencing
+                if (!this.segments[0]) this.segments[0] = new Polynomial();
                 this.segments[0].coeff[3] = editorCurve.getKey(0).value;
                 this.times[0] = editorCurve.getKey(0).time;
                 segmentOffset = 1;
             }
 
             for (let i = 0; i < this.segmentCount; i++) {
-                let cache: FrameCache;
+                let cache = new FrameCache();
                 editorCurve.calculateCacheData(cache, i, i + 1, 0.0);
+                if (!this.segments[i + segmentOffset]) this.segments[i + segmentOffset] = new Polynomial();
                 this.segments[i + segmentOffset].coeff = cache.coeff.concat();
                 this.times[i + segmentOffset] = editorCurve.getKey(i + 1).time;
             }
@@ -217,6 +220,7 @@ export class PolynomialCurve {
 
             // Add extra key to start if it doesn't match up
             if (editorCurve.getKey(keyCount - 1).time != 1.0) {
+                if (!this.segments[this.segmentCount]) this.segments[this.segmentCount] = new Polynomial();
                 this.segments[this.segmentCount].coeff[3] = editorCurve.getKey(keyCount - 1).value;
                 this.segmentCount++;
             }

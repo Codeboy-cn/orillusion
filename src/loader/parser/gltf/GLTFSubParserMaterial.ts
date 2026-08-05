@@ -34,6 +34,9 @@ export class GLTFSubParserMaterial {
         let { name, pbrMetallicRoughness, normalTexture, occlusionTexture, emissiveTexture, emissiveFactor, alphaMode, alphaCutoff, doubleSided, extensions } = material;
         const dmaterial: GLTFMaterial = {
             name,
+            // Keep the glTF material index — names are not unique and the
+            // converter needs a collision-free cache key.
+            materialId,
             defines: [],
             doubleSided: !!doubleSided,
             baseColorFactor: [1, 1, 1, 1],
@@ -59,10 +62,11 @@ export class GLTFSubParserMaterial {
         if (pbrMetallicRoughness) {
             const { baseColorFactor, metallicFactor, roughnessFactor, baseColorTexture, metallicRoughnessTexture } = pbrMetallicRoughness;
 
+            // glTF 2.0 spec defaults: metallicFactor = 1.0, roughnessFactor = 1.0.
             Object.assign(dmaterial, {
                 baseColorFactor: baseColorFactor || [1, 1, 1, 1],
                 metallicFactor: metallicFactor === undefined ? 1.0 : metallicFactor,
-                roughnessFactor: roughnessFactor === undefined ? 0.5 : roughnessFactor,
+                roughnessFactor: roughnessFactor === undefined ? 1.0 : roughnessFactor,
             });
 
             if (baseColorTexture) {
@@ -137,10 +141,12 @@ export class GLTFSubParserMaterial {
                 }
             }
         } else {
+            // No pbrMetallicRoughness block: the glTF 2.0 spec still
+            // defines its property defaults (metallic = 1, roughness = 1).
             Object.assign(dmaterial, {
                 baseColorFactor: [1, 1, 1, 1],
-                metallicFactor: 0,
-                roughnessFactor: 0.5,
+                metallicFactor: 1.0,
+                roughnessFactor: 1.0,
             });
         }
 

@@ -145,7 +145,9 @@ export class StringUtil {
         let t = time / 1000;
         let temp = t / 60;
         let m = Math.floor(temp);
-        let s = Math.floor(temp - m);
+        // temp - m is the fractional minute (always < 1), so flooring it was
+        // always 0. Derive the remaining seconds from the total seconds.
+        let s = Math.floor(t % 60);
 
         return [m.toString(), s.toString()];
     }
@@ -225,9 +227,12 @@ export class StringUtil {
         } else {
             for (let i = 0; i < params.length; i++) {
                 if (params[i] == undefined) {
-                    return str;
+                    // Skip undefined params instead of aborting the whole loop.
+                    continue;
                 } else {
-                    let reg = new RegExp('({[' + i + ']})', 'g');
+                    // '{' + i + '}' as a literal token; the old '{[i]}' character
+                    // class broke for indices >= 10.
+                    let reg = new RegExp('\\{' + i + '\\}', 'g');
                     str = str.replace(reg, params[i]);
                 }
             }

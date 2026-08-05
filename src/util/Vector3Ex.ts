@@ -121,7 +121,8 @@ export class Vector3Ex {
     public static calculateVectorAngle_xz(v1: Vector3, v2: Vector3) {
         //acos return radian,we should transform it into degree
         // return acos((x1*x2 + y1*y2) / sqrt((x1*x1 + y1*y1)*(x2*x2 + y2*y2)) * 180 / 3.14;
-        return Math.acos((v1.x * v2.x + v1.y * v2.y) / Math.sqrt((v1.x * v1.x + v1.y * v1.y) * (v2.x * v2.x + v2.y * v2.y)));
+        // XZ-plane angle: use the x/z components, not y.
+        return Math.acos((v1.x * v2.x + v1.z * v2.z) / Math.sqrt((v1.x * v1.x + v1.z * v1.z) * (v2.x * v2.x + v2.z * v2.z)));
     }
 
     /**
@@ -155,7 +156,7 @@ export class Vector3Ex {
      * @returns random vector
      */
     public static getRandomV3(min: number = -100, max: number = 100, yMin: number, yMax: number): Vector3 {
-        return new Vector3(Math.random() * max + min, Math.random() * yMax + yMin, Math.random() * max + min);
+        return new Vector3(Math.random() * (max - min) + min, Math.random() * (yMax - yMin) + yMin, Math.random() * (max - min) + min);
     }
 
     public static sphere(radius: number) {

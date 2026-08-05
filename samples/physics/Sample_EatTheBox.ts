@@ -52,6 +52,7 @@ class Sample_EatTheBox {
         let light = lightObj.addComponent(DirectLight);
         light.intensity = 8;
         light.castShadow = true;
+        light.enableCSM = true;
         lightObj.rotationX = 60;
         lightObj.rotationY = 80;
         GUIUtil.renderDirLight(light);

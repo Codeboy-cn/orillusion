@@ -13,7 +13,9 @@ export class Vector3 {
     /**
      * Vector minimum
      */
-    public static readonly MIN: Vector3 = new Vector3(Number.MIN_VALUE, Number.MIN_VALUE, Number.MIN_VALUE);
+    // Number.MIN_VALUE is the smallest POSITIVE double (+5e-324), not the
+    // most-negative one — MIN as a "lowest possible vector" must mirror MAX.
+    public static readonly MIN: Vector3 = new Vector3(-Number.MAX_VALUE, -Number.MAX_VALUE, -Number.MAX_VALUE);
 
     /**
      * Vector maximum integer value
@@ -997,9 +999,9 @@ export class Vector3 {
             }
         } else {
             if (this.y > 0) {
-                this.copy(Vector3.DOWN);
-            } else {
                 this.copy(Vector3.UP);
+            } else {
+                this.copy(Vector3.DOWN);
             }
         }
     }

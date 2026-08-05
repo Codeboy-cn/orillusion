@@ -210,8 +210,21 @@ export class InputSystem extends CEventDispatcher {
         }
     }
 
+    /**
+     * Refresh canvasX/canvasY from the canvas' current bounding rect.
+     * Called at the top of each pointer handler so page scroll or layout
+     * changes after init don't skew the reported pointer coordinates.
+     */
+    private updateCanvasOffset() {
+        if (!this.canvas) return;
+        let rect: DOMRect = this.canvas.getBoundingClientRect();
+        this.canvasX = rect.left;
+        this.canvasY = rect.top;
+    }
+
     public onMouseLockMove(e: MouseEvent) {
         // console.log(e.movementX, e.movementY);
+        this.updateCanvasOffset();
         this.mouseLastX = this.mouseX;
         this.mouseLastY = this.mouseY;
 
@@ -262,6 +275,7 @@ export class InputSystem extends CEventDispatcher {
     }
 
     private rightClick(e: MouseEvent) {
+        this.updateCanvasOffset();
         this._pointerEvent3D.reset();
         this._pointerEvent3D.mouseCode = e.button;
         this._pointerEvent3D.mouseX = e.clientX - this.canvasX;
@@ -276,6 +290,7 @@ export class InputSystem extends CEventDispatcher {
     }
 
     private mouseClick(e: MouseEvent) {
+        this.updateCanvasOffset();
         this._pointerEvent3D.reset();
         this._pointerEvent3D.mouseCode = e.button;
         this._pointerEvent3D.mouseX = e.clientX - this.canvasX;
@@ -291,6 +306,7 @@ export class InputSystem extends CEventDispatcher {
 
     private _downTime = 0;
     private mouseEnd(e: PointerEvent) {
+        this.updateCanvasOffset();
 
         this.isMouseDown = false;
 
@@ -322,6 +338,7 @@ export class InputSystem extends CEventDispatcher {
     }
 
     private mouseStart(e: PointerEvent | MouseEvent) {
+        this.updateCanvasOffset();
 
         this.isMouseDown = true;
 
@@ -354,6 +371,7 @@ export class InputSystem extends CEventDispatcher {
     }
 
     private mouseMove(e: PointerEvent) {
+        this.updateCanvasOffset();
         this.mouseLastX = this.mouseX;
         this.mouseLastY = this.mouseY;
 
@@ -382,6 +400,7 @@ export class InputSystem extends CEventDispatcher {
     }
 
     private mouseOver(e: PointerEvent) {
+        this.updateCanvasOffset();
 
         this.isMouseDown = false;
 
@@ -413,6 +432,7 @@ export class InputSystem extends CEventDispatcher {
         //            e.stopImmediatePropagation();
         e.preventDefault();
 
+        this.updateCanvasOffset();
         this.mouseLastX = this.mouseX;
         this.mouseLastY = this.mouseY;
 
@@ -460,6 +480,10 @@ export class InputSystem extends CEventDispatcher {
     private keyUp(e: KeyboardEvent) {
         this._keyEvent3d.reset();
         this._keyEvent3d.keyCode = e.keyCode;
+        // Copy modifier state from the DOM event, mirroring keyDown.
+        this._keyEvent3d.ctrlKey = e.ctrlKey;
+        this._keyEvent3d.altKey = e.altKey;
+        this._keyEvent3d.shiftKey = e.shiftKey;
         this._keyStatus[e.keyCode] = false;
         this._keyEvent3d.type = KeyEvent.KEY_UP;
         this.dispatchEvent(this._keyEvent3d);

@@ -57,7 +57,17 @@ export class PlaneGeometry extends GeometryBase {
         var tw: number = this.segmentW + 1;
         var numVertices: number = (this.segmentH + 1) * tw;
 
-        this.bounds = new BoundingBox(Vector3.ZERO.clone(), new Vector3(this.width, 1.0, this.height));
+        // Per-axis extents must match the component mapping used when writing
+        // positions below: Y_AXIS spans x/z, Z_AXIS spans x/y, X_AXIS spans z/y.
+        let extents: Vector3;
+        if (axis === Vector3.Z_AXIS) {
+            extents = new Vector3(this.width, this.height, 1.0);
+        } else if (axis === Vector3.X_AXIS) {
+            extents = new Vector3(1.0, this.height, this.width);
+        } else {
+            extents = new Vector3(this.width, 1.0, this.height);
+        }
+        this.bounds = new BoundingBox(Vector3.ZERO.clone(), extents);
         numIndices = this.segmentH * this.segmentW * 6;
 
         let vertexCount = (this.segmentW + 1) * (this.segmentH + 1);
@@ -67,10 +77,10 @@ export class PlaneGeometry extends GeometryBase {
 
         let indices_arr: any;
         let totalIndexCount = this.segmentW * this.segmentH * 2 * 3;
-        if (totalIndexCount >= Uint16Array.length) {
-            indices_arr = new Uint32Array(this.segmentW * this.segmentH * 2 * 3);
+        if (vertexCount > 65535) {
+            indices_arr = new Uint32Array(totalIndexCount);
         } else {
-            indices_arr = new Uint16Array(this.segmentW * this.segmentH * 2 * 3);
+            indices_arr = new Uint16Array(totalIndexCount);
         }
 
         numIndices = 0;
@@ -101,9 +111,14 @@ export class PlaneGeometry extends GeometryBase {
                         normal_arr[indexN++] = 1;
                         break;
                     case Vector3.X_AXIS:
+                        // Map u(x) -> z and v(y) -> y so the winding agrees with
+                        // the +X normal: with A = base+1, B = base, C = base+tw,
+                        // cross(B-A, C-A) = cross((0,0,-du), (0,dv,-du)) = (du*dv, 0, 0),
+                        // i.e. +X. The old (0, x, y) mapping produced -X and
+                        // contradicted the +X normals written below.
                         position_arr[indexP++] = 0;
-                        position_arr[indexP++] = x;
                         position_arr[indexP++] = y;
+                        position_arr[indexP++] = x;
 
                         normal_arr[indexN++] = 1;
                         normal_arr[indexN++] = 0;

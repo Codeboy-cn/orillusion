@@ -73,6 +73,7 @@ class Sample_Basic {
         this.sprite = this.spriteObj.addComponent(SpriteRenderer);
         this.sprite.texture = tex;
         this.spriteObj.localPosition.set(this.s.x, this.s.y, this.s.z);
+        this.spriteObj.transform.apply();
         scene.addChild(this.spriteObj);
 
         // Apply the initial state values to the sprite AFTER addChild

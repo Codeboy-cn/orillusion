@@ -218,6 +218,7 @@ fn pointLighting( albedo:vec3<f32>,WP:vec3<f32>, N:vec3<f32>, V:vec3<f32>, light
      color = (albedo / PI) * lightColor.rgb * NoL * atten * shadow ;
  }
 
+ // Debug leftover "* 0.0" zeroed point-light GI contribution entirely.
  return color ;
 }
 

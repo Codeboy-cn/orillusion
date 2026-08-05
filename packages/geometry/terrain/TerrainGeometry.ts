@@ -20,41 +20,31 @@ export class TerrainGeometry extends PlaneGeometry {
 
         this._greenList = [];
 
+        // The vertex grid is (segmentW + 1) x (segmentH + 1); iterate every
+        // vertex including the last row/column.
         let tw = this.segmentW + 1;
         let th = this.segmentH + 1;
-        for (let ppy = 0; ppy < this.segmentH - 1; ppy++) {
-            for (let ppx = 0; ppx < this.segmentW - 1; ppx++) {
+        for (let ppy = 0; ppy < th; ppy++) {
+            for (let ppx = 0; ppx < tw; ppx++) {
+                // Standard bilinear sampling: map the vertex position to
+                // source texel space, then blend the 4 clamped neighbors.
+                let sx = ppx / Math.max(tw - 1, 1) * (texture.width - 1);
+                let sy = ppy / Math.max(th - 1, 1) * (texture.height - 1);
 
-                let px0 = Math.floor(ppx / tw * texture.width);
-                let py0 = Math.floor(ppy / th * texture.height);
+                let x0 = Math.floor(sx);
+                let y0 = Math.floor(sy);
+                let x1 = Math.min(x0 + 1, texture.width - 1);
+                let y1 = Math.min(y0 + 1, texture.height - 1);
+                let fx = sx - x0;
+                let fy = sy - y0;
 
-                let px1 = Math.floor((ppx + 1) / tw * texture.width);
-                let py1 = Math.floor((ppy) / th * texture.height);
+                // Height is read from the red channel (RGBA layout).
+                let h00 = pixelData.data[(y0 * texture.width + x0) * 4];
+                let h10 = pixelData.data[(y0 * texture.width + x1) * 4];
+                let h01 = pixelData.data[(y1 * texture.width + x0) * 4];
+                let h11 = pixelData.data[(y1 * texture.width + x1) * 4];
 
-                let px2 = Math.floor((ppx) / tw * texture.width);
-                let py2 = Math.floor((ppy + 1) / th * texture.height);
-
-                let px3 = Math.floor((ppx + 1) / tw * texture.width);
-                let py3 = Math.floor((ppy + 1) / th * texture.height);
-
-                var tt = ppx / tw - Math.floor(ppx / tw);
-                let t0 = tt;
-                let t1 = tt;
-                let t2 = tt * 1.2121;
-
-                let index0 = py0 * texture.width + px0;
-                let index1 = py1 * texture.width + px1;
-                let index2 = py2 * texture.width + px2;
-                let index3 = py3 * texture.width + px3;
-
-                let h0 = pixelData.data[index0 * 4];
-                let h1 = pixelData.data[index1 * 4];
-                let h2 = pixelData.data[index2 * 4];
-                let h3 = pixelData.data[index3 * 4];
-
-                let h = lerp(h0, h1, t0);
-                h = lerp(h, h2, t1);
-                h = lerp(h, h3, t2);
+                let h = lerp(lerp(h00, h10, fx), lerp(h01, h11, fx), fy);
 
                 let sc = 0.05;
                 if (h > 45 && h < 150) {

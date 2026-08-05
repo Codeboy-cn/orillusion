@@ -288,6 +288,10 @@ export function drawSortedTransparent(
     // render-pass split.
     const graphics = EntityCollect.instance.getGraphicList();
     for (const g of graphics) {
+        // Defense in depth alongside the EntityCollect removal fix:
+        // never drive a disabled or destroyed graphic node (stale GPU
+        // buffer access -> device validation errors).
+        if (!g.enable || (g as any).isDestroyed) continue;
         g.nodeUpdate(view, PassType.COLOR, state.splitRendererPassState, cluster);
         g.renderPass2(view, PassType.COLOR, state.splitRendererPassState, cluster, encoder);
     }

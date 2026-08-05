@@ -332,4 +332,86 @@ await test('TextureHandle is structurally a {name: string}', async () => {
     expect(h.name).toEqual('X')
 })
 
+// -----------------------------------------------------------------------------
+// Eager publish must not sweep other dedicated slots [audit R3]
+// -----------------------------------------------------------------------------
+
+class EagerHotplugPass extends RenderGraphPass {
+    public readonly name = 'EagerHotplugPass'
+    public setup(b: RenderGraphBuilder): void {
+        const h = b.declareTexture('_EagerHotplugRT', {
+            format: 'rgba16float',
+            width: 256, height: 256,
+            aliasable: false,
+            publishToLegacyMap: true,
+        })
+        b.write(h)
+    }
+    public execute(): void { /* resource provider only */ }
+}
+
+await test('hot-plugged eager publish keeps other dedicated slots intact [audit R3]', async () => {
+    const { Engine3D, Scene3D, View3D, Object3D, Camera3D } = await import('@orillusion/core')
+    const engine = await Engine3D.init()
+    const scene = new Scene3D()
+    const cameraObj = new Object3D()
+    const camera = cameraObj.addComponent(Camera3D)
+    camera.perspective(60, engine.aspect, 1, 5000)
+    scene.addChild(cameraObj)
+    const view = new View3D()
+    view.scene = scene
+    view.camera = camera
+    engine.startRenderView(view)
+
+    const graph: any = view.renderGraph
+    const pool: any = graph._texturePool
+
+    const waitUntil = async (p: () => any, timeoutMs: number) => {
+        const deadline = performance.now() + timeoutMs
+        let v = p()
+        while (!v && performance.now() < deadline) {
+            await new Promise(r => setTimeout(r, 50))
+            v = p()
+        }
+        return v
+    }
+    await waitUntil(() => engine.frameCount >= 5 && pool._dedicatedByName.size >= 1, 15000)
+
+    // Snapshot every pre-existing dedicated slot (HiZ pyramid, scene
+    // color pyramid, ...): wrapper identity AND GPUTexture identity.
+    const before = new Map<string, { rt: any, tex: any }>()
+    for (const [name, slot] of pool._dedicatedByName) {
+        before.set(name, { rt: slot.rt, tex: slot.rt.getGPUTexture() })
+    }
+    const slotCountBefore = pool.stats().slotCount
+
+    // Hot-plug a pass whose aliasable:false + publishToLegacyMap
+    // resource triggers the eager allocate path at the next compile.
+    // Routing that through a full-window assign([one]) used to destroy
+    // every other dedicated slot and all idle buckets.
+    graph.add(EagerHotplugPass)
+    await waitUntil(() => pool._dedicatedByName.has('_EagerHotplugRT'), 15000)
+
+    for (const [name, snap] of before) {
+        const slot = pool._dedicatedByName.get(name)
+        expect(!!slot).toEqual(true)
+        expect(slot.rt === snap.rt).toEqual(true)
+        expect(slot.rt.getGPUTexture() === snap.tex).toEqual(true)
+    }
+    expect(pool.stats().slotCount).toEqual(slotCountBefore + 1)
+
+    // Ride a few more frames: the follow-up full compile must not flip
+    // the eager slot's identity (resolvedUsage |= eager keeps the
+    // bucketKey equal).
+    const eagerRt = pool._dedicatedByName.get('_EagerHotplugRT').rt
+    const f = engine.frameCount
+    await waitUntil(() => engine.frameCount >= f + 3, 15000)
+    expect(pool._dedicatedByName.get('_EagerHotplugRT').rt === eagerRt).toEqual(true)
+    for (const [name, snap] of before) {
+        expect(pool._dedicatedByName.get(name).rt === snap.rt).toEqual(true)
+    }
+
+    engine.dispose()
+})
+
 end()

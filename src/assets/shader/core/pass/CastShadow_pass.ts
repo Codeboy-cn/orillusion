@@ -152,9 +152,13 @@ export let shadowCastMap_frag: string = /*wgsl*/ `
 
       #if USE_ALPHACUT
         let Albedo = textureSample(baseMap,baseMapSampler,fragUV);
-        if(Albedo.w > 0.5){
-          fragOut = FragmentOutput(vec4<f32>(0.0),distance);
+        // Cut-out texels must NOT shadow: the zero-initialized fragOut
+        // previously wrote depth 0 (nearest possible occluder) for them,
+        // turning transparent regions into solid shadows.
+        if(Albedo.w <= 0.5){
+          discard;
         }
+        fragOut = FragmentOutput(vec4<f32>(0.0),distance);
       #else
         fragOut = FragmentOutput(vec4<f32>(0.0),distance);
       #endif

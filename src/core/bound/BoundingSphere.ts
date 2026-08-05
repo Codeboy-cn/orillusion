@@ -66,10 +66,12 @@ export class BoundingSphere implements IBound {
      * @param point the point to test
      */
     public containsPoint(point: Vector3) {
-        Vector3.sub(this.tmpVecA, point, this.center);
-        var lenSq = this.center.lengthSquared;
-        var r = this.radius;
-        return lenSq < r * r;
+        // Vector3.sub(a, b, target) computes target = a - b; the previous
+        // argument order wrote the result into this.center (corrupting it)
+        // and then tested the corrupted center instead of the offset.
+        Vector3.sub(point, this.center, this.tmpVecA);
+        const lenSq = this.tmpVecA.lengthSquared;
+        return lenSq <= this.radius * this.radius;
     }
 
     /**
@@ -109,7 +111,9 @@ export class BoundingSphere implements IBound {
      * @returns {Boolean} true if the Bounding Sphere is overlapping, enveloping, or inside this Bounding Sphere and false otherwise.
      */
     public intersectsBoundingSphere(sphere: BoundingSphere) {
-        Vector3.sub(this.tmpVecA, sphere.center, this.center);
+        // Target-last argument order: tmpVecA = sphere.center - this.center
+        // (the previous order corrupted this.center).
+        Vector3.sub(sphere.center, this.center, this.tmpVecA);
         var totalRadius = sphere.radius + this.radius;
         if (this.tmpVecA.lengthSquared <= totalRadius * totalRadius) {
             return true;

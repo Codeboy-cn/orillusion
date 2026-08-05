@@ -34,7 +34,7 @@ export class RenderShaderCompute {
 
         if (this.onOnce && this.needUpdate) {
             this.needUpdate = false;
-            this.onFrame(view);
+            this.onOnce(view);
         }
     }
 }

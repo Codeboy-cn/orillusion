@@ -59,7 +59,12 @@ export class Rigidbody extends ComponentBase {
     public onTriggerExit?: ContactCallback;
 
     /** @internal */
-    public _activeContacts: Set<Rigidbody> = new Set();
+    /**
+     * Live contacts keyed by the other body, valued by how many collider
+     * pairs of a compound body are currently touching — begin/end events
+     * arrive per collider pair, but user callbacks fire per body.
+     */
+    public _activeContacts: Map<Rigidbody, number> = new Map();
 
     public start(): void {
         if (!Physics.isInited) {
@@ -142,7 +147,10 @@ export class Rigidbody extends ComponentBase {
             if (nt !== RAPIER.RigidBodyType.KinematicPositionBased &&
                 nt !== RAPIER.RigidBodyType.KinematicVelocityBased) return;
         }
-        if (this._bodyType === BodyType.Static || this._mass === 0) return;
+        // Mass 0 only demotes DYNAMIC bodies to "don't sync" — kinematic
+        // types are explicit user choices and move regardless of mass.
+        if (this._bodyType === BodyType.Static ||
+            (this._bodyType === BodyType.Dynamic && this._mass === 0)) return;
 
         const t = this._body.translation();
         const r = this._body.rotation();
@@ -215,8 +223,10 @@ export class Rigidbody extends ComponentBase {
             // Could be ChildShape[] or ColliderDesc[]
             const arr = value as Array<RAPIER.ColliderDesc | ChildShape>;
             this._shapes = arr.map(item => {
-                if ((item as ChildShape).shape) return (item as ChildShape).shape;
-                return item as RAPIER.ColliderDesc;
+                // ColliderDesc itself has a public `shape` field, so a
+                // truthy-property probe would unwrap plain descs too.
+                if (item instanceof RAPIER.ColliderDesc) return item;
+                return (item as ChildShape).shape;
             });
         } else {
             this._shapes = [value];

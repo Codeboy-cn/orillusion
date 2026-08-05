@@ -121,6 +121,17 @@ export class AnimatorComponent extends ComponentBase {
     public playAnim(anim: string, time: number = 0, speed: number = 1) {
         let clipState = this.getAnimationClipState(anim);
         if (clipState) {
+            // Cancel any in-flight cross fade so its per-frame weight ramp
+            // can't overwrite the weights forced below.
+            if (this._crossFadeState) {
+                if (this._crossFadeState.inClip) {
+                    this._crossFadeState.inClip.weight = 0;
+                }
+                if (this._crossFadeState.outClip) {
+                    this._crossFadeState.outClip.weight = 0;
+                }
+                this._crossFadeState = null;
+            }
             if (this._currentSkeletonClip) {
                 this._currentSkeletonClip.weight = 0;
             }
@@ -260,7 +271,7 @@ export class AnimatorComponent extends ComponentBase {
             Matrix4.getEuler(Vector3.HELP_6, joint.q, true, 'ZYX');
             obj.localPosition = joint.t.clone();
             obj.localRotation = Vector3.HELP_6.clone();
-            obj.localScale = Vector3.ONE; joint.s.clone();
+            obj.localScale = joint.s.clone();
 
             this.skeltonPoseObject3D[joint.boneName] = obj;
             this.skeltonTPoseObject3D[joint.bonePath] = obj.clone();
@@ -560,11 +571,6 @@ export class AnimatorComponent extends ComponentBase {
     }
 
     private updateSkeletonAnimMix(mixClip: PropertyAnimationClipState[]) {
-        let totalWeight = 0;
-        for (let clip of mixClip) {
-            totalWeight += clip.weight;
-        }
-
         if (mixClip.length > 0) {
             let joints = this._avatar.boneData;
             let len = joints.length;
@@ -579,32 +585,42 @@ export class AnimatorComponent extends ComponentBase {
                 const joint = joints[i];
                 let obj = this.skeltonPoseObject3D[joint.boneName];
 
+                // Incremental weighted blend: lerp each new clip in with
+                // w_i / accumulatedWeight so the final mix equals the
+                // normalized weighted average for any number of clips
+                // (a fixed w_i / totalWeight is only correct for 2 clips).
                 if (anyClipHasPos) {
                     this._bonePos.copy(this.getPosition(joint.bonePath, this._skeletonTime, mixClip[0].clip));
+                    let accWeight = mixClip[0].weight;
                     for (let i = 1; i < mixClip.length; i++) {
                         const clipState = mixClip[i];
+                        accWeight += clipState.weight;
                         let pos = this.getPosition(joint.bonePath, this._skeletonTime, clipState.clip);
-                        Vector3.HELP_0.lerp(this._bonePos, pos, clipState.weight / totalWeight);
+                        Vector3.HELP_0.lerp(this._bonePos, pos, clipState.weight / accWeight);
                         this._bonePos.copy(Vector3.HELP_0);
                     }
                     obj.transform.localPosition = this._bonePos;
                 }
 
                 this._boneRot.copy(this.getRotation(joint.bonePath, this._skeletonTime, mixClip[0].clip));
+                let accRotWeight = mixClip[0].weight;
                 for (let i = 1; i < mixClip.length; i++) {
                     const clipState = mixClip[i];
+                    accRotWeight += clipState.weight;
                     let rot = this.getRotation(joint.bonePath, this._skeletonTime, clipState.clip);
-                    Quaternion.HELP_2.slerp(this._boneRot, rot, clipState.weight / totalWeight);
+                    Quaternion.HELP_2.slerp(this._boneRot, rot, clipState.weight / accRotWeight);
                     this._boneRot.copy(Quaternion.HELP_2);
                 }
                 obj.transform.localRotQuat = this._boneRot;
 
                 if (anyClipHasScale) {
                     this._boneScale.copy(this.getScale(joint.bonePath, this._skeletonTime, mixClip[0].clip));
+                    let accWeight = mixClip[0].weight;
                     for (let i = 1; i < mixClip.length; i++) {
                         const clipState = mixClip[i];
+                        accWeight += clipState.weight;
                         let scale = this.getScale(joint.bonePath, this._skeletonTime, clipState.clip);
-                        Vector3.HELP_0.lerp(this._boneScale, scale, clipState.weight / totalWeight);
+                        Vector3.HELP_0.lerp(this._boneScale, scale, clipState.weight / accWeight);
                         this._boneScale.copy(Vector3.HELP_0);
                     }
                     obj.transform.localScale = this._boneScale;

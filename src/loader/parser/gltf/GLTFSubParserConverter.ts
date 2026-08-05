@@ -1,4 +1,4 @@
-import { AnimatorComponent, BlendShapeData, BlendShapePropertyData, GLTFMaterial, LitMaterial, Material, Matrix4, PropertyAnimationClip, SkinnedMeshRenderer2 } from "../../..";
+import { AnimatorComponent, BlendShapeData, BlendShapePropertyData, GLTFMaterial, LitMaterial, Material, Matrix4, Orientation3D, PropertyAnimationClip, SkinnedMeshRenderer2, Vector3 } from "../../..";
 import { Engine3D } from "../../../Engine3D";
 import { DirectLight } from "../../../components/lights/DirectLight";
 import { PointLight } from "../../../components/lights/PointLight";
@@ -21,6 +21,7 @@ import { KHR_materials_ior } from "./extends/KHR_materials_ior";
 import { KHR_materials_transmission } from "./extends/KHR_materials_transmission";
 import { KHR_materials_unlit } from "./extends/KHR_materials_unlit";
 import { KHR_materials_volume } from "./extends/KHR_materials_volume";
+import { makeSequentialTriIndices, normalizeIndexArray } from "./GLTFIndexUtil";
 
 /**
  * Internal glTF sub-parser stage that converts parsed glTF nodes into
@@ -48,10 +49,15 @@ export class GLTFSubParserConverter {
         nodeInfo['nodeObj'] = node;
 
         if (nodeInfo.matrix) {
-            nodeInfo.translation = [0, 0, 0]; // eslint-disable-line
-            nodeInfo.rotation = [0, 0, 0, 1]; // eslint-disable-line
-            nodeInfo.scale = [1, 1, 1]; // eslint-disable-line
-            ///Matrix4.decompose( nodeInfo.matrix, nodeInfo.translation, nodeInfo.rotation, nodeInfo.scale );
+            // glTF node matrices are column-major number[16] — the same
+            // memory layout as Matrix4.rawData. Decompose into TRS because
+            // the engine transform consumes translation/rotation/scale.
+            let mat = new Matrix4();
+            mat.rawData.set(nodeInfo.matrix);
+            let prs = mat.decompose(Orientation3D.QUATERNION, [new Vector3(), new Vector3(), new Vector3()]);
+            nodeInfo.translation = [prs[0].x, prs[0].y, prs[0].z]; // eslint-disable-line
+            nodeInfo.rotation = [prs[1].x, prs[1].y, prs[1].z, prs[1].w]; // eslint-disable-line
+            nodeInfo.scale = [prs[2].x, prs[2].y, prs[2].z]; // eslint-disable-line
         }
 
         if (nodeInfo.translation) {
@@ -205,7 +211,10 @@ export class GLTFSubParserConverter {
             }
             let mat: Material;
 
-            let materialKey = `matkey_${md.name}`;
+            // Dedupe by the glTF material index when available — material
+            // names are not required to be unique, so name-keyed caching
+            // merged distinct materials that happened to share a name.
+            let materialKey = `matkey_${md.materialId ?? md.name}`;
 
             if (md && this.gltf.resources[materialKey]) {
                 mat = this.gltf.resources[materialKey];
@@ -326,16 +335,12 @@ export class GLTFSubParserConverter {
 
             //todo need add position draw mode support
             if (!attribArrays[`indices`].data) {
-                let indices = [];
-                let count = attribArrays['position'].data.length / 3 / 3;
-                for (let i = 0; i < count; i++) {
-                    let a = i * 3;
-                    indices.push(a + 2);
-                    indices.push(a + 0);
-                    indices.push(a + 1);
-                }
+                // Non-indexed primitive: synthesize sequential triangle
+                // indices. Element width is derived from the vertex count
+                // (Uint8Array here wrapped every index above 255).
+                const vertexCount = attribArrays['position'].data.length / 3;
                 attribArrays[`indices`] = {
-                    data: new Uint8Array(indices),
+                    data: makeSequentialTriIndices(vertexCount),
                     normalize: false,
                     numComponents: 1,
                 };
@@ -354,7 +359,7 @@ export class GLTFSubParserConverter {
                     numComponents: 3,
                 };
             }
-            if (attribArrays[`indices`].data && attribArrays[`indices`].data.length > 3) {
+            if (attribArrays[`indices`].data && attribArrays[`indices`].data.length >= 3) {
                 let meshName = primitive.meshName();
                 if (this.gltf.resources[meshName]) {
                     geometry = this.gltf.resources[meshName];
@@ -530,26 +535,15 @@ export class GLTFSubParserConverter {
     }
 
     private createGeometryBase(name: string, attribArrays: any, primitive: any, skin?:any): GeometryBase {
-        if ('indices' in attribArrays) {
-            let bigIndices = attribArrays[`indices`].data.length > 65534;
-            if (bigIndices) {
-                attribArrays[`indices`].data = new Uint32Array(attribArrays[`indices`].data);
-            } else {
-                attribArrays[`indices`].data = new Uint16Array(attribArrays[`indices`].data);
-            }
-        }
-
         let geometry = new GeometryBase();
         geometry.name = name;
 
-        // Only Uint16Array and Uint32Array are supported
+        // Only Uint16Array and Uint32Array are supported. The old code
+        // ran this normalization twice with two different thresholds and
+        // decided the width by ELEMENT COUNT — a short index list that
+        // references a vertex above 65535 was truncated to 16 bits.
         if ('indices' in attribArrays) {
-            let bigIndices = attribArrays[`indices`].data.length > 65535;
-            if (bigIndices) {
-                attribArrays[`indices`].data = new Uint32Array(attribArrays[`indices`].data);
-            } else {
-                attribArrays[`indices`].data = new Uint16Array(attribArrays[`indices`].data);
-            }
+            attribArrays[`indices`].data = normalizeIndexArray(attribArrays[`indices`].data);
         }
 
         // BlendShapeData

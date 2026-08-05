@@ -46,4 +46,16 @@ export class GeoJsonParser extends ParserBase {
         this.json = data;
         this.data = JSON.parse(data) as GeoJsonStruct;
     }
+
+    /**
+     * Accept an already-parsed GeoJSON object. This is the entry point the
+     * FileLoader JSON branch actually calls for {@link ParserFormat.JSON}
+     * parsers (the base-class implementation was a no-op, so the parser
+     * produced no data).
+     * @param obj Parsed GeoJSON object.
+     */
+    public async parseJson(obj: object) {
+        this.json = JSON.stringify(obj);
+        this.data = obj as GeoJsonStruct;
+    }
 }

@@ -245,6 +245,11 @@ export class GlobalFog extends PostBase {
         }
         this.fogCompute.setUniformFloat('isSkyHDR', skyTexture.isHDRTexture ? 1 : 0);
 
+        // Follow the post-chain cursor like GTAO/Bloom/TAA: the one-time
+        // getColorTexture() binding at init froze the input to the raw
+        // scene color, discarding any post effect that ran before fog.
+        this.bindUpstream(this.fogCompute, 'inTex');
+
         this.uploadSetting();
         this._boundCtx!.gpuContext.computeCommand(command, [this.fogCompute]);
         this._boundCtx!.gpuContext.lastRenderPassState = this.rendererPassState;

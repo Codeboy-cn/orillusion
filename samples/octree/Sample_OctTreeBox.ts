@@ -77,7 +77,7 @@ export class Sample_OctTreeBox {
                     renderer.material = this._material;
                     object3D.localPosition.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5);
                     object3D.localPosition.multiplyScalar(190);
-                    object3D.localPosition = object3D.localPosition;
+                    object3D.transform.apply();
                     object3D.localScale = new Vector3(1 + Math.random(), 1 + Math.random(), 1 + Math.random());
                     object3D.name = 'name' + i;
 

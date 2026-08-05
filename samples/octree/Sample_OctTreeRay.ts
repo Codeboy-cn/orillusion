@@ -62,7 +62,7 @@ export class Sample_OctTreeRay {
                     renderer.material = this._material;
                     object3D.localPosition.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5);
                     object3D.localPosition.multiplyScalar(190);
-                    object3D.localPosition = object3D.localPosition;
+                    object3D.transform.apply();
                     object3D.localScale = new Vector3(1 + Math.random(), 1 + Math.random(), 1 + Math.random());
                     object3D.name = 'name' + i;
 
@@ -123,7 +123,7 @@ export class Sample_OctTreeRay {
                 if (Math.random() < 0.1) {
                     obj.localPosition.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5);
                     obj.localPosition.multiplyScalar(190);
-                    obj.localPosition = obj.localPosition;
+                    obj.transform.apply();
                     entity.update(this.tree);
                 }
             }

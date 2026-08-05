@@ -19,11 +19,19 @@ export let ParticleComputeShader = /* wgsl */ `
   fn CsMain(@builtin(global_invocation_id) GlobalInvocationID: vec3<u32>) {
     index = GlobalInvocationID.x;
 
+    // Dispatch is rounded up to the workgroup size; out-of-range threads
+    // must not touch the particle buffer.
+    if (index >= globalData.maxParticles) {
+      return;
+    }
+
     particleLife();
 
     var vPos: vec4<f32> = particles[index].vPos;
-    vPos = vPos + calculationForce(lifeTime);
-    vPos = vPos + gravity(lifeTime);
+    // Scale the per-frame displacement by the speed-over-life factor
+    // (interpolated between the two segments; defaults to 1.0).
+    let speedScale: vec4<f32> = mix(globalData.overLife_speed[0], globalData.overLife_speed[1], lifeOverTime);
+    vPos = vPos + (calculationForce(lifeTime) + gravity(lifeTime)) * speedScale;
     // vPos = vPos + calculationAngularVelocity(lifeTime);
 
     var vSpeed: vec3<f32> = normalize(vPos.xyz - particles[index].vPos.xyz);
@@ -87,9 +95,11 @@ export let ParticleComputeShader = /* wgsl */ `
   }
 
   fn gravity(time:f32) -> vec4<f32> {
-    // let t: f32 = time * time;
-    // return 0.5 * vec4<f32>(globalData.gravity, 1.0) * t * ( 1.0 - (globalData.spaceDamping * 0.002) );
-    return 0.5 * vec4<f32>(globalData.gravity, 1.0) * time * ( 1.0 - (globalData.spaceDamping * 0.002) );
+    // Uniform-acceleration displacement: 0.5 * g * t^2 (matches the
+    // force integrator below); the linear-in-time variant was a debug
+    // leftover that made gravity fall short of a parabola.
+    let t: f32 = time * time;
+    return 0.5 * vec4<f32>(globalData.gravity, 1.0) * t * ( 1.0 - (globalData.spaceDamping * 0.002) );
   }
 
   fn calculationForce(time:f32) -> vec4<f32> {
@@ -102,8 +112,10 @@ export let ParticleComputeShader = /* wgsl */ `
   }
 
   fn calculationOverLifeSize(time:f32) {
-    var vSize: vec4<f32> = mix(globalData.overLife_scale[0], globalData.overLife_scale[1], lifeOverTime);// (globalData.overLife_colors[1] - globalData.overLife_colors[0]) * lifeOverTime; 
-    particles[index].vScale = vSize;
+    var vSize: vec4<f32> = mix(globalData.overLife_scale[0], globalData.overLife_scale[1], lifeOverTime);
+    // The over-life curve is a scale factor; apply it on top of the
+    // per-particle base size instead of replacing it.
+    particles[index].vScale = particles[index].start_size * vSize;
   }
 
   fn local_rotVelocity(time:f32) {

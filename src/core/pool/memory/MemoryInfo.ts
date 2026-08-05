@@ -22,6 +22,15 @@ export class MemoryInfo {
     /** Data view bound to this slice's bytes. */
     public dataBytes: DataView;
 
+    /** Throw a readable error when a raw array write would spill past
+     *  this node's slice (the typed-array fast paths view the WHOLE
+     *  shared buffer and used to silently clobber neighbouring nodes). */
+    private _checkBounds(startByte: number, byteLength: number, method: string) {
+        if (startByte < 0 || startByte + byteLength > this.byteSize) {
+            throw new Error(`MemoryInfo.${method}: writing ${byteLength} bytes at node offset ${startByte} exceeds the node's byteSize ${this.byteSize}`);
+        }
+    }
+
     /** Get the first float component. */
     public get x(): number {
         return this.dataBytes.getFloat32(0 * Float32Array.BYTES_PER_ELEMENT, true);
@@ -209,7 +218,9 @@ export class MemoryInfo {
 
     /** Copy a Float32Array into this slice starting at the given float index. */
     public setFloat32Array(index: number, data: Float32Array) {
-        let tmp = new Float32Array(this.dataBytes.buffer, this.dataBytes.byteOffset + index * Float32Array.BYTES_PER_ELEMENT, data.length);
+        const startByte = index * Float32Array.BYTES_PER_ELEMENT;
+        this._checkBounds(startByte, data.byteLength, 'setFloat32Array');
+        let tmp = new Float32Array(this.dataBytes.buffer, this.dataBytes.byteOffset + startByte, data.length);
         tmp.set(data);
     }
 
@@ -223,7 +234,9 @@ export class MemoryInfo {
             data = new Float32Array(value)
         }
 
-        let tmp = new Float32Array(this.dataBytes.buffer, this.dataBytes.byteOffset + index * Float32Array.BYTES_PER_ELEMENT, data.length);
+        const startByte = index * Float32Array.BYTES_PER_ELEMENT;
+        this._checkBounds(startByte, data.byteLength, 'setFloatArray');
+        let tmp = new Float32Array(this.dataBytes.buffer, this.dataBytes.byteOffset + startByte, data.length);
         tmp.set(data);
     }
 
@@ -250,37 +263,49 @@ export class MemoryInfo {
 
     /** Copy an Int8Array into this slice starting at the given element index. */
     public setInt8Array(index: number, data: Int8Array) {
-        let tmp = new Int8Array(this.dataBytes.buffer, this.dataBytes.byteOffset + index * Int8Array.BYTES_PER_ELEMENT);
+        const startByte = index * Int8Array.BYTES_PER_ELEMENT;
+        this._checkBounds(startByte, data.byteLength, 'setInt8Array');
+        let tmp = new Int8Array(this.dataBytes.buffer, this.dataBytes.byteOffset + startByte, data.length);
         tmp.set(data);
     }
 
     /** Copy an Int16Array into this slice starting at the given element index. */
     public setInt16Array(index: number, data: Int16Array) {
-        let tmp = new Int16Array(this.dataBytes.buffer, this.dataBytes.byteOffset + index * Int16Array.BYTES_PER_ELEMENT);
+        const startByte = index * Int16Array.BYTES_PER_ELEMENT;
+        this._checkBounds(startByte, data.byteLength, 'setInt16Array');
+        let tmp = new Int16Array(this.dataBytes.buffer, this.dataBytes.byteOffset + startByte, data.length);
         tmp.set(data);
     }
 
     /** Copy an Int32Array into this slice starting at the given element index. */
     public setInt32Array(index: number, data: Int32Array) {
-        let tmp = new Int32Array(this.dataBytes.buffer, this.dataBytes.byteOffset + index * Int32Array.BYTES_PER_ELEMENT);
+        const startByte = index * Int32Array.BYTES_PER_ELEMENT;
+        this._checkBounds(startByte, data.byteLength, 'setInt32Array');
+        let tmp = new Int32Array(this.dataBytes.buffer, this.dataBytes.byteOffset + startByte, data.length);
         tmp.set(data);
     }
 
     /** Copy a Uint8Array into this slice starting at the given element index. */
     public setUint8Array(index: number, data: Uint8Array) {
-        let tmp = new Uint8Array(this.dataBytes.buffer, this.dataBytes.byteOffset + index * Uint8Array.BYTES_PER_ELEMENT);
+        const startByte = index * Uint8Array.BYTES_PER_ELEMENT;
+        this._checkBounds(startByte, data.byteLength, 'setUint8Array');
+        let tmp = new Uint8Array(this.dataBytes.buffer, this.dataBytes.byteOffset + startByte, data.length);
         tmp.set(data);
     }
 
     /** Copy a Uint16Array into this slice starting at the given element index. */
     public setUint16Array(index: number, data: Uint16Array) {
-        let tmp = new Uint16Array(this.dataBytes.buffer, this.dataBytes.byteOffset + index * Uint16Array.BYTES_PER_ELEMENT);
+        const startByte = index * Uint16Array.BYTES_PER_ELEMENT;
+        this._checkBounds(startByte, data.byteLength, 'setUint16Array');
+        let tmp = new Uint16Array(this.dataBytes.buffer, this.dataBytes.byteOffset + startByte, data.length);
         tmp.set(data);
     }
 
     /** Copy a Uint32Array into this slice starting at the given element index. */
     public setUint32Array(index: number, data: Uint32Array) {
-        let tmp = new Uint32Array(this.dataBytes.buffer, this.dataBytes.byteOffset + index * Uint32Array.BYTES_PER_ELEMENT);
+        const startByte = index * Uint32Array.BYTES_PER_ELEMENT;
+        this._checkBounds(startByte, data.byteLength, 'setUint32Array');
+        let tmp = new Uint32Array(this.dataBytes.buffer, this.dataBytes.byteOffset + startByte, data.length);
         tmp.set(data);
     }
 
@@ -404,43 +429,50 @@ export class MemoryInfo {
 
     /** Write a Float32Array at the current cursor and advance the cursor. */
     public writeFloat32Array(v: Float32Array) {
-        new Float32Array(this.dataBytes.buffer, this.dataBytes.byteOffset + this.offset).set(v);
+        this._checkBounds(this.offset, v.byteLength, 'writeFloat32Array');
+        new Float32Array(this.dataBytes.buffer, this.dataBytes.byteOffset + this.offset, v.length).set(v);
         this.offset += v.byteLength;
     }
 
     /** Write an Int8Array at the current cursor and advance the cursor. */
     public writeInt8Array(v: Int8Array) {
-        new Int8Array(this.dataBytes.buffer, this.dataBytes.byteOffset + this.offset).set(v);
+        this._checkBounds(this.offset, v.byteLength, 'writeInt8Array');
+        new Int8Array(this.dataBytes.buffer, this.dataBytes.byteOffset + this.offset, v.length).set(v);
         this.offset += v.byteLength;
     }
 
     /** Write an Int16Array at the current cursor and advance the cursor. */
     public writeInt16Array(v: Int16Array) {
-        new Int16Array(this.dataBytes.buffer, this.dataBytes.byteOffset + this.offset).set(v);
+        this._checkBounds(this.offset, v.byteLength, 'writeInt16Array');
+        new Int16Array(this.dataBytes.buffer, this.dataBytes.byteOffset + this.offset, v.length).set(v);
         this.offset += v.byteLength;
     }
 
     /** Write an Int32Array at the current cursor and advance the cursor. */
     public writeInt32Array(v: Int32Array) {
-        new Int32Array(this.dataBytes.buffer, this.dataBytes.byteOffset + this.offset).set(v);
+        this._checkBounds(this.offset, v.byteLength, 'writeInt32Array');
+        new Int32Array(this.dataBytes.buffer, this.dataBytes.byteOffset + this.offset, v.length).set(v);
         this.offset += v.byteLength;
     }
 
     /** Write a Uint8Array at the current cursor and advance the cursor. */
     public writeUint8Array(v: Uint8Array) {
-        new Uint8Array(this.dataBytes.buffer, this.dataBytes.byteOffset + this.offset).set(v);
+        this._checkBounds(this.offset, v.byteLength, 'writeUint8Array');
+        new Uint8Array(this.dataBytes.buffer, this.dataBytes.byteOffset + this.offset, v.length).set(v);
         this.offset += v.byteLength;
     }
 
     /** Write a Uint16Array at the current cursor and advance the cursor. */
     public writeUint16Array(v: Uint16Array) {
-        new Uint16Array(this.dataBytes.buffer, this.dataBytes.byteOffset + this.offset).set(v);
+        this._checkBounds(this.offset, v.byteLength, 'writeUint16Array');
+        new Uint16Array(this.dataBytes.buffer, this.dataBytes.byteOffset + this.offset, v.length).set(v);
         this.offset += v.byteLength;
     }
 
     /** Write a Uint32Array at the current cursor and advance the cursor. */
     public writeUint32Array(v: Uint32Array) {
-        new Uint32Array(this.dataBytes.buffer, this.dataBytes.byteOffset + this.offset).set(v);
+        this._checkBounds(this.offset, v.byteLength, 'writeUint32Array');
+        new Uint32Array(this.dataBytes.buffer, this.dataBytes.byteOffset + this.offset, v.length).set(v);
         this.offset += v.byteLength;
     }
 

@@ -80,26 +80,26 @@ export class CEventDispatcher {
             this.listeners[type] = [];
         }
 
-        if (!this.hasEventListener(type, callback, thisObject)) {
-            var listener: CEventListener = new CEventListener(type, thisObject, callback, param, priority);
-            listener.id = ++CEventListener.event_id_count;
-            listener.current = this;
-            this.listeners[type].push(listener);
-            this.listeners[type].sort(function (listener1: CEventListener, listener2: CEventListener) {
-                return listener2.priority - listener1.priority;
-            });
-
-            return listener.id;
-        }
-
+        // Re-registering the exact same (callback, thisObject, param) tuple
+        // returns the existing id. The same callback with a different param
+        // is a distinct registration and gets its own id (it will fire once
+        // per bound param).
         for (let i = 0; i < this.listeners[type].length; i++) {
-            let listener: CEventListener = this.listeners[type][i];
-            if (listener.equalCurrentListener(type, callback, thisObject, param)) {
-                return listener.id;
+            let existing: CEventListener = this.listeners[type][i];
+            if (existing.equalCurrentListener(type, callback, thisObject, param)) {
+                return existing.id;
             }
         }
 
-        return 0;
+        var listener: CEventListener = new CEventListener(type, thisObject, callback, param, priority);
+        listener.id = ++CEventListener.event_id_count;
+        listener.current = this;
+        this.listeners[type].push(listener);
+        this.listeners[type].sort(function (listener1: CEventListener, listener2: CEventListener) {
+            return listener2.priority - listener1.priority;
+        });
+
+        return listener.id;
     }
 
     /**
@@ -154,7 +154,10 @@ export class CEventDispatcher {
 
         if (eventType) {
             if (this.listeners[eventType]) {
-                for (var i: number = 0; i < this.listeners[eventType].length; i++) {
+                // Iterate backwards: splicing forward skipped every other
+                // listener, leaving half of them undisposed (and still
+                // reachable by an in-flight dispatch).
+                for (var i: number = this.listeners[eventType].length - 1; i >= 0; i--) {
                     listener = this.listeners[eventType][i];
                     listener.dispose();
                     this.listeners[eventType].splice(i, 1);
@@ -164,7 +167,7 @@ export class CEventDispatcher {
             }
         } else {
             for (let key in this.listeners) {
-                for (var i: number = 0; i < this.listeners[key].length; i++) {
+                for (var i: number = this.listeners[key].length - 1; i >= 0; i--) {
                     listener = this.listeners[key][i];
                     listener.dispose();
                     this.listeners[key].splice(i, 1);
@@ -189,19 +192,20 @@ export class CEventDispatcher {
     /**
      *
      * whether the target presence of a listener with event type. it associate more registration parameters.
+     * A null callback/thisObject acts as a wildcard for that dimension, so
+     * listeners registered with thisObject = null are matchable (and thus
+     * removable) — they used to be invisible to this check.
      * @param type {string} event name.
-     * @param callback {Function} callback function of event register.
-     * @param thisObject {any} The registered object.
+     * @param callback {Function} callback function of event register, or null to match any.
+     * @param thisObject {any} The registered object, or null to match any.
      * @returns {boolean} Returns a boolean.
      */
     public hasEventListener(type: string | number, callback: Function = null, thisObject: any = null): boolean {
         if (this.listeners[type] == null) return false;
-        if (thisObject && callback) {
-            for (var i: number = 0; i < this.listeners[type].length; i++) {
-                var listener: CEventListener = this.listeners[type][i];
-                if (listener.equalCurrentListener(type, callback, thisObject, listener.param)) {
-                    return true;
-                }
+        for (var i: number = 0; i < this.listeners[type].length; i++) {
+            var listener: CEventListener = this.listeners[type][i];
+            if ((callback == null || listener.handler == callback) && (thisObject == null || listener.thisObject == thisObject)) {
+                return true;
             }
         }
         return false;

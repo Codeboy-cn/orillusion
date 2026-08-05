@@ -74,6 +74,12 @@ export class SphereGeometry extends GeometryBase {
         let _segmentsH = this.heightSegments;
         let _segmentsW = this.widthSegments;
         let _radius = this.radius;
+        // Constructor parameters are optional and stored as-is, so undefined
+        // fields fall back to a full sphere (matching the previous behavior).
+        let _phiStart = this.phiStart ?? 0;
+        let _phiLength = this.phiLength ?? Math.PI * 2;
+        let _thetaStart = this.thetaStart ?? 0;
+        let _thetaLength = this.thetaLength ?? Math.PI;
         var vertexCount: number = (_segmentsH + 1) * (_segmentsW + 1);
         let position_arr = new Float32Array(vertexCount * 3);
         let normal_arr = new Float32Array(vertexCount * 3);
@@ -84,12 +90,12 @@ export class SphereGeometry extends GeometryBase {
         let ni = 0;
         let ui = 0;
         for (j = 0; j <= _segmentsH; ++j) {
-            var horAngle: number = (Math.PI * j) / _segmentsH;
+            var horAngle: number = _thetaStart + (_thetaLength * j) / _segmentsH;
             var y: number = _radius * Math.cos(horAngle);
             var ringRadius: number = _radius * Math.sin(horAngle);
 
             for (i = 0; i <= _segmentsW; ++i) {
-                var verAngle: number = (2 * Math.PI * i) / _segmentsW;
+                var verAngle: number = _phiStart + (_phiLength * i) / _segmentsW;
                 var x: number = ringRadius * Math.cos(verAngle);
                 var z: number = ringRadius * Math.sin(verAngle);
                 var normLen: number = 1 / Math.sqrt(x * x + y * y + z * z);
@@ -145,6 +151,12 @@ export class SphereGeometry extends GeometryBase {
         // this.vertexBuffer = new CompositeVertexGeometryBuffer();
         // this.indexBuffer = new IndexGeometryBuffer(indice_arr.length, indice_arr);
         // GeometryUtil.composite(this, [VertexAttributeName.position, VertexAttributeName.normal, VertexAttributeName.uv, VertexAttributeName.TEXCOORD_1]);
+
+        // The pole rings emit one triangle per quad instead of two, so the
+        // full-capacity buffer had 2*segmentsW*3 unwritten slots left as
+        // (0,0,0) degenerate triangles that raycasts and statistics still
+        // visited. Trim to what was actually written.
+        indice_arr = indice_arr.subarray(0, triIndex) as Uint16Array<ArrayBuffer>;
 
         this.setIndices(indice_arr);
         this.setAttribute(VertexAttributeName.position, position_arr);

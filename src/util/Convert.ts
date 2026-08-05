@@ -31,7 +31,10 @@ export let toHalfFloat = function (val) {
         bits |= 0x7c00;
         /* If exponent was 0xff and one mantissa bit was set, it means NaN,
          * not Inf, so make sure we set one mantissa bit too. */
-        bits |= (e == 255 ? 1 : 0) && x & 0x007fffff;
+        /* JS `&&` returns an operand, so the old form OR'ed raw mantissa bits
+         * into the half and turned quiet NaNs (mantissa bits that vanish in
+         * the low 10 bits) into Inf. Set exactly one mantissa bit iff NaN. */
+        bits |= (e == 255 && (x & 0x007fffff)) ? 1 : 0;
         return bits;
     }
 

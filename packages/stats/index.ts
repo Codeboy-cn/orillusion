@@ -62,7 +62,9 @@ class Stats extends ComponentBase {
         const time = this.beginTime = performance.now()
         if (time >= this.prevTime + 1000) {
             this.fpsPanel.update((this.frames * 1000) / (time - this.prevTime), 100)
-            this.memPanel?.update((performance as any).memory.totalJSHeapSize / 1048576, 256)
+            // usedJSHeapSize tracks live allocations (drops after GC);
+            // totalJSHeapSize is the reserved heap and barely moves.
+            this.memPanel?.update((performance as any).memory.usedJSHeapSize / 1048576, 256)
             this.prevTime = time
             this.frames = 0
         }
@@ -75,6 +77,7 @@ class Stats extends ComponentBase {
 class Panel {
     canvas: HTMLCanvasElement
     private worker: Worker
+    private workerUrl: string
     private width = 80
     private height = 48
     constructor(parent: HTMLElement, name: string, fg: string, bg: string) {
@@ -84,7 +87,8 @@ class Panel {
         parent.appendChild(canvas)
         const offscreen = (canvas as any).transferControlToOffscreen()
         const blob = new Blob([`(${worker})()`], { type: 'application/javascript' })
-        this.worker = new Worker(URL.createObjectURL(blob))
+        this.workerUrl = URL.createObjectURL(blob)
+        this.worker = new Worker(this.workerUrl)
         this.worker.postMessage({ type: 'init', offscreen, name, fg, bg }, [offscreen])
     }
 
@@ -93,6 +97,7 @@ class Panel {
     }
     destroy() {
         this.worker.terminate()
+        URL.revokeObjectURL(this.workerUrl)
     }
 }
 

@@ -43,6 +43,13 @@ export class I3DMLoaderBase {
         // 4 bytes
         const gltfFormat = dataView.getUint32(28, true);
 
+        // gltfFormat 0 means the body is a UTF-8 uri pointing at an
+        // external glTF — feeding those uri bytes to the GLB parser
+        // crashes later with an opaque error. Fail fast and clearly.
+        if (gltfFormat === 0) {
+            throw new Error('i3dm with external glTF uri (gltfFormat = 0) is not supported');
+        }
+
         // Feature Table
         const featureTableStart = 32;
         const featureTable = new FeatureTable(

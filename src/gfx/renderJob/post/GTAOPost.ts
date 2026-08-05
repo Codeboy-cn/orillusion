@@ -234,6 +234,13 @@ export class GTAOPost extends PostBase {
     public onResize() {
         let [w, h] = this._boundCtx!.presentationSize;
         this.gtaoTexture.resize(w, h);
+        // The temporal-history buffer is indexed per pixel; without a
+        // resize the enlarged region reads/writes out of range (clamped),
+        // corrupting AO history along the growth edge.
+        if (this.aoBuffer) {
+            this.aoBuffer.resizeBuffer(w * h);
+            this.gtaoCompute.setStorageBuffer('aoBuffer', this.aoBuffer);
+        }
         this.gtaoCompute.workerSizeX = Math.ceil(this.gtaoTexture.width / 8);
         this.gtaoCompute.workerSizeY = Math.ceil(this.gtaoTexture.height / 8);
         this.gtaoCompute.workerSizeZ = 1;

@@ -248,7 +248,6 @@ export class RenderNode extends ComponentBase {
     }
 
     public onDisable(): void {
-        this._enable = false;
         EntityCollect.instance.removeRenderNode(this.transform.scene3D, this);
         super.onDisable?.();
     }

@@ -41,7 +41,7 @@ export class GeometryIndicesBuffer {
         this.name = null;
         this.indicesFormat = null;
         this.indicesCount = null;
-        this.indicesGPUBuffer.destroy();
+        this.indicesGPUBuffer?.destroy();
         this.indicesGPUBuffer = null;
     }
 

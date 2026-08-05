@@ -262,6 +262,8 @@ export class ComponentBase implements IComponent {
         this._onBeforeUpdate(null);
         this._onUpdate(null);
         this._onLateUpdate(null);
+        this._onCompute(null);
+        this._onGraphic(null);
 
         this.onEnable = null;
         this.onDisable = null;

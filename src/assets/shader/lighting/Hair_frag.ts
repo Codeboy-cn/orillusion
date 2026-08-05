@@ -207,7 +207,9 @@ export let Hair_frag: string = /*wgsl*/ `
       else
       {
         let AbsorptionColor = HairColorToAbsorption(HairColor.rgb,0.3);
-        Tp_ST = exp(-AbsorptionColor * 2.0 * abs(1.0 - pow2(h_ST * a_ST) / CosThetaD));
+        // Divide the WHOLE abs() term by CosThetaD (UE4 reference); the
+        // divisor was misplaced inside pow2's neighborhood.
+        Tp_ST = exp(-AbsorptionColor * 2.0 * abs(1.0 - pow2(h_ST * a_ST)) / CosThetaD);
       }
      
       var Np_ST = exp( -3.65 * CosPhi - 3.98 );

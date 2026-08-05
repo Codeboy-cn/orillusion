@@ -127,13 +127,15 @@ export class Quaternion {
 
     /** Divide this quaternion by another quaternion (component-wise, new instance) or by a scalar (in place). */
     public divide(v): Quaternion {
+        // w was silently dropped on both branches, denormalizing the result.
         if (v instanceof Quaternion) {
-            return new Quaternion(this.x / v.x, this.y / v.y, this.z / v.z);
+            return new Quaternion(this.x / v.x, this.y / v.y, this.z / v.z, this.w / v.w);
         }
         else {
             this.x = this.x / v;
             this.y = this.y / v;
             this.z = this.z / v;
+            this.w = this.w / v;
         }
         return this;
     }

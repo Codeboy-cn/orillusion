@@ -239,7 +239,9 @@ export class Color {
      */
     public getHex(): string {
         let getHexStr = (n: number) => {
-            n *= 255.0;
+            // Round to an integer channel: fractional values produced
+            // illegal hex like "7f.8" for anything not exactly n/255.
+            n = Math.round(Math.min(Math.max(n, 0), 1) * 255.0);
             let str = n.toString(16);
             if (str.length === 1) {
                 str = '0' + str;

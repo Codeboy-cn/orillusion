@@ -73,6 +73,9 @@ export class GLTF_Info {
             lights: GLTF_Light[];
         };
     };
+
+    /** Extensions the asset REQUIRES for correct loading (glTF 2.0 `extensionsRequired`). */
+    extensionsRequired?: string[];
 }
 
 /**

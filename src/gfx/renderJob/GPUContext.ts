@@ -77,6 +77,12 @@ export class GPUContextInstance {
             (encoder as GPURenderPassEncoder).setStencilReference(renderShader.shaderState.stencilRef ?? 0);
         }
 
+        // Once per material switch (not per draw): rebuild bind groups
+        // whose buffers were retired by resizeBuffer() since they were
+        // built — submitting them would fail with a destroyed-buffer
+        // validation error.
+        renderShader.rebuildInvalidBufferGroups();
+
         for (let i = 1; i < renderShader.bindGroups.length; i++) {
             const bindGroup = renderShader.bindGroups[i];
             if (bindGroup) {
@@ -122,6 +128,20 @@ export class GPUContextInstance {
         this.lastGeometry = null;
         this.lastPipeline = null;
         this.lastShader = null;
+    }
+
+    /**
+     * Drop the currently open encoder and cached pass state WITHOUT
+     * finishing it. Used when a render pass threw mid-frame: finish() on
+     * an encoder with an unclosed pass raises a validation error and
+     * poisons the queue, while dropping the JS reference is safe — the
+     * encoder is simply never submitted.
+     */
+    public discardOpenEncoder() {
+        this.LastCommand = null;
+        this.LastCommandDevice = null;
+        this.lastRenderPassState = null;
+        this.cleanCache();
     }
 
     /** Create a render pipeline on this context's device. */

@@ -324,11 +324,11 @@ export class Material {
     }
 
 
-    /** Release this material's shader and clear its identifying fields. */
+    /** Release this material's shader and clear its identifying fields. Idempotent. */
     destroy(force: boolean) {
         this.name = null;
         this.instanceID = null;
-        this._shader.destroy(force);
+        this._shader?.destroy(force);
         this._shader = null;
     }
 
@@ -391,12 +391,14 @@ export class Material {
 
     /** Get the float value of the named uniform. */
     public getUniformFloat(str: string) {
-        return this._shader.getUniform(str).data;
+        // Shader.getUniform already unwraps `.data`; a second `.data`
+        // dereference returned undefined for every uniform.
+        return this._shader.getUniform(str);
     }
 
     /** Get the 32-bit integer value of the named uniform. */
     public getUniformInt32(str: string) {
-        return this._shader.getUniform(str).data;
+        return this._shader.getUniform(str);
     }
 
     /** Get the Vector2 value of the named uniform. */

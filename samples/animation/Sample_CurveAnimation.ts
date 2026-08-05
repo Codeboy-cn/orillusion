@@ -99,7 +99,10 @@ export class Sample_AnimCurve {
         this.scene.addChild(Object3DUtil.GetSingleCube(300, 5, 300, 1, 1, 1));
         // load a gltf model
         this.Duck = (await this.engine.res.loadGltf('PBR/Duck/Duck.gltf')) as Object3D;
-        this.Duck.scaleX = this.Duck.scaleY = this.Duck.scaleZ = 0.3;
+        // Duck.gltf's root node carries a 0.01 unit-conversion matrix. The
+        // loader used to discard node matrices, so this scale was authored
+        // against an implicit 1.0; it now compounds with the node's 0.01.
+        this.Duck.scaleX = this.Duck.scaleY = this.Duck.scaleZ = 30;
         this.Duck.name = "Duck"
         this.scene.addChild(this.Duck);
     }

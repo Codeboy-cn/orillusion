@@ -120,8 +120,13 @@ export class DepthOfFieldPost extends PostBase {
             let rtFrame = GBufferFrame.getGBufferFrame(GBufferFrame.colorPass_GBuffer, this._boundCtx!);
             blurCompute.setSamplerTexture(`gBufferTexture`, rtFrame.getCompressGBufferTexture());
 
-            let input = i % 2 == 0 ? this.blurTexture1 : this.blurTexture2;
-            let output = i % 2 == 1 ? this.blurTexture1 : this.blurTexture2;
+            // Ping-pong phased so the LAST iteration always lands in
+            // blurTexture1: downstream consumes renderTargets[0] (tex1),
+            // and the old even/odd mapping left odd iteration counts
+            // (default 3) showing the second-to-last blur.
+            let outIsTex1 = ((cfg.iterationCount - 1 - i) % 2) == 0;
+            let input = outIsTex1 ? this.blurTexture2 : this.blurTexture1;
+            let output = outIsTex1 ? this.blurTexture1 : this.blurTexture2;
             blurCompute.setSamplerTexture('inTex', input);
             blurCompute.setStorageTexture(`outTex`, output);
 

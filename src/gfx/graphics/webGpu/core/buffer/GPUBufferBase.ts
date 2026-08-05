@@ -93,12 +93,36 @@ export class GPUBufferBase {
         }
     }
 
-    /** Destroy the materialized GPU buffer, forcing re-materialization on next access. */
+    /**
+     * Monotonic GPU-identity revision. Bumped whenever the materialized
+     * GPUBuffer is retired, so bind-group holders (ComputeShader /
+     * RenderShaderPass) can pull-compare a snapshot and rebuild lazily
+     * instead of submitting a bind group that references a destroyed
+     * buffer.
+     */
+    public _gpuRevision: number = 0;
+
+    /** Retire the materialized GPU buffer, forcing re-materialization on
+     *  next access. The old buffer may still be referenced by commands
+     *  already encoded this frame — mirror the texture-side pattern and
+     *  destroy it only after the queue drains (synchronously when the
+     *  context is lost or was never bound). Multiple same-frame resizes
+     *  each retire their own buffer independently. */
     private _invalidateGpu() {
         if (this._buffer) {
-            try { this._buffer.destroy(); } catch { /* ignore */ }
+            const old = this._buffer;
             this._buffer = null;
+            const ctx = this._boundCtx;
+            if (ctx && !ctx.lost) {
+                ctx.device.queue.onSubmittedWorkDone().then(
+                    () => { try { old.destroy(); } catch { /* ignore */ } },
+                    () => { try { old.destroy(); } catch { /* ignore */ } },
+                );
+            } else {
+                try { old.destroy(); } catch { /* ignore */ }
+            }
         }
+        this._gpuRevision++;
     }
 
     public debug() {
@@ -107,8 +131,15 @@ export class GPUBufferBase {
     public reset(clean: boolean = false, size: number = 0, data?: Float32Array) {
         this.seek = 0;
         this.memory.reset();
+        // The allocation cursor is back at 0: named nodes created before the
+        // reset point at now-recyclable offsets and would overlap fresh
+        // allocations — drop them so setters re-allocate cleanly.
+        this.memoryNodes?.clear();
         if (clean) {
-            this.createBuffer(this.usage, size, data);
+            // Guard against creating a zero-size buffer: keep the previous
+            // byteSize when no new size is given.
+            const floatSize = size > 0 ? size : this.byteSize / 4;
+            this.createBuffer(this.usage, floatSize, data);
         }
     }
 
@@ -499,7 +530,12 @@ export class GPUBufferBase {
         }
     }
 
+    /** Set by destroy(); keeps in-flight mapAsync callbacks from
+     *  re-enqueueing staging buffers into a destroyed object. */
+    private _destroyed: boolean = false;
+
     public mapAsyncWrite(floatArray: FloatArray, len: number) {
+        if (this._destroyed) return;
         let mapAsyncArray: Float32Array;
         if (floatArray instanceof Float64Array) {
             mapAsyncArray = new Float32Array(floatArray);
@@ -542,7 +578,16 @@ export class GPUBufferBase {
             commandEncoder.copyBufferToBuffer(tBuffer, 0, destBuffer, 0, len * 4);
             device.queue.submit([commandEncoder.finish()]);
             tBuffer.mapAsync(GPUMapMode.WRITE).then(
-                () => this.mapAsyncReady.push(tBuffer),
+                () => {
+                    if (this._destroyed) {
+                        // destroy() already drained the queue — don't
+                        // re-enqueue; release the staging buffer instead.
+                        try { tBuffer.destroy(); } catch { /* ignore */ }
+                        this.mapAsyncBuffersOutstanding--;
+                        return;
+                    }
+                    this.mapAsyncReady.push(tBuffer);
+                },
                 (err) => {
                     // device.destroy() during dispose rejects pending mapAsync with AbortError.
                     if (err?.name !== 'AbortError') throw err;
@@ -552,6 +597,15 @@ export class GPUBufferBase {
     }
 
     public destroy() {
+        this._destroyed = true;
+        // Drain the staging-buffer queue; in-flight mapAsync callbacks are
+        // guarded by _destroyed so they can't re-enqueue afterwards.
+        while (this.mapAsyncReady.length) {
+            const staging = this.mapAsyncReady.shift();
+            try { staging.destroy(); } catch { /* ignore */ }
+            this.mapAsyncBuffersOutstanding--;
+        }
+
         if (this.memoryNodes) {
             this.memoryNodes.forEach((v) => {
                 v.destroy();
@@ -592,8 +646,11 @@ export class GPUBufferBase {
 
         this.memory = new MemoryDO();
         this.memoryNodes = new Map<string | number, MemoryInfo>();
-        this._dataView = new Float32Array(this.memory.shareDataBuffer);
         this.memory.allocation(this.byteSize);
+        // The view must wrap the buffer allocated above — creating it before
+        // allocation() wrapped undefined (a zero-length view) and clean()
+        // silently did nothing.
+        this._dataView = new Float32Array(this.memory.shareDataBuffer);
         if (data) {
             let m = this.memory.allocation_node(data.length * 4);
             m.setArrayBuffer(0, data as unknown as ArrayBuffer);
@@ -629,8 +686,8 @@ export class GPUBufferBase {
 
         this.memory = new MemoryDO();
         this.memoryNodes = new Map<string | number, MemoryInfo>();
-        this._dataView = new Float32Array(this.memory.shareDataBuffer);
         this.memory.allocation(totalLength);
+        this._dataView = new Float32Array(this.memory.shareDataBuffer);
         for (let i = 0; i < count; i++) {
             let name = i;
 
@@ -646,36 +703,64 @@ export class GPUBufferBase {
     public readBuffer(promise: false) : Float32Array
     public readBuffer(promise: true) : Promise<Float32Array>
     public readBuffer(promise = false) {
-        this.outFloat32Array ||= new Float32Array(this.memory.shareDataBuffer.byteLength / 4);
-
         const ctx = this._ensureBound();
-        if (!this._readBuffer) {
-            this._readBuffer = ctx.device.createBuffer({
-                size: this.memory.shareDataBuffer.byteLength,
-                usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
-                mappedAtCreation: false,
+
+        if (!this._readPromise) {
+            // Idle: (re)build the staging buffer and the published output
+            // array against the CURRENT size — after a resizeBuffer() the
+            // old staging was too small (out-of-bounds copy) or too large.
+            // NOTE: outFloat32Array is a public field; after a resize the
+            // next read publishes a NEW instance — re-fetch it rather than
+            // caching the reference across resizes.
+            const byteLength = this.memory.shareDataBuffer.byteLength;
+            if (this._readBuffer && this._readBuffer.size !== byteLength) {
+                try { this._readBuffer.destroy(); } catch { /* ignore */ }
+                this._readBuffer = null;
+            }
+            if (!this._readBuffer) {
+                this._readBuffer = ctx.device.createBuffer({
+                    size: byteLength,
+                    usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
+                    mappedAtCreation: false,
+                });
+            }
+            if (!this.outFloat32Array || this.outFloat32Array.byteLength !== byteLength) {
+                this.outFloat32Array = new Float32Array(byteLength / 4);
+            }
+            // Coalesce: while a read is in flight, every caller shares this
+            // promise. finally() re-arms on BOTH resolve and reject — the
+            // old boolean flag was never cleared on failure, permanently
+            // wedging every future read.
+            this._readPromise = this.read(ctx, this._readBuffer).finally(() => {
+                this._readPromise = null;
             });
         }
 
-        let p = this.read(ctx, this._readBuffer);
-        return promise ? p : this.outFloat32Array;
+        if (!promise) {
+            // Fire-and-forget path: attach a handler so a mapAsync failure
+            // (e.g. destroy() while in flight) doesn't surface as an
+            // unhandled rejection.
+            this._readPromise.catch(err => console.warn('[GPUBufferBase.readBuffer]', err));
+            return this.outFloat32Array;
+        }
+        return this._readPromise;
     }
 
-    private _readFlag: boolean = false;
+    private _readPromise: Promise<Float32Array> | null = null;
     private async read(ctx: Context3D, rb: GPUBuffer) {
-        if (!this._readFlag) {
-            this._readFlag = true;
+        // Clamp to what both sides can hold in case a resize lands while
+        // this read is in flight (the staging buffer was sized at issue
+        // time; this.buffer may already be the new size).
+        const copyBytes = Math.min(rb.size, this.buffer.size, this.memory.shareDataBuffer.byteLength);
+        let command = ctx.device.createCommandEncoder();
+        command.copyBufferToBuffer(this.buffer, 0, rb, 0, copyBytes);
+        ctx.device.queue.submit([command.finish()]);
 
-            let command = ctx.device.createCommandEncoder();
-            command.copyBufferToBuffer(this.buffer, 0, rb, 0, this.memory.shareDataBuffer.byteLength);
-            ctx.device.queue.submit([command.finish()]);
-
-            await rb.mapAsync(GPUMapMode.READ);
-            const copyArrayBuffer = rb.getMappedRange();
-            this.outFloat32Array.set(new Float32Array(copyArrayBuffer), 0);
-            rb.unmap();
-            this._readFlag = false;
-        }
-        return this.outFloat32Array;
+        await rb.mapAsync(GPUMapMode.READ);
+        const out = this.outFloat32Array;
+        const src = new Float32Array(rb.getMappedRange(0, copyBytes));
+        out.set(src.length <= out.length ? src : src.subarray(0, out.length), 0);
+        rb.unmap();
+        return out;
     }
 }

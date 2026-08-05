@@ -62,10 +62,19 @@ export class RenderShaderCollect {
                     for (let i = 0; i < colorPassList.length; i++) {
                         const pass = colorPassList[i];
                         let key = `${node.geometry.instanceID + pass.instanceID}`
-                        rDic.delete(key);
+                        // Remove only THIS node — deleting the whole group
+                        // also evicted siblings sharing geometry+pass.
+                        let nodeMap = rDic.get(key);
+                        if (nodeMap) {
+                            nodeMap.delete(node.instanceID);
+                            if (nodeMap.size === 0) rDic.delete(key);
+                        }
                     }
                 });
             }
+            // The flat per-view lookup had no removal path at all — dead
+            // nodes stayed strongly referenced until the view was removed.
+            this.renderNodeList.get(view)?.delete(node.instanceID);
         }
     }
 

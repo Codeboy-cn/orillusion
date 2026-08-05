@@ -60,9 +60,9 @@ export class CubicBezierCurve {
             return Vector3.ZERO
         }
         let controlVerts = this.controlVertices;
-        let q0 = controlVerts[0].clone().add(controlVerts[1].clone().add(controlVerts[0]).multiplyScalar(t));
-        let q1 = controlVerts[1].clone().add(controlVerts[2].clone().add(controlVerts[1]).multiplyScalar(t));
-        let q2 = controlVerts[2].clone().add(controlVerts[3].clone().add(controlVerts[2]).multiplyScalar(t));
+        let q0 = controlVerts[0].clone().add(controlVerts[1].clone().sub(controlVerts[0]).multiplyScalar(t));
+        let q1 = controlVerts[1].clone().add(controlVerts[2].clone().sub(controlVerts[1]).multiplyScalar(t));
+        let q2 = controlVerts[2].clone().add(controlVerts[3].clone().sub(controlVerts[2]).multiplyScalar(t));
 
         let r0 = q0.clone().add(q1.clone().sub(q0).multiplyScalar(t));
         let r1 = q1.clone().add(q2.clone().sub(q1).multiplyScalar(t));
