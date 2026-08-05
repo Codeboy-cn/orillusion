@@ -57,7 +57,7 @@ class Sample_GIRTSponza {
             renderLoop: () => this.onFrame(),
         });
 
-        this.engine.setting.gi.indirectIntensity = 5;
+        this.engine.setting.gi.indirectIntensity = 20;
 
         this.scene = new Scene3D();
         let sky = this.scene.addComponent(AtmosphericComponent);
@@ -154,8 +154,8 @@ class Sample_GIRTSponza {
         // Sun angled through the atrium roof opening so the courtyard
         // floor is lit and the arcades live on bounce light.
         let sunObj = new Object3D();
-        sunObj.rotationX = 80;
-        sunObj.rotationY = 0;
+        sunObj.rotationX = 68;
+        sunObj.rotationY = 32;
         let sun = sunObj.addComponent(DirectLight);
         (this as any).sun = sun;
         sun.lightColor = KelvinUtil.color_temperature_to_rgb(5355);
@@ -182,7 +182,7 @@ class Sample_GIRTSponza {
         GUIHelp.add(this.uiState, 'showProbes').onChange((v: boolean) => {
             if (this.probeHolder) this.probeHolder.transform.enable = v;
         });
-        GUIHelp.add(this.engine.setting.gi, 'indirectIntensity', 0, 5, 0.05).onChange(() => volume.setVolumeDataChange());
+        GUIHelp.add(this.engine.setting.gi, 'indirectIntensity', 0, 10, 0.05).onChange(() => volume.setVolumeDataChange());
         GUIHelp.add(this.engine.setting.gi, 'bounceIntensity', 0, 1, 0.01).onChange(() => volume.setVolumeDataChange());
         GUIHelp.add(this.engine.setting.gi, 'rtRaysPerFrame', 0, 262144, 4096);
         // With GI on, sky light only enters through the probes (trace-kernel
