@@ -73,7 +73,7 @@ class Sample_GIRTCornellBox {
         let lightObj = new Object3D();
         lightObj.y = 19;
         let pointLight = lightObj.addComponent(PointLight);
-        pointLight.intensity = 0.5;
+        pointLight.intensity = 0.1;
         pointLight.range = 45;
         pointLight.castShadow = true;
         pointLight.shadowBias = 1.0;

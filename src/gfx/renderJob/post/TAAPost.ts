@@ -18,6 +18,8 @@ import { TAA_cs } from '../../../assets/shader/compute/TAA_cs';
 import { TAACopyTex_cs } from '../../../assets/shader/compute/TAACopyTex_cs';
 import { TAASharpTex_cs } from '../../../assets/shader/compute/TAASharpTex_cs';
 import { CResizeEvent } from '../../../event/CResizeEvent';
+import { RTResourceMap } from '../frame/RTResourceMap';
+import { MOTION_VECTOR } from '../graph/passes/MotionVectorPass';
 
 /**
  * Temporal AA
@@ -156,6 +158,7 @@ export class TAAPost extends PostBase {
         computeShader.setSamplerTexture(`preColorTex`, this.preColorTex);
         computeShader.setSamplerTexture(`gBufferTexture`, rtFrame.getCompressGBufferTexture());
         computeShader.setSamplerTexture('inTex', this.getLastRenderTexture());
+        computeShader.setSamplerTexture('mvTex', RTResourceMap.getTexture(this._boundCtx!, MOTION_VECTOR));
         computeShader.setStorageTexture(`outTex`, this.taaTexture);
 
         computeShader.workerSizeX = Math.ceil(this.taaTexture.width / 8);
@@ -234,6 +237,9 @@ export class TAAPost extends PostBase {
         }
 
         this.bindUpstream(this.taaCompute, 'inTex');
+        // The motion-vector texture is transient-pool owned; refresh the
+        // binding every frame in case a resize/compile rebuilt it.
+        this.taaCompute.setSamplerTexture('mvTex', RTResourceMap.getTexture(this._boundCtx!, MOTION_VECTOR));
 
         let cfg = this.setting.render.postProcessing.taa;
         this.taaSetting.setMatrix('preProjMatrix', this.preProjMatrix);

@@ -25,6 +25,9 @@ struct TAAData{
 @group(0) @binding(6) var inTexSampler : sampler;
 @group(0) @binding(7) var inTex : texture_2d<f32>;
 @group(0) @binding(8) var outTex : texture_storage_2d<rgba16float, write>;
+// Motion vectors from MotionVectorPass: rg = currUv - prevUv (covers
+// camera AND rigid object motion), b = expected prev-frame view depth.
+@group(0) @binding(9) var mvTex : texture_2d<f32>;
 
 const PI = 3.1415926 ;
 const FLT_EPS = 5.960464478e-8;  // 2^-24, machine epsilon: 1 + EPS = 1 (half of the ULP for 1.0f)
@@ -65,12 +68,13 @@ fn blendColor() -> vec4<f32>
   //var jitterUVOffset = 0.5 * vec2<f32>(taaData.jitterX, -taaData.jitterY);
   if(taaData.jitterFrameIndex > 0.5){
       let gBuffer : GBuffer = getGBuffer(fragCoord);
-      var wPos = getWorldPositionFromGBuffer(gBuffer,fragUV) ;
       let roughness = getRoughnessFromGBuffer(gBuffer);
-      let ndc = taaData.preProjMatrix * (taaData.preViewMatrix * vec4<f32>(wPos.xyz, 1.0));
-      re_proj_uv01 = vec2<f32>(ndc.x, -ndc.y) / ndc.w;
-      re_proj_uv01 = (re_proj_uv01 + 1.0) * 0.5;
-      
+      // Motion-vector reprojection: exact for camera and rigid object
+      // motion (the old preProj/preView matrix path assumed a static
+      // world and smeared history behind every mover).
+      let mv = textureLoad(mvTex, fragCoord, 0);
+      re_proj_uv01 = fragUV - mv.xy;
+
       if(roughness > 0.0 && re_proj_uv01.x >= 0.0 && re_proj_uv01.x <= 1.0 && re_proj_uv01.y >= 0.0 && re_proj_uv01.y <= 1.0){
           mixWeight = taaData.blendFactor;
           //reProjectionCoord = re_proj_uv01 + jitterUVOffset;

@@ -1048,10 +1048,14 @@ export class GUIUtil {
     public static renderSSGI(post: SSGIPost, open: boolean = false) {
         GUIHelp.addFolder("SSGI");
         GUIHelp.add(post, "enable");
-        GUIHelp.add(post, "intensity", 0.0, 10, 0.01);
-        GUIHelp.add(post, "radius", 1, 200, 1);
-        GUIHelp.add(post, "sliceCount", 2, 8, 1);
-        GUIHelp.add(post, "stepCount", 4, 16, 1);
+        GUIHelp.add(post, "aoIntensity", 0.0, 4, 0.01);
+        GUIHelp.add(post, "giIntensity", 0.0, 100, 0.1);
+        GUIHelp.add(post, "radius", 0.1, 100, 0.1);
+        GUIHelp.add(post, "sliceCount", 1, 4, 1);
+        GUIHelp.add(post, "stepCount", 1, 32, 1);
+        GUIHelp.add(post, "expFactor", 1, 3, 0.01);
+        GUIHelp.add(post, "thickness", 0.01, 10, 0.01);
+        GUIHelp.add(post, "backfaceLighting", 0, 1, 0.01);
         GUIHelp.add(post, "hysteresis", 0, 0.99, 0.01);
         open && GUIHelp.open();
         GUIHelp.endFolder();

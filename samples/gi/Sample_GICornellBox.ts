@@ -2,11 +2,9 @@ import { Object3D, Scene3D, Engine3D, GlobalIlluminationComponent, Vector3, Post
 import { GUIHelp } from "@orillusion/debug/GUIHelp";
 import { GUIUtil } from "@samples/utils/GUIUtil";
 
-// DDGI counterpart of Sample_SSGICornellBox: the exact same scene
-// environment — Cornell box with its emissive ceiling quad, one point
-// light under the ceiling, no DirectLight, no atmospheric sky — lit by
-// the volumetric probe field instead of screen-space GI, so the two
-// techniques can be compared side by side.
+// DDGI Cornell-box bench: Cornell box with its emissive ceiling quad,
+// one point light under the ceiling, no DirectLight, no atmospheric
+// sky — lit by the volumetric probe field.
 class Sample_GICornellBox {
     engine: Engine3D;
     scene: Scene3D;
@@ -78,9 +76,9 @@ class Sample_GICornellBox {
                     debug: true,
                 },
                 sky: {
-                    // Same as the SSGI bench: no AtmosphericComponent is
-                    // added, and the non-GI environment term is zeroed so
-                    // the cavity's own sources are all the light there is.
+                    // No AtmosphericComponent is added, and the non-GI
+                    // environment term is zeroed so the cavity's own
+                    // sources are all the light there is.
                     skyExposure: 0,
                 },
                 pick: {
@@ -155,23 +153,22 @@ class Sample_GICornellBox {
         this.scene.addChild(box);
 
         // Point light just below the ceiling lamp quad (cavity is
-        // x,z in [-10,10], y in [0,20] after the 10x scale) — identical
-        // to the SSGI bench.
+        // x,z in [-10,10], y in [0,20] after the 10x scale).
         let lightObj = new Object3D();
         lightObj.y = 19;
         let pointLight = lightObj.addComponent(PointLight);
-        pointLight.intensity = 0.5;
+        pointLight.intensity = 0.1;
         pointLight.range = 45;
         pointLight.castShadow = true;
-        // Same acne fix as the SSGI bench: ~1 world unit (5% of the
-        // cavity) clears grazing-incidence self-shadowing without
-        // visible peter-panning at the box/floor contacts.
+        // Acne fix: ~1 world unit (5% of the cavity) clears
+        // grazing-incidence self-shadowing without visible
+        // peter-panning at the box/floor contacts.
         pointLight.shadowBias = 1.0;
         pointLight.normalBias = 1.0;
         this.scene.addChild(lightObj);
 
         GUIHelp.addFolder('PointLight');
-        GUIHelp.add(pointLight, 'intensity', 0, 50, 0.1);
+        GUIHelp.add(pointLight, 'intensity', 0, 50, 0.01);
         GUIHelp.add(pointLight, 'range', 1, 100, 1);
         GUIHelp.add(lightObj, 'y', 1, 19, 0.1);
         GUIHelp.endFolder();

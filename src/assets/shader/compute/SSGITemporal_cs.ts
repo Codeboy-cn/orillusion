@@ -1,15 +1,19 @@
 /**
  * SSGI temporal resolve — second pass of the SSGI pipeline.
  *
- * Consumes the raw single-frame gather written by SSGI_cs (rgb = gi,
- * a = receiver view depth), reprojects into the previous frame with the
- * stored camera matrices (same convention as TAA_cs), validates history
- * by view depth, blends with an exponential moving average and
- * composites onto the scene color.
+ * Consumes the raw single-frame
+ * bitmask gather written by SSGI_cs (giTex rgb = radiance, a =
+ * visibility; keyTex r = receiver view depth), prefilters it spatially,
+ * reprojects into the previous frame with the stored camera matrices,
+ * validates history by view depth, blends with an exponential moving
+ * average and composites onto the scene color with the reference
+ * formula:
+ *
+ *   out = sceneColor * visibility + albedo * gi
  *
  * Kept separate from the march pass on purpose: the two mat4 uniforms
  * and history traffic would otherwise stay live across the march loop
- * and collapse its occupancy (measured 5x slowdown when fused).
+ * and collapse its occupancy.
  *
  * @internal
  */
@@ -17,23 +21,28 @@ export let SSGITemporal_cs: string = /*wgsl*/`
     #include "GlobalUniform"
     #include "GBufferStand"
 
+    // FastMathShader helpers pulled in by the includes reference PI
+    // without defining it.
     const PI: f32 = 3.1415926;
 
     struct SSGITemporalSettings {
         preProjMatrix: mat4x4<f32>,
         preViewMatrix: mat4x4<f32>,
-        intensity: f32,
         hysteresis: f32,
         frameIndex: f32,
         slot0: f32,
+        slot1: f32,
     };
 
     @group(0) @binding(2) var<uniform> temporalSettings: SSGITemporalSettings;
     @group(0) @binding(3) var inTex: texture_2d<f32>;
     @group(0) @binding(4) var outTex: texture_storage_2d<rgba16float, write>;
     @group(0) @binding(5) var giTex: texture_2d<f32>;
-    @group(0) @binding(6) var historyTex: texture_2d<f32>;
-    @group(0) @binding(7) var historyOut: texture_storage_2d<rgba16float, write>;
+    @group(0) @binding(6) var keyTex: texture_2d<f32>;
+    @group(0) @binding(7) var historyTex: texture_2d<f32>;
+    @group(0) @binding(8) var historyKeyTex: texture_2d<f32>;
+    @group(0) @binding(9) var historyOut: texture_storage_2d<rgba16float, write>;
+    @group(0) @binding(10) var historyKeyOut: texture_storage_2d<r32float, write>;
 
     @compute @workgroup_size(8, 8, 1)
     fn CsMain(@builtin(global_invocation_id) gid: vec3<u32>) {
@@ -44,38 +53,39 @@ export let SSGITemporal_cs: string = /*wgsl*/`
 
         let oc = textureLoad(inTex, fragCoord, 0);
         let gBuffer = getGBuffer(fragCoord);
-        useNormalMatrixInv();
         if (getRoughnessFromGBuffer(gBuffer) <= 0.0) {
-            // Zero depth key invalidates any stale history at this texel.
-            textureStore(historyOut, fragCoord, vec4<f32>(0.0));
+            // Sky: zero depth key invalidates any stale history here.
+            textureStore(historyOut, fragCoord, vec4<f32>(0.0, 0.0, 0.0, 1.0));
+            textureStore(historyKeyOut, fragCoord, vec4<f32>(0.0));
             textureStore(outTex, fragCoord, oc);
             return;
         }
 
-        let gi = textureLoad(giTex, fragCoord, 0);
-        let viewZ = gi.a;
-        // Depth-weighted 3x3 spatial prefilter (dilated stride 3) over the
-        // raw gather. The per-frame estimate has huge variance (few binary
-        // hit-or-miss taps); irradiance is low-frequency, so trading a few
-        // pixels of spatial resolution cuts the EMA's equilibrium noise
-        // by ~3x. Depth weighting keeps edges from bleeding across
-        // geometry.
-        var giSum = vec3<f32>(0.0);
+        let viewZ = textureLoad(keyTex, fragCoord, 0).x;
+
+        // Depth-weighted 3x3 spatial prefilter (dilated stride 3) over
+        // the raw gather and visibility. The per-frame estimate has huge
+        // variance (few binary hit-or-miss sectors); irradiance is
+        // low-frequency, so trading a few pixels of spatial resolution
+        // cuts the EMA's equilibrium noise. Depth weighting keeps edges
+        // from bleeding across geometry.
+        var sum = vec4<f32>(0.0);
         var wSum = 0.0;
         for (var dy: i32 = -1; dy <= 1; dy = dy + 1) {
             for (var dx: i32 = -1; dx <= 1; dx = dx + 1) {
                 let nCoord = clamp(fragCoord + vec2<i32>(dx, dy) * 3,
                     vec2<i32>(0), vec2<i32>(texSize) - 1);
-                let g = textureLoad(giTex, nCoord, 0);
-                // g.a == 0 marks sky neighbours; weight them out.
+                let nKey = textureLoad(keyTex, nCoord, 0).x;
+                // key == 0 marks sky neighbours; weight them out.
                 let wz = select(0.0,
-                    exp(-abs(g.a - viewZ) / max(viewZ * 0.1, 0.1)),
-                    g.a > 0.0);
-                giSum = giSum + g.rgb * wz;
+                    exp(-abs(nKey - viewZ) / max(viewZ * 0.1, 0.1)),
+                    nKey > 0.0);
+                sum = sum + textureLoad(giTex, nCoord, 0) * wz;
                 wSum = wSum + wz;
             }
         }
-        let giAccum = giSum / max(wSum, 0.001);
+        let filtered = sum / max(wSum, 0.001);
+
         let P = getWorldPositionFromGBuffer(gBuffer, fragUV);
         let albedo = getAbldeoFromGBuffer(gBuffer).rgb;
 
@@ -93,19 +103,25 @@ export let SSGITemporal_cs: string = /*wgsl*/`
         // f16 overflow) would otherwise recirculate through the history.
         let hist = clamp(textureLoad(historyTex, prevCoord, 0),
             vec4<f32>(0.0), vec4<f32>(65000.0));
-        // hist.a holds the surface's view depth when it was written; the
-        // reprojected clip w is that same depth if we are still looking
-        // at the same surface.
-        let histValid = temporalSettings.frameIndex > 0.5 && inBounds && hist.a > 0.0 &&
-            abs(hist.a - clipPrev.w) < 0.05 * max(clipPrev.w, 1.0);
+        let histKey = textureLoad(historyKeyTex, prevCoord, 0).x;
+        // historyKey holds the surface's view depth when it was written;
+        // the reprojected clip w is that same depth if we are still
+        // looking at the same surface.
+        let histValid = temporalSettings.frameIndex > 0.5 && inBounds && histKey > 0.0 &&
+            abs(histKey - clipPrev.w) < 0.05 * max(clipPrev.w, 1.0);
         let alpha = select(1.0, clamp(1.0 - temporalSettings.hysteresis, 0.01, 1.0), histValid);
-        var blended = mix(hist.rgb, giAccum, alpha);
-        // Flush EMA-decayed values to zero before they reach the f16
+        var blended = mix(hist, filtered, alpha);
+        // Flush EMA-decayed radiance to zero before it reaches the f16
         // denormal range in the history texture.
-        blended = select(vec3<f32>(0.0), blended, blended > vec3<f32>(1.0e-4));
-        textureStore(historyOut, fragCoord, vec4<f32>(blended, viewZ));
+        let flushed = select(vec3<f32>(0.0), blended.rgb, blended.rgb > vec3<f32>(1.0e-4));
+        blended = vec4<f32>(flushed, clamp(blended.a, 0.0, 1.0));
+        textureStore(historyOut, fragCoord, blended);
+        textureStore(historyKeyOut, fragCoord, vec4<f32>(viewZ, 0.0, 0.0, 0.0));
 
-        let result = oc.rgb + albedo * blended * temporalSettings.intensity;
+        // Reference composition:
+        // scene color attenuated by visibility, indirect term modulated
+        // by the surface albedo.
+        let result = oc.rgb * blended.a + albedo * blended.rgb;
         textureStore(outTex, fragCoord, vec4<f32>(result, oc.a));
     }
 `;

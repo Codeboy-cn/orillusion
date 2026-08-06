@@ -16,7 +16,7 @@ import { buildOpBundles, preInitPassPipelines } from './_helpers';
 /**
  * Published handle names for the depth prepass outputs. The color
  * pass hooks its pipeline's depth-load-op to `_MainDepthTexture` via
- * `rtFrame.zPreTexture`; opaque-stage post passes (SSR, SSGI, outline)
+ * `rtFrame.zPreTexture`; opaque-stage post passes (SSR, outline)
  * read from `_ZBufferTexture`.
  *
  * @group Graph
@@ -36,7 +36,7 @@ export const PRE_DEPTH_RT = '_PreDepthRT';
 /**
  * Z-prepass: writes a depth-only texture used by the main color pass
  * to short-circuit overdraw, plus an rgba16float side-channel sampled
- * by SSR / SSGI / outline. Gated on `engine.setting.render.zPrePass`.
+ * by SSR / outline. Gated on `engine.setting.render.zPrePass`.
  *
  * @group Graph
  */
@@ -99,7 +99,7 @@ export class PreDepthPass extends RenderGraphPass {
         // hooks into via `rtFrame.zPreTexture`. Returns the live
         // depth texture (which RTResourceMap resize-rebuilds in place).
         b.write(MAIN_DEPTH_TEXTURE, () => this._rtFrame.depthTexture);
-        // _ZBufferTexture: rgba16float side-channel for SSR / SSGI / outline.
+        // _ZBufferTexture: rgba16float side-channel for SSR / outline.
         b.write(Z_BUFFER_TEXTURE, () => this.zBufferTexture);
     }
 

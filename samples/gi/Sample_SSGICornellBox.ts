@@ -2,12 +2,12 @@ import { Object3D, Scene3D, Engine3D, Vector3, PostProcessingComponent, SSGIPost
 import { GUIHelp } from "@orillusion/debug/GUIHelp";
 import { GUIUtil } from "@samples/utils/GUIUtil";
 
-// SSGI test bench: the Cornell box from Sample_GICornellBox lit by a
-// single point light under the ceiling — no DirectLight, no atmospheric
-// sky, no bloom, and the gltf's emissive lamp quad is turned off. With
-// SSGI disabled only the directly lit surfaces show; enabling it adds
-// the single screen-space bounce (wall color onto boxes and floor,
-// fill in the shadowed regions).
+// SSGI test bench: the Cornell box scene from Sample_GICornellBox (same
+// gltf, scale, camera and ceiling point light) but without the DDGI
+// probe volume — the bitmask SSGI post provides the indirect term.
+// With SSGI disabled only the directly lit surfaces show; enabling it
+// adds the screen-space bounce (red/green wall color onto the boxes and
+// floor, contact AO in the corners).
 class Sample_SSGICornellBox {
     engine: Engine3D;
     scene: Scene3D;
@@ -20,9 +20,9 @@ class Sample_SSGICornellBox {
                     debug: true,
                 },
                 sky: {
-                    // No AtmosphericComponent is added, but the non-GI
-                    // environment term still samples the default prefilter
-                    // map — zero it so the point light is the only source.
+                    // No AtmosphericComponent is added, and the non-GI
+                    // environment term is zeroed so the point light and
+                    // the lamp quad are the only sources.
                     skyExposure: 0,
                 },
             },
@@ -33,7 +33,7 @@ class Sample_SSGICornellBox {
         let camera = CameraUtil.createCamera3DObject(this.scene);
         camera.perspective(45, engine.aspect, 0.01, 1000.0);
         let ctrl = camera.object3D.addComponent(HoverCameraController);
-        ctrl.setCamera(0, 0, 26, new Vector3(0, 10, 0));
+        ctrl.setCamera(0, 0, 30, new Vector3(0, 10, 0));
 
         let view = new View3D();
         view.scene = this.scene;
@@ -44,21 +44,25 @@ class Sample_SSGICornellBox {
         GUIHelp.init();
         let postProcessing = this.scene.addComponent(PostProcessingComponent);
         let ssgi = postProcessing.addPost(SSGIPost);
-        // Interior cavity is ~20 world units (2x2x2 mesh scaled by 10);
-        // span it so floor bounce can reach the ceiling and walls.
-        ssgi.radius = 28;
-        // With a real light in the cavity the frame carries far more
-        // energy than the emissive-only variant did — keep the bounce
-        // near its physical scale.
-        ssgi.intensity = 1.5;
-        // Cavity-spanning radius scatters taps across the whole frame
-        // (cache-hostile), so keep the per-frame budget minimal and let
-        // temporal accumulation integrate the variance. Bigger budgets
-        // saturate the GPU at this resolution.
-        ssgi.sliceCount = 2;
-        ssgi.stepCount = 4;
-        ssgi.hysteresis = 0.98;
+        // World-space stepping sized to the cavity: the interior is ~20
+        // units (2x2x2 mesh scaled by 10), so a floor texel can gather
+        // wall and ceiling radiance from across the box.
+        ssgi.radius = 16;
+        // The reference default (10) is tuned for the demo's
+        // dimmer beauty pass; this cavity's HDR point light already
+        // carries several units of radiance, so keep the bounce near its
+        // physical scale.
+        ssgi.giIntensity = 10;
         GUIUtil.renderSSGI(ssgi, true);
+
+        // A/B the tonemap: with the default ACES curve the added bounce
+        // shifts wall hues near the lamp; 'None' shows the raw energy.
+        GUIHelp.addFolder('Tonemap');
+        let tonemapState = { ACES: true };
+        GUIHelp.add(tonemapState, 'ACES').onChange((v: boolean) => {
+            this.engine.setting.render.tonemap.mode = v ? 'ACES' : 'None';
+        });
+        GUIHelp.endFolder();
 
         await this.initScene();
     }
@@ -76,19 +80,18 @@ class Sample_SSGICornellBox {
         let lightObj = new Object3D();
         lightObj.y = 19;
         let pointLight = lightObj.addComponent(PointLight);
-        pointLight.intensity = 0.8;
+        pointLight.intensity = 0.1;
         pointLight.range = 45;
         pointLight.castShadow = true;
-        // The rotated boxes put several faces at grazing incidence to the
-        // light where the auto-resolved bias still self-shadows (moire
-        // acne); ~1 world unit (5% of the cavity) clears it here without
-        // visible peter-panning at the box/floor contacts.
+        // Acne fix: ~1 world unit (5% of the cavity) clears
+        // grazing-incidence self-shadowing without visible
+        // peter-panning at the box/floor contacts.
         pointLight.shadowBias = 1.0;
         pointLight.normalBias = 1.0;
         this.scene.addChild(lightObj);
 
         GUIHelp.addFolder('PointLight');
-        GUIHelp.add(pointLight, 'intensity', 0, 50, 0.1);
+        GUIHelp.add(pointLight, 'intensity', 0, 10, 0.01);
         GUIHelp.add(pointLight, 'range', 1, 100, 1);
         GUIHelp.add(lightObj, 'y', 1, 19, 0.1);
         GUIHelp.endFolder();

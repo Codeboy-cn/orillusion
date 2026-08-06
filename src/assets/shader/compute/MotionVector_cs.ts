@@ -1,13 +1,21 @@
 /**
- * Screen-space motion vector compute pass. Reverse-reprojects each
- * pixel's reconstructed world position with the previous frame's
- * viewProj matrix and stores `(currUv - prevUv)` per pixel into a
- * rg16float storage texture.
+ * Screen-space motion vector compute pass.
  *
- * MVP simplification: world position comes from gBuffer.x depth +
- * current invViewProj. This is correct for static / camera-only
- * motion. Per-vertex motion vectors (skinned mesh, animated
- * geometry) need a vertex-stage prev-clip-pos write, deferred.
+ * Per pixel: reconstruct the world position from gBuffer depth, carry it
+ * back to its previous-frame world position with the per-object motion
+ * delta (see MotionVectorDelta_cs — identity for static objects), then
+ * project with the previous frame's viewProj.
+ *
+ * Output (rgba16float):
+ *   rg = currUv - prevUv   (screen-space motion, uv units)
+ *   b  = prevClip.w        (the surface's expected previous-frame view
+ *                           depth — temporal passes compare their stored
+ *                           history depth against this to detect
+ *                           disocclusion, correctly even for movers)
+ *   a  = 0
+ *
+ * Covers camera motion and rigid object motion. Skinned / morphed
+ * vertex animation still needs a vertex-stage prev-position path.
  *
  * @internal
  */
@@ -21,9 +29,14 @@ export let MotionVector_cs: string = /*wgsl*/`
         prevViewProj: mat4x4<f32>,
     };
 
+    struct MatrixArray {
+        matrix: array<mat4x4<f32>>,
+    };
+
     @group(0) @binding(2) var<uniform> mvData: MVData;
     @group(0) @binding(3) var inTex: texture_2d<f32>;
     @group(0) @binding(4) var outTex: texture_storage_2d<rgba16float, write>;
+    @group(0) @binding(5) var<storage, read> deltaModels: MatrixArray;
 
     var<private> texSize: vec2<u32>;
     var<private> fragCoord: vec2<i32>;
@@ -41,16 +54,21 @@ export let MotionVector_cs: string = /*wgsl*/`
         gBuffer = getGBuffer(fragCoord);
         let visible = getRoughnessFromGBuffer(gBuffer);
         if (visible <= 0.0) {
-            // sky / unwritten pixel: zero motion vector
+            // sky / unwritten pixel: zero motion vector, no depth key
             textureStore(outTex, fragCoord, vec4<f32>(0.0, 0.0, 0.0, 0.0));
             return;
         }
 
-        // Reconstruct world position from current-frame depth.
+        // Reconstruct world position from current-frame depth, then carry
+        // it to where this surface point sat the previous frame via the
+        // owning object's motion delta (identity for static objects, so
+        // this is exact for camera-only motion too).
         let worldPos = getWorldPositionFromGBuffer(gBuffer, fragUV);
+        let modelIndex = getIDFromGBuffer_i32(gBuffer);
+        let prevWorld = deltaModels.matrix[u32(modelIndex)] * vec4<f32>(worldPos, 1.0);
 
         // Project with prev frame's viewProj to get prev-frame UV.
-        let prevClip = mvData.prevViewProj * vec4<f32>(worldPos, 1.0);
+        let prevClip = mvData.prevViewProj * prevWorld;
         if (prevClip.w <= 0.0) {
             textureStore(outTex, fragCoord, vec4<f32>(0.0, 0.0, 0.0, 0.0));
             return;
@@ -59,6 +77,6 @@ export let MotionVector_cs: string = /*wgsl*/`
         let prevUv = vec2<f32>(prevNdc.x * 0.5 + 0.5, -prevNdc.y * 0.5 + 0.5);
 
         let motion = fragUV - prevUv;
-        textureStore(outTex, fragCoord, vec4<f32>(motion.x, motion.y, 0.0, 0.0));
+        textureStore(outTex, fragCoord, vec4<f32>(motion.x, motion.y, prevClip.w, 0.0));
     }
 `;

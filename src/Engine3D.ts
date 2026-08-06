@@ -169,7 +169,7 @@ export class Engine3D {
                     outline: { enable: false, strength: 1, groupCount: 4, outlinePixel: 2, fadeOutlinePixel: 4, textureScale: 1, useAddMode: false, debug: true },
                     taa: { enable: false, jitterSeedCount: 8, blendFactor: 0.1, sharpFactor: 0.6, sharpPreBlurFactor: 0.5, temporalJitterScale: 0.13, debug: true },
                     gtao: { enable: false, darkFactor: 1.0, maxDistance: 5.0, maxPixel: 50.0, rayMarchSegment: 6, multiBounce: false, usePosFloat32: true, blendColor: true, debug: true },
-                    ssgi: { enable: false, intensity: 1.0, radius: 24, sliceCount: 4, stepCount: 8, hysteresis: 0.9 },
+                    ssgi: { enable: false, aoIntensity: 1, giIntensity: 10, radius: 12, sliceCount: 2, stepCount: 8, expFactor: 2, thickness: 1, useLinearThickness: false, useScreenSpaceSampling: true, backfaceLighting: 0, hysteresis: 0.9 },
                     ssr: { enable: false, pixelRatio: 1, fadeEdgeRatio: 0.2, rayMarchRatio: 0.5, fadeDistanceMin: 600, fadeDistanceMax: 2000, roughnessThreshold: 0.5, powDotRN: 0.2, mixThreshold: 0.1, debug: true },
                     fxaa: { enable: false },
                     skyline: {

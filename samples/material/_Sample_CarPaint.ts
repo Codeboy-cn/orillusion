@@ -2,7 +2,7 @@ import {
 	View3D, DirectLight, Engine3D,
 	PostProcessingComponent, LitMaterial, HoverCameraController,
 	KelvinUtil, MeshRenderer, Object3D, PlaneGeometry, Scene3D, SphereGeometry,
-	CameraUtil, BoxGeometry, TAAPost, AtmosphericComponent, GTAOPost, Color, BloomPost, SSRPost, SSGIPost, GBufferPost, FXAAPost, SkyRenderer, Reflection, SphereReflection, GBufferFrame, ProfilerUtil, Time, SpotLight, Object3DUtil, Object3DTransformTools, PointLight, DepthOfFieldPost, OutlinePost, Material, Vector3
+	CameraUtil, BoxGeometry, TAAPost, AtmosphericComponent, GTAOPost, Color, BloomPost, SSRPost, GBufferPost, FXAAPost, SkyRenderer, Reflection, SphereReflection, GBufferFrame, ProfilerUtil, Time, SpotLight, Object3DUtil, Object3DTransformTools, PointLight, DepthOfFieldPost, OutlinePost, Material, Vector3
 } from '@orillusion/core';
 import { GUIHelp } from '@orillusion/debug/GUIHelp';
 import { GUIUtil } from '@samples/utils/GUIUtil';
@@ -53,7 +53,6 @@ export class Sample_CarPaint {
 
 		engine.startRenderView(this.view);
 
-		let ssgi: SSGIPost;
 		let postProcessing = this.scene.addComponent(PostProcessingComponent);
 		postProcessing.addPost(FXAAPost);
 
@@ -76,7 +75,6 @@ export class Sample_CarPaint {
 
 		// ** test pass 
 		// let ssrt = postProcessing.addPost(SSRPost);
-		// ssgi = postProcessing.addPost(SSGIPost);
 		// GUIUtil.renderDirLight(this.lightObj.getComponent(DirectLight));
 		GUIUtil.renderProfiler(ProfilerUtil.viewCount(this.view));
 		GUIUtil.renderShadowSetting(this.engine);

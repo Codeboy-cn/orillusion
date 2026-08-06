@@ -38,7 +38,7 @@ export {
  *   scene-sized). Post passes read this as their first input.
  * - `_NormalBuffer`: the compressed G-buffer attachment that packs
  *   normal + position + material data (rgba32float). Post passes
- *   that need geometry info (SSR, SSGI, outline) decode it themselves.
+ *   that need geometry info (SSR, outline) decode it themselves.
  *
  * @group Graph
  */
