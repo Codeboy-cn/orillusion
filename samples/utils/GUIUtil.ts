@@ -768,6 +768,12 @@ export class GUIUtil {
         GUIHelp.add(giSetting, `lerpHysteresis`, 0.001, 10, 0.0001).onChange(() => {
             onProbesChange();
         });
+        // dat.gui needs the property to exist before add(); the setting
+        // object may omit the optional field when built by hand.
+        giSetting.lerpHysteresisLow = giSetting.lerpHysteresisLow ?? 0.05;
+        GUIHelp.add(giSetting, `lerpHysteresisLow`, 0.001, 1, 0.0001).onChange(() => {
+            onProbesChange();
+        });
         GUIHelp.add(giSetting, `depthSharpness`, 1.0, 100.0, 0.001).onChange(() => {
             onProbesChange();
         });

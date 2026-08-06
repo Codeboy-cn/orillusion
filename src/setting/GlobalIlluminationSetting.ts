@@ -79,9 +79,24 @@ export type GlobalIlluminationSetting = {
     hysteresis: number;
     /**
      * @internal
-     * Set hysteresis value (default 0.01)
+     * Base per-update temporal blend weight of the probe irradiance
+     * (weight of the NEW estimate, default 0.2). With the adaptive
+     * blend this is the MID tier, used while a texel is converging:
+     * texels whose relative change sits below the estimator noise
+     * floor blend at lerpHysteresisLow instead, and large persistent
+     * changes fast-blend toward 0.5.
      */
     lerpHysteresis: number;
+    /**
+     * @internal
+     * Steady-state temporal blend weight (default 0.05). Applied to
+     * texels whose per-update relative change is within the ray
+     * estimator's noise band — i.e. already converged — so the
+     * per-frame random ray orientation stops reading as GI flicker.
+     * Raise it if converged GI should still track slow light drifts
+     * faster; lower it for maximum temporal stability.
+     */
+    lerpHysteresisLow?: number;
     /**
      * @internal
      */

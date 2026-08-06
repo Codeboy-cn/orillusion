@@ -43,7 +43,6 @@ export class DDGIIrradianceComputePass {
         this.depthRaysBuffer = new StorageGPUBuffer(4096 * 4 * 2 * 2 * 2, GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC);
         this.computeShader.setStorageBuffer(`depthRaysBuffer`, this.depthRaysBuffer);
 
-        this.computeShader.setStorageBuffer(`probes`, this.volume.probesBuffer);
         this.computeShader.setUniformBuffer(`uniformData`, this.volume.irradianceVolumeBuffer);
 
         this.computeShader.setStorageBuffer("models", GlobalBindGroup.getModelMatrixBindGroup(this._ctx).matrixBufferDst);

@@ -43,7 +43,7 @@ export let IrradianceVolumeData_frag: string = /*wgsl*/ `
             debugX:f32,
             debugY:f32,
             debugZ:f32,
-            slot0:f32,
+            lerpHysteresisLow:f32,
 
             //..
             v7:vec4<f32>,

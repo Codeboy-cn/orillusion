@@ -7,13 +7,6 @@ export let DDGIIrradiance_shader = /*wgsl*/`
 #include "IrradianceVolumeData_frag"
 var<private> PI: f32 = 3.14159265359;
 
-struct ProbeData{
-  offsetX:f32,
-  offsetY:f32,
-  offsetZ:f32,
-  frame:f32,
-}
-
  struct Uniforms {
      matrix : array<mat4x4<f32>>
  };
@@ -36,7 +29,10 @@ struct CacheHitData{
 //   rays:array<vec4<f32>,4096>
 //  }
 
-@group(0) @binding(0) var<storage, read> probes : array<ProbeData>;
+// binding 0 intentionally unused: the per-probe frame buffer was only
+// ever read into a dead (commented-out) branch of the old constant
+// blend; 'layout auto' strips unreferenced bindings, so declaring it
+// without a use would break bind group creation.
 @group(0) @binding(1) var<storage, read_write> irradianceBuffer : array<vec4<f32>>;
 @group(0) @binding(2) var<storage, read_write> depthBuffer : array<vec4<f32>>;
 @group(0) @binding(3) var<uniform> uniformData : IrradianceVolumeData ;
@@ -136,15 +132,58 @@ fn CsMain(@builtin(global_invocation_id) globalInvocation_id : vec3<u32>)
    storePixelAtCoord(probeDepthMap, pixelCoord , vec4<f32>(lerpDataResult.depth.xy, 0.0, 1.0), false);
 }
 
+// Adaptive temporal blend, same structure as the traced path
+// (DDGITraceBlend_Cs.lerpHitData) plus a steady-state tier and a step
+// clamp. This pass re-blends EVERY probe EVERY frame while the ray
+// orientation cycles through a small random set, so a constant weight
+// is a deadlock: high enough to converge fast, it replays the
+// estimator noise as visible GI flicker; low enough to be stable, the
+// probe field takes seconds to react. The weight is therefore chosen
+// per texel from the relative change against history:
+// 1. History bootstrap: an empty-history texel (buffers clear to
+//    zero) accepts its first contributing update outright instead of
+//    crawling up from black.
+// 2. Noise tier: the cosine estimator under the cycling orientation
+//    fluctuates up to ~25% per update, so relative changes inside
+//    that band mean the texel is converged — hold it near-still at
+//    lerpHysteresisLow instead of re-blending noise at the base rate.
+// 3. Change tier: above the noise band, ramp from the lerpHysteresis
+//    base toward 0.5 so real lighting edits (lights toggled, geometry
+//    moved) converge in a few updates. The applied step length is
+//    clamped so a single-update outlier (one orientation catching an
+//    emissive sliver) reads as a small nudge, while a persistent
+//    change still walks there across consecutive frames.
+// Depth moments stay at the base weight — visibility stability is
+// worth more than reaction speed there (a wobbling Chebyshev mean
+// flickers shadow edges).
 fn lerpHitData(data:CacheHitData, coord:vec2<i32>) -> CacheHitData{
-   let frameIndex = probes[probeID].frame;
    var newData:CacheHitData = data;
+   var oldData = readRayHitData(coord);
+   let base = uniformData.lerpHysteresis;
 
-   //if(frameIndex > 1.0){
-      var oldData = readRayHitData(coord);
-      newData.color = mix(oldData.color, newData.color, uniformData.lerpHysteresis);
-      newData.depth = mix(oldData.depth, newData.depth, uniformData.lerpHysteresis);
-   //}
+   if (oldData.color.w < 1e-5 && newData.color.w > 1e-5) {
+      // keep newData.color as-is: first update seeds the history
+   } else {
+      let delta = newData.color.rgb - oldData.color.rgb;
+      let relChange = length(delta) / max(length(oldData.color.rgb), 1e-3);
+      var colorWeight = mix(uniformData.lerpHysteresisLow, base, smoothstep(0.1, 0.35, relChange));
+      colorWeight = mix(colorWeight, 0.5, smoothstep(0.4, 2.0, relChange));
+
+      var appliedStep = delta * colorWeight;
+      let stepLen = length(appliedStep);
+      let maxStep = 0.25;
+      if (stepLen > maxStep) {
+         appliedStep = appliedStep * (maxStep / stepLen);
+      }
+      newData.color = vec4<f32>(oldData.color.rgb + appliedStep, mix(oldData.color.w, newData.color.w, colorWeight));
+   }
+
+   var depthWeight = base;
+   if (oldData.depth.w < 1e-5 && newData.depth.w > 1e-5) {
+      depthWeight = 1.0;
+   }
+   newData.depth = mix(oldData.depth, newData.depth, depthWeight);
+
    return newData;
 }
 

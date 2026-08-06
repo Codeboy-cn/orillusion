@@ -209,12 +209,17 @@ export class Engine3D {
             gi: {
                 enable: false, offsetX: 0, offsetY: 0, offsetZ: 0, probeSpace: 64, probeXCount: 4, probeYCount: 2,
                 probeZCount: 4, probeSize: 32, probeSourceTextureSize: 2048, octRTMaxSize: 2048, octRTSideSize: 16,
-                // lerpHysteresis: per-frame temporal blend weight of the DDGI
-                // irradiance. 0.2 reaches ~95% convergence in ~14 probe
-                // updates — fast enough that lighting changes settle in
-                // seconds even at probeCountPerFrame 1 (rays are already
-                // cosine-weighted over 144 dirs, so the extra per-update
-                // noise stays below the visible threshold).
+                // lerpHysteresis / lerpHysteresisLow: adaptive temporal blend
+                // of the DDGI irradiance (see lerpHitData in
+                // DDGIIrradiance_Cs). The blend pass runs for EVERY probe
+                // every frame with a cycling random ray orientation, so a
+                // fixed weight is a flicker-vs-latency deadlock: texels
+                // within the estimator's noise band blend at
+                // lerpHysteresisLow (steady-state anti-flicker), converging
+                // texels use the lerpHysteresis base (0.2 reaches ~95%
+                // convergence in ~14 updates), and large persistent changes
+                // ramp toward 0.5 with the per-update step length clamped
+                // against single-update firefly pops.
                 // depthSharpness: exponent of the depth-moment lobe. It must
                 // be much sharper than the cosine irradiance lobe (at 1 the
                 // stored mean visible distance becomes a hemisphere-wide
@@ -226,7 +231,7 @@ export class Engine3D {
                 // out of the variance — Chebyshev then razor-cuts probes at
                 // radial bands, drawing arcs / color steps near concave
                 // corners. 18 gives a ~32 deg lobe, matched to 16x16 tiles.
-                maxDistance: 64 * 1.73, normalBias: 0.25, depthSharpness: 18, hysteresis: 0.98, lerpHysteresis: 0.2,
+                maxDistance: 64 * 1.73, normalBias: 0.25, depthSharpness: 18, hysteresis: 0.98, lerpHysteresis: 0.2, lerpHysteresisLow: 0.05,
                 irradianceChebyshevBias: 0.01, rayNumber: 144, irradianceDistanceBias: 32, indirectIntensity: 1.0,
                 ddgiGamma: 2.2, bounceIntensity: 0.025, probeRoughness: 1, realTimeGI: false, debug: false, autoRenderProbe: false,
                 probeCountPerFrame: 1, rayTracing: false, rtSkyIntensity: 1.0,

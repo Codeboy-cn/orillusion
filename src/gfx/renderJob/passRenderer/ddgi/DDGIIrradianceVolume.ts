@@ -137,6 +137,10 @@ export class DDGIIrradianceVolume {
         this.irradianceVolumeBuffer.setFloat("debugX", this.debugX);
         this.irradianceVolumeBuffer.setFloat("debugY", this.debugY);
         this.irradianceVolumeBuffer.setFloat("debugZ", this.debugZ);
+        // setFloat allocates offsets in first-call order: this MUST stay
+        // right after debugZ so it lands on the struct's 28th float
+        // (IrradianceVolumeData.lerpHysteresisLow).
+        this.irradianceVolumeBuffer.setFloat("lerpHysteresisLow", setting.lerpHysteresisLow ?? 0.05);
 
         this.irradianceVolumeBuffer.apply();
     }
