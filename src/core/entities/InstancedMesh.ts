@@ -43,15 +43,10 @@ export class InstancedMesh extends Object3D {
         let instance = this._instanceList[index];
         let prs: Vector3[] = matrix.decompose(Orientation3D.QUATERNION);
         let transform = instance.transform;
-
         transform.localRotQuat.copy(prs[1]);
-        transform.localRotQuat = transform.localRotQuat;
-
         transform.localPosition.copy(prs[0]);
-        transform.localPosition = transform.localPosition;
-
         transform.localScale.copy(prs[2]);
-        transform.localScale = transform.localScale;
+        transform.apply();
         return this;
     }
 
