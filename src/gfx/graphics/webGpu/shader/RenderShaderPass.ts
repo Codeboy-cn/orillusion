@@ -14,7 +14,7 @@ import { ShaderConverter } from "./converter/ShaderConverter";
 import { ShaderPassBase } from "./ShaderPassBase";
 import { ShaderStage } from "./ShaderStage";
 import { Preprocessor } from "./util/Preprocessor";
-import { ShaderReflection, ShaderReflectionVarInfo } from "./value/ShaderReflectionInfo";
+import { ShaderReflection, ShaderReflectionVarInfo, textureViewDimensionOf } from "./value/ShaderReflectionInfo";
 import { ShaderState } from "./value/ShaderState";
 import { RendererPassState } from "../../../renderJob/passRenderer/state/RendererPassState";
 import { GPUBufferType } from "../core/buffer/GPUBufferType";
@@ -374,6 +374,7 @@ export class RenderShaderPass extends ShaderPassBase {
      * @param texture Texture object
      */
     public setTexture(name: string, texture: Texture) {
+        if (texture) this._assertTextureDimension(name, texture);
         if (texture && this.textures[name] != texture) {
             const prev = this.textures[name];
             if (prev) {
@@ -787,7 +788,11 @@ export class RenderShaderPass extends ShaderPassBase {
                     case `texture_depth_cube`:
                     case `texture_depth_cube_array`:
                         {
-                            let texture = this.textures[info.varName] ? this.textures[info.varName] : Engine3D.resFor(this._boundCtx).redTexture;
+                            // The LAYOUT carries the view dimension, so a
+                            // mismatched texture has to be corrected here —
+                            // before createPipeline validates the layout
+                            // against the shader — not just at bind time.
+                            let texture = this._enforceTextureDimension(info, this.textures[info.varName] ? this.textures[info.varName] : Engine3D.resFor(this._boundCtx).redTexture);
                             let entry: GPUBindGroupLayoutEntry = {
                                 binding: info.binding,
                                 visibility: texture.visibility,
@@ -813,7 +818,7 @@ export class RenderShaderPass extends ShaderPassBase {
                         break;
                     default:
                         {
-                            let texture = this.textures[info.varName] ? this.textures[info.varName] : Engine3D.resFor(this._boundCtx).redTexture;
+                            let texture = this._enforceTextureDimension(info, this.textures[info.varName] ? this.textures[info.varName] : Engine3D.resFor(this._boundCtx).redTexture);
                             let entry: GPUBindGroupLayoutEntry = {
                                 binding: info.binding,
                                 visibility: texture.visibility,
@@ -982,6 +987,13 @@ export class RenderShaderPass extends ShaderPassBase {
                             texture = Engine3D.resFor(this._boundCtx).whiteTexture;
                             this.setTexture(refs.varName, texture);
                         }
+                        // Enforce the slot's dimension contract here rather
+                        // than letting the mismatch surface as Dawn's opaque
+                        // "binding dimension doesn't match the layout's"
+                        // error at pipeline creation. Substituting a
+                        // correctly-shaped default keeps the rest of the
+                        // scene rendering instead of killing the frame.
+                        texture = this._enforceTextureDimension(refs, texture);
                         if (texture) {
                             bindIfNeeded(texture);
                             let entry: GPUBindGroupEntry = {
@@ -1091,6 +1103,17 @@ export class RenderShaderPass extends ShaderPassBase {
             };
         }
 
+        // `unclippedDepth: true` is only legal when the device was granted
+        // 'depth-clip-control'. Context3D now treats that feature as optional
+        // (an adapter without it still gets a device), so clamp here instead
+        // of letting pipeline creation fail on those adapters.
+        const unclippedDepth = shaderState.unclippedDepth === true
+            && this._boundCtx!.hasFeature('depth-clip-control');
+        if (shaderState.unclippedDepth === true && !unclippedDepth) {
+            RenderShaderPass._warnOnce('depth-clip-control',
+                `[RenderShaderPass] shaderState.unclippedDepth=true but this device lacks 'depth-clip-control' — falling back to clipped depth.`);
+        }
+
         let renderPipelineDescriptor: GPURenderPipelineDescriptor = {
             label: this.vsName + '|' + this.fsName,
             layout: layouts,
@@ -1098,7 +1121,7 @@ export class RenderShaderPass extends ShaderPassBase {
                 topology: shaderState.topology,
                 cullMode: shaderState.cullMode,
                 frontFace: shaderState.frontFace,
-                unclippedDepth: shaderState.unclippedDepth,
+                unclippedDepth,
             },
             vertex: undefined,
         };
@@ -1159,10 +1182,24 @@ export class RenderShaderPass extends ShaderPassBase {
                 //   - **Early-Z is still active for opaques.** The depth
                 //     test runs before the fragment shader; overdrawn
                 //     opaques are rejected before the lit shader runs.
+                //   - `depthCompare` comes from the material, exactly like
+                //     the no-prepass branch below. ShaderState already
+                //     DEFAULTS to `less_equal`, so the drift tolerance
+                //     described above holds without hardcoding it here —
+                //     and hardcoding it silently discarded every explicit
+                //     `material.depthCompare = ...`, which is why toggling
+                //     depth test on Graphic3D lines did nothing.
                 renderPipelineDescriptor[`depthStencil`] = {
                     depthWriteEnabled: shaderState.depthWriteEnabled,
-                    depthCompare: GPUCompareFunction.less_equal,
+                    depthCompare: shaderState.depthCompare,
                     format: renderPassState.zPreTexture.format,
+                    // Carried through for the same reason: a material that
+                    // sets a depth bias lost it under zPrePass but kept it
+                    // with zPrePass off. Default is 0, so this is a no-op
+                    // for everything that doesn't ask for it.
+                    depthBias: shaderState.depthBias,
+                    depthBiasSlopeScale: shaderState.depthBiasSlopeScale,
+                    depthBiasClamp: shaderState.depthBiasClamp,
                 };
             } else {
                 let depthStencilState: any = {
@@ -1190,7 +1227,7 @@ export class RenderShaderPass extends ShaderPassBase {
         // different render targets (e.g. main GBuffer vs overlay BGRA8Unorm
         // canvas) produce incompatible pipelines, so they must cache
         // separately.
-        const pipelineKey = `${this.shaderVariant}|${RenderShaderPass._attachmentKey(renderPassState)}|a2c${shaderState.alphaToCoverageEnabled ? 1 : 0}|ucd${shaderState.unclippedDepth ? 1 : 0}`;
+        const pipelineKey = `${this.shaderVariant}|${RenderShaderPass._attachmentKey(renderPassState)}|a2c${shaderState.alphaToCoverageEnabled ? 1 : 0}|ucd${unclippedDepth ? 1 : 0}`;
         let pipeline = PipelinePool.getSharePipeline(ctx, pipelineKey);
         if (pipeline) {
             this.pipeline = pipeline;
@@ -1198,6 +1235,92 @@ export class RenderShaderPass extends ShaderPassBase {
             this.pipeline = ctx.gpuContext.createPipeline(renderPipelineDescriptor as GPURenderPipelineDescriptor);
             PipelinePool.setSharePipeline(ctx, pipelineKey, this.pipeline);
         }
+    }
+
+    /**
+     * Throw when `texture`'s view dimension does not match what the shader
+     * declares for slot `name`. Only fires once the shader has been reflected
+     * — the very first material of a given shader assigns its maps before any
+     * compile, so {@link _enforceTextureDimension} is the backstop that
+     * covers that case at bind time.
+     *
+     * Failing here is deliberate: the stack trace points straight at the
+     * `material.baseMap = ...` line, which is the whole point of having a
+     * dimension contract instead of an opaque driver-level error.
+     */
+    private _assertTextureDimension(name: string, texture: Texture) {
+        const refs = this.shaderReflection?.variables?.[name];
+        if (!refs) return;
+        const expected = textureViewDimensionOf(refs.dataType);
+        if (!expected) return;
+        const actual = RenderShaderPass._viewDimensionOf(texture);
+        if (actual === expected) return;
+        throw new Error(
+            `[${this.vsName}|${this.fsName}] texture slot '${name}' is declared as ${refs.dataType} ` +
+            `(expects a ${expected} texture) but was assigned a ${actual} texture ` +
+            `(${texture.constructor?.name ?? 'Texture'}${texture.name ? ` "${texture.name}"` : ''}). ` +
+            `Assign a ${expected} texture to '${name}', or pick a material whose '${name}' slot is ${actual}.`
+        );
+    }
+
+    /**
+     * Bind-time counterpart of {@link _assertTextureDimension}. Returns a
+     * texture that is safe to bind to `refs`: the one given when its
+     * dimension matches, otherwise an engine default of the expected
+     * dimension (so one bad slot does not take the whole frame down).
+     * Reports the mismatch once per shader+slot.
+     */
+    private _enforceTextureDimension(refs: ShaderReflectionVarInfo, texture: Texture): Texture {
+        const expected = textureViewDimensionOf(refs.dataType);
+        if (!expected) return texture;
+        const actual = RenderShaderPass._viewDimensionOf(texture);
+        if (actual === expected) return texture;
+
+        const res = Engine3D.resFor(this._boundCtx!);
+        // Only 2d and cube have engine-wide defaults; for anything else the
+        // original texture is returned and WebGPU reports the mismatch, which
+        // is still better than silently drawing with the wrong data.
+        const fallback: Texture | null =
+            expected === '2d' ? res.whiteTexture :
+                expected === 'cube' ? (res.defaultSky ?? null) : null;
+
+        // Write the correction back so every later consumer (bind group
+        // entries, clones, subsequent layout rebuilds) sees the same texture
+        // the layout was built from. Leaving the bad one in `textures` made
+        // the layout and the bind group disagree.
+        if (fallback && this.textures[refs.varName] === texture) {
+            this.setTexture(refs.varName, fallback);
+        }
+
+        RenderShaderPass._warnOnce(
+            `texdim:${this.vsName}|${this.fsName}|${refs.varName}`,
+            `[${this.vsName}|${this.fsName}] texture slot '${refs.varName}' is declared as ${refs.dataType} ` +
+            `(expects a ${expected} texture) but a ${actual} texture ` +
+            `(${texture.constructor?.name ?? 'Texture'}${texture.name ? ` "${texture.name}"` : ''}) was assigned. ` +
+            (fallback
+                ? `Falling back to the engine default ${expected} texture for this slot.`
+                : `No engine default exists for ${expected}; the WebGPU validation error below comes from this mismatch.`)
+        );
+        return fallback ?? texture;
+    }
+
+    /** The view dimension a texture actually binds with. `viewDescriptor`
+     *  wins when present because that is what `createView` is handed — a
+     *  layered RenderTexture gets a '2d-array' view even though its
+     *  binding layout still reads '2d'. */
+    private static _viewDimensionOf(texture: Texture): GPUTextureViewDimension {
+        return (texture.viewDescriptor?.dimension
+            ?? texture.textureBindingLayout?.viewDimension
+            ?? '2d') as GPUTextureViewDimension;
+    }
+
+    /** Warn once per topic — pipeline creation runs per material per pass,
+     *  so an unconditional console.warn here would flood the console. */
+    private static _warned: Set<string> = new Set<string>();
+    private static _warnOnce(topic: string, message: string) {
+        if (RenderShaderPass._warned.has(topic)) return;
+        RenderShaderPass._warned.add(topic);
+        console.warn(message);
     }
 
     private static _attachmentKey(rps: RendererPassState): string {

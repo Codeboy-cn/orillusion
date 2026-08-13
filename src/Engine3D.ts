@@ -432,6 +432,75 @@ export class Engine3D {
     public get width(): number { return this.context3D.windowWidth; }
     public get height(): number { return this.context3D.windowHeight; }
 
+    /** Screenshot requests waiting for the current frame to finish. */
+    private _pendingCaptures: { type: string, quality: number, resolve: (b: Blob) => void, reject: (e: any) => void }[] = [];
+
+    /**
+     * Capture the next rendered frame as an image.
+     *
+     * The capture is taken at the end of the frame, after every render job
+     * and `lateRender` have run — grabbing the canvas from arbitrary user
+     * code instead would race the swapchain and can yield a blank image.
+     *
+     * @param type image MIME type, e.g. `'image/png'` (default),
+     *        `'image/jpeg'`, `'image/webp'`.
+     * @param quality lossy-format quality in [0, 1]; ignored for PNG.
+     * @returns a promise resolving to the encoded image once the next frame
+     *          has been rendered.
+     */
+    public captureScreenshot(type: string = 'image/png', quality: number = 0.92): Promise<Blob> {
+        if (this.context3D.lost || !Engine3D._instances.has(this)) {
+            return Promise.reject(new Error('captureScreenshot: this Engine3D has been disposed or its device was lost.'));
+        }
+        return new Promise<Blob>((resolve, reject) => {
+            this._pendingCaptures.push({ type, quality, resolve, reject });
+            // A paused / never-started engine would leave the promise hanging
+            // forever, so kick the shared loop the same way resume() does.
+            Engine3D._ensureLoop();
+        });
+    }
+
+    /**
+     * Capture the next rendered frame and download it as a file.
+     *
+     * @param fileName name of the downloaded file; its extension does not
+     *        change the encoding — `type` does.
+     * @param type image MIME type, e.g. `'image/png'` (default).
+     * @param quality lossy-format quality in [0, 1]; ignored for PNG.
+     * @returns a promise resolving once the download has been triggered.
+     */
+    public async saveScreenshot(fileName: string = 'orillusion.png', type: string = 'image/png', quality: number = 0.92): Promise<void> {
+        const blob = await this.captureScreenshot(type, quality);
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        a.click();
+        // Revoke on the next task so the navigation has picked the URL up.
+        setTimeout(() => URL.revokeObjectURL(url), 0);
+    }
+
+    /** Resolve any screenshot requests against the just-rendered frame. */
+    private _flushCaptures() {
+        if (this._pendingCaptures.length === 0) return;
+        const pending = this._pendingCaptures;
+        this._pendingCaptures = [];
+        const canvas = this.context3D.canvas;
+        for (const req of pending) {
+            try {
+                canvas.toBlob(
+                    (blob) => blob
+                        ? req.resolve(blob)
+                        : req.reject(new Error(`captureScreenshot: the canvas could not be encoded as '${req.type}'.`)),
+                    req.type,
+                    req.quality
+                );
+            } catch (e) {
+                req.reject(e);
+            }
+        }
+    }
+
     /**
      * Release this engine's GPU device, DOM canvas, ResizeObserver and
      * input listeners. Required for long-running apps that create/drop
@@ -441,6 +510,10 @@ export class Engine3D {
      */
     public dispose() {
         Engine3D._instances.delete(this);
+        // Anything still waiting on a frame will never get one.
+        const stranded = this._pendingCaptures;
+        this._pendingCaptures = [];
+        for (const req of stranded) req.reject(new Error('captureScreenshot: Engine3D was disposed before the frame was captured.'));
         // Each View3D/Scene3D/Camera3D owned by this engine lives on as a
         // key in a handful of static per-view and per-scene maps. If we
         // don't evict them here every reinit would leak: a full Scene3D
@@ -771,6 +844,10 @@ export class Engine3D {
         runViewMap(ComponentCollect.componentsLateUpdateList);
 
         if (this._lateRender) await this._lateRender();
+
+        // Screenshots are taken here: every render job has submitted and the
+        // canvas holds this frame's presented image.
+        this._flushCaptures();
     }
 }
 

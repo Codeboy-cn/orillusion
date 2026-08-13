@@ -2,6 +2,7 @@ import { Texture } from '../gfx/graphics/webGpu/core/texture/Texture';
 import { GPUAddressMode, GPUTextureFormat } from '../gfx/graphics/webGpu/WebGPUConst';
 import { Context3D } from '../gfx/graphics/webGpu/Context3D';
 import { UUID } from '../util/Global';
+import { readTexturePixels, ReadPixelsRegion, ReadPixelsResult } from '../util/TextureReader';
 /**
  * @internal
  * Render target texture 
@@ -162,34 +163,15 @@ export class VirtualTexture extends Texture {
     }
 
     /**
-     * Copy this texture's contents back into a CPU buffer.
-     * @returns the mapped array buffer of the texture data
+     * Copy this texture's contents back into CPU memory.
+     *
+     * @param region optional sub-rectangle / layer / mip; defaults to the
+     *        whole texture.
+     * @returns a promise resolving to the tightly packed texel data plus its
+     *          extent and format.
      */
-    public readTextureToImage() {
-        const ctx = this._boundCtx!;
-        let device = ctx.device;
-        let w = ctx.windowWidth;
-        let h = ctx.windowHeight;
-        const bytesPerRow = w * 4;
-        let td = new Float32Array(w * h * 4);
-
-        const textureBuffer = device.createBuffer({
-            size: td.byteLength,
-            usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC,
-        });
-        const commandEncoder = ctx.gpuContext.beginCommandEncoder();
-        commandEncoder.copyTextureToBuffer(
-            {
-                texture: this.getGPUTexture()
-            },
-            {
-                buffer: textureBuffer
-            },
-            [w, h]
-        );
-
-        let arryBuffer = textureBuffer.getMappedRange(0, td.byteLength);
-        return arryBuffer;
+    public readTextureToImage(region?: ReadPixelsRegion): Promise<ReadPixelsResult> {
+        return readTexturePixels(this, region, this._boundCtx!);
     }
 
 }

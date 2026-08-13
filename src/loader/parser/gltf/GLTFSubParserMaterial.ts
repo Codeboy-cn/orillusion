@@ -4,6 +4,7 @@ import { GLTF_Info } from "./GLTFInfo";
 import { GLTFMaterial } from "./GLTFMaterial";
 import { GLTFParser } from "./GLTFParser";
 import { GLTFSubParser } from "./GLTFSubParser";
+import { KHR_texture_transform } from "./extends/KHR_texture_transform";
 
 /**
  * @internal
@@ -55,6 +56,12 @@ export class GLTFSubParserMaterial {
             roughnessMapOffsetSize: null,
             metallicMapOffsetSize: null,
             aoMapOffsetSize: null,
+            baseMapUVSet: 0,
+            normalMapUVSet: 0,
+            emissiveMapUVSet: 0,
+            roughnessMapUVSet: 0,
+            metallicMapUVSet: 0,
+            aoMapUVSet: 0,
             metallicFactor: 0,
             roughnessFactor: 1
         };
@@ -70,20 +77,9 @@ export class GLTFSubParserMaterial {
             });
 
             if (baseColorTexture) {
-                //extensions:{KHR_texture_transform: {…}}
-                let ext = baseColorTexture.extensions;
-                if (ext) {
-                    let KHR_texture_transform = ext.KHR_texture_transform;
-                    if (KHR_texture_transform) {
-                        let offsetSize = new Vector4(
-                            KHR_texture_transform.offset ? KHR_texture_transform.offset[0] : 0.0,
-                            KHR_texture_transform.offset ? KHR_texture_transform.offset[1] : 0.0,
-                            KHR_texture_transform.scale ? KHR_texture_transform.scale[0] : 1.0,
-                            KHR_texture_transform.scale ? KHR_texture_transform.scale[1] : 1.0,
-                        );
-                        dmaterial.baseMapOffsetSize = offsetSize;
-                    }
-                }
+                const resolved = KHR_texture_transform.apply(baseColorTexture);
+                if (resolved.offsetSize) dmaterial.baseMapOffsetSize = resolved.offsetSize;
+                dmaterial.baseMapUVSet = resolved.texCoord;
                 // glTF baseColorTexture is the only color channel that
                 // stores sRGB-encoded bytes; the rest (normal, mr, ao,
                 // transmission scalar, thickness) are linear data.
@@ -96,20 +92,9 @@ export class GLTFSubParserMaterial {
             }
 
             if (normalTexture) {
-                //extensions:{KHR_texture_transform: {…}}
-                let ext = normalTexture.extensions;
-                if (ext) {
-                    let KHR_texture_transform = ext.KHR_texture_transform;
-                    if (KHR_texture_transform) {
-                        let offsetSize = new Vector4(
-                            KHR_texture_transform.offset ? KHR_texture_transform.offset[0] : 0.0,
-                            KHR_texture_transform.offset ? KHR_texture_transform.offset[1] : 0.0,
-                            KHR_texture_transform.scale ? KHR_texture_transform.scale[0] : 1.0,
-                            KHR_texture_transform.scale ? KHR_texture_transform.scale[1] : 1.0,
-                        );
-                        dmaterial.normalMapOffsetSize = offsetSize;
-                    }
-                }
+                const resolved = KHR_texture_transform.apply(normalTexture);
+                if (resolved.offsetSize) dmaterial.normalMapOffsetSize = resolved.offsetSize;
+                dmaterial.normalMapUVSet = resolved.texCoord;
                 const texture = await this.parseTexture(normalTexture.index);
                 if (texture) {
                     dmaterial.normalTexture = texture;
@@ -119,19 +104,10 @@ export class GLTFSubParserMaterial {
             }
 
             if (metallicRoughnessTexture) {
-                let ext = metallicRoughnessTexture.extensions;
-                if (ext) {
-                    let KHR_texture_transform = ext.KHR_texture_transform;
-                    if (KHR_texture_transform) {
-                        let offsetSize = new Vector4(
-                            KHR_texture_transform.offset ? KHR_texture_transform.offset[0] : 0.0,
-                            KHR_texture_transform.offset ? KHR_texture_transform.offset[1] : 0.0,
-                            KHR_texture_transform.scale ? KHR_texture_transform.scale[0] : 1.0,
-                            KHR_texture_transform.scale ? KHR_texture_transform.scale[1] : 1.0,
-                        );
-                        dmaterial.roughnessMapOffsetSize = offsetSize;
-                    }
-                }
+                const resolved = KHR_texture_transform.apply(metallicRoughnessTexture);
+                if (resolved.offsetSize) dmaterial.roughnessMapOffsetSize = resolved.offsetSize;
+                dmaterial.roughnessMapUVSet = resolved.texCoord;
+                dmaterial.metallicMapUVSet = resolved.texCoord;
 
                 const texture = await this.parseTexture(metallicRoughnessTexture.index);
                 if (texture) {
@@ -192,6 +168,9 @@ export class GLTFSubParserMaterial {
         }
 
         if (occlusionTexture) {
+            const resolved = KHR_texture_transform.apply(occlusionTexture);
+            if (resolved.offsetSize) dmaterial.aoMapOffsetSize = resolved.offsetSize;
+            dmaterial.aoMapUVSet = resolved.texCoord;
             const texture = await this.parseTexture(occlusionTexture.index);
             if (texture) {
                 dmaterial.occlusionTexture = texture;
@@ -205,6 +184,9 @@ export class GLTFSubParserMaterial {
         if (emissiveTexture) {
             // emissiveTexture is sRGB-encoded color (KHR + glTF spec
             // 2.0 §3.9.3) — same hardware decode as baseColor.
+            const resolvedEmissive = KHR_texture_transform.apply(emissiveTexture);
+            if (resolvedEmissive.offsetSize) dmaterial.emissiveMapOffsetSize = resolvedEmissive.offsetSize;
+            dmaterial.emissiveMapUVSet = resolvedEmissive.texCoord;
             const texture = await this.parseTexture(emissiveTexture.index, 'srgb');
             if (texture) {
                 dmaterial.emissiveTexture = texture;

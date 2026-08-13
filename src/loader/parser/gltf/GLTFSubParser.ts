@@ -71,6 +71,11 @@ export class GLTFSubParser {
         'KHR_materials_transmission',
         'KHR_materials_unlit',
         'KHR_materials_volume',
+        // EXT_texture_webp only redirects a texture's image source to a
+        // WebP image; browsers decode WebP natively through
+        // createImageBitmap, so honoring the redirect is the whole
+        // implementation.
+        'EXT_texture_webp',
     ];
 
     public async parse(initUrl: string, gltf, sceneId) {
@@ -190,11 +195,53 @@ export class GLTFSubParser {
         return this._meshParser.parse(meshId);
     }
 
+    /**
+     * Resolve which `gltf.images` entry a texture actually reads.
+     *
+     * EXT_texture_webp puts the WebP image index under the extension and may
+     * omit the texture's own `source` entirely (assets that list the
+     * extension in `extensionsRequired` are allowed to), so the extension
+     * wins when present.
+     */
+    private resolveImageSource(textureInfo: any): number | null {
+        const webp = textureInfo?.extensions?.EXT_texture_webp;
+        if (webp && webp.source != null) return webp.source;
+        return textureInfo?.source ?? null;
+    }
+
+    /**
+     * Identify an image container from its leading bytes.
+     *
+     * Only the formats a browser can hand to `createImageBitmap` are
+     * recognised; anything else returns null so the caller reports an
+     * actionable error instead of handing WebGPU an undecodable blob.
+     *
+     * @param buffer the raw image bytes.
+     * @returns the MIME type, or null when the container is unrecognised.
+     */
+    public static sniffImageMimeType(buffer: ArrayBuffer | Uint8Array): string | null {
+        const b = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
+        if (b.length < 12) return null;
+        // PNG: 89 50 4E 47 0D 0A 1A 0A
+        if (b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47) return 'image/png';
+        // JPEG: FF D8 FF
+        if (b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return 'image/jpeg';
+        // GIF: 'GIF8'
+        if (b[0] === 0x47 && b[1] === 0x49 && b[2] === 0x46 && b[3] === 0x38) return 'image/gif';
+        // WebP: 'RIFF' .... 'WEBP'
+        if (b[0] === 0x52 && b[1] === 0x49 && b[2] === 0x46 && b[3] === 0x46
+            && b[8] === 0x57 && b[9] === 0x45 && b[10] === 0x42 && b[11] === 0x50) return 'image/webp';
+        // BMP: 'BM'
+        if (b[0] === 0x42 && b[1] === 0x4d) return 'image/bmp';
+        return null;
+    }
+
     public async parseTexture(index: number, colorSpace: 'srgb' | 'linear' = 'linear') {
         let textureInfo = this.gltf.textures[index];
         if (textureInfo && !textureInfo.dtexture) {
-            if (textureInfo && textureInfo.source != null) {
-                let image = this.gltf.images[textureInfo.source];
+            const imageSource = this.resolveImageSource(textureInfo);
+            if (textureInfo && imageSource != null) {
+                let image = this.gltf.images[imageSource];
                 if (image.uri) {
                     // Full-uri key first (see GLTFParser.load_gltf_textures);
                     // basename fallback keeps GLB / legacy-keyed paths alive.
@@ -227,9 +274,28 @@ export class GLTFSubParser {
                         ?? this.gltf.resources[image?.name];
                     if (!bitmapTexture) {
                         let buffer = this.parseBufferView(image.bufferView);
+                        // `mimeType` is required by the spec for bufferView
+                        // images but is missing from plenty of real exports.
+                        // A Blob with an empty type makes createImageBitmap
+                        // fail with "The source image cannot be decoded",
+                        // so sniff the container from its magic bytes.
+                        const mimeType = image.mimeType || GLTFSubParser.sniffImageMimeType(buffer);
                         bitmapTexture = new BitmapTexture2D(true, this.ctx, colorSpace);
-                        let img = new Blob([buffer], { type: image.mimeType });
-                        await bitmapTexture.loadFromBlob(img);
+                        let img = new Blob([buffer], { type: mimeType });
+                        try {
+                            await bitmapTexture.loadFromBlob(img);
+                        } catch (e: any) {
+                            // Report which image failed and what it looked
+                            // like — the bare browser message names neither,
+                            // which is why this class of bug is so hard to
+                            // triage from a user report.
+                            console.error(
+                                `[glTF] image ${imageSource}${image.name ? ` ("${image.name}")` : ''} could not be decoded ` +
+                                `(declared mimeType: ${image.mimeType ?? '<none>'}, sniffed: ${mimeType ?? '<unknown>'}, ` +
+                                `${buffer?.byteLength ?? 0} bytes). Falling back to a white texture. Original error: ${e?.message ?? e}`
+                            );
+                            bitmapTexture = Engine3D.resFor(this.ctx).whiteTexture as unknown as BitmapTexture2D;
+                        }
                     }
                     textureInfo.dtexture = bitmapTexture;
 

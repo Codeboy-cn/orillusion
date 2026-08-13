@@ -89,6 +89,7 @@ class Sample_GI {
             let directLight = this.lightObj3D.addComponent(DirectLight);
             directLight.lightColor = KelvinUtil.color_temperature_to_rgb(5355);
             directLight.castShadow = true;
+            directLight.enableCSM = true;
             directLight.intensity = 3;
             directLight.shadowBoundWidth = 512;
             directLight.shadowBoundHeight = 512;

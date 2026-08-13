@@ -45,7 +45,17 @@ export class ForwardRendererJob extends RendererJob {
         const setting = view.engine3D.setting;
         const giEnabled = !!setting.gi.enable;
         const useOIT = !!(setting.render as any).useOIT;
-        const useGPUCull = !!(setting.render as any).gpuCull;
+        // GPU-driven culling submits drawIndexedIndirect with a non-zero
+        // firstInstance (GPUFrustumCull_cs hijacks that field to carry the
+        // matrix slot), which WebGPU only permits with
+        // 'indirect-first-instance'. Context3D treats that feature as
+        // optional now, so fall back to CPU culling when it is absent
+        // instead of emitting invalid indirect draws.
+        let useGPUCull = !!(setting.render as any).gpuCull;
+        if (useGPUCull && !view.engine3D.context3D.hasFeature('indirect-first-instance')) {
+            console.warn(`[ForwardRendererJob] setting.render.gpuCull=true but this device lacks 'indirect-first-instance' — falling back to CPU frustum culling.`);
+            useGPUCull = false;
+        }
         const useDecals = !!(setting.render as any).decals;
 
         // Cluster lighting — runs first so downstream passes can

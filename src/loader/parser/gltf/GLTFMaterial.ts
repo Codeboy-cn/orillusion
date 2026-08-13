@@ -53,4 +53,17 @@ export class GLTFMaterial {
     metallicMapOffsetSize: Vector4;
     /** UV offset/size transform for the ambient occlusion texture. */
     aoMapOffsetSize: Vector4;
+
+    /** UV set (glTF `texCoord`) the base color texture samples: 0 or 1. */
+    baseMapUVSet: number;
+    /** UV set (glTF `texCoord`) the normal texture samples: 0 or 1. */
+    normalMapUVSet: number;
+    /** UV set (glTF `texCoord`) the emissive texture samples: 0 or 1. */
+    emissiveMapUVSet: number;
+    /** UV set (glTF `texCoord`) the roughness texture samples: 0 or 1. */
+    roughnessMapUVSet: number;
+    /** UV set (glTF `texCoord`) the metallic texture samples: 0 or 1. */
+    metallicMapUVSet: number;
+    /** UV set (glTF `texCoord`) the occlusion texture samples: 0 or 1. */
+    aoMapUVSet: number;
 }

@@ -88,10 +88,18 @@ export class GLTFSubParserMesh {
                             texCoordNum++;
                             break;
 
-                        // case 'TEXCOORD_1':
-                        //   attribName = VertexAttributeName.uv1;
-                        //   texCoordNum++;
-                        //   break;
+                        case 'TEXCOORD_1':
+                            // Second UV set. The vertex path already carries
+                            // it end to end (VertexAttributes.TEXCOORD_1 ->
+                            // VertexOutput.varying_UV1 ->
+                            // FragmentVarying.fragUV1); without this case the
+                            // attribute was dropped at load and fragUV1 held
+                            // whatever the default buffer contained, so any
+                            // texture with glTF `texCoord: 1` sampled the
+                            // wrong coordinates.
+                            attribName = VertexAttributeName.TEXCOORD_1;
+                            texCoordNum++;
+                            break;
 
                         case 'JOINTS_0':
                             attribName = VertexAttributeName.joints0;

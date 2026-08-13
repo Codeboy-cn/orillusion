@@ -42,6 +42,42 @@ export type ShaderReflectionStructInfo = {
 };
 
 /**
+ * The `GPUTextureViewDimension` a WGSL texture binding expects, derived from
+ * the reflected declaration type (`texture_2d<f32>`, `texture_cube<f32>`,
+ * `texture_depth_2d_array`, `texture_storage_3d`, ...).
+ *
+ * Used to catch a texture whose view dimension does not match the slot it is
+ * assigned to *before* the mismatch reaches pipeline creation, where WebGPU
+ * only reports it as an opaque "binding dimension doesn't match the layout's
+ * binding dimension" validation error naming a raw @binding index.
+ *
+ * @param dataType the reflected WGSL type of the binding.
+ * @returns the expected view dimension, or null when `dataType` is not a
+ *          texture type (samplers, buffers, ...) or is a multisampled
+ *          texture, which has no user-assignable dimension.
+ * @internal
+ */
+export function textureViewDimensionOf(dataType: string): GPUTextureViewDimension | null {
+    if (!dataType) return null;
+    // Strip the sampled-type / format / access generics: everything a
+    // dimension can be read from lives in the identifier before '<'.
+    const head = (dataType.indexOf('<') > 0 ? dataType.substring(0, dataType.indexOf('<')) : dataType).trim();
+    if (!head.startsWith('texture_')) return null;
+    // Multisampled textures are engine-managed render targets, never set
+    // through Material.setTexture — no dimension contract to enforce.
+    if (head.startsWith('texture_multisampled') || head.startsWith('texture_depth_multisampled')) return null;
+    // Longest suffix first so '2d_array' is not shadowed by '2d', and
+    // 'cube_array' not by 'cube'.
+    if (head.endsWith('_cube_array')) return 'cube-array';
+    if (head.endsWith('_cube')) return 'cube';
+    if (head.endsWith('_2d_array')) return '2d-array';
+    if (head.endsWith('_2d')) return '2d';
+    if (head.endsWith('_1d')) return '1d';
+    if (head.endsWith('_3d')) return '3d';
+    return null;
+}
+
+/**
  * @internal
  */
 export class ShaderReflection {

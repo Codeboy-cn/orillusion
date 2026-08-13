@@ -72,7 +72,7 @@ export let PBRLItShader: string = /*wgsl*/ `
     fn frag(){
    
         let baseMapOffsetSize = materialUniform.baseMapOffsetSize;
-        var uv = transformUV(ORI_VertexVarying.fragUV0,baseMapOffsetSize) ; 
+        var uv = transformUVSet(materialUniform.uvSetsA.x,baseMapOffsetSize) ; 
 
         #if USE_SRGB_ALBEDO
             ORI_ShadingInput.BaseColor = textureSample(baseMap, baseMapSampler, uv )  ;
@@ -91,7 +91,7 @@ export let PBRLItShader: string = /*wgsl*/ `
         #endif
 
         let roughnessMapOffsetSize = materialUniform.roughnessMapOffsetSize;
-        var uv4 = transformUV(ORI_VertexVarying.fragUV0,roughnessMapOffsetSize); 
+        var uv4 = transformUVSet(materialUniform.uvSetsA.w,roughnessMapOffsetSize); 
         var maskTex = textureSample(maskMap, maskMapSampler, uv4 );
        
         #if USE_ALPHA_A
@@ -155,7 +155,7 @@ export let PBRLItShader: string = /*wgsl*/ `
         var aoChannel:f32 = 1.0 ;
         #if USE_AOTEX
             let aoMapOffsetSize = materialUniform.aoMapOffsetSize;
-            var aoMapOffsetSizeUV = transformUV(ORI_VertexVarying.fragUV0,aoMapOffsetSize);
+            var aoMapOffsetSizeUV = transformUVSet(materialUniform.uvSetsB.y,aoMapOffsetSize);
             var aoMap = textureSample(aoMap, aoMapSampler, aoMapOffsetSizeUV );
             aoChannel = aoMap.g ;
         #else
@@ -174,7 +174,7 @@ export let PBRLItShader: string = /*wgsl*/ `
         ORI_ShadingInput.Specular = 1.0 ;
 
         let emissiveMapOffsetSize = materialUniform.emissiveMapOffsetSize;
-        var emissiveUV = transformUV(ORI_VertexVarying.fragUV0,emissiveMapOffsetSize) ;
+        var emissiveUV = transformUVSet(materialUniform.uvSetsA.z,emissiveMapOffsetSize) ;
         #if USE_EMISSIVEMAP
             var emissiveMapColor = textureSample(emissiveMap, emissiveMapSampler , emissiveUV ) ;
             let emissiveColor = materialUniform.emissiveColor.rgb * emissiveMapColor.rgb * materialUniform.emissiveIntensity ;
@@ -185,7 +185,7 @@ export let PBRLItShader: string = /*wgsl*/ `
         #endif
 
         let normalMapOffsetSize = materialUniform.normalMapOffsetSize;
-        var nomralUV = transformUV(ORI_VertexVarying.fragUV0,normalMapOffsetSize) ;
+        var nomralUV = transformUVSet(materialUniform.uvSetsA.y,normalMapOffsetSize) ;
         var Normal = textureSample(normalMap,normalMapSampler,nomralUV).rgb ;
         // Flip on back-facing fragments so cullMode='none' surfaces don't
         // receive direct light / shadows on the side facing away from sun.

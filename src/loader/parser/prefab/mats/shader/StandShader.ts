@@ -87,6 +87,10 @@ export class StandShader extends Shader {
         this.setUniformVector4(`roughnessMapOffsetSize`, new Vector4(0, 0, 1, 1));
         this.setUniformVector4(`metallicMapOffsetSize`, new Vector4(0, 0, 1, 1));
         this.setUniformVector4(`aoMapOffsetSize`, new Vector4(0, 0, 1, 1));
+        // UV set per texture slot (0 = TEXCOORD_0, 1 = TEXCOORD_1); glTF's
+        // per-textureInfo `texCoord`. Default everything to the first set.
+        this.setUniformVector4(`uvSetsA`, new Vector4(0, 0, 0, 0));
+        this.setUniformVector4(`uvSetsB`, new Vector4(0, 0, 0, 0));
 
         const res = Engine3D.resFor(this._ctx);
         this.baseMap = res.whiteTexture;

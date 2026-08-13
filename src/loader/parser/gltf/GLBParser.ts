@@ -5,6 +5,7 @@ import { ParserBase } from '../ParserBase';
 import { ParserFormat } from '../ParserFormat';
 import { GLTF_Info } from './GLTFInfo';
 import { GLTFSubParser } from './GLTFSubParser';
+import { Engine3D } from '../../../Engine3D';
 
 /**
  * @internal
@@ -164,9 +165,26 @@ export class GLBParser extends ParserBase {
                 const bufferView = this._gltf.bufferViews[image.bufferView];
                 const buffer = this._gltf.buffers[bufferView.buffer];
                 let dataBuffer = new Uint8Array(buffer.dbuffer, bufferView.byteOffset, bufferView.byteLength);
-                let imgData = new Blob([dataBuffer], { type: image.mimeType });
+                // `mimeType` is mandatory per spec for bufferView images but
+                // is missing from plenty of real exports; a Blob with no type
+                // can fail to decode ("The source image cannot be decoded"),
+                // so fall back to sniffing the container's magic bytes.
+                const mimeType = image.mimeType || GLTFSubParser.sniffImageMimeType(dataBuffer);
+                let imgData = new Blob([dataBuffer], { type: mimeType });
                 let dtexture = new BitmapTexture2D(true, this.ctx);
-                await dtexture.loadFromBlob(imgData);
+                try {
+                    await dtexture.loadFromBlob(imgData);
+                } catch (e: any) {
+                    // Name the offending image — the raw browser error names
+                    // neither the file nor the image index, which is what
+                    // makes this class of report untriageable.
+                    console.error(
+                        `[GLB] image ${i}${image.name ? ` ("${image.name}")` : ''} could not be decoded ` +
+                        `(declared mimeType: ${image.mimeType ?? '<none>'}, sniffed: ${mimeType ?? '<unknown>'}, ` +
+                        `${dataBuffer.byteLength} bytes). Falling back to a white texture. Original error: ${e?.message ?? e}`
+                    );
+                    dtexture = Engine3D.resFor(this.ctx).whiteTexture as unknown as BitmapTexture2D;
+                }
                 dtexture.name = image.name;
                 if (image.name && image.name !== key && !this._gltf.resources[image.name]) {
                     this._gltf.resources[image.name] = dtexture;

@@ -42,6 +42,37 @@ export class Context3D extends CEventDispatcher {
     public adapter: GPUAdapter;
     /** The GPUDevice owned by this context; the root handle for all GPU work. */
     public device: GPUDevice;
+
+    /** Optional WebGPU features the engine asks for. Every entry is probed
+     *  against `adapter.features` before being requested — an adapter that
+     *  lacks one must still get a working device, so none of these may be
+     *  load-bearing without a fallback. Listing a feature here is a promise
+     *  that the renderer degrades gracefully when it is absent. */
+    private static readonly OPTIONAL_FEATURES: string[] = [
+        'bgra8unorm-storage',
+        'depth-clip-control',
+        'depth32float-stencil8',
+        'indirect-first-instance',
+        'rg11b10ufloat-renderable',
+    ];
+
+    /** The optional features this device was actually granted. Query via
+     *  {@link hasFeature} before taking any code path that needs one. */
+    public grantedFeatures: ReadonlySet<string> = new Set<string>();
+
+    /**
+     * Whether the device was created with the given optional WebGPU feature.
+     * Code paths gated on a feature (unclipped depth, GPU-driven indirect
+     * culling, ...) must check this instead of assuming the request in
+     * `init()` succeeded — on adapters that lack the feature the engine now
+     * comes up without it rather than failing `requestDevice` outright.
+     *
+     * @param name the WebGPU feature name, e.g. `'depth-clip-control'`.
+     * @returns true when the feature is available on this device.
+     */
+    public hasFeature(name: string): boolean {
+        return this.grantedFeatures.has(name);
+    }
     /** The format pipelines target — the sRGB view variant, so the
      *  GPU does the linear→sRGB encode at write time. Must match the
      *  view created in `GPUContext.beginRenderPass`. */
@@ -135,8 +166,19 @@ export class Context3D extends CEventDispatcher {
                 console.log('[Context3D] adapter.info probe failed:', e?.message ?? e);
             }
         }
-        const avail = Array.from((this.adapter.features as any) || []);
-        // if (import.meta.env.DEV) console.log('[Context3D] adapter.features =', avail.join(', '));
+        // Every optional feature is probed before being requested. Passing an
+        // unsupported name in `requiredFeatures` makes requestDevice reject
+        // outright ("Unsupported feature: bgra8unorm-storage") and the engine
+        // never starts — which is what happened on adapters missing any one
+        // of these. Same shape as the requiredLimits probing just below.
+        const adapterFeatures: Set<string> = new Set(
+            Array.from(((this.adapter.features as any) || []) as Iterable<string>)
+        );
+        const requiredFeatures = Context3D.OPTIONAL_FEATURES.filter(f => adapterFeatures.has(f));
+        const skipped = Context3D.OPTIONAL_FEATURES.filter(f => !adapterFeatures.has(f));
+        if (skipped.length) {
+            console.warn(`[Context3D] adapter does not expose ${skipped.join(', ')} — continuing without ${skipped.length > 1 ? 'them' : 'it'}. Features gated on these degrade automatically.`);
+        }
         // Ask for the adapter's real buffer limits instead of the WebGPU
         // defaults (256 MB): without this, creating a large storage buffer
         // (e.g. >256 MB of SH coefficients) fails only as an
@@ -157,16 +199,15 @@ export class Context3D extends CEventDispatcher {
             requiredLimits.maxComputeWorkgroupStorageSize = Math.min(adapterLimits.maxComputeWorkgroupStorageSize, 32768);
         }
         this.device = await this.adapter.requestDevice({
-            requiredFeatures: [
-                'bgra8unorm-storage',
-                'depth-clip-control',
-                'depth32float-stencil8',
-                'indirect-first-instance',
-                'rg11b10ufloat-renderable',
-            ],
+            requiredFeatures: requiredFeatures as GPUFeatureName[],
             requiredLimits
         });
         if (!this.device) throw new Error('Your browser does not support WebGPU!');
+        // Record what the device actually granted rather than what was asked
+        // for — a driver may still drop a feature it advertised.
+        this.grantedFeatures = new Set<string>(
+            requiredFeatures.filter(f => (this.device.features as any).has(f))
+        );
         this.device.label = `device-${Context3D._nextLabel++}`;
         // Configure swapchain with the preferred non-sRGB format
         // (Chromium rejects `*-srgb` as a canvas configure format),

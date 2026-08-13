@@ -45,6 +45,15 @@ export let PhysicMaterialUniform_frag = /* wgsl */`
                   roughnessMapOffsetSize:vec4<f32>,
                   metallicMapOffsetSize:vec4<f32>,
                   aoMapOffsetSize:vec4<f32>,
+
+                  // Which UV set each texture samples: 0 = fragUV0
+                  // (TEXCOORD_0), 1 = fragUV1 (TEXCOORD_1). Mirrors glTF
+                  // per-textureInfo texCoord. Packed into two vec4s to
+                  // keep the 16-byte uniform alignment tidy.
+                  // A = (base, normal, emissive, roughness)
+                  // B = (metallic, ao, unused, unused)
+                  uvSetsA:vec4<f32>,
+                  uvSetsB:vec4<f32>,
               };
         #endif
       

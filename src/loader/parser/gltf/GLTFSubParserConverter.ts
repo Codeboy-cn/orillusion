@@ -11,6 +11,7 @@ import { BlendMode } from "../../../materials/BlendMode";
 import { Color } from "../../../math/Color";
 import { RADIANS_TO_DEGREES } from "../../../math/MathUtil";
 import { Quaternion } from "../../../math/Quaternion";
+import { Vector4 } from "../../../math/Vector4";
 import { UUID } from "../../../util/Global";
 import { GLTF_Info, GLTF_Node } from "./GLTFInfo";
 import { GLTFSubParser } from "./GLTFSubParser";
@@ -269,6 +270,26 @@ export class GLTFSubParserConverter {
                     }
                     if (gltfMat.aoMapOffsetSize) {
                         physicMaterial.setUniformVector4("aoMapOffsetSize", gltfMat.aoMapOffsetSize);
+                    }
+
+                    // glTF `texCoord` per textureInfo -> which UV set each
+                    // slot samples in the shader. Only written when some slot
+                    // actually asks for the second set, so single-UV assets
+                    // keep the material's identity default.
+                    const uvSetsA = new Vector4(
+                        gltfMat.baseMapUVSet ?? 0,
+                        gltfMat.normalMapUVSet ?? 0,
+                        gltfMat.emissiveMapUVSet ?? 0,
+                        gltfMat.roughnessMapUVSet ?? 0,
+                    );
+                    const uvSetsB = new Vector4(
+                        gltfMat.metallicMapUVSet ?? 0,
+                        gltfMat.aoMapUVSet ?? 0,
+                        0, 0,
+                    );
+                    if (uvSetsA.x || uvSetsA.y || uvSetsA.z || uvSetsA.w || uvSetsB.x || uvSetsB.y) {
+                        physicMaterial.setUniformVector4("uvSetsA", uvSetsA);
+                        physicMaterial.setUniformVector4("uvSetsB", uvSetsB);
                     }
 
 

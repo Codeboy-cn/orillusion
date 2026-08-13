@@ -211,5 +211,19 @@ export let Common_frag: string = /*wgsl*/ `
      return uv * offsetScale.zw + offsetScale.xy ;
   }
 
+  // Pick the UV set a texture slot samples. uvSet comes from the material
+  // uniform and mirrors glTF per-textureInfo texCoord: 0 = TEXCOORD_0,
+  // anything else = TEXCOORD_1. Compared with a threshold rather than == 1.0
+  // so a float that arrived as 0.999/1.001 still resolves cleanly.
+  fn selectUV( uvSet:f32 ) -> vec2f {
+     if (uvSet >= 0.5) { return ORI_VertexVarying.fragUV1; }
+     return ORI_VertexVarying.fragUV0;
+  }
+
+  // transformUV against the UV set the slot selected.
+  fn transformUVSet( uvSet:f32 , offsetScale:vec4f ) -> vec2f{
+     return transformUV(selectUV(uvSet), offsetScale);
+  }
+
 `
 
