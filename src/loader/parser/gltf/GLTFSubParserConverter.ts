@@ -88,16 +88,6 @@ export class GLTFSubParserConverter {
         }
 
         if (nodeInfo['skeleton']) {
-            // let skeletonAnimation = node.addComponent(SkeletonAnimationComponent);
-            // if (skeletonAnimation) {
-            //     skeletonAnimation.skeleton = this.subParser.parseSkeleton(nodeInfo['skeleton'].skeleton);
-            //     for (let i = 0; i < this.gltf.animations.length; i++) {
-            //         let animation = this.gltf.animations[i];
-            //         if (!animation.name) animation.name = i.toString();
-            //         let animationClip = this.subParser.parseSkeletonAnimation(skeletonAnimation.skeleton, animation);
-            //         skeletonAnimation.addAnimationClip(animationClip);
-            //     }
-            // }
             this.convertSkeletonAnim(node, nodeInfo['skeleton']);
         }
 

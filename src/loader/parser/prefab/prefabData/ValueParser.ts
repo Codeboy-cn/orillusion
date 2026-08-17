@@ -1,7 +1,5 @@
 import { GeometryBase, Material, PropertyAnimationClip, Texture } from "../../../..";
 import { Engine3D } from "../../../../Engine3D";
-import { Joint } from "../../../../components/anim/skeletonAnim/Joint";
-import { Skeleton } from "../../../../components/anim/skeletonAnim/Skeleton";
 import { Context3D } from "../../../../gfx/graphics/webGpu/Context3D";
 import { Color } from "../../../../math/Color";
 import { Quaternion } from "../../../../math/Quaternion";
@@ -11,7 +9,7 @@ import { Vector4 } from "../../../../math/Vector4";
 import { BytesArray } from "../../../../util/BytesArray";
 import { ValueEnumType } from "./ValueType";
 
-export type CurveValueType = string | number | Vector2 | Vector3 | Vector4 | Quaternion | Color | boolean | Texture | Material | string[] | number[] | Float32Array | GeometryBase | Skeleton | PropertyAnimationClip[];
+export type CurveValueType = string | number | Vector2 | Vector3 | Vector4 | Quaternion | Color | boolean | Texture | Material | string[] | number[] | Float32Array | GeometryBase | PropertyAnimationClip[];
 
 /**
  * Decodes a typed value from a prefab byte stream. Reads the leading type tag

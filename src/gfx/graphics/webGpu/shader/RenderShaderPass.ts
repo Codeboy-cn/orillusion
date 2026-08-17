@@ -1556,9 +1556,8 @@ export class RenderShaderPass extends ShaderPassBase {
         }
 
         // Copy external buffer bindings (storage/uniform that the renderer
-        // wires from elsewhere — e.g. SkinnedMeshRenderer's joint buffers).
-        // Skip the two owned slots; the constructor already pointed them at
-        // the clone's fresh materialDataUniformBuffer.
+        // wires from elsewhere). Skip the two owned slots; the constructor 
+        // already pointed them at the clone's fresh materialDataUniformBuffer.
         for (const [name, buf] of (this as any)._bufferDic as Map<string, GPUBufferBase>) {
             if (name === 'global' || name === 'materialUniform') continue;
             (dst as any)._bufferDic.set(name, buf);

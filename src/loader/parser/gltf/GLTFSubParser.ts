@@ -1,4 +1,3 @@
-import { Skeleton } from '../../../components/anim/skeletonAnim/Skeleton';
 import { Object3D } from '../../../core/entities/Object3D';
 import { StringUtil } from '../../../util/StringUtil';
 import { GLTF_Info, GLTF_Node } from './GLTFInfo';

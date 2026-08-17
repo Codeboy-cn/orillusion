@@ -1,4 +1,4 @@
-import { AnimatorComponent, ComputeGPUBuffer, ComputeShader, Context3D, GlobalBindGroup, SkeletonAnimationComponent, SkinnedMeshRenderer, SkinnedMeshRenderer2, VertexAttributeData, VertexAttributeName, View3D } from '@orillusion/core';
+import { AnimatorComponent, ComputeGPUBuffer, ComputeShader, Context3D, GlobalBindGroup, SkinnedMeshRenderer2, VertexAttributeData, VertexAttributeName, View3D } from '@orillusion/core';
 import { FlameSimulatorBuffer } from './FlameSimulatorBuffer';
 import { FlameSimulatorConfig } from './FlameSimulatorConfig';
 import { Copy } from './shader/copy.wgsl';

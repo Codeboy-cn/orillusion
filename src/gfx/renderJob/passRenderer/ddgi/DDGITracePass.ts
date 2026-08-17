@@ -170,7 +170,7 @@ export class DDGITracePass {
 
     private forEachRenderer(view: View3D, callback: (renderer: MeshRenderer) => void): void {
         // getComponents recurses the scene tree and matches the exact class,
-        // so SkyRenderer / SkinnedMeshRenderer subclasses never enter the
+        // so SkyRenderer / SkinnedMeshRenderer2 subclasses never enter the
         // static BVH. Probe-debug spheres are plain MeshRenderers and are
         // filtered by material.
         const renderers = (view.scene as unknown as Object3D).getComponents(MeshRenderer);

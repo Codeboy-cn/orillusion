@@ -1,6 +1,5 @@
 import { Engine3D } from "../../../Engine3D";
 import { MeshFilter } from "../../../components/renderer/MeshFilter";
-import { SkinnedMeshRenderer } from "../../../components/renderer/SkinnedMeshRenderer";
 import { Object3D } from "../../../core/entities/Object3D";
 import { GeometryBase } from "../../../core/geometry/GeometryBase";
 import { Material } from "../../../materials/Material";
